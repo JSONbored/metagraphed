@@ -5033,6 +5033,146 @@
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/21"
     },
     {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-22-desearch-api",
+      "kind": "subnet-api",
+      "name": "Desearch API",
+      "netuid": 22,
+      "notes": "Public API host advertised by the Desearch OpenAPI schema. Protected methods require authentication, so proxy eligibility requires separate review.",
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "OpenAPI schema is public; method-level auth and rate limits must be reviewed before routing.",
+      "schema_status": "machine-readable",
+      "schema_url": "https://www.desearch.ai/openapi.json",
+      "source_urls": [
+        "https://www.desearch.ai/openapi.json",
+        "https://api.desearch.ai"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://api.desearch.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-console",
+      "kind": "dashboard",
+      "name": "Desearch console",
+      "netuid": 22,
+      "notes": "Public Desearch console application.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/",
+        "https://console.desearch.ai/"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://console.desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-docs",
+      "kind": "docs",
+      "name": "Desearch docs",
+      "netuid": 22,
+      "notes": "Official Desearch documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/docs"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://www.desearch.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-openapi",
+      "kind": "openapi",
+      "name": "Desearch OpenAPI schema",
+      "netuid": 22,
+      "notes": "Machine-readable OpenAPI schema for the Desearch API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://www.desearch.ai/openapi.json",
+        "https://api.desearch.ai"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://www.desearch.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-source",
+      "kind": "source-repo",
+      "name": "Desearch source repository",
+      "netuid": 22,
+      "notes": "Official SN22 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/",
+        "https://github.com/Desearch-ai/subnet-22"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://github.com/Desearch-ai/subnet-22"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-website",
+      "kind": "website",
+      "name": "Desearch website",
+      "netuid": 22,
+      "notes": "Official Desearch website for SN22.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/"
+      ],
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "url": "https://www.desearch.ai/"
+    },
+    {
       "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-22-taomarketcap-dashboard",
@@ -5048,15 +5188,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/22"
       ],
@@ -5067,76 +5198,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-22-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Desearch source repository",
-      "netuid": 22,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
-      ],
-      "subnet_name": "Desearch",
-      "subnet_slug": "sn-22",
-      "url": "https://github.com/datura-ai/desearch"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-22-taomarketcap-website",
-      "kind": "website",
-      "name": "Desearch website",
-      "netuid": 22,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22"
-      ],
-      "subnet_name": "Desearch",
-      "subnet_slug": "sn-22",
-      "url": "https://desearch.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-22-taopedia-article",
       "kind": "docs",
       "name": "Desearch Taopedia article",
       "netuid": 22,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -5145,15 +5211,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
       ],
@@ -5177,120 +5234,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
       "subnet_name": "Desearch",
       "subnet_slug": "sn-22",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-22-website-common-docs",
-      "kind": "docs",
-      "name": "Desearch docs",
-      "netuid": 22,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://desearch.ai/"
-      ],
-      "subnet_name": "Desearch",
-      "subnet_slug": "sn-22",
-      "url": "https://desearch.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-22-website-common-openapi-json",
-      "kind": "openapi",
-      "name": "Desearch OpenAPI JSON",
-      "netuid": 22,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "schema_status": "machine-readable",
-      "schema_url": "https://desearch.ai/openapi.json",
-      "source_urls": [
-        "https://desearch.ai/"
-      ],
-      "subnet_name": "Desearch",
-      "subnet_slug": "sn-22",
-      "url": "https://desearch.ai/openapi.json"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-22-website-common-swagger",
-      "kind": "openapi",
-      "name": "Desearch Swagger UI",
-      "netuid": 22,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "schema_status": "ui-only",
-      "source_urls": [
-        "https://desearch.ai/"
-      ],
-      "subnet_name": "Desearch",
-      "subnet_slug": "sn-22",
-      "url": "https://desearch.ai/swagger"
     },
     {
       "auth_required": false,
@@ -13598,31 +13547,141 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-github-readme-chutesai-chutes-subnet-api-1",
-      "kind": "subnet-api",
-      "name": "Chutes API surface",
+      "authority": "official",
+      "id": "sn-64-chutes-api-source",
+      "kind": "source-repo",
+      "name": "Chutes API source repository",
       "netuid": 64,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official Chutes validator/API repository referenced by the Chutes SDK README.",
       "probe": {
         "enabled": true,
         "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://github.com/chutesai/chutes-api"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://github.com/chutesai/chutes-api"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-diffusion-catalog",
+      "kind": "dashboard",
+      "name": "Chutes diffusion app catalog",
+      "netuid": 64,
+      "notes": "Public Chutes application catalog filtered to diffusion deployments.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "chutes",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md"
+        "https://chutes.ai/"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://chutes.ai/app?type=diffusion"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-docs",
+      "kind": "docs",
+      "name": "Chutes docs",
+      "netuid": 64,
+      "notes": "Official Chutes documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://chutes.ai/docs"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://chutes.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-llm-catalog",
+      "kind": "dashboard",
+      "name": "Chutes LLM app catalog",
+      "netuid": 64,
+      "notes": "Public Chutes application catalog filtered to LLM deployments.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://chutes.ai/"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://chutes.ai/app?type=llm"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-miner-source",
+      "kind": "source-repo",
+      "name": "Chutes miner source repository",
+      "netuid": 64,
+      "notes": "Official Chutes miner repository referenced by the Chutes SDK README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://github.com/chutesai/chutes-miner"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://github.com/chutesai/chutes-miner"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-pricing-api",
+      "kind": "subnet-api",
+      "name": "Chutes pricing API",
+      "netuid": 64,
+      "notes": "Public JSON pricing endpoint for Chutes compute and GPU price estimates.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "schema_status": "not-captured",
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://api.chutes.ai/pricing"
       ],
       "subnet_name": "Chutes",
       "subnet_slug": "sn-64",
@@ -13630,35 +13689,50 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
-      "kind": "docs",
-      "name": "Chutes docs",
+      "authority": "official",
+      "id": "sn-64-chutes-sdk-source",
+      "kind": "source-repo",
+      "name": "Chutes SDK source repository",
       "netuid": 64,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official Chutes SDK and CLI repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "chutes",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/rayonlabs/chutes-miner/blob/main/README.md"
+        "https://chutes.ai/docs",
+        "https://github.com/chutesai/chutes"
       ],
       "subnet_name": "Chutes",
       "subnet_slug": "sn-64",
-      "url": "https://kubernetes.io/docs/reference/kubectl"
+      "url": "https://github.com/chutesai/chutes"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-website",
+      "kind": "website",
+      "name": "Chutes website",
+      "netuid": 64,
+      "notes": "Official Chutes website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://chutes.ai/"
+      ],
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "url": "https://chutes.ai/"
     },
     {
       "auth_required": false,
@@ -13676,15 +13750,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/64"
       ],
@@ -13695,75 +13760,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-64-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Chutes source repository",
-      "netuid": 64,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/64"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://github.com/chutesai/chutes"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-taomarketcap-website",
-      "kind": "website",
-      "name": "Chutes website",
-      "netuid": 64,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/64"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://chutes.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-64-taopedia-article",
       "kind": "docs",
       "name": "Chutes Taopedia article",
       "netuid": 64,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -13772,15 +13773,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx"
       ],
@@ -13804,181 +13796,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
       ],
       "subnet_name": "Chutes",
       "subnet_slug": "sn-64",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/64"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Chutes source repository",
-      "netuid": 64,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://github.com/rayonlabs/chutes-miner"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-tensorplex-source-repo-2",
-      "kind": "source-repo",
-      "name": "Chutes source repository",
-      "netuid": 64,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://github.com/rayonlabs/chutes"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-website-common-docs",
-      "kind": "docs",
-      "name": "Chutes docs",
-      "netuid": 64,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://chutes.ai/"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://chutes.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-website-link-chutes-ai-data-artifact-5",
-      "kind": "data-artifact",
-      "name": "Chutes data artifact",
-      "netuid": 64,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://chutes.ai/"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://chutes.ai/app?type=llm"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-64-website-link-chutes-ai-data-artifact-6",
-      "kind": "data-artifact",
-      "name": "Chutes data artifact",
-      "netuid": 64,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://chutes.ai/"
-      ],
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "url": "https://chutes.ai/app?type=diffusion"
     },
     {
       "auth_required": false,
@@ -14272,35 +14095,145 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-github-readme-unarbos-tau-subnet-api-2",
-      "kind": "subnet-api",
-      "name": "ninja API surface",
+      "authority": "official",
+      "id": "sn-66-ninja-harness-source",
+      "kind": "source-repo",
+      "name": "Ninja miner harness source repository",
       "netuid": 66,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official SN66 miner starter harness repository referenced by the tau README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/ninja"
+      ],
+      "subnet_name": "ninja",
+      "subnet_slug": "sn-66",
+      "url": "https://github.com/unarbos/ninja"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-health",
+      "kind": "subnet-api",
+      "name": "Ninja health endpoint",
+      "netuid": 66,
+      "notes": "Public read-only health endpoint for the Ninja service.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "unarbos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://ninja.arbos.life/health"
+      ],
+      "subnet_name": "ninja",
+      "subnet_slug": "sn-66",
+      "url": "https://ninja.arbos.life/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-readme-docs",
+      "kind": "docs",
+      "name": "Ninja README docs",
+      "netuid": 66,
+      "notes": "Official tau README documentation for Ninja task generation, execution, validation, and scoring workflow.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
         "https://github.com/unarbos/tau/blob/main/README.md"
       ],
       "subnet_name": "ninja",
       "subnet_slug": "sn-66",
-      "url": "https://ninja66.ai/api/submissions"
+      "url": "https://github.com/unarbos/tau/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-swagger-ui",
+      "kind": "docs",
+      "name": "Ninja Swagger UI",
+      "netuid": 66,
+      "notes": "Swagger UI route for Ninja. Obvious JSON schema paths currently serve HTML and are not treated as machine-readable OpenAPI.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://ninja.arbos.life/swagger"
+      ],
+      "subnet_name": "ninja",
+      "subnet_slug": "sn-66",
+      "url": "https://ninja.arbos.life/swagger"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-tau-source",
+      "kind": "source-repo",
+      "name": "Ninja tau source repository",
+      "netuid": 66,
+      "notes": "Official staged workflow repository for Ninja SN66.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/tau/blob/main/README.md"
+      ],
+      "subnet_name": "ninja",
+      "subnet_slug": "sn-66",
+      "url": "https://github.com/unarbos/tau"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-website",
+      "kind": "website",
+      "name": "Ninja website",
+      "netuid": 66,
+      "notes": "Official Ninja SN66 public website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://ninja.arbos.life/"
+      ],
+      "subnet_name": "ninja",
+      "subnet_slug": "sn-66",
+      "url": "https://ninja.arbos.life/"
     },
     {
       "auth_required": false,
@@ -14318,15 +14251,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
@@ -14337,76 +14261,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-66-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "ninja source repository",
-      "netuid": 66,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://github.com/unarbos/tau"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-taomarketcap-website",
-      "kind": "website",
-      "name": "ninja website",
-      "netuid": 66,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://ninja.arbos.life/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-66-taopedia-article",
       "kind": "docs",
       "name": "ninja Taopedia article",
       "netuid": 66,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -14415,15 +14274,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
       ],
@@ -14447,150 +14297,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
       ],
       "subnet_name": "ninja",
       "subnet_slug": "sn-66",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-website-common-docs",
-      "kind": "docs",
-      "name": "ninja docs",
-      "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://ninja.arbos.life/"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://ninja.arbos.life/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-website-common-health",
-      "kind": "subnet-api",
-      "name": "ninja health endpoint",
-      "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://ninja.arbos.life/"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://ninja.arbos.life/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-website-common-swagger",
-      "kind": "openapi",
-      "name": "ninja Swagger UI",
-      "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "schema_status": "ui-only",
-      "source_urls": [
-        "https://ninja.arbos.life/"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://ninja.arbos.life/swagger"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
-      "kind": "dashboard",
-      "name": "ninja dashboard",
-      "netuid": 66,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://ninja.arbos.life/"
-      ],
-      "subnet_name": "ninja",
-      "subnet_slug": "sn-66",
-      "url": "https://ninja.arbos.life/dashboard-summary.json"
     },
     {
       "auth_required": false,
@@ -20408,70 +20120,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-96-github-readme-verathos-ai-verathos-docs-1",
-      "kind": "docs",
-      "name": "Verathos docs",
-      "netuid": 96,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/verathos-ai/verathos/blob/main/README.md"
-      ],
-      "subnet_name": "Verathos",
-      "subnet_slug": "sn-96",
-      "url": "https://verathos.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-96-github-readme-verathos-ai-verathos-docs-2",
-      "kind": "docs",
-      "name": "Verathos docs",
-      "netuid": 96,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/verathos-ai/verathos/blob/main/README.md"
-      ],
-      "subnet_name": "Verathos",
-      "subnet_slug": "sn-96",
-      "url": "https://verathos.ai/docs?page=setup"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-96-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Verathos TaoMarketCap dashboard",
@@ -20485,15 +20133,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/96"
       ],
@@ -20504,75 +20143,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-96-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Verathos source repository",
-      "netuid": 96,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/96"
-      ],
-      "subnet_name": "Verathos",
-      "subnet_slug": "sn-96",
-      "url": "https://github.com/verathos-ai/verathos"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-96-taomarketcap-website",
-      "kind": "website",
-      "name": "Verathos website",
-      "netuid": 96,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/96"
-      ],
-      "subnet_name": "Verathos",
-      "subnet_slug": "sn-96",
-      "url": "https://verathos.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-96-taopedia-article",
       "kind": "docs",
       "name": "Verathos Taopedia article",
       "netuid": 96,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -20581,15 +20156,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx"
       ],
@@ -20613,15 +20179,6 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json"
       ],
@@ -20631,65 +20188,96 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-96-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Verathos source repository",
+      "authority": "official",
+      "id": "sn-96-verathos-chat",
+      "kind": "dashboard",
+      "name": "Verathos chat app",
       "netuid": 96,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Public Verathos chat application.",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json"
-      ],
-      "subnet_name": "Verathos",
-      "subnet_slug": "sn-96",
-      "url": "https://github.com/FLock-io/FLock-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-96-website-common-openapi-json",
-      "kind": "openapi",
-      "name": "Verathos OpenAPI JSON",
-      "netuid": 96,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "verathos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
+      "source_urls": [
+        "https://verathos.ai/"
+      ],
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "url": "https://verathos.ai/chat"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-docs",
+      "kind": "docs",
+      "name": "Verathos docs",
+      "netuid": 96,
+      "notes": "Official Verathos documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
       },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": [
+        "https://verathos.ai/docs"
+      ],
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "url": "https://verathos.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-models-api",
+      "kind": "subnet-api",
+      "name": "Verathos models API",
+      "netuid": 96,
+      "notes": "Public read-only model-list endpoint for the Verathos API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
       "schema_status": "machine-readable",
       "schema_url": "https://verathos.ai/openapi.json",
       "source_urls": [
-        "https://verathos.ai/"
+        "https://verathos.ai/docs",
+        "https://api.verathos.ai/v1/models"
+      ],
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-openapi",
+      "kind": "openapi",
+      "name": "Verathos OpenAPI schema",
+      "netuid": 96,
+      "notes": "Machine-readable OpenAPI schema for Verathos.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://verathos.ai/docs",
+        "https://verathos.ai/openapi.json"
       ],
       "subnet_name": "Verathos",
       "subnet_slug": "sn-96",
@@ -20697,36 +20285,50 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-96-website-common-swagger",
-      "kind": "openapi",
-      "name": "Verathos Swagger UI",
+      "authority": "official",
+      "id": "sn-96-verathos-source",
+      "kind": "source-repo",
+      "name": "Verathos source repository",
       "netuid": 96,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Official Verathos SN96 source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": [
+        "https://verathos.ai/docs",
+        "https://github.com/verathos-ai/verathos"
+      ],
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "url": "https://github.com/verathos-ai/verathos"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-website",
+      "kind": "website",
+      "name": "Verathos website",
+      "netuid": 96,
+      "notes": "Official Verathos website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "verathos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "schema_status": "ui-only",
       "source_urls": [
         "https://verathos.ai/"
       ],
       "subnet_name": "Verathos",
       "subnet_slug": "sn-96",
-      "url": "https://verathos.ai/swagger"
+      "url": "https://verathos.ai/"
     },
     {
       "auth_required": false,

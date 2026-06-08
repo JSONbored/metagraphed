@@ -1,0 +1,221 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "inference",
+    "language-models",
+    "official-api",
+    "official-docs",
+    "official-openapi",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T07:45:00.000Z"
+  },
+  "dashboard_url": "https://verathos.ai/chat",
+  "docs_url": "https://verathos.ai/docs",
+  "links": [
+    {
+      "label": "Chat app",
+      "source_url": "https://verathos.ai/",
+      "url": "https://verathos.ai/chat"
+    }
+  ],
+  "name": "Verathos",
+  "netuid": 96,
+  "notes": "Reviewed overlay for SN96 using the official Verathos website, docs, source repository, public OpenAPI schema, chat app, and model-list API. Website and docs reject HEAD but serve normally through GET, so probes use GET for those surfaces.",
+  "schema_version": 1,
+  "slug": "sn-96",
+  "source_repo": "https://github.com/verathos-ai/verathos",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-website",
+      "kind": "website",
+      "name": "Verathos website",
+      "notes": "Official Verathos website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": ["https://verathos.ai/"],
+      "url": "https://verathos.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-docs",
+      "kind": "docs",
+      "name": "Verathos docs",
+      "notes": "Official Verathos documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": ["https://verathos.ai/docs"],
+      "url": "https://verathos.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-source",
+      "kind": "source-repo",
+      "name": "Verathos source repository",
+      "notes": "Official Verathos SN96 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": [
+        "https://verathos.ai/docs",
+        "https://github.com/verathos-ai/verathos"
+      ],
+      "url": "https://github.com/verathos-ai/verathos"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-openapi",
+      "kind": "openapi",
+      "name": "Verathos OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema for Verathos.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://verathos.ai/docs",
+        "https://verathos.ai/openapi.json"
+      ],
+      "url": "https://verathos.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-models-api",
+      "kind": "subnet-api",
+      "name": "Verathos models API",
+      "notes": "Public read-only model-list endpoint for the Verathos API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://verathos.ai/openapi.json",
+      "source_urls": [
+        "https://verathos.ai/docs",
+        "https://api.verathos.ai/v1/models"
+      ],
+      "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-96-verathos-chat",
+      "kind": "dashboard",
+      "name": "Verathos chat app",
+      "notes": "Public Verathos chat application.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": ["https://verathos.ai/"],
+      "url": "https://verathos.ai/chat"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-96-taopedia-article",
+      "kind": "docs",
+      "name": "Verathos Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-96-tensorplex-docs",
+      "kind": "docs",
+      "name": "Verathos Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-96-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Verathos TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/96"],
+      "url": "https://taomarketcap.com/subnets/96"
+    }
+  ],
+  "website_url": "https://verathos.ai/"
+}

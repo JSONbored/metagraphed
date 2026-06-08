@@ -15,19 +15,6 @@
       "slug": "allways"
     },
     {
-      "candidate_api_count": 12,
-      "curation_level": "machine-verified",
-      "name": "Chutes",
-      "netuid": 64,
-      "operational_kinds": [
-        "data-artifact",
-        "subnet-api"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 72,
-      "slug": "sn-64"
-    },
-    {
       "candidate_api_count": 3,
       "curation_level": "maintainer-reviewed",
       "name": "Handshake58",
@@ -39,19 +26,6 @@
       "operational_surface_count": 3,
       "priority_score": 70,
       "slug": "sn-58"
-    },
-    {
-      "candidate_api_count": 7,
-      "curation_level": "machine-verified",
-      "name": "ninja",
-      "netuid": 66,
-      "operational_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 70,
-      "slug": "sn-66"
     },
     {
       "candidate_api_count": 5,
@@ -76,18 +50,6 @@
       "operational_surface_count": 2,
       "priority_score": 51,
       "slug": "sn-107"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Verathos",
-      "netuid": 96,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 50,
-      "slug": "sn-96"
     },
     {
       "candidate_api_count": 7,
@@ -116,6 +78,19 @@
       "slug": "sn-99"
     },
     {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Desearch",
+      "netuid": 22,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 49,
+      "slug": "sn-22"
+    },
+    {
       "candidate_api_count": 6,
       "curation_level": "maintainer-reviewed",
       "name": "Nepher Robotics",
@@ -142,16 +117,17 @@
       "slug": "sn-56"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Desearch",
-      "netuid": 22,
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Verathos",
+      "netuid": 96,
       "operational_kinds": [
-        "openapi"
+        "openapi",
+        "subnet-api"
       ],
       "operational_surface_count": 2,
-      "priority_score": 48,
-      "slug": "sn-22"
+      "priority_score": 49,
+      "slug": "sn-96"
     },
     {
       "candidate_api_count": 8,
@@ -203,6 +179,18 @@
       "slug": "sn-23"
     },
     {
+      "candidate_api_count": 12,
+      "curation_level": "maintainer-reviewed",
+      "name": "Chutes",
+      "netuid": 64,
+      "operational_kinds": [
+        "subnet-api"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 31,
+      "slug": "sn-64"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "DSperse",
@@ -249,6 +237,18 @@
       "operational_surface_count": 1,
       "priority_score": 29,
       "slug": "sn-65"
+    },
+    {
+      "candidate_api_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "name": "ninja",
+      "netuid": 66,
+      "operational_kinds": [
+        "subnet-api"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-66"
     },
     {
       "candidate_api_count": 5,

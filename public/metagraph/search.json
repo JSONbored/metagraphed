@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1009,
+  "document_count": 1011,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -30,6 +30,34 @@
       ],
       "type": "provider",
       "url": "https://blockmachine.io"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:chutes",
+      "subtitle": "subnet-team",
+      "title": "Chutes",
+      "tokens": [
+        "chutes",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://chutes.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:desearch",
+      "subtitle": "subnet-team",
+      "title": "Desearch",
+      "tokens": [
+        "desearch",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.desearch.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -274,6 +302,34 @@
       ],
       "type": "provider",
       "url": "https://github.com/tensorplex-labs/subnet-docs"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:unarbos",
+      "subtitle": "subnet-team",
+      "title": "Unarbos",
+      "tokens": [
+        "official",
+        "subnet",
+        "team",
+        "unarbos"
+      ],
+      "type": "provider",
+      "url": "https://ninja.arbos.life/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:verathos",
+      "subtitle": "subnet-team",
+      "title": "Verathos",
+      "tokens": [
+        "official",
+        "subnet",
+        "team",
+        "verathos"
+      ],
+      "type": "provider",
+      "url": "https://verathos.ai/"
     },
     {
       "artifact_path": "/metagraph/subnets/17.json",
@@ -748,10 +804,20 @@
       "title": "Chutes",
       "tokens": [
         "64",
+        "api",
         "baseline",
         "chutes",
+        "compute",
         "curated",
-        "sn"
+        "docs",
+        "identity",
+        "inference",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/64"
@@ -937,10 +1003,22 @@
       "title": "Desearch",
       "tokens": [
         "22",
+        "api",
         "baseline",
         "curated",
+        "data",
         "desearch",
-        "sn"
+        "docs",
+        "identity",
+        "official",
+        "openapi",
+        "repo",
+        "reviewed",
+        "search",
+        "sn",
+        "social",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/22"
@@ -1749,10 +1827,21 @@
       "title": "ninja",
       "tokens": [
         "66",
+        "api",
         "baseline",
         "curated",
+        "docs",
+        "engineering",
+        "identity",
         "ninja",
-        "sn"
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "software",
+        "source",
+        "website",
+        "workflow"
       ],
       "type": "subnet",
       "url": "/subnets/66"
@@ -2430,10 +2519,22 @@
       "title": "Verathos",
       "tokens": [
         "96",
+        "api",
         "baseline",
         "curated",
+        "docs",
+        "identity",
+        "inference",
+        "language",
+        "models",
+        "official",
+        "openapi",
+        "repo",
+        "reviewed",
         "sn",
-        "verathos"
+        "source",
+        "verathos",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/96"
@@ -5892,154 +5993,132 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-github-readme-chutesai-chutes-subnet-api-1",
+      "id": "surface:sn-64-chutes-api-source",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "subnet-api / taomarketcap",
-      "title": "Chutes API surface",
+      "subtitle": "source-repo / chutes",
+      "title": "Chutes API source repository",
       "tokens": [
         "64",
         "api",
         "chutes",
+        "repo",
+        "repository",
         "sn",
-        "subnet",
-        "surface",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
-      "url": "https://api.chutes.ai/pricing"
+      "url": "https://github.com/chutesai/chutes-api"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-website-link-chutes-ai-data-artifact-5",
+      "id": "surface:sn-64-chutes-diffusion-catalog",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Chutes data artifact",
+      "subtitle": "dashboard / chutes",
+      "title": "Chutes diffusion app catalog",
       "tokens": [
         "64",
-        "artifact",
+        "app",
+        "catalog",
         "chutes",
-        "data",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://chutes.ai/app?type=llm"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-website-link-chutes-ai-data-artifact-6",
-      "netuid": 64,
-      "slug": "sn-64",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Chutes data artifact",
-      "tokens": [
-        "64",
-        "artifact",
-        "chutes",
-        "data",
-        "sn",
-        "taomarketcap"
+        "dashboard",
+        "diffusion",
+        "sn"
       ],
       "type": "surface",
       "url": "https://chutes.ai/app?type=diffusion"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
+      "id": "surface:sn-64-chutes-docs",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "docs / tensorplex-subnet-docs",
+      "subtitle": "docs / chutes",
       "title": "Chutes docs",
       "tokens": [
         "64",
         "chutes",
         "docs",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://kubernetes.io/docs/reference/kubectl"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-website-common-docs",
-      "netuid": 64,
-      "slug": "sn-64",
-      "subtitle": "docs / taomarketcap",
-      "title": "Chutes docs",
-      "tokens": [
-        "64",
-        "chutes",
-        "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://chutes.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-taomarketcap-source-repo",
+      "id": "surface:sn-64-chutes-llm-catalog",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Chutes source repository",
+      "subtitle": "dashboard / chutes",
+      "title": "Chutes LLM app catalog",
+      "tokens": [
+        "64",
+        "app",
+        "catalog",
+        "chutes",
+        "dashboard",
+        "llm",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://chutes.ai/app?type=llm"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-64-chutes-miner-source",
+      "netuid": 64,
+      "slug": "sn-64",
+      "subtitle": "source-repo / chutes",
+      "title": "Chutes miner source repository",
+      "tokens": [
+        "64",
+        "chutes",
+        "miner",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/chutesai/chutes-miner"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-64-chutes-pricing-api",
+      "netuid": 64,
+      "slug": "sn-64",
+      "subtitle": "subnet-api / chutes",
+      "title": "Chutes pricing API",
+      "tokens": [
+        "64",
+        "api",
+        "chutes",
+        "pricing",
+        "sn",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://api.chutes.ai/pricing"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-64-chutes-sdk-source",
+      "netuid": 64,
+      "slug": "sn-64",
+      "subtitle": "source-repo / chutes",
+      "title": "Chutes SDK source repository",
       "tokens": [
         "64",
         "chutes",
         "repo",
         "repository",
+        "sdk",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/chutesai/chutes"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-tensorplex-source-repo-1",
-      "netuid": 64,
-      "slug": "sn-64",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Chutes source repository",
-      "tokens": [
-        "64",
-        "chutes",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/rayonlabs/chutes-miner"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-tensorplex-source-repo-2",
-      "netuid": 64,
-      "slug": "sn-64",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Chutes source repository",
-      "tokens": [
-        "64",
-        "chutes",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/rayonlabs/chutes"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6097,16 +6176,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-taomarketcap-website",
+      "id": "surface:sn-64-chutes-website",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / chutes",
       "title": "Chutes website",
       "tokens": [
         "64",
         "chutes",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -7215,45 +7293,77 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-website-common-docs",
+      "id": "surface:sn-22-desearch-api",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "subnet-api / desearch",
+      "title": "Desearch API",
+      "tokens": [
+        "22",
+        "api",
+        "desearch",
+        "sn",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://api.desearch.ai"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-22-desearch-console",
+      "netuid": 22,
+      "slug": "sn-22",
+      "subtitle": "dashboard / desearch",
+      "title": "Desearch console",
+      "tokens": [
+        "22",
+        "console",
+        "dashboard",
+        "desearch",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://console.desearch.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-22-desearch-docs",
+      "netuid": 22,
+      "slug": "sn-22",
+      "subtitle": "docs / desearch",
       "title": "Desearch docs",
       "tokens": [
         "22",
         "desearch",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
-      "url": "https://desearch.ai/docs"
+      "url": "https://www.desearch.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-website-common-openapi-json",
+      "id": "surface:sn-22-desearch-openapi",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Desearch OpenAPI JSON",
+      "subtitle": "openapi / desearch",
+      "title": "Desearch OpenAPI schema",
       "tokens": [
         "22",
         "desearch",
-        "json",
         "openapi",
-        "sn",
-        "taomarketcap"
+        "schema",
+        "sn"
       ],
       "type": "surface",
-      "url": "https://desearch.ai/openapi.json"
+      "url": "https://www.desearch.ai/openapi.json"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-taomarketcap-source-repo",
+      "id": "surface:sn-22-desearch-source",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / desearch",
       "title": "Desearch source repository",
       "tokens": [
         "22",
@@ -7261,30 +7371,10 @@
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
-      "url": "https://github.com/datura-ai/desearch"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-website-common-swagger",
-      "netuid": 22,
-      "slug": "sn-22",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Desearch Swagger UI",
-      "tokens": [
-        "22",
-        "desearch",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://desearch.ai/swagger"
+      "url": "https://github.com/Desearch-ai/subnet-22"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7342,20 +7432,19 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-taomarketcap-website",
+      "id": "surface:sn-22-desearch-website",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / desearch",
       "title": "Desearch website",
       "tokens": [
         "22",
         "desearch",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
-      "url": "https://desearch.ai/"
+      "url": "https://www.desearch.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12603,64 +12692,11 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-github-readme-unarbos-tau-subnet-api-2",
+      "id": "surface:sn-66-ninja-health",
       "netuid": 66,
       "slug": "sn-66",
-      "subtitle": "subnet-api / taomarketcap",
-      "title": "ninja API surface",
-      "tokens": [
-        "66",
-        "api",
-        "ninja",
-        "sn",
-        "subnet",
-        "surface",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://ninja66.ai/api/submissions"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-website-link-ninja-arbos-life-dashboard-1",
-      "netuid": 66,
-      "slug": "sn-66",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "ninja dashboard",
-      "tokens": [
-        "66",
-        "dashboard",
-        "ninja",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://ninja.arbos.life/dashboard-summary.json"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-website-common-docs",
-      "netuid": 66,
-      "slug": "sn-66",
-      "subtitle": "docs / taomarketcap",
-      "title": "ninja docs",
-      "tokens": [
-        "66",
-        "docs",
-        "ninja",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://ninja.arbos.life/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-website-common-health",
-      "netuid": 66,
-      "slug": "sn-66",
-      "subtitle": "subnet-api / taomarketcap",
-      "title": "ninja health endpoint",
+      "subtitle": "subnet-api / unarbos",
+      "title": "Ninja health endpoint",
       "tokens": [
         "66",
         "api",
@@ -12669,45 +12705,65 @@
         "ninja",
         "sn",
         "subnet",
-        "taomarketcap"
+        "unarbos"
       ],
       "type": "surface",
       "url": "https://ninja.arbos.life/health"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-taomarketcap-source-repo",
+      "id": "surface:sn-66-ninja-harness-source",
       "netuid": 66,
       "slug": "sn-66",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "ninja source repository",
+      "subtitle": "source-repo / unarbos",
+      "title": "Ninja miner harness source repository",
       "tokens": [
         "66",
+        "harness",
+        "miner",
         "ninja",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap"
+        "unarbos"
       ],
       "type": "surface",
-      "url": "https://github.com/unarbos/tau"
+      "url": "https://github.com/unarbos/ninja"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-website-common-swagger",
+      "id": "surface:sn-66-ninja-readme-docs",
       "netuid": 66,
       "slug": "sn-66",
-      "subtitle": "openapi / taomarketcap",
-      "title": "ninja Swagger UI",
+      "subtitle": "docs / unarbos",
+      "title": "Ninja README docs",
       "tokens": [
         "66",
+        "docs",
         "ninja",
-        "openapi",
+        "readme",
+        "sn",
+        "unarbos"
+      ],
+      "type": "surface",
+      "url": "https://github.com/unarbos/tau/blob/main/README.md"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-66-ninja-swagger-ui",
+      "netuid": 66,
+      "slug": "sn-66",
+      "subtitle": "docs / unarbos",
+      "title": "Ninja Swagger UI",
+      "tokens": [
+        "66",
+        "docs",
+        "ninja",
         "sn",
         "swagger",
-        "taomarketcap",
-        "ui"
+        "ui",
+        "unarbos"
       ],
       "type": "surface",
       "url": "https://ninja.arbos.life/swagger"
@@ -12750,6 +12806,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-66-ninja-tau-source",
+      "netuid": 66,
+      "slug": "sn-66",
+      "subtitle": "source-repo / unarbos",
+      "title": "Ninja tau source repository",
+      "tokens": [
+        "66",
+        "ninja",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "tau",
+        "unarbos"
+      ],
+      "type": "surface",
+      "url": "https://github.com/unarbos/tau"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-66-tensorplex-docs",
       "netuid": 66,
       "slug": "sn-66",
@@ -12768,16 +12844,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-taomarketcap-website",
+      "id": "surface:sn-66-ninja-website",
       "netuid": 66,
       "slug": "sn-66",
-      "subtitle": "website / taomarketcap",
-      "title": "ninja website",
+      "subtitle": "website / unarbos",
+      "title": "Ninja website",
       "tokens": [
         "66",
         "ninja",
         "sn",
-        "taomarketcap",
+        "unarbos",
         "website"
       ],
       "type": "surface",
@@ -17076,16 +17152,33 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-github-readme-verathos-ai-verathos-docs-1",
+      "id": "surface:sn-96-verathos-chat",
       "netuid": 96,
       "slug": "sn-96",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "dashboard / verathos",
+      "title": "Verathos chat app",
+      "tokens": [
+        "96",
+        "app",
+        "chat",
+        "dashboard",
+        "sn",
+        "verathos"
+      ],
+      "type": "surface",
+      "url": "https://verathos.ai/chat"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-96-verathos-docs",
+      "netuid": 96,
+      "slug": "sn-96",
+      "subtitle": "docs / verathos",
       "title": "Verathos docs",
       "tokens": [
         "96",
         "docs",
         "sn",
-        "taomarketcap",
         "verathos"
       ],
       "type": "surface",
@@ -17093,34 +17186,34 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-github-readme-verathos-ai-verathos-docs-2",
+      "id": "surface:sn-96-verathos-models-api",
       "netuid": 96,
       "slug": "sn-96",
-      "subtitle": "docs / taomarketcap",
-      "title": "Verathos docs",
+      "subtitle": "subnet-api / verathos",
+      "title": "Verathos models API",
       "tokens": [
         "96",
-        "docs",
+        "api",
+        "models",
         "sn",
-        "taomarketcap",
+        "subnet",
         "verathos"
       ],
       "type": "surface",
-      "url": "https://verathos.ai/docs?page=setup"
+      "url": "https://api.verathos.ai/v1/models"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-website-common-openapi-json",
+      "id": "surface:sn-96-verathos-openapi",
       "netuid": 96,
       "slug": "sn-96",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Verathos OpenAPI JSON",
+      "subtitle": "openapi / verathos",
+      "title": "Verathos OpenAPI schema",
       "tokens": [
         "96",
-        "json",
         "openapi",
+        "schema",
         "sn",
-        "taomarketcap",
         "verathos"
       ],
       "type": "surface",
@@ -17128,10 +17221,10 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-taomarketcap-source-repo",
+      "id": "surface:sn-96-verathos-source",
       "netuid": 96,
       "slug": "sn-96",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / verathos",
       "title": "Verathos source repository",
       "tokens": [
         "96",
@@ -17139,51 +17232,10 @@
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "verathos"
       ],
       "type": "surface",
       "url": "https://github.com/verathos-ai/verathos"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-tensorplex-source-repo-1",
-      "netuid": 96,
-      "slug": "sn-96",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Verathos source repository",
-      "tokens": [
-        "96",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex",
-        "verathos"
-      ],
-      "type": "surface",
-      "url": "https://github.com/FLock-io/FLock-subnet"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-website-common-swagger",
-      "netuid": 96,
-      "slug": "sn-96",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Verathos Swagger UI",
-      "tokens": [
-        "96",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui",
-        "verathos"
-      ],
-      "type": "surface",
-      "url": "https://verathos.ai/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17241,15 +17293,14 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-taomarketcap-website",
+      "id": "surface:sn-96-verathos-website",
       "netuid": 96,
       "slug": "sn-96",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / verathos",
       "title": "Verathos website",
       "tokens": [
         "96",
         "sn",
-        "taomarketcap",
         "verathos",
         "website"
       ],

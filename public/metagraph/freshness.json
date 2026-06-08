@@ -114,11 +114,11 @@
     "blocking_source_count": 5,
     "candidate_discovery_as_of": null,
     "health_probe_as_of": "2026-06-08T00:34:16.831Z",
-    "health_surface_count": 858,
+    "health_surface_count": 855,
     "missing_blocking_source_count": 2,
     "native_data_as_of": "2026-06-07T21:51:54Z",
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
-    "openapi_surface_count": 30,
+    "openapi_surface_count": 27,
     "publish_ready_without_age_check": false,
     "schema_snapshot_as_of": null,
     "stale_window_warnings": [

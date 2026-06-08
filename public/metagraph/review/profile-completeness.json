@@ -1737,6 +1737,23 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
+      "candidate_count": 28,
+      "completeness_score": 70,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 3,
+      "name": "Chutes",
+      "netuid": 64,
+      "priority_score": 70,
+      "profile_level": "operational",
+      "slug": "sn-64",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
       "candidate_count": 17,
       "completeness_score": 63,
       "confidence": "high",
@@ -1976,23 +1993,6 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 14,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "name": "Verathos",
-      "netuid": 96,
-      "priority_score": 64,
-      "profile_level": "operational",
-      "slug": "sn-96",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
       "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
@@ -2095,22 +2095,6 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 28,
-      "completeness_score": 73,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-sse"
-      ],
-      "missing_critical_count": 2,
-      "name": "Chutes",
-      "netuid": 64,
-      "priority_score": 62,
-      "profile_level": "operational",
-      "slug": "sn-64",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
@@ -2125,23 +2109,6 @@
       "priority_score": 61,
       "profile_level": "operational",
       "slug": "sn-16",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
-      "candidate_count": 11,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "name": "Desearch",
-      "netuid": 22,
-      "priority_score": 61,
-      "profile_level": "operational",
-      "slug": "sn-22",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2193,6 +2160,23 @@
       "priority_score": 61,
       "profile_level": "operational",
       "slug": "sn-105",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 70,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 3,
+      "name": "ninja",
+      "netuid": 66,
+      "priority_score": 61,
+      "profile_level": "operational",
+      "slug": "sn-66",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2260,19 +2244,19 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 16,
-      "completeness_score": 80,
-      "confidence": "medium",
+      "candidate_count": 14,
+      "completeness_score": 85,
+      "confidence": "high",
       "gap_reasons": [
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 2,
-      "name": "ninja",
-      "netuid": 66,
-      "priority_score": 46,
+      "name": "Verathos",
+      "netuid": 96,
+      "priority_score": 39,
       "profile_level": "operational",
-      "slug": "sn-66",
+      "slug": "sn-96",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2289,6 +2273,22 @@
       "priority_score": 38,
       "profile_level": "operational",
       "slug": "sn-49",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 11,
+      "completeness_score": 85,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 2,
+      "name": "Desearch",
+      "netuid": 22,
+      "priority_score": 36,
+      "profile_level": "operational",
+      "slug": "sn-22",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2327,8 +2327,8 @@
   "summary": {
     "average_completeness_score": 50,
     "by_confidence": {
-      "high": 8,
-      "medium": 121
+      "high": 12,
+      "medium": 117
     },
     "by_profile_level": {
       "adapter-backed": 2,
@@ -2337,11 +2337,11 @@
       "operational": 47
     },
     "critical_gap_counts": {
-      "missing-data-artifact": 113,
-      "missing-openapi": 101,
+      "missing-data-artifact": 114,
+      "missing-openapi": 102,
       "missing-source-repo": 21,
       "missing-sse": 128,
-      "missing-subnet-api": 115,
+      "missing-subnet-api": 113,
       "missing-website": 36
     },
     "needs_identity_count": 42,

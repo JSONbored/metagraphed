@@ -1818,71 +1818,81 @@
     {
       "candidate_count": 11,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "search",
+        "social-data"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 2,
         "missing_operational": [
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 65
+        "score": 85
       },
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 8,
-      "interface_count": 5,
-      "missing_critical_count": 3,
+      "completeness_score": 85,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 9,
+      "interface_count": 6,
+      "missing_critical_count": 2,
       "monitored_endpoint_count": 8,
       "name": "Desearch",
       "native_name": "Desearch",
       "native_name_quality": "chain",
       "netuid": 22,
-      "operational_interface_count": 1,
+      "operational_interface_count": 2,
       "operational_interface_kinds": [
-        "openapi"
+        "openapi",
+        "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-22-website-common-openapi-json",
-        "kind": "openapi",
-        "name": "Desearch OpenAPI JSON",
-        "provider": "taomarketcap",
-        "url": "https://desearch.ai/openapi.json"
+        "id": "sn-22-desearch-api",
+        "kind": "subnet-api",
+        "name": "Desearch API",
+        "provider": "desearch",
+        "url": "https://api.desearch.ai"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/22",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
-        "source_repo": "https://github.com/datura-ai/desearch",
-        "website_url": "https://desearch.ai/"
+        "dashboard_url": "https://console.desearch.ai/",
+        "docs_url": "https://www.desearch.ai/docs",
+        "source_repo": "https://github.com/Desearch-ai/subnet-22",
+        "website_url": "https://www.desearch.ai/"
       },
       "profile_level": "operational",
       "project_name": "Desearch",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 6,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:45:00.000Z",
         "source_urls": [
+          "https://api.desearch.ai",
           "https://api.taomarketcap.com/public/v1/subnets/22",
-          "https://desearch.ai/",
-          "https://github.com/datura-ai/desearch",
+          "https://console.desearch.ai/",
+          "https://github.com/Desearch-ai/subnet-22",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json",
-          "https://taomarketcap.com/subnets/22"
+          "https://www.desearch.ai/",
+          "https://www.desearch.ai/docs",
+          "https://www.desearch.ai/openapi.json"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-22",
       "status": "active",
       "subnet_type": "application",
@@ -1891,9 +1901,10 @@
         "docs",
         "openapi",
         "source-repo",
+        "subnet-api",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "χ",
       "team": null
     },
@@ -5316,85 +5327,93 @@
     {
       "candidate_count": 28,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "compute",
+        "identity-reviewed",
+        "inference",
+        "official-api",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
-          "missing-sse"
+          "missing-sse",
+          "missing-data-artifact"
         ],
-        "missing_critical_count": 2,
+        "missing_critical_count": 3,
         "missing_operational": [
           "openapi",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 73
+        "score": 70
       },
-      "completeness_score": 73,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 12,
-      "interface_count": 6,
-      "missing_critical_count": 2,
-      "monitored_endpoint_count": 12,
+      "completeness_score": 70,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 11,
+      "interface_count": 5,
+      "missing_critical_count": 3,
+      "monitored_endpoint_count": 11,
       "name": "Chutes",
       "native_name": "Chutes",
       "native_name_quality": "chain",
       "netuid": 64,
-      "operational_interface_count": 2,
+      "operational_interface_count": 1,
       "operational_interface_kinds": [
-        "data-artifact",
         "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-64-github-readme-chutesai-chutes-subnet-api-1",
+        "id": "sn-64-chutes-pricing-api",
         "kind": "subnet-api",
-        "name": "Chutes API surface",
-        "provider": "taomarketcap",
+        "name": "Chutes pricing API",
+        "provider": "chutes",
         "url": "https://api.chutes.ai/pricing"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/64",
-        "docs_url": "https://kubernetes.io/docs/reference/kubectl",
+        "dashboard_url": "https://chutes.ai/app?type=llm",
+        "docs_url": "https://chutes.ai/docs",
         "source_repo": "https://github.com/chutesai/chutes",
         "website_url": "https://chutes.ai/"
       },
       "profile_level": "operational",
       "project_name": "Chutes",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 9,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 10,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:45:00.000Z",
         "source_urls": [
+          "https://api.chutes.ai/pricing",
           "https://api.taomarketcap.com/public/v1/subnets/64",
           "https://chutes.ai/",
+          "https://chutes.ai/app?type=llm",
+          "https://chutes.ai/docs",
           "https://github.com/chutesai/chutes",
-          "https://github.com/chutesai/chutes/blob/main/README.md",
+          "https://github.com/chutesai/chutes-api",
+          "https://github.com/chutesai/chutes-miner",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx",
-          "https://github.com/rayonlabs/chutes-miner/blob/main/README.md",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
-          "https://kubernetes.io/docs/reference/kubectl",
-          "https://taomarketcap.com/subnets/64"
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-64",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "data-artifact",
         "docs",
         "source-repo",
         "subnet-api",
         "website"
       ],
-      "surface_count": 12,
+      "surface_count": 11,
       "symbol": "ش",
       "team": null
     },
@@ -5484,83 +5503,92 @@
     {
       "candidate_count": 16,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-source-repo",
+        "official-website",
+        "software-engineering",
+        "workflow"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
+          "missing-openapi",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 2,
+        "missing_critical_count": 3,
         "missing_operational": [
+          "openapi",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 80
+        "score": 70
       },
-      "completeness_score": 80,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 10,
-      "interface_count": 6,
-      "missing_critical_count": 2,
-      "monitored_endpoint_count": 10,
+      "completeness_score": 70,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 9,
+      "interface_count": 5,
+      "missing_critical_count": 3,
+      "monitored_endpoint_count": 9,
       "name": "ninja",
       "native_name": "ninja",
       "native_name_quality": "chain",
       "netuid": 66,
-      "operational_interface_count": 2,
+      "operational_interface_count": 1,
       "operational_interface_kinds": [
-        "openapi",
         "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-66-github-readme-unarbos-tau-subnet-api-2",
+        "id": "sn-66-ninja-health",
         "kind": "subnet-api",
-        "name": "ninja API surface",
-        "provider": "taomarketcap",
-        "url": "https://ninja66.ai/api/submissions"
+        "name": "Ninja health endpoint",
+        "provider": "unarbos",
+        "url": "https://ninja.arbos.life/health"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/66",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
+        "dashboard_url": "https://ninja.arbos.life/",
+        "docs_url": "https://github.com/unarbos/tau/blob/main/README.md",
         "source_repo": "https://github.com/unarbos/tau",
         "website_url": "https://ninja.arbos.life/"
       },
       "profile_level": "operational",
       "project_name": "ninja",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:45:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/66",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json",
+          "https://github.com/unarbos/ninja",
           "https://github.com/unarbos/tau",
           "https://github.com/unarbos/tau/blob/main/README.md",
           "https://ninja.arbos.life/",
-          "https://taomarketcap.com/subnets/66"
+          "https://ninja.arbos.life/health",
+          "https://ninja.arbos.life/swagger"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-66",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "subnet-api",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 9,
       "symbol": "ض",
       "team": null
     },
@@ -7964,49 +7992,56 @@
     {
       "candidate_count": 14,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "inference",
+        "language-models",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 2,
         "missing_operational": [
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 65
+        "score": 85
       },
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 10,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 10,
+      "completeness_score": 85,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 9,
+      "interface_count": 6,
+      "missing_critical_count": 2,
+      "monitored_endpoint_count": 9,
       "name": "Verathos",
       "native_name": "Verathos",
       "native_name_quality": "chain",
       "netuid": 96,
-      "operational_interface_count": 1,
+      "operational_interface_count": 2,
       "operational_interface_kinds": [
-        "openapi"
+        "openapi",
+        "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-96-website-common-openapi-json",
-        "kind": "openapi",
-        "name": "Verathos OpenAPI JSON",
-        "provider": "taomarketcap",
-        "url": "https://verathos.ai/openapi.json"
+        "id": "sn-96-verathos-models-api",
+        "kind": "subnet-api",
+        "name": "Verathos models API",
+        "provider": "verathos",
+        "url": "https://api.verathos.ai/v1/models"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/96",
+        "dashboard_url": "https://verathos.ai/chat",
         "docs_url": "https://verathos.ai/docs",
         "source_repo": "https://github.com/verathos-ai/verathos",
         "website_url": "https://verathos.ai/"
@@ -8014,23 +8049,24 @@
       "profile_level": "operational",
       "project_name": "Verathos",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:45:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/96",
+          "https://api.verathos.ai/v1/models",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json",
           "https://github.com/verathos-ai/verathos",
-          "https://github.com/verathos-ai/verathos/blob/main/README.md",
-          "https://taomarketcap.com/subnets/96",
           "https://verathos.ai/",
-          "https://verathos.ai/docs"
+          "https://verathos.ai/chat",
+          "https://verathos.ai/docs",
+          "https://verathos.ai/openapi.json"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-96",
       "status": "active",
       "subnet_type": "application",
@@ -8039,9 +8075,10 @@
         "docs",
         "openapi",
         "source-repo",
+        "subnet-api",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 9,
       "symbol": "᚛",
       "team": null
     },
@@ -10682,8 +10719,8 @@
   "summary": {
     "average_completeness_score": 50,
     "by_confidence": {
-      "high": 8,
-      "medium": 121
+      "high": 12,
+      "medium": 117
     },
     "by_profile_level": {
       "adapter-backed": 2,

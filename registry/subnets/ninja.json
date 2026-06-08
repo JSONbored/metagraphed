@@ -1,0 +1,219 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "software-engineering",
+    "workflow"
+  ],
+  "curation": {
+    "gap_notes": [
+      "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-06-08T07:45:00.000Z"
+  },
+  "dashboard_url": "https://ninja.arbos.life/",
+  "docs_url": "https://github.com/unarbos/tau/blob/main/README.md",
+  "links": [
+    {
+      "label": "Miner harness",
+      "source_url": "https://github.com/unarbos/tau",
+      "url": "https://github.com/unarbos/ninja"
+    }
+  ],
+  "name": "ninja",
+  "netuid": 66,
+  "notes": "Reviewed overlay for SN66 using the official Ninja/Unarbos website, tau workflow repository, miner harness repository, health endpoint, and Swagger UI. The obvious OpenAPI JSON paths currently serve HTML, so schema-backed status remains a gap.",
+  "schema_version": 1,
+  "slug": "sn-66",
+  "source_repo": "https://github.com/unarbos/tau",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-website",
+      "kind": "website",
+      "name": "Ninja website",
+      "notes": "Official Ninja SN66 public website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": ["https://ninja.arbos.life/"],
+      "url": "https://ninja.arbos.life/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-tau-source",
+      "kind": "source-repo",
+      "name": "Ninja tau source repository",
+      "notes": "Official staged workflow repository for Ninja SN66.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/tau/blob/main/README.md"
+      ],
+      "url": "https://github.com/unarbos/tau"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-harness-source",
+      "kind": "source-repo",
+      "name": "Ninja miner harness source repository",
+      "notes": "Official SN66 miner starter harness repository referenced by the tau README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/ninja"
+      ],
+      "url": "https://github.com/unarbos/ninja"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-readme-docs",
+      "kind": "docs",
+      "name": "Ninja README docs",
+      "notes": "Official tau README documentation for Ninja task generation, execution, validation, and scoring workflow.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/tau/blob/main/README.md"
+      ],
+      "url": "https://github.com/unarbos/tau/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-health",
+      "kind": "subnet-api",
+      "name": "Ninja health endpoint",
+      "notes": "Public read-only health endpoint for the Ninja service.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": ["https://ninja.arbos.life/health"],
+      "url": "https://ninja.arbos.life/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-swagger-ui",
+      "kind": "docs",
+      "name": "Ninja Swagger UI",
+      "notes": "Swagger UI route for Ninja. Obvious JSON schema paths currently serve HTML and are not treated as machine-readable OpenAPI.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "schema_status": "ui-only",
+      "source_urls": ["https://ninja.arbos.life/swagger"],
+      "url": "https://ninja.arbos.life/swagger"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-taopedia-article",
+      "kind": "docs",
+      "name": "ninja Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-tensorplex-docs",
+      "kind": "docs",
+      "name": "ninja Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "ninja TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/66"],
+      "url": "https://taomarketcap.com/subnets/66"
+    }
+  ],
+  "website_url": "https://ninja.arbos.life/"
+}

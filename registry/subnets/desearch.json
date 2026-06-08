@@ -1,0 +1,219 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-docs",
+    "official-openapi",
+    "official-source-repo",
+    "official-website",
+    "search",
+    "social-data"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T07:45:00.000Z"
+  },
+  "dashboard_url": "https://console.desearch.ai/",
+  "docs_url": "https://www.desearch.ai/docs",
+  "links": [
+    {
+      "label": "Console",
+      "source_url": "https://www.desearch.ai/",
+      "url": "https://console.desearch.ai/"
+    }
+  ],
+  "name": "Desearch",
+  "netuid": 22,
+  "notes": "Reviewed overlay for SN22 using the official Desearch website, docs, public OpenAPI schema, console, and source repository. The OpenAPI schema advertises api.desearch.ai as the API server; protected method calls require separate review before proxy eligibility.",
+  "schema_version": 1,
+  "slug": "sn-22",
+  "source_repo": "https://github.com/Desearch-ai/subnet-22",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-website",
+      "kind": "website",
+      "name": "Desearch website",
+      "notes": "Official Desearch website for SN22.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": ["https://www.desearch.ai/"],
+      "url": "https://www.desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-docs",
+      "kind": "docs",
+      "name": "Desearch docs",
+      "notes": "Official Desearch documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": ["https://www.desearch.ai/docs"],
+      "url": "https://www.desearch.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-source",
+      "kind": "source-repo",
+      "name": "Desearch source repository",
+      "notes": "Official SN22 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/",
+        "https://github.com/Desearch-ai/subnet-22"
+      ],
+      "url": "https://github.com/Desearch-ai/subnet-22"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-console",
+      "kind": "dashboard",
+      "name": "Desearch console",
+      "notes": "Public Desearch console application.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.desearch.ai/",
+        "https://console.desearch.ai/"
+      ],
+      "url": "https://console.desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-22-desearch-openapi",
+      "kind": "openapi",
+      "name": "Desearch OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema for the Desearch API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://www.desearch.ai/openapi.json",
+        "https://api.desearch.ai"
+      ],
+      "url": "https://www.desearch.ai/openapi.json"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-22-desearch-api",
+      "kind": "subnet-api",
+      "name": "Desearch API",
+      "notes": "Public API host advertised by the Desearch OpenAPI schema. Protected methods require authentication, so proxy eligibility requires separate review.",
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "OpenAPI schema is public; method-level auth and rate limits must be reviewed before routing.",
+      "schema_status": "machine-readable",
+      "schema_url": "https://www.desearch.ai/openapi.json",
+      "source_urls": [
+        "https://www.desearch.ai/openapi.json",
+        "https://api.desearch.ai"
+      ],
+      "url": "https://api.desearch.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-22-taopedia-article",
+      "kind": "docs",
+      "name": "Desearch Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-22-tensorplex-docs",
+      "kind": "docs",
+      "name": "Desearch Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-22-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Desearch TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/22"],
+      "url": "https://taomarketcap.com/subnets/22"
+    }
+  ],
+  "website_url": "https://www.desearch.ai/"
+}

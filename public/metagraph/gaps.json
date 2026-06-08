@@ -594,15 +594,13 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -611,6 +609,7 @@
           "docs",
           "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1728,19 +1727,19 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "data-artifact",
           "docs",
           "source-repo",
           "subnet-api",
@@ -1779,20 +1778,21 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
-          "openapi",
           "source-repo",
           "subnet-api",
           "website"
@@ -2592,15 +2592,13 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -2609,6 +2607,7 @@
           "docs",
           "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },

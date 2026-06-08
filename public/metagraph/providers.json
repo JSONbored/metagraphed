@@ -22,6 +22,28 @@
       "website_url": "https://blockmachine.io"
     },
     {
+      "authority": "official",
+      "docs_url": "https://chutes.ai/docs",
+      "github_url": "https://github.com/chutesai/chutes",
+      "id": "chutes",
+      "kind": "subnet-team",
+      "name": "Chutes",
+      "notes": "Provider entry for Chutes SN64 website, docs, SDK, miner, validator/API source repositories, app catalog, and public pricing data.",
+      "schema_version": 1,
+      "website_url": "https://chutes.ai/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://www.desearch.ai/docs",
+      "github_url": "https://github.com/Desearch-ai/subnet-22",
+      "id": "desearch",
+      "kind": "subnet-team",
+      "name": "Desearch",
+      "notes": "Provider entry for Desearch SN22 website, docs, public OpenAPI schema, console, and subnet source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.desearch.ai/"
+    },
+    {
       "authority": "provider-claimed",
       "docs_url": "https://www.dwellir.com/docs/bittensor",
       "id": "dwellir",
@@ -191,6 +213,28 @@
       "notes": "Structured community-maintained subnet documentation. Used as enrichment and candidate discovery pending maintainer review.",
       "schema_version": 1,
       "website_url": "https://github.com/tensorplex-labs/subnet-docs"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://github.com/unarbos/tau/blob/main/README.md",
+      "github_url": "https://github.com/unarbos/tau",
+      "id": "unarbos",
+      "kind": "subnet-team",
+      "name": "Unarbos",
+      "notes": "Provider entry for Unarbos Ninja SN66 website, source repositories, public health surface, and Swagger UI.",
+      "schema_version": 1,
+      "website_url": "https://ninja.arbos.life/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://verathos.ai/docs",
+      "github_url": "https://github.com/verathos-ai/verathos",
+      "id": "verathos",
+      "kind": "subnet-team",
+      "name": "Verathos",
+      "notes": "Provider entry for Verathos SN96 website, docs, source repository, public OpenAPI schema, chat app, and safe model-list API.",
+      "schema_version": 1,
+      "website_url": "https://verathos.ai/"
     }
   ],
   "schema_version": 1

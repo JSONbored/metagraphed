@@ -1,0 +1,262 @@
+{
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "identity-reviewed",
+    "inference",
+    "official-api",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "source_count": 9,
+    "verified_at": "2026-06-08T07:45:00.000Z"
+  },
+  "dashboard_url": "https://chutes.ai/app?type=llm",
+  "docs_url": "https://chutes.ai/docs",
+  "links": [
+    {
+      "label": "LLM app catalog",
+      "source_url": "https://chutes.ai/",
+      "url": "https://chutes.ai/app?type=llm"
+    },
+    {
+      "label": "Diffusion app catalog",
+      "source_url": "https://chutes.ai/",
+      "url": "https://chutes.ai/app?type=diffusion"
+    }
+  ],
+  "name": "Chutes",
+  "netuid": 64,
+  "notes": "Reviewed overlay for SN64 using the official Chutes website, docs, source repositories, app catalog, and public pricing endpoint. The pricing endpoint is GET-backed; HEAD behavior is not authoritative for that API.",
+  "schema_version": 1,
+  "slug": "sn-64",
+  "source_repo": "https://github.com/chutesai/chutes",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-website",
+      "kind": "website",
+      "name": "Chutes website",
+      "notes": "Official Chutes website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://chutes.ai/"],
+      "url": "https://chutes.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-docs",
+      "kind": "docs",
+      "name": "Chutes docs",
+      "notes": "Official Chutes documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://chutes.ai/docs"],
+      "url": "https://chutes.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-sdk-source",
+      "kind": "source-repo",
+      "name": "Chutes SDK source repository",
+      "notes": "Official Chutes SDK and CLI repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://chutes.ai/docs",
+        "https://github.com/chutesai/chutes"
+      ],
+      "url": "https://github.com/chutesai/chutes"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-miner-source",
+      "kind": "source-repo",
+      "name": "Chutes miner source repository",
+      "notes": "Official Chutes miner repository referenced by the Chutes SDK README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://github.com/chutesai/chutes-miner"
+      ],
+      "url": "https://github.com/chutesai/chutes-miner"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-api-source",
+      "kind": "source-repo",
+      "name": "Chutes API source repository",
+      "notes": "Official Chutes validator/API repository referenced by the Chutes SDK README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://github.com/chutesai/chutes-api"
+      ],
+      "url": "https://github.com/chutesai/chutes-api"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-llm-catalog",
+      "kind": "dashboard",
+      "name": "Chutes LLM app catalog",
+      "notes": "Public Chutes application catalog filtered to LLM deployments.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://chutes.ai/"],
+      "url": "https://chutes.ai/app?type=llm"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-diffusion-catalog",
+      "kind": "dashboard",
+      "name": "Chutes diffusion app catalog",
+      "notes": "Public Chutes application catalog filtered to diffusion deployments.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://chutes.ai/"],
+      "url": "https://chutes.ai/app?type=diffusion"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-pricing-api",
+      "kind": "subnet-api",
+      "name": "Chutes pricing API",
+      "notes": "Public JSON pricing endpoint for Chutes compute and GPU price estimates.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "schema_status": "not-captured",
+      "source_urls": [
+        "https://github.com/chutesai/chutes",
+        "https://api.chutes.ai/pricing"
+      ],
+      "url": "https://api.chutes.ai/pricing"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-64-taopedia-article",
+      "kind": "docs",
+      "name": "Chutes Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-64-tensorplex-docs",
+      "kind": "docs",
+      "name": "Chutes Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/64"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-64-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Chutes TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/64"],
+      "url": "https://taomarketcap.com/subnets/64"
+    }
+  ],
+  "website_url": "https://chutes.ai/"
+}

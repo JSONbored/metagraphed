@@ -1304,69 +1304,6 @@
       "verified_candidate_count": 12
     },
     {
-      "adapter_score": 72,
-      "candidate_count": 28,
-      "candidate_evidence_summary": {
-        "candidate_count": 3,
-        "kinds_with_candidates": [
-          "openapi"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "stale_kinds": [
-          "openapi"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 73,
-      "contribution_hint": "Maintainer should review current machine-verified surfaces and promote only source-backed entries.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [],
-      "endpoint_count": 12,
-      "evidence_action": "maintainer-review-existing-evidence",
-      "lane": "maintainer-review",
-      "manual_review_required": true,
-      "missing_kinds": [
-        "openapi",
-        "sse"
-      ],
-      "name": "Chutes",
-      "netuid": 64,
-      "operational_interface_count": 2,
-      "priority_score": 140,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-64-github-readme-chutesai-chutes-subnet-api-1",
-        "sn-64-github-readme-chutesai-chutes-subnet-api-2",
-        "sn-64-github-readme-chutesai-chutes-subnet-api-3",
-        "sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
-        "sn-64-github-readme-rayonlabs-chutes-miner-subnet-api-2"
-      ],
-      "slug": "sn-64",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/64",
-        "https://chutes.ai/",
-        "https://github.com/chutesai/chutes",
-        "https://github.com/chutesai/chutes/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx",
-        "https://github.com/rayonlabs/chutes-miner/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
-        "https://kubernetes.io/docs/reference/kubectl"
-      ],
-      "stale_candidate_count": 3,
-      "surface_count": 12,
-      "verified_candidate_count": 20
-    },
-    {
       "adapter_score": 4,
       "candidate_count": 13,
       "candidate_evidence_summary": {
@@ -5136,72 +5073,6 @@
       "verified_candidate_count": 10
     },
     {
-      "adapter_score": 50,
-      "candidate_count": 14,
-      "candidate_evidence_summary": {
-        "candidate_count": 3,
-        "kinds_with_candidates": [
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 3,
-        "stale_kinds": [
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 1,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 65,
-      "contribution_hint": "Maintainer should review current machine-verified surfaces and promote only source-backed entries.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [],
-      "endpoint_count": 10,
-      "evidence_action": "maintainer-review-existing-evidence",
-      "lane": "maintainer-review",
-      "manual_review_required": true,
-      "missing_kinds": [
-        "data-artifact",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Verathos",
-      "netuid": 96,
-      "operational_interface_count": 1,
-      "priority_score": 120,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-96-github-readme-verathos-ai-verathos-docs-1",
-        "sn-96-github-readme-verathos-ai-verathos-docs-2",
-        "sn-96-github-readme-verathos-ai-verathos-subnet-api-3",
-        "sn-96-taomarketcap-dashboard",
-        "sn-96-taomarketcap-source-repo"
-      ],
-      "slug": "sn-96",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/96",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json",
-        "https://github.com/verathos-ai/verathos",
-        "https://github.com/verathos-ai/verathos/blob/main/README.md",
-        "https://taomarketcap.com/subnets/96",
-        "https://verathos.ai/",
-        "https://verathos.ai/docs"
-      ],
-      "stale_candidate_count": 1,
-      "surface_count": 10,
-      "verified_candidate_count": 12
-    },
-    {
       "adapter_score": 7,
       "candidate_count": 16,
       "candidate_evidence_summary": {
@@ -6387,68 +6258,6 @@
       "verified_candidate_count": 7
     },
     {
-      "adapter_score": 48,
-      "candidate_count": 11,
-      "candidate_evidence_summary": {
-        "candidate_count": 2,
-        "kinds_with_candidates": [
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 65,
-      "contribution_hint": "Maintainer should review current machine-verified surfaces and promote only source-backed entries.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [],
-      "endpoint_count": 8,
-      "evidence_action": "maintainer-review-existing-evidence",
-      "lane": "maintainer-review",
-      "manual_review_required": true,
-      "missing_kinds": [
-        "data-artifact",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Desearch",
-      "netuid": 22,
-      "operational_interface_count": 1,
-      "priority_score": 114,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-22-taomarketcap-dashboard",
-        "sn-22-taomarketcap-source-repo",
-        "sn-22-taomarketcap-website",
-        "sn-22-taopedia-article",
-        "sn-22-tensorplex-docs"
-      ],
-      "slug": "sn-22",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22",
-        "https://desearch.ai/",
-        "https://github.com/datura-ai/desearch",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json",
-        "https://taomarketcap.com/subnets/22"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 8,
-      "verified_candidate_count": 10
-    },
-    {
       "adapter_score": 6,
       "candidate_count": 12,
       "candidate_evidence_summary": {
@@ -6909,64 +6718,6 @@
       "stale_candidate_count": 0,
       "surface_count": 9,
       "verified_candidate_count": 16
-    },
-    {
-      "adapter_score": 70,
-      "candidate_count": 16,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 80,
-      "contribution_hint": "Maintainer should review current machine-verified surfaces and promote only source-backed entries.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [],
-      "endpoint_count": 10,
-      "evidence_action": "maintainer-review-existing-evidence",
-      "lane": "maintainer-review",
-      "manual_review_required": true,
-      "missing_kinds": [
-        "data-artifact",
-        "sse"
-      ],
-      "name": "ninja",
-      "netuid": 66,
-      "operational_interface_count": 2,
-      "priority_score": 111,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-66-github-readme-unarbos-tau-subnet-api-1",
-        "sn-66-github-readme-unarbos-tau-subnet-api-2",
-        "sn-66-taomarketcap-dashboard",
-        "sn-66-taomarketcap-source-repo",
-        "sn-66-taomarketcap-website"
-      ],
-      "slug": "sn-66",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json",
-        "https://github.com/unarbos/tau",
-        "https://github.com/unarbos/tau/blob/main/README.md",
-        "https://ninja.arbos.life/",
-        "https://taomarketcap.com/subnets/66"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 10,
-      "verified_candidate_count": 14
     },
     {
       "adapter_score": 29,
@@ -8302,6 +8053,72 @@
       "verified_candidate_count": 9
     },
     {
+      "adapter_score": 31,
+      "candidate_count": 28,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "data-artifact",
+          "openapi"
+        ],
+        "live_kinds": [
+          "data-artifact"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 70,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 11,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse"
+      ],
+      "name": "Chutes",
+      "netuid": 64,
+      "operational_interface_count": 1,
+      "priority_score": 96,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-64-github-readme-chutesai-chutes-subnet-api-1",
+        "sn-64-github-readme-chutesai-chutes-subnet-api-2",
+        "sn-64-github-readme-chutesai-chutes-subnet-api-3",
+        "sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
+        "sn-64-github-readme-rayonlabs-chutes-miner-subnet-api-2"
+      ],
+      "slug": "sn-64",
+      "source_urls": [
+        "https://api.chutes.ai/pricing",
+        "https://api.taomarketcap.com/public/v1/subnets/64",
+        "https://chutes.ai/",
+        "https://chutes.ai/app?type=llm",
+        "https://chutes.ai/docs",
+        "https://github.com/chutesai/chutes",
+        "https://github.com/chutesai/chutes-api",
+        "https://github.com/chutesai/chutes-miner"
+      ],
+      "stale_candidate_count": 3,
+      "surface_count": 11,
+      "verified_candidate_count": 20
+    },
+    {
       "adapter_score": 27,
       "candidate_count": 17,
       "candidate_evidence_summary": {
@@ -8436,6 +8253,71 @@
       "verified_candidate_count": 15
     },
     {
+      "adapter_score": 29,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 3,
+        "kinds_with_candidates": [
+          "openapi"
+        ],
+        "live_kinds": [
+          "openapi"
+        ],
+        "live_or_redirected_count": 1,
+        "reviewable_count": 3,
+        "stale_kinds": [
+          "openapi"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 70,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 9,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse"
+      ],
+      "name": "ninja",
+      "netuid": 66,
+      "operational_interface_count": 1,
+      "priority_score": 80,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-66-github-readme-unarbos-tau-subnet-api-1",
+        "sn-66-github-readme-unarbos-tau-subnet-api-2",
+        "sn-66-taomarketcap-dashboard",
+        "sn-66-taomarketcap-source-repo",
+        "sn-66-taomarketcap-website"
+      ],
+      "slug": "sn-66",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/66",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json",
+        "https://github.com/unarbos/ninja",
+        "https://github.com/unarbos/tau",
+        "https://github.com/unarbos/tau/blob/main/README.md",
+        "https://ninja.arbos.life/",
+        "https://ninja.arbos.life/health"
+      ],
+      "stale_candidate_count": 2,
+      "surface_count": 9,
+      "verified_candidate_count": 14
+    },
+    {
       "adapter_score": 70,
       "candidate_count": 8,
       "candidate_evidence_summary": {
@@ -8558,6 +8440,64 @@
     },
     {
       "adapter_score": 49,
+      "candidate_count": 14,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 85,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 9,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "sse"
+      ],
+      "name": "Verathos",
+      "netuid": 96,
+      "operational_interface_count": 2,
+      "priority_score": 65,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for openapi, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-96-github-readme-verathos-ai-verathos-docs-1",
+        "sn-96-github-readme-verathos-ai-verathos-docs-2",
+        "sn-96-github-readme-verathos-ai-verathos-subnet-api-3",
+        "sn-96-taomarketcap-dashboard",
+        "sn-96-taomarketcap-source-repo"
+      ],
+      "slug": "sn-96",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/96",
+        "https://api.verathos.ai/v1/models",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json",
+        "https://github.com/verathos-ai/verathos",
+        "https://verathos.ai/",
+        "https://verathos.ai/chat",
+        "https://verathos.ai/docs"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 9,
+      "verified_candidate_count": 12
+    },
+    {
+      "adapter_score": 49,
       "candidate_count": 13,
       "candidate_evidence_summary": {
         "candidate_count": 0,
@@ -8613,11 +8553,69 @@
       "stale_candidate_count": 0,
       "surface_count": 9,
       "verified_candidate_count": 5
+    },
+    {
+      "adapter_score": 49,
+      "candidate_count": 11,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 85,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 9,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "sse"
+      ],
+      "name": "Desearch",
+      "netuid": 22,
+      "operational_interface_count": 2,
+      "priority_score": 61,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for openapi, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-22-taomarketcap-dashboard",
+        "sn-22-taomarketcap-source-repo",
+        "sn-22-taomarketcap-website",
+        "sn-22-taopedia-article",
+        "sn-22-tensorplex-docs"
+      ],
+      "slug": "sn-22",
+      "source_urls": [
+        "https://api.desearch.ai",
+        "https://api.taomarketcap.com/public/v1/subnets/22",
+        "https://console.desearch.ai/",
+        "https://github.com/Desearch-ai/subnet-22",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json",
+        "https://www.desearch.ai/",
+        "https://www.desearch.ai/docs"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 9,
+      "verified_candidate_count": 10
     }
   ],
   "schema_version": 1,
   "summary": {
-    "adapter_candidate_count": 4,
+    "adapter_candidate_count": 8,
     "baseline_monitoring_count": 0,
     "direct_submission_count": 92,
     "evidence_action_counts": {
@@ -8628,11 +8626,11 @@
       "verify-existing-evidence": 2
     },
     "lane_counts": {
-      "adapter-candidate": 4,
+      "adapter-candidate": 8,
       "direct-submission": 92,
-      "maintainer-review": 33
+      "maintainer-review": 29
     },
-    "maintainer_review_count": 33,
+    "maintainer_review_count": 29,
     "manual_review_required_count": 37,
     "monitoring_followup_count": 0,
     "queue_count": 129,

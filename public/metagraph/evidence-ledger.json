@@ -7448,6 +7448,72 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Desearch API is a public subnet-api surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface is public metadata but requires authentication for access.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/openapi.json",
+      "subject": "surface:sn-22-desearch-api",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Desearch console is a public dashboard surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/",
+      "subject": "surface:sn-22-desearch-console",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Desearch docs is a public docs surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/docs",
+      "subject": "surface:sn-22-desearch-docs",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Desearch OpenAPI schema is a public openapi surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/openapi.json",
+      "subject": "surface:sn-22-desearch-openapi",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Desearch source repository is a public source-repo surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/",
+      "subject": "surface:sn-22-desearch-source",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Desearch website is a public website surface for SN22.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.desearch.ai/",
+      "subject": "surface:sn-22-desearch-website",
+      "support_summary": "Listed in curated overlay for sn-22.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Desearch TaoMarketCap dashboard is a public dashboard surface for SN22.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7455,28 +7521,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
       "subject": "surface:sn-22-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch source repository is a public source-repo surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
-      "subject": "surface:sn-22-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch website is a public website surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
-      "subject": "surface:sn-22-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-22.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7499,39 +7543,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json",
       "subject": "surface:sn-22-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch docs is a public docs surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://desearch.ai/",
-      "subject": "surface:sn-22-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch OpenAPI JSON is a public openapi surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://desearch.ai/",
-      "subject": "surface:sn-22-website-common-openapi-json",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch Swagger UI is a public openapi surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://desearch.ai/",
-      "subject": "surface:sn-22-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-22.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10748,24 +10759,90 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Chutes API surface is a public subnet-api surface for SN64.",
-      "confidence": "medium",
+      "claim": "Chutes API source repository is a public source-repo surface for SN64.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
-      "subject": "surface:sn-64-github-readme-chutesai-chutes-subnet-api-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/chutesai/chutes",
+      "subject": "surface:sn-64-chutes-api-source",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes diffusion app catalog is a public dashboard surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://chutes.ai/",
+      "subject": "surface:sn-64-chutes-diffusion-catalog",
       "support_summary": "Listed in curated overlay for sn-64.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
       "claim": "Chutes docs is a public docs surface for SN64.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/rayonlabs/chutes-miner/blob/main/README.md",
-      "subject": "surface:sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://chutes.ai/docs",
+      "subject": "surface:sn-64-chutes-docs",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes LLM app catalog is a public dashboard surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://chutes.ai/",
+      "subject": "surface:sn-64-chutes-llm-catalog",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes miner source repository is a public source-repo surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/chutesai/chutes",
+      "subject": "surface:sn-64-chutes-miner-source",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes pricing API is a public subnet-api surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/chutesai/chutes",
+      "subject": "surface:sn-64-chutes-pricing-api",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes SDK source repository is a public source-repo surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://chutes.ai/docs",
+      "subject": "surface:sn-64-chutes-sdk-source",
+      "support_summary": "Listed in curated overlay for sn-64.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chutes website is a public website surface for SN64.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://chutes.ai/",
+      "subject": "surface:sn-64-chutes-website",
       "support_summary": "Listed in curated overlay for sn-64.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10777,28 +10854,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/64",
       "subject": "surface:sn-64-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes source repository is a public source-repo surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/64",
-      "subject": "surface:sn-64-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes website is a public website surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/64",
-      "subject": "surface:sn-64-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-64.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10821,61 +10876,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
       "subject": "surface:sn-64-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes source repository is a public source-repo surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
-      "subject": "surface:sn-64-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes source repository is a public source-repo surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
-      "subject": "surface:sn-64-tensorplex-source-repo-2",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes docs is a public docs surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://chutes.ai/",
-      "subject": "surface:sn-64-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes data artifact is a public data-artifact surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://chutes.ai/",
-      "subject": "surface:sn-64-website-link-chutes-ai-data-artifact-5",
-      "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Chutes data artifact is a public data-artifact surface for SN64.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://chutes.ai/",
-      "subject": "surface:sn-64-website-link-chutes-ai-data-artifact-6",
       "support_summary": "Listed in curated overlay for sn-64.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10979,13 +10979,68 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ninja API surface is a public subnet-api surface for SN66.",
-      "confidence": "medium",
+      "claim": "Ninja miner harness source repository is a public source-repo surface for SN66.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/unarbos/tau/blob/main/README.md",
-      "subject": "surface:sn-66-github-readme-unarbos-tau-subnet-api-2",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/unarbos/tau",
+      "subject": "surface:sn-66-ninja-harness-source",
+      "support_summary": "Listed in curated overlay for sn-66.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ninja health endpoint is a public subnet-api surface for SN66.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://ninja.arbos.life/health",
+      "subject": "surface:sn-66-ninja-health",
+      "support_summary": "Listed in curated overlay for sn-66.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ninja README docs is a public docs surface for SN66.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/unarbos/tau",
+      "subject": "surface:sn-66-ninja-readme-docs",
+      "support_summary": "Listed in curated overlay for sn-66.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ninja Swagger UI is a public docs surface for SN66.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://ninja.arbos.life/swagger",
+      "subject": "surface:sn-66-ninja-swagger-ui",
+      "support_summary": "Listed in curated overlay for sn-66.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ninja tau source repository is a public source-repo surface for SN66.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/unarbos/tau",
+      "subject": "surface:sn-66-ninja-tau-source",
+      "support_summary": "Listed in curated overlay for sn-66.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ninja website is a public website surface for SN66.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://ninja.arbos.life/",
+      "subject": "surface:sn-66-ninja-website",
       "support_summary": "Listed in curated overlay for sn-66.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10997,28 +11052,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
       "subject": "surface:sn-66-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja source repository is a public source-repo surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
-      "subject": "surface:sn-66-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja website is a public website surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
-      "subject": "surface:sn-66-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-66.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11041,50 +11074,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json",
       "subject": "surface:sn-66-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja docs is a public docs surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://ninja.arbos.life/",
-      "subject": "surface:sn-66-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja health endpoint is a public subnet-api surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://ninja.arbos.life/",
-      "subject": "surface:sn-66-website-common-health",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja Swagger UI is a public openapi surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://ninja.arbos.life/",
-      "subject": "surface:sn-66-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja dashboard is a public dashboard surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://ninja.arbos.life/",
-      "subject": "surface:sn-66-website-link-ninja-arbos-life-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-66.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13223,28 +13212,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Verathos docs is a public docs surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/verathos-ai/verathos/blob/main/README.md",
-      "subject": "surface:sn-96-github-readme-verathos-ai-verathos-docs-1",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Verathos docs is a public docs surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/verathos-ai/verathos/blob/main/README.md",
-      "subject": "surface:sn-96-github-readme-verathos-ai-verathos-docs-2",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Verathos TaoMarketCap dashboard is a public dashboard surface for SN96.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13252,28 +13219,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/96",
       "subject": "surface:sn-96-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Verathos source repository is a public source-repo surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/96",
-      "subject": "surface:sn-96-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Verathos website is a public website surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/96",
-      "subject": "surface:sn-96-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-96.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13300,35 +13245,68 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Verathos chat app is a public dashboard surface for SN96.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://verathos.ai/",
+      "subject": "surface:sn-96-verathos-chat",
+      "support_summary": "Listed in curated overlay for sn-96.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Verathos docs is a public docs surface for SN96.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://verathos.ai/docs",
+      "subject": "surface:sn-96-verathos-docs",
+      "support_summary": "Listed in curated overlay for sn-96.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Verathos models API is a public subnet-api surface for SN96.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://verathos.ai/docs",
+      "subject": "surface:sn-96-verathos-models-api",
+      "support_summary": "Listed in curated overlay for sn-96.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Verathos OpenAPI schema is a public openapi surface for SN96.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://verathos.ai/docs",
+      "subject": "surface:sn-96-verathos-openapi",
+      "support_summary": "Listed in curated overlay for sn-96.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Verathos source repository is a public source-repo surface for SN96.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json",
-      "subject": "surface:sn-96-tensorplex-source-repo-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://verathos.ai/docs",
+      "subject": "surface:sn-96-verathos-source",
       "support_summary": "Listed in curated overlay for sn-96.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Verathos OpenAPI JSON is a public openapi surface for SN96.",
-      "confidence": "medium",
+      "claim": "Verathos website is a public website surface for SN96.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://verathos.ai/",
-      "subject": "surface:sn-96-website-common-openapi-json",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Verathos Swagger UI is a public openapi surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://verathos.ai/",
-      "subject": "surface:sn-96-website-common-swagger",
+      "subject": "surface:sn-96-verathos-website",
       "support_summary": "Listed in curated overlay for sn-96.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13647,8 +13625,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1240,
+    "claim_count": 1238,
     "subnet_claim_count": 129,
-    "surface_claim_count": 861
+    "surface_claim_count": 859
   }
 }
