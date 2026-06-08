@@ -247,8 +247,15 @@ function SubnetsTable() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5">
-                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="font-medium text-ink-strong hover:underline">
-                    {s.name ?? `Subnet ${s.netuid}`}
+                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline">
+                    <BrandIcon
+                      url={s.website}
+                      iconUrl={s.icon_url}
+                      name={s.name}
+                      fallback={s.netuid}
+                      size={20}
+                    />
+                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">{s.symbol ?? "—"}</td>
