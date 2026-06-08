@@ -1193,28 +1193,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet.",
+          "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet.",
+          "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
         ],
         "missing_kinds": [
           "source-repo",
@@ -1231,7 +1235,7 @@
       },
       "name": "gm",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "surface_count": 5
     },
     {
@@ -1323,28 +1327,34 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Public chain/directory sources show a recent Halftime to Recall identity change.",
+          "The historical candlestao.com reference currently times out to simple probes and is not promoted.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Public chain/directory sources show a recent Halftime to Recall identity change.",
+          "The historical candlestao.com reference currently times out to simple probes and is not promoted.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -1361,7 +1371,7 @@
       },
       "name": "Recall",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "surface_count": 5
     },
     {
@@ -1707,32 +1717,33 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "subnet.chunking.com appears to be the official Chunking website, but its TLS certificate is currently expired and probe-derived status should be degraded.",
+          "Previously discovered VectorChat/chunking_subnet source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "subnet.chunking.com appears to be the official Chunking website, but its TLS certificate is currently expired and probe-derived status should be degraded.",
+          "Previously discovered VectorChat/chunking_subnet source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1740,13 +1751,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "Chunking",
       "netuid": 40,
-      "slug": "sn-40",
-      "surface_count": 5
+      "slug": "chunking",
+      "surface_count": 6
     },
     {
       "candidate_count": 15,
@@ -2923,28 +2935,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No publicly verified team/operator profile yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No publicly verified team/operator profile yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -2961,7 +2977,7 @@
       },
       "name": "ain",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "surface_count": 5
     },
     {
@@ -3652,28 +3668,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name is placeholder-like.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name is placeholder-like.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -3931,7 +3951,7 @@
           "No verified SSE/event stream yet.",
           "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
+        "level": "maintainer-reviewed",
         "review_state": "stale",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_count": 5,
@@ -4300,28 +4320,30 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -4338,7 +4360,7 @@
       },
       "name": "eni",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "surface_count": 5
     },
     {
@@ -4434,28 +4456,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Current chain identity is sale/placeholder-style rather than a clear product identity.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Current chain identity is sale/placeholder-style rather than a clear product identity.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -4472,7 +4498,7 @@
       },
       "name": "for sale (burn to uid1)",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "surface_count": 5
     },
     {
@@ -5084,28 +5110,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Satori119/Satori source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Satori119/Satori source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -5122,7 +5152,7 @@
       },
       "name": "Satori",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "surface_count": 5
     },
     {
@@ -5344,32 +5374,28 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website and miner/source repository are verified live.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T15:00:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website and miner/source repository are verified live.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -5377,13 +5403,15 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "source-repo",
+          "website"
         ]
       },
       "name": "8 Ball",
       "netuid": 125,
-      "slug": "sn-125",
-      "surface_count": 5
+      "slug": "eightball",
+      "surface_count": 8
     },
     {
       "candidate_count": 18,

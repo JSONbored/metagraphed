@@ -4,13 +4,17 @@
   "name": "luis",
   "slug": "sn-92",
   "status": "active",
-  "categories": ["baseline-curated", "stale-source-cleanup"],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "stale-source-cleanup"
+  ],
   "source_repo": null,
   "dashboard_url": "https://taomarketcap.com/subnets/92",
   "website_url": null,
   "notes": "Cleanup overlay for SN92. Tensorplex currently lists https://github.com/tensorclaw/tensorclaw, but that repository returns 404, so it is intentionally not promoted as a curated source surface.",
   "curation": {
-    "level": "machine-verified",
+    "level": "maintainer-reviewed",
     "review_state": "stale",
     "reviewed_at": "2026-06-08T11:15:00.000Z",
     "verified_at": "2026-06-08T11:15:00.000Z",

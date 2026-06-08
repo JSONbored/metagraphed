@@ -1099,27 +1099,7 @@
     },
     {
       "candidate_count": 7,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Chunking",
-      "netuid": 40,
-      "priority_score": 75,
-      "review_state": "machine-generated",
-      "slug": "sn-40",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 7,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "missing_kinds": [
         "source-repo",
         "website",
@@ -1133,26 +1113,6 @@
       "priority_score": 75,
       "review_state": "stale",
       "slug": "sn-92",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 7,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Satori",
-      "netuid": 119,
-      "priority_score": 75,
-      "review_state": "machine-generated",
-      "slug": "sn-119",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 5,
       "verified_candidate_count": 6
@@ -1173,146 +1133,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
       "verified_candidate_count": 17
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "gm",
-      "netuid": 28,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-28",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Recall",
-      "netuid": 31,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-31",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "ain",
-      "netuid": 69,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-69",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Subnet 86",
-      "netuid": 86,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-86",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "eni",
-      "netuid": 101,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-101",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "for sale (burn to uid1)",
-      "netuid": 104,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-104",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "8 Ball",
-      "netuid": 125,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-125",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 6
     },
     {
       "candidate_count": 25,
@@ -2402,6 +2222,26 @@
       "verified_candidate_count": 6
     },
     {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Satori",
+      "netuid": 119,
+      "priority_score": 30,
+      "review_state": "maintainer-reviewed",
+      "slug": "satori",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
       "candidate_count": 18,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -2419,6 +2259,126 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 7,
       "verified_candidate_count": 11
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "gm",
+      "netuid": 28,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "gm",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Recall",
+      "netuid": 31,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "recall",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "ain",
+      "netuid": 69,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "ain",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Subnet 86",
+      "netuid": 86,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-86",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "eni",
+      "netuid": 101,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "eni",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "for sale (burn to uid1)",
+      "netuid": 104,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "for-sale-uid1",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 5,
+      "verified_candidate_count": 6
     },
     {
       "candidate_count": 17,
@@ -2969,6 +2929,25 @@
         "sse",
         "data-artifact"
       ],
+      "name": "Chunking",
+      "netuid": 40,
+      "priority_score": 18,
+      "review_state": "maintainer-reviewed",
+      "slug": "chunking",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 6,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
       "name": "EfficientFrontier",
       "netuid": 53,
       "priority_score": 18,
@@ -3371,6 +3350,24 @@
       "verified_candidate_count": 7
     },
     {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "8 Ball",
+      "netuid": 125,
+      "priority_score": 5,
+      "review_state": "maintainer-reviewed",
+      "slug": "eightball",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 6
+    },
+    {
       "candidate_count": 5,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -3438,13 +3435,13 @@
     "gap_kind_counts": {
       "data-artifact": 115,
       "openapi": 101,
-      "source-repo": 21,
+      "source-repo": 20,
       "sse": 128,
       "subnet-api": 117,
-      "website": 18
+      "website": 16
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 67,
+    "needs_maintainer_review_count": 58,
     "subnet_count": 129
   }
 }

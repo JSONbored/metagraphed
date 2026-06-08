@@ -2446,10 +2446,15 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "llm-inference",
+        "marketplace",
+        "tee"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -2470,11 +2475,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -2501,11 +2506,11 @@
       "profile_level": "directory-only",
       "project_name": "gm",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/28",
           "https://backprop.finance/dtao/subnets/28-gm",
@@ -2514,8 +2519,8 @@
           "https://subnetradar.com/subnet/28"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-28",
+      "review_state": "maintainer-reviewed",
+      "slug": "gm",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -2714,10 +2719,15 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-drift",
+        "identity-reviewed",
+        "rag",
+        "retrieval"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -2738,11 +2748,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -2769,11 +2779,11 @@
       "profile_level": "directory-only",
       "project_name": "Recall",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/31",
           "https://backprop.finance/dtao/subnets/31-recall",
@@ -2782,8 +2792,8 @@
           "https://subnetradar.com/subnet/31"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-31",
+      "review_state": "maintainer-reviewed",
+      "slug": "recall",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -3486,19 +3496,23 @@
     {
       "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "data-pipeline",
+        "identity-reviewed",
+        "official-website",
+        "rag"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3506,19 +3520,18 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
-          "website"
+          "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 40
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 5,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 6,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 6,
       "name": "Chunking",
       "native_name": "Chunking",
       "native_name_quality": "chain",
@@ -3526,43 +3539,46 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-40-taopedia-article",
-        "kind": "docs",
-        "name": "Chunking Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx"
+        "id": "sn-40-chunking-website",
+        "kind": "website",
+        "name": "Chunking website",
+        "provider": "vectorchat",
+        "url": "https://subnet.chunking.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/40-chunking",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx",
         "source_repo": null,
-        "website_url": null
+        "website_url": "https://subnet.chunking.com/"
       },
       "profile_level": "directory-only",
       "project_name": "Chunking",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 7,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/40",
           "https://backprop.finance/dtao/subnets/40-chunking",
+          "https://github.com/VectorChat/chunking_subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json",
+          "https://subnet.chunking.com/",
           "https://subnetradar.com/subnet/40"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-40",
+      "review_state": "maintainer-reviewed",
+      "slug": "chunking",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 6,
       "symbol": "ן",
       "team": null
     },
@@ -6023,10 +6039,12 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -6047,11 +6065,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -6078,11 +6096,11 @@
       "profile_level": "directory-only",
       "project_name": "ain",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/69",
           "https://backprop.finance/dtao/subnets/69-ain",
@@ -6091,8 +6109,8 @@
           "https://subnetradar.com/subnet/69"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-69",
+      "review_state": "maintainer-reviewed",
+      "slug": "ain",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -7502,10 +7520,13 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-placeholder",
+        "identity-reviewed"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -7526,11 +7547,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -7557,11 +7578,11 @@
       "profile_level": "directory-only",
       "project_name": "Subnet 86",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/86",
           "https://backprop.finance/dtao/subnets/86-subnet-86",
@@ -7570,7 +7591,7 @@
           "https://subnetradar.com/subnet/86"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-86",
       "status": "active",
       "subnet_type": "application",
@@ -8034,10 +8055,11 @@
       "categories": [
         "baseline-augmented",
         "baseline-curated",
+        "identity-reviewed",
         "stale-source-cleanup"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -8058,11 +8080,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -8089,7 +8111,7 @@
       "profile_level": "directory-only",
       "project_name": "luis",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 6,
         "review_state": "stale",
@@ -8803,10 +8825,12 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -8827,11 +8851,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -8858,11 +8882,11 @@
       "profile_level": "directory-only",
       "project_name": "eni",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/101",
           "https://backprop.finance/dtao/subnets/101-eni",
@@ -8871,8 +8895,8 @@
           "https://subnetradar.com/subnet/101"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-101",
+      "review_state": "maintainer-reviewed",
+      "slug": "eni",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -9061,10 +9085,13 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "no-public-project-surface"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -9085,11 +9112,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -9116,11 +9143,11 @@
       "profile_level": "directory-only",
       "project_name": "for sale (burn to uid1)",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/104",
           "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1",
@@ -9129,8 +9156,8 @@
           "https://subnetradar.com/subnet/104"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-104",
+      "review_state": "maintainer-reviewed",
+      "slug": "for-sale-uid1",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -10341,10 +10368,13 @@
     {
       "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "virtual-world"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -10365,11 +10395,11 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
@@ -10396,11 +10426,11 @@
       "profile_level": "directory-only",
       "project_name": "Satori",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/119",
           "https://backprop.finance/dtao/subnets/119-satori",
@@ -10409,8 +10439,8 @@
           "https://subnetradar.com/subnet/119"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-119",
+      "review_state": "maintainer-reviewed",
+      "slug": "satori",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -10856,39 +10886,39 @@
     {
       "candidate_count": 6,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "prediction-market"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "source-repo",
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 20
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 5,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "8 Ball",
       "native_name": "8 Ball",
       "native_name_quality": "chain",
@@ -10896,43 +10926,48 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-125-taopedia-article",
-        "kind": "docs",
-        "name": "8 Ball Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx"
+        "id": "sn-125-eightball-website",
+        "kind": "website",
+        "name": "8 Ball website",
+        "provider": "eightball",
+        "url": "https://8ball125.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/125-8-ball",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx",
-        "source_repo": null,
-        "website_url": null
+        "docs_url": "https://github.com/Barbariandev/8Ball_miner#readme",
+        "source_repo": "https://github.com/Barbariandev/8Ball_miner",
+        "website_url": "https://8ball125.com/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "8 Ball",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 8,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:00:00.000Z",
         "source_urls": [
+          "https://8ball125.com/",
           "https://api.taomarketcap.com/public/v1/subnets/125",
           "https://backprop.finance/dtao/subnets/125-8-ball",
+          "https://github.com/Barbariandev/8Ball_miner",
+          "https://github.com/Barbariandev/8Ball_miner#readme",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json",
           "https://subnetradar.com/subnet/125"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-125",
+      "review_state": "maintainer-reviewed",
+      "slug": "eightball",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "source-repo",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 8,
       "symbol": "𑀂",
       "team": null
     },
@@ -11188,14 +11223,14 @@
   "summary": {
     "average_completeness_score": 54,
     "by_confidence": {
-      "high": 62,
-      "low": 5,
-      "medium": 62
+      "high": 71,
+      "low": 6,
+      "medium": 52
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 26,
-      "identity-complete": 59,
+      "directory-only": 25,
+      "identity-complete": 60,
       "operational": 42
     },
     "profile_count": 129

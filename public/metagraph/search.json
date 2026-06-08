@@ -1,7 +1,23 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1323,
+  "document_count": 1329,
   "documents": [
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:eightball",
+      "subtitle": "subnet-team",
+      "title": "8 Ball",
+      "tokens": [
+        "8",
+        "ball",
+        "eightball",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://8ball125.com/"
+    },
     {
       "artifact_path": "/metagraph/providers.json",
       "id": "provider:academia",
@@ -1011,6 +1027,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:vectorchat",
+      "subtitle": "subnet-team",
+      "title": "VectorChat",
+      "tokens": [
+        "claimed",
+        "provider",
+        "subnet",
+        "team",
+        "vectorchat"
+      ],
+      "type": "provider",
+      "url": "https://subnet.chunking.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:verathos",
       "subtitle": "subnet-team",
       "title": "Verathos",
@@ -1059,16 +1090,24 @@
       "artifact_path": "/metagraph/subnets/125.json",
       "id": "subnet:125",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "SN125 𑀂",
       "title": "8 Ball",
       "tokens": [
-        "125",
         "8",
+        "augmented",
         "ball",
         "baseline",
         "curated",
-        "sn"
+        "eightball",
+        "identity",
+        "market",
+        "official",
+        "prediction",
+        "repo",
+        "reviewed",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/125"
@@ -1159,15 +1198,16 @@
       "artifact_path": "/metagraph/subnets/69.json",
       "id": "subnet:69",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "SN69 ع",
       "title": "ain",
       "tokens": [
-        "69",
         "ain",
+        "augmented",
         "baseline",
         "curated",
-        "sn"
+        "identity",
+        "reviewed"
       ],
       "type": "subnet",
       "url": "/subnets/69"
@@ -1628,15 +1668,21 @@
       "artifact_path": "/metagraph/subnets/40.json",
       "id": "subnet:40",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "SN40 ן",
       "title": "Chunking",
       "tokens": [
-        "40",
+        "augmented",
         "baseline",
         "chunking",
         "curated",
-        "sn"
+        "data",
+        "identity",
+        "official",
+        "pipeline",
+        "rag",
+        "reviewed",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/40"
@@ -2059,15 +2105,16 @@
       "artifact_path": "/metagraph/subnets/101.json",
       "id": "subnet:101",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "SN101 ე",
       "title": "eni",
       "tokens": [
-        "101",
+        "augmented",
         "baseline",
         "curated",
         "eni",
-        "sn"
+        "identity",
+        "reviewed"
       ],
       "type": "subnet",
       "url": "/subnets/101"
@@ -2125,17 +2172,22 @@
       "artifact_path": "/metagraph/subnets/104.json",
       "id": "subnet:104",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "SN104 Բ",
       "title": "for sale (burn to uid1)",
       "tokens": [
-        "104",
+        "augmented",
         "baseline",
         "burn",
         "curated",
         "for",
+        "identity",
+        "no",
+        "project",
+        "public",
+        "reviewed",
         "sale",
-        "sn",
+        "surface",
         "to",
         "uid1"
       ],
@@ -2190,15 +2242,20 @@
       "artifact_path": "/metagraph/subnets/28.json",
       "id": "subnet:28",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "SN28 ד",
       "title": "gm",
       "tokens": [
-        "28",
+        "augmented",
         "baseline",
         "curated",
         "gm",
-        "sn"
+        "identity",
+        "inference",
+        "llm",
+        "marketplace",
+        "reviewed",
+        "tee"
       ],
       "type": "subnet",
       "url": "/subnets/28"
@@ -2643,7 +2700,9 @@
         "baseline",
         "cleanup",
         "curated",
+        "identity",
         "luis",
+        "reviewed",
         "sn",
         "source",
         "stale"
@@ -3159,15 +3218,19 @@
       "artifact_path": "/metagraph/subnets/31.json",
       "id": "subnet:31",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "SN31 ז",
       "title": "Recall",
       "tokens": [
-        "31",
+        "augmented",
         "baseline",
         "curated",
+        "drift",
+        "identity",
+        "rag",
         "recall",
-        "sn"
+        "retrieval",
+        "reviewed"
       ],
       "type": "subnet",
       "url": "/subnets/31"
@@ -3245,15 +3308,18 @@
       "artifact_path": "/metagraph/subnets/119.json",
       "id": "subnet:119",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "SN119 Ⲃ",
       "title": "Satori",
       "tokens": [
-        "119",
+        "augmented",
         "baseline",
         "curated",
+        "identity",
+        "reviewed",
         "satori",
-        "sn"
+        "virtual",
+        "world"
       ],
       "type": "subnet",
       "url": "/subnets/119"
@@ -3359,8 +3425,12 @@
       "title": "Subnet 86",
       "tokens": [
         "86",
+        "augmented",
         "baseline",
         "curated",
+        "identity",
+        "placeholder",
+        "reviewed",
         "sn",
         "subnet"
       ],
@@ -3962,34 +4032,69 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-backprop-dashboard",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "dashboard / backprop-finance",
       "title": "8 Ball Backprop Finance dashboard",
       "tokens": [
-        "125",
         "8",
         "backprop",
         "ball",
         "dashboard",
-        "finance",
-        "sn"
+        "eightball",
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/125-8-ball"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-eightball-docs",
+      "netuid": 125,
+      "slug": "eightball",
+      "subtitle": "docs / eightball",
+      "title": "8 Ball miner documentation",
+      "tokens": [
+        "8",
+        "ball",
+        "docs",
+        "documentation",
+        "eightball",
+        "miner"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Barbariandev/8Ball_miner#readme"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-eightball-source-repo",
+      "netuid": 125,
+      "slug": "eightball",
+      "subtitle": "source-repo / eightball",
+      "title": "8 Ball miner repository",
+      "tokens": [
+        "8",
+        "ball",
+        "eightball",
+        "miner",
+        "repo",
+        "repository",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Barbariandev/8Ball_miner"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-subnetradar-dashboard",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "dashboard / subnetradar",
       "title": "8 Ball SubnetRadar dashboard",
       "tokens": [
-        "125",
         "8",
         "ball",
         "dashboard",
-        "sn",
+        "eightball",
         "subnetradar"
       ],
       "type": "surface",
@@ -3999,15 +4104,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-taomarketcap-dashboard",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "dashboard / taomarketcap",
       "title": "8 Ball TaoMarketCap dashboard",
       "tokens": [
-        "125",
         "8",
         "ball",
         "dashboard",
-        "sn",
+        "eightball",
         "taomarketcap"
       ],
       "type": "surface",
@@ -4017,17 +4121,16 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-taopedia-article",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "docs / taopedia-articles",
       "title": "8 Ball Taopedia article",
       "tokens": [
-        "125",
         "8",
         "article",
         "articles",
         "ball",
         "docs",
-        "sn",
+        "eightball",
         "taopedia"
       ],
       "type": "surface",
@@ -4037,20 +4140,35 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-tensorplex-docs",
       "netuid": 125,
-      "slug": "sn-125",
+      "slug": "eightball",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "8 Ball Tensorplex subnet docs",
       "tokens": [
-        "125",
         "8",
         "ball",
         "docs",
-        "sn",
+        "eightball",
         "subnet",
         "tensorplex"
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/125"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-eightball-website",
+      "netuid": 125,
+      "slug": "eightball",
+      "subtitle": "website / eightball",
+      "title": "8 Ball website",
+      "tokens": [
+        "8",
+        "ball",
+        "eightball",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://8ball125.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4553,16 +4671,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-backprop-dashboard",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "dashboard / backprop-finance",
       "title": "ain Backprop Finance dashboard",
       "tokens": [
-        "69",
         "ain",
         "backprop",
         "dashboard",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/69-ain"
@@ -4571,14 +4687,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-subnetradar-dashboard",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "dashboard / subnetradar",
       "title": "ain SubnetRadar dashboard",
       "tokens": [
-        "69",
         "ain",
         "dashboard",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -4588,14 +4702,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-taomarketcap-dashboard",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "dashboard / taomarketcap",
       "title": "ain TaoMarketCap dashboard",
       "tokens": [
-        "69",
         "ain",
         "dashboard",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -4605,16 +4717,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-taopedia-article",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "docs / taopedia-articles",
       "title": "ain Taopedia article",
       "tokens": [
-        "69",
         "ain",
         "article",
         "articles",
         "docs",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -4624,14 +4734,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-tensorplex-docs",
       "netuid": 69,
-      "slug": "sn-69",
+      "slug": "ain",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "ain Tensorplex subnet docs",
       "tokens": [
-        "69",
         "ain",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -8126,16 +8234,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-backprop-dashboard",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "dashboard / backprop-finance",
       "title": "Chunking Backprop Finance dashboard",
       "tokens": [
-        "40",
         "backprop",
         "chunking",
         "dashboard",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/40-chunking"
@@ -8144,14 +8250,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-subnetradar-dashboard",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "dashboard / subnetradar",
       "title": "Chunking SubnetRadar dashboard",
       "tokens": [
-        "40",
         "chunking",
         "dashboard",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -8161,14 +8265,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-taomarketcap-dashboard",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "dashboard / taomarketcap",
       "title": "Chunking TaoMarketCap dashboard",
       "tokens": [
-        "40",
         "chunking",
         "dashboard",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -8178,16 +8280,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-taopedia-article",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "docs / taopedia-articles",
       "title": "Chunking Taopedia article",
       "tokens": [
-        "40",
         "article",
         "articles",
         "chunking",
         "docs",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -8197,19 +8297,32 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-tensorplex-docs",
       "netuid": 40,
-      "slug": "sn-40",
+      "slug": "chunking",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Chunking Tensorplex subnet docs",
       "tokens": [
-        "40",
         "chunking",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-40-chunking-website",
+      "netuid": 40,
+      "slug": "chunking",
+      "subtitle": "website / vectorchat",
+      "title": "Chunking website",
+      "tokens": [
+        "chunking",
+        "vectorchat",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://subnet.chunking.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11538,16 +11651,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-backprop-dashboard",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "dashboard / backprop-finance",
       "title": "eni Backprop Finance dashboard",
       "tokens": [
-        "101",
         "backprop",
         "dashboard",
         "eni",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/101-eni"
@@ -11556,14 +11667,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-subnetradar-dashboard",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "dashboard / subnetradar",
       "title": "eni SubnetRadar dashboard",
       "tokens": [
-        "101",
         "dashboard",
         "eni",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -11573,14 +11682,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-taomarketcap-dashboard",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "dashboard / taomarketcap",
       "title": "eni TaoMarketCap dashboard",
       "tokens": [
-        "101",
         "dashboard",
         "eni",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -11590,16 +11697,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-taopedia-article",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "docs / taopedia-articles",
       "title": "eni Taopedia article",
       "tokens": [
-        "101",
         "article",
         "articles",
         "docs",
         "eni",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -11609,14 +11714,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-tensorplex-docs",
       "netuid": 101,
-      "slug": "sn-101",
+      "slug": "eni",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "eni Tensorplex subnet docs",
       "tokens": [
-        "101",
         "docs",
         "eni",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -11925,18 +12028,16 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-backprop-dashboard",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "dashboard / backprop-finance",
       "title": "for sale (burn to uid1) Backprop Finance dashboard",
       "tokens": [
-        "104",
         "backprop",
         "burn",
         "dashboard",
         "finance",
         "for",
         "sale",
-        "sn",
         "to",
         "uid1"
       ],
@@ -11947,16 +12048,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-subnetradar-dashboard",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "dashboard / subnetradar",
       "title": "for sale (burn to uid1) SubnetRadar dashboard",
       "tokens": [
-        "104",
         "burn",
         "dashboard",
         "for",
         "sale",
-        "sn",
         "subnetradar",
         "to",
         "uid1"
@@ -11968,16 +12067,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-taomarketcap-dashboard",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "dashboard / taomarketcap",
       "title": "for sale (burn to uid1) TaoMarketCap dashboard",
       "tokens": [
-        "104",
         "burn",
         "dashboard",
         "for",
         "sale",
-        "sn",
         "taomarketcap",
         "to",
         "uid1"
@@ -11989,18 +12086,16 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-taopedia-article",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "docs / taopedia-articles",
       "title": "for sale (burn to uid1) Taopedia article",
       "tokens": [
-        "104",
         "article",
         "articles",
         "burn",
         "docs",
         "for",
         "sale",
-        "sn",
         "taopedia",
         "to",
         "uid1"
@@ -12012,16 +12107,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-tensorplex-docs",
       "netuid": 104,
-      "slug": "sn-104",
+      "slug": "for-sale-uid1",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "for sale (burn to uid1) Tensorplex subnet docs",
       "tokens": [
-        "104",
         "burn",
         "docs",
         "for",
         "sale",
-        "sn",
         "subnet",
         "tensorplex",
         "to",
@@ -12658,16 +12751,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-backprop-dashboard",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "dashboard / backprop-finance",
       "title": "gm Backprop Finance dashboard",
       "tokens": [
-        "28",
         "backprop",
         "dashboard",
         "finance",
-        "gm",
-        "sn"
+        "gm"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/28-gm"
@@ -12676,14 +12767,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-subnetradar-dashboard",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "dashboard / subnetradar",
       "title": "gm SubnetRadar dashboard",
       "tokens": [
-        "28",
         "dashboard",
         "gm",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -12693,14 +12782,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-taomarketcap-dashboard",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "dashboard / taomarketcap",
       "title": "gm TaoMarketCap dashboard",
       "tokens": [
-        "28",
         "dashboard",
         "gm",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -12710,16 +12797,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-taopedia-article",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "docs / taopedia-articles",
       "title": "gm Taopedia article",
       "tokens": [
-        "28",
         "article",
         "articles",
         "docs",
         "gm",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -12729,14 +12814,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-tensorplex-docs",
       "netuid": 28,
-      "slug": "sn-28",
+      "slug": "gm",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "gm Tensorplex subnet docs",
       "tokens": [
-        "28",
         "docs",
         "gm",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -19662,16 +19745,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-backprop-dashboard",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "dashboard / backprop-finance",
       "title": "Recall Backprop Finance dashboard",
       "tokens": [
-        "31",
         "backprop",
         "dashboard",
         "finance",
-        "recall",
-        "sn"
+        "recall"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/31-recall"
@@ -19680,14 +19761,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-subnetradar-dashboard",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "dashboard / subnetradar",
       "title": "Recall SubnetRadar dashboard",
       "tokens": [
-        "31",
         "dashboard",
         "recall",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -19697,14 +19776,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-taomarketcap-dashboard",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "dashboard / taomarketcap",
       "title": "Recall TaoMarketCap dashboard",
       "tokens": [
-        "31",
         "dashboard",
         "recall",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -19714,16 +19791,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-taopedia-article",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "docs / taopedia-articles",
       "title": "Recall Taopedia article",
       "tokens": [
-        "31",
         "article",
         "articles",
         "docs",
         "recall",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -19733,14 +19808,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-tensorplex-docs",
       "netuid": 31,
-      "slug": "sn-31",
+      "slug": "recall",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Recall Tensorplex subnet docs",
       "tokens": [
-        "31",
         "docs",
         "recall",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -20058,16 +20131,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-backprop-dashboard",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "dashboard / backprop-finance",
       "title": "Satori Backprop Finance dashboard",
       "tokens": [
-        "119",
         "backprop",
         "dashboard",
         "finance",
-        "satori",
-        "sn"
+        "satori"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/119-satori"
@@ -20076,14 +20147,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-subnetradar-dashboard",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "dashboard / subnetradar",
       "title": "Satori SubnetRadar dashboard",
       "tokens": [
-        "119",
         "dashboard",
         "satori",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -20093,14 +20162,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-taomarketcap-dashboard",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "dashboard / taomarketcap",
       "title": "Satori TaoMarketCap dashboard",
       "tokens": [
-        "119",
         "dashboard",
         "satori",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -20110,16 +20177,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-taopedia-article",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "docs / taopedia-articles",
       "title": "Satori Taopedia article",
       "tokens": [
-        "119",
         "article",
         "articles",
         "docs",
         "satori",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -20129,14 +20194,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-tensorplex-docs",
       "netuid": 119,
-      "slug": "sn-119",
+      "slug": "satori",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Satori Tensorplex subnet docs",
       "tokens": [
-        "119",
         "docs",
         "satori",
-        "sn",
         "subnet",
         "tensorplex"
       ],

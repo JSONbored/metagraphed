@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "netuid": 125,
+  "name": "8 Ball",
+  "slug": "eightball",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "prediction-market"
+  ],
+  "website_url": "https://8ball125.com/",
+  "docs_url": "https://github.com/Barbariandev/8Ball_miner#readme",
+  "source_repo": "https://github.com/Barbariandev/8Ball_miner",
+  "notes": "Reviewed overlay for SN125 8 Ball. The public website is live and the public miner/source repository documents Ethereum wallet binding, reward mechanics, Polygon contracts, and miner setup for netuid 125.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "verified_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 7,
+    "gap_notes": [
+      "Official website and miner/source repository are verified live.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-125-eightball-website",
+      "name": "8 Ball website",
+      "kind": "website",
+      "url": "https://8ball125.com/",
+      "provider": "eightball",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official 8 Ball website linked from the public SN125 miner repository."
+    },
+    {
+      "id": "sn-125-eightball-source-repo",
+      "name": "8 Ball miner repository",
+      "kind": "source-repo",
+      "url": "https://github.com/Barbariandev/8Ball_miner",
+      "provider": "eightball",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Barbariandev/8Ball_miner",
+        "https://8ball125.com/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public repository for SN125 miner wallet binding and reward participation."
+    },
+    {
+      "id": "sn-125-eightball-docs",
+      "name": "8 Ball miner documentation",
+      "kind": "docs",
+      "url": "https://github.com/Barbariandev/8Ball_miner#readme",
+      "provider": "eightball",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Barbariandev/8Ball_miner"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses."
+    }
+  ]
+}

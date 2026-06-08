@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "eightball",
+  "name": "8 Ball",
+  "kind": "subnet-team",
+  "website_url": "https://8ball125.com/",
+  "github_url": "https://github.com/Barbariandev/8Ball_miner",
+  "authority": "official",
+  "public_notes": "Provider profile for 8 Ball / SN125. The public miner repository documents wallet binding, reward mechanics, Polygon contracts, and the 8 Ball website.",
+  "notes": "The source repository is public and live. It contains miner registration tooling and operational documentation for SN125."
+}

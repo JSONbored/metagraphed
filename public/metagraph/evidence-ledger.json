@@ -4892,7 +4892,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/101-eni",
       "subject": "surface:sn-101-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-101.",
+      "support_summary": "Listed in curated overlay for eni.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4903,7 +4903,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/101",
       "subject": "surface:sn-101-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-101.",
+      "support_summary": "Listed in curated overlay for eni.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4914,7 +4914,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/101",
       "subject": "surface:sn-101-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-101.",
+      "support_summary": "Listed in curated overlay for eni.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4925,7 +4925,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx",
       "subject": "surface:sn-101-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-101.",
+      "support_summary": "Listed in curated overlay for eni.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4936,7 +4936,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/101/subnet.json",
       "subject": "surface:sn-101-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-101.",
+      "support_summary": "Listed in curated overlay for eni.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5145,7 +5145,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1",
       "subject": "surface:sn-104-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-104.",
+      "support_summary": "Listed in curated overlay for for-sale-uid1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5156,7 +5156,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/104",
       "subject": "surface:sn-104-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-104.",
+      "support_summary": "Listed in curated overlay for for-sale-uid1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5167,7 +5167,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/104",
       "subject": "surface:sn-104-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-104.",
+      "support_summary": "Listed in curated overlay for for-sale-uid1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5178,7 +5178,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx",
       "subject": "surface:sn-104-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-104.",
+      "support_summary": "Listed in curated overlay for for-sale-uid1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5189,7 +5189,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/104/subnet.json",
       "subject": "surface:sn-104-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-104.",
+      "support_summary": "Listed in curated overlay for for-sale-uid1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6553,7 +6553,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/119-satori",
       "subject": "surface:sn-119-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-119.",
+      "support_summary": "Listed in curated overlay for satori.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6564,7 +6564,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/119",
       "subject": "surface:sn-119-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-119.",
+      "support_summary": "Listed in curated overlay for satori.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6575,7 +6575,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/119",
       "subject": "surface:sn-119-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-119.",
+      "support_summary": "Listed in curated overlay for satori.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6586,7 +6586,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx",
       "subject": "surface:sn-119-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-119.",
+      "support_summary": "Listed in curated overlay for satori.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6597,7 +6597,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/119/subnet.json",
       "subject": "surface:sn-119-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-119.",
+      "support_summary": "Listed in curated overlay for satori.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7092,7 +7092,40 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/125-8-ball",
       "subject": "surface:sn-125-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-125.",
+      "support_summary": "Listed in curated overlay for eightball.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "8 Ball miner documentation is a public docs surface for SN125.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Barbariandev/8Ball_miner",
+      "subject": "surface:sn-125-eightball-docs",
+      "support_summary": "Listed in curated overlay for eightball.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "8 Ball miner repository is a public source-repo surface for SN125.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Barbariandev/8Ball_miner",
+      "subject": "surface:sn-125-eightball-source-repo",
+      "support_summary": "Listed in curated overlay for eightball.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "8 Ball website is a public website surface for SN125.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://8ball125.com/",
+      "subject": "surface:sn-125-eightball-website",
+      "support_summary": "Listed in curated overlay for eightball.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7103,7 +7136,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/125",
       "subject": "surface:sn-125-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-125.",
+      "support_summary": "Listed in curated overlay for eightball.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7114,7 +7147,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/125",
       "subject": "surface:sn-125-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-125.",
+      "support_summary": "Listed in curated overlay for eightball.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7125,7 +7158,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx",
       "subject": "surface:sn-125-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-125.",
+      "support_summary": "Listed in curated overlay for eightball.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7136,7 +7169,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json",
       "subject": "surface:sn-125-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-125.",
+      "support_summary": "Listed in curated overlay for eightball.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9094,7 +9127,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/28-gm",
       "subject": "surface:sn-28-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-28.",
+      "support_summary": "Listed in curated overlay for gm.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9105,7 +9138,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/28",
       "subject": "surface:sn-28-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-28.",
+      "support_summary": "Listed in curated overlay for gm.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9116,7 +9149,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/28",
       "subject": "surface:sn-28-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-28.",
+      "support_summary": "Listed in curated overlay for gm.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9127,7 +9160,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx",
       "subject": "surface:sn-28-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-28.",
+      "support_summary": "Listed in curated overlay for gm.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9138,7 +9171,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/28/subnet.json",
       "subject": "surface:sn-28-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-28.",
+      "support_summary": "Listed in curated overlay for gm.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9468,7 +9501,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/31-recall",
       "subject": "surface:sn-31-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-31.",
+      "support_summary": "Listed in curated overlay for recall.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9479,7 +9512,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/31",
       "subject": "surface:sn-31-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-31.",
+      "support_summary": "Listed in curated overlay for recall.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9490,7 +9523,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/31",
       "subject": "surface:sn-31-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-31.",
+      "support_summary": "Listed in curated overlay for recall.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9501,7 +9534,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx",
       "subject": "surface:sn-31-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-31.",
+      "support_summary": "Listed in curated overlay for recall.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9512,7 +9545,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/31/subnet.json",
       "subject": "surface:sn-31-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-31.",
+      "support_summary": "Listed in curated overlay for recall.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10370,7 +10403,18 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/40-chunking",
       "subject": "surface:sn-40-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-40.",
+      "support_summary": "Listed in curated overlay for chunking.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Chunking website is a public website surface for SN40.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://subnet.chunking.com/",
+      "subject": "surface:sn-40-chunking-website",
+      "support_summary": "Listed in curated overlay for chunking.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10381,7 +10425,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/40",
       "subject": "surface:sn-40-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-40.",
+      "support_summary": "Listed in curated overlay for chunking.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10392,7 +10436,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/40",
       "subject": "surface:sn-40-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-40.",
+      "support_summary": "Listed in curated overlay for chunking.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10403,7 +10447,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx",
       "subject": "surface:sn-40-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-40.",
+      "support_summary": "Listed in curated overlay for chunking.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10414,7 +10458,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json",
       "subject": "surface:sn-40-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-40.",
+      "support_summary": "Listed in curated overlay for chunking.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -13384,7 +13428,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/69-ain",
       "subject": "surface:sn-69-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-69.",
+      "support_summary": "Listed in curated overlay for ain.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -13395,7 +13439,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/69",
       "subject": "surface:sn-69-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-69.",
+      "support_summary": "Listed in curated overlay for ain.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -13406,7 +13450,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/69",
       "subject": "surface:sn-69-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-69.",
+      "support_summary": "Listed in curated overlay for ain.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -13417,7 +13461,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx",
       "subject": "surface:sn-69-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-69.",
+      "support_summary": "Listed in curated overlay for ain.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -13428,7 +13472,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json",
       "subject": "surface:sn-69-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-69.",
+      "support_summary": "Listed in curated overlay for ain.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -16518,8 +16562,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1501,
+    "claim_count": 1505,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1122
+    "surface_claim_count": 1126
   }
 }

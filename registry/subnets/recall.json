@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "netuid": 31,
+  "name": "Recall",
+  "slug": "recall",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "identity-drift",
+    "rag",
+    "retrieval"
+  ],
+  "source_repo": null,
+  "website_url": null,
+  "docs_url": null,
+  "dashboard_url": null,
+  "notes": "Reviewed overlay for SN31 Recall. Public chain/directory sources show the subnet renamed from Halftime to Recall. Backprop currently describes a RAG/retrieval subnet, but no official live website, source repository, API, OpenAPI schema, or docs site is verified.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "verified_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Public chain/directory sources show a recent Halftime to Recall identity change.",
+      "The historical candlestao.com reference currently times out to simple probes and is not promoted.",
+      "No verified official website yet.",
+      "No verified live source repository yet.",
+      "No verified official docs site yet beyond public directory/community pages.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": []
+}

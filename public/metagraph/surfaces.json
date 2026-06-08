@@ -7901,7 +7901,7 @@
         "https://backprop.finance/dtao/subnets/28-gm"
       ],
       "subnet_name": "gm",
-      "subnet_slug": "sn-28",
+      "subnet_slug": "gm",
       "url": "https://backprop.finance/dtao/subnets/28-gm"
     },
     {
@@ -7933,7 +7933,7 @@
         "https://subnetradar.com/subnet/28"
       ],
       "subnet_name": "gm",
-      "subnet_slug": "sn-28",
+      "subnet_slug": "gm",
       "url": "https://subnetradar.com/subnet/28"
     },
     {
@@ -7965,7 +7965,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/28"
       ],
       "subnet_name": "gm",
-      "subnet_slug": "sn-28",
+      "subnet_slug": "gm",
       "url": "https://taomarketcap.com/subnets/28"
     },
     {
@@ -7997,7 +7997,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx"
       ],
       "subnet_name": "gm",
-      "subnet_slug": "sn-28",
+      "subnet_slug": "gm",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx"
     },
     {
@@ -8029,7 +8029,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/28/subnet.json"
       ],
       "subnet_name": "gm",
-      "subnet_slug": "sn-28",
+      "subnet_slug": "gm",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/28"
     },
     {
@@ -8569,7 +8569,7 @@
         "https://backprop.finance/dtao/subnets/31-recall"
       ],
       "subnet_name": "Recall",
-      "subnet_slug": "sn-31",
+      "subnet_slug": "recall",
       "url": "https://backprop.finance/dtao/subnets/31-recall"
     },
     {
@@ -8601,7 +8601,7 @@
         "https://subnetradar.com/subnet/31"
       ],
       "subnet_name": "Recall",
-      "subnet_slug": "sn-31",
+      "subnet_slug": "recall",
       "url": "https://subnetradar.com/subnet/31"
     },
     {
@@ -8633,7 +8633,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/31"
       ],
       "subnet_name": "Recall",
-      "subnet_slug": "sn-31",
+      "subnet_slug": "recall",
       "url": "https://taomarketcap.com/subnets/31"
     },
     {
@@ -8665,7 +8665,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
       ],
       "subnet_name": "Recall",
-      "subnet_slug": "sn-31",
+      "subnet_slug": "recall",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
     },
     {
@@ -8697,7 +8697,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/31/subnet.json"
       ],
       "subnet_name": "Recall",
-      "subnet_slug": "sn-31",
+      "subnet_slug": "recall",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/31"
     },
     {
@@ -10796,8 +10796,33 @@
         "https://backprop.finance/dtao/subnets/40-chunking"
       ],
       "subnet_name": "Chunking",
-      "subnet_slug": "sn-40",
+      "subnet_slug": "chunking",
       "url": "https://backprop.finance/dtao/subnets/40-chunking"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-40-chunking-website",
+      "kind": "website",
+      "name": "Chunking website",
+      "netuid": 40,
+      "notes": "Official-looking Chunking subnet website retained with degraded probe status until the TLS certificate is fixed.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vectorchat",
+      "public_safe": true,
+      "rate_limit_notes": "Current simple probes fail TLS validation because the certificate is expired.",
+      "source_urls": [
+        "https://subnet.chunking.com/",
+        "https://github.com/VectorChat/chunking_subnet"
+      ],
+      "subnet_name": "Chunking",
+      "subnet_slug": "chunking",
+      "url": "https://subnet.chunking.com/"
     },
     {
       "auth_required": false,
@@ -10828,7 +10853,7 @@
         "https://subnetradar.com/subnet/40"
       ],
       "subnet_name": "Chunking",
-      "subnet_slug": "sn-40",
+      "subnet_slug": "chunking",
       "url": "https://subnetradar.com/subnet/40"
     },
     {
@@ -10860,7 +10885,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/40"
       ],
       "subnet_name": "Chunking",
-      "subnet_slug": "sn-40",
+      "subnet_slug": "chunking",
       "url": "https://taomarketcap.com/subnets/40"
     },
     {
@@ -10892,7 +10917,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx"
       ],
       "subnet_name": "Chunking",
-      "subnet_slug": "sn-40",
+      "subnet_slug": "chunking",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx"
     },
     {
@@ -10924,7 +10949,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
       ],
       "subnet_name": "Chunking",
-      "subnet_slug": "sn-40",
+      "subnet_slug": "chunking",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40"
     },
     {
@@ -18577,7 +18602,7 @@
         "https://backprop.finance/dtao/subnets/69-ain"
       ],
       "subnet_name": "ain",
-      "subnet_slug": "sn-69",
+      "subnet_slug": "ain",
       "url": "https://backprop.finance/dtao/subnets/69-ain"
     },
     {
@@ -18609,7 +18634,7 @@
         "https://subnetradar.com/subnet/69"
       ],
       "subnet_name": "ain",
-      "subnet_slug": "sn-69",
+      "subnet_slug": "ain",
       "url": "https://subnetradar.com/subnet/69"
     },
     {
@@ -18641,7 +18666,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/69"
       ],
       "subnet_name": "ain",
-      "subnet_slug": "sn-69",
+      "subnet_slug": "ain",
       "url": "https://taomarketcap.com/subnets/69"
     },
     {
@@ -18673,7 +18698,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
       ],
       "subnet_name": "ain",
-      "subnet_slug": "sn-69",
+      "subnet_slug": "ain",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
     },
     {
@@ -18705,7 +18730,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json"
       ],
       "subnet_name": "ain",
-      "subnet_slug": "sn-69",
+      "subnet_slug": "ain",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69"
     },
     {
@@ -27055,7 +27080,7 @@
         "https://backprop.finance/dtao/subnets/101-eni"
       ],
       "subnet_name": "eni",
-      "subnet_slug": "sn-101",
+      "subnet_slug": "eni",
       "url": "https://backprop.finance/dtao/subnets/101-eni"
     },
     {
@@ -27087,7 +27112,7 @@
         "https://subnetradar.com/subnet/101"
       ],
       "subnet_name": "eni",
-      "subnet_slug": "sn-101",
+      "subnet_slug": "eni",
       "url": "https://subnetradar.com/subnet/101"
     },
     {
@@ -27119,7 +27144,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/101"
       ],
       "subnet_name": "eni",
-      "subnet_slug": "sn-101",
+      "subnet_slug": "eni",
       "url": "https://taomarketcap.com/subnets/101"
     },
     {
@@ -27151,7 +27176,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
       ],
       "subnet_name": "eni",
-      "subnet_slug": "sn-101",
+      "subnet_slug": "eni",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
     },
     {
@@ -27183,7 +27208,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/101/subnet.json"
       ],
       "subnet_name": "eni",
-      "subnet_slug": "sn-101",
+      "subnet_slug": "eni",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/101"
     },
     {
@@ -27755,7 +27780,7 @@
         "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1"
       ],
       "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "sn-104",
+      "subnet_slug": "for-sale-uid1",
       "url": "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1"
     },
     {
@@ -27787,7 +27812,7 @@
         "https://subnetradar.com/subnet/104"
       ],
       "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "sn-104",
+      "subnet_slug": "for-sale-uid1",
       "url": "https://subnetradar.com/subnet/104"
     },
     {
@@ -27819,7 +27844,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/104"
       ],
       "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "sn-104",
+      "subnet_slug": "for-sale-uid1",
       "url": "https://taomarketcap.com/subnets/104"
     },
     {
@@ -27851,7 +27876,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx"
       ],
       "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "sn-104",
+      "subnet_slug": "for-sale-uid1",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx"
     },
     {
@@ -27883,7 +27908,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/104/subnet.json"
       ],
       "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "sn-104",
+      "subnet_slug": "for-sale-uid1",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/104"
     },
     {
@@ -31443,7 +31468,7 @@
         "https://backprop.finance/dtao/subnets/119-satori"
       ],
       "subnet_name": "Satori",
-      "subnet_slug": "sn-119",
+      "subnet_slug": "satori",
       "url": "https://backprop.finance/dtao/subnets/119-satori"
     },
     {
@@ -31475,7 +31500,7 @@
         "https://subnetradar.com/subnet/119"
       ],
       "subnet_name": "Satori",
-      "subnet_slug": "sn-119",
+      "subnet_slug": "satori",
       "url": "https://subnetradar.com/subnet/119"
     },
     {
@@ -31507,7 +31532,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/119"
       ],
       "subnet_name": "Satori",
-      "subnet_slug": "sn-119",
+      "subnet_slug": "satori",
       "url": "https://taomarketcap.com/subnets/119"
     },
     {
@@ -31539,7 +31564,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
       ],
       "subnet_name": "Satori",
-      "subnet_slug": "sn-119",
+      "subnet_slug": "satori",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
     },
     {
@@ -31571,7 +31596,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/119/subnet.json"
       ],
       "subnet_name": "Satori",
-      "subnet_slug": "sn-119",
+      "subnet_slug": "satori",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/119"
     },
     {
@@ -32736,8 +32761,79 @@
         "https://backprop.finance/dtao/subnets/125-8-ball"
       ],
       "subnet_name": "8 Ball",
-      "subnet_slug": "sn-125",
+      "subnet_slug": "eightball",
       "url": "https://backprop.finance/dtao/subnets/125-8-ball"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-125-eightball-docs",
+      "kind": "docs",
+      "name": "8 Ball miner documentation",
+      "netuid": 125,
+      "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "subnet_name": "8 Ball",
+      "subnet_slug": "eightball",
+      "url": "https://github.com/Barbariandev/8Ball_miner#readme"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-125-eightball-source-repo",
+      "kind": "source-repo",
+      "name": "8 Ball miner repository",
+      "netuid": 125,
+      "notes": "Public repository for SN125 miner wallet binding and reward participation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Barbariandev/8Ball_miner",
+        "https://8ball125.com/"
+      ],
+      "subnet_name": "8 Ball",
+      "subnet_slug": "eightball",
+      "url": "https://github.com/Barbariandev/8Ball_miner"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-125-eightball-website",
+      "kind": "website",
+      "name": "8 Ball website",
+      "netuid": 125,
+      "notes": "Official 8 Ball website linked from the public SN125 miner repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
+      "public_safe": true,
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "subnet_name": "8 Ball",
+      "subnet_slug": "eightball",
+      "url": "https://8ball125.com/"
     },
     {
       "auth_required": false,
@@ -32768,7 +32864,7 @@
         "https://subnetradar.com/subnet/125"
       ],
       "subnet_name": "8 Ball",
-      "subnet_slug": "sn-125",
+      "subnet_slug": "eightball",
       "url": "https://subnetradar.com/subnet/125"
     },
     {
@@ -32800,7 +32896,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/125"
       ],
       "subnet_name": "8 Ball",
-      "subnet_slug": "sn-125",
+      "subnet_slug": "eightball",
       "url": "https://taomarketcap.com/subnets/125"
     },
     {
@@ -32832,7 +32928,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx"
       ],
       "subnet_name": "8 Ball",
-      "subnet_slug": "sn-125",
+      "subnet_slug": "eightball",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx"
     },
     {
@@ -32864,7 +32960,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json"
       ],
       "subnet_name": "8 Ball",
-      "subnet_slug": "sn-125",
+      "subnet_slug": "eightball",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/125"
     },
     {
