@@ -14,7 +14,10 @@
       "completeness": {
         "confidence": "high",
         "gap_reasons": [],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 0,
+        "missing_identity": [],
         "missing_operational": [],
         "missing_required": [],
         "profile_level": "operational",
@@ -25,8 +28,11 @@
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 14,
       "gap_reasons": [],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 7,
       "missing_critical_count": 0,
+      "missing_identity": [],
       "missing_operational": [],
       "missing_required": [],
       "monitored_endpoint_count": 14,
@@ -113,7 +119,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -134,8 +143,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -223,7 +235,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -244,8 +259,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -328,7 +346,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -349,8 +370,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -435,7 +459,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -456,8 +483,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -537,7 +567,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -558,8 +591,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -642,7 +678,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "sse",
           "data-artifact"
@@ -659,8 +698,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "sse",
         "data-artifact"
@@ -739,7 +781,10 @@
         "gap_reasons": [
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 1,
+        "missing_identity": [],
         "missing_operational": [
           "data-artifact"
         ],
@@ -754,8 +799,11 @@
       "gap_reasons": [
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 7,
       "missing_critical_count": 1,
+      "missing_identity": [],
       "missing_operational": [
         "data-artifact"
       ],
@@ -835,7 +883,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -856,8 +907,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -941,7 +995,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -962,8 +1019,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1042,7 +1102,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1063,8 +1126,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1142,7 +1208,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1163,8 +1232,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1248,7 +1320,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1269,8 +1344,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1358,7 +1436,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1379,8 +1460,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1469,7 +1553,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1490,8 +1577,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1576,7 +1666,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1597,8 +1690,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1677,7 +1773,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1698,8 +1797,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1777,7 +1879,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1798,8 +1903,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1878,7 +1986,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -1899,8 +2010,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -1983,7 +2097,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2004,8 +2121,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2089,7 +2209,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2113,8 +2238,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2196,7 +2326,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2217,8 +2350,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2304,7 +2440,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "sse",
           "data-artifact"
@@ -2321,8 +2460,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "sse",
         "data-artifact"
@@ -2408,7 +2550,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse",
@@ -2427,8 +2572,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse",
@@ -2512,7 +2660,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2531,8 +2682,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2618,7 +2772,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2639,8 +2796,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2720,7 +2880,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2741,8 +2904,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2827,7 +2993,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2851,8 +3022,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -2937,7 +3113,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2963,8 +3145,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3046,7 +3234,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3065,8 +3256,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3156,7 +3350,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3180,8 +3379,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3266,7 +3470,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3292,8 +3502,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3373,7 +3589,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3394,8 +3613,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3480,7 +3702,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3499,8 +3724,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3589,7 +3817,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3610,8 +3841,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3692,7 +3926,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3713,8 +3950,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3792,7 +4032,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3813,8 +4056,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3892,7 +4138,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3913,8 +4162,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -3993,7 +4245,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4017,8 +4274,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4099,7 +4361,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4120,8 +4385,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4206,7 +4474,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4230,8 +4503,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4308,7 +4586,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4329,8 +4610,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4416,7 +4700,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4440,8 +4729,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4526,7 +4820,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4547,8 +4844,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4628,7 +4928,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4649,8 +4952,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4732,7 +5038,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4753,8 +5062,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -4832,7 +5144,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "subnet-api",
           "sse",
@@ -4851,8 +5166,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "subnet-api",
         "sse",
@@ -4933,7 +5251,12 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 4,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4955,8 +5278,13 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5042,7 +5370,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5063,8 +5394,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5150,7 +5484,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "sse",
           "data-artifact"
@@ -5167,8 +5504,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "sse",
         "data-artifact"
@@ -5249,7 +5589,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5270,8 +5613,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5348,7 +5694,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse",
@@ -5367,8 +5716,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse",
@@ -5452,7 +5804,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5473,8 +5828,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5563,7 +5921,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5587,8 +5950,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5665,7 +6033,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5686,8 +6057,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5766,7 +6140,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5787,8 +6164,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5865,7 +6245,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5884,8 +6267,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -5970,7 +6356,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -5991,8 +6380,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6078,7 +6470,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "sse",
           "data-artifact"
@@ -6095,8 +6490,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "sse",
         "data-artifact"
@@ -6178,7 +6576,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse",
@@ -6197,8 +6598,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse",
@@ -6275,7 +6679,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -6296,8 +6703,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6384,7 +6794,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -6405,8 +6818,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6490,7 +6906,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -6511,8 +6930,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6596,7 +7018,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -6617,8 +7042,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6703,7 +7131,10 @@
           "missing-openapi",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse"
@@ -6720,8 +7151,11 @@
         "missing-openapi",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse"
@@ -6803,7 +7237,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -6824,8 +7261,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -6910,7 +7350,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse",
@@ -6929,8 +7372,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse",
@@ -7010,7 +7456,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7031,8 +7480,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7110,7 +7562,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7129,8 +7584,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7213,7 +7671,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7239,8 +7703,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7315,7 +7785,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7334,8 +7807,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7414,7 +7890,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7435,8 +7914,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7521,7 +8003,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7540,8 +8025,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7630,7 +8118,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7656,8 +8150,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7734,7 +8234,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "subnet-api",
           "sse"
@@ -7751,8 +8254,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 7,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "subnet-api",
         "sse"
@@ -7842,7 +8348,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7863,8 +8372,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -7950,7 +8462,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7974,8 +8491,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8052,7 +8574,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8073,8 +8598,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8152,7 +8680,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8173,8 +8704,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8255,7 +8789,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8274,8 +8811,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8357,7 +8897,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8378,8 +8921,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8463,7 +9009,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8487,8 +9038,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8569,7 +9125,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8590,8 +9149,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8670,7 +9232,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8691,8 +9256,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8777,7 +9345,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8798,8 +9369,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8883,7 +9457,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -8904,8 +9481,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -8989,7 +9569,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9015,8 +9601,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9099,7 +9691,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9123,8 +9720,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9209,7 +9811,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9228,8 +9833,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9313,7 +9921,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9337,8 +9950,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9421,7 +10039,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9445,8 +10068,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9527,7 +10155,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9551,8 +10184,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9635,7 +10273,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9661,8 +10305,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9739,7 +10389,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9760,8 +10413,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9839,7 +10495,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9860,8 +10519,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -9940,7 +10602,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -9964,8 +10631,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10048,7 +10720,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "sse",
           "data-artifact"
@@ -10065,8 +10740,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "sse",
         "data-artifact"
@@ -10146,7 +10824,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "subnet-api",
           "sse",
@@ -10165,8 +10846,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "subnet-api",
         "sse",
@@ -10249,7 +10933,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10270,8 +10957,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10350,7 +11040,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10371,8 +11064,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10452,7 +11148,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10473,8 +11172,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10556,7 +11258,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10582,8 +11290,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10663,7 +11377,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10684,8 +11401,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10768,7 +11488,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10789,8 +11512,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10875,7 +11601,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10901,8 +11633,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -10978,7 +11716,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10999,8 +11740,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11078,7 +11822,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11099,8 +11846,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11177,7 +11927,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse",
@@ -11196,8 +11949,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse",
@@ -11274,7 +12030,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11295,8 +12054,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11378,7 +12140,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11402,8 +12169,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11483,7 +12255,10 @@
           "missing-openapi",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 2,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "sse"
@@ -11500,8 +12275,11 @@
         "missing-openapi",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "sse"
@@ -11585,7 +12363,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11606,8 +12387,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11687,7 +12471,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11708,8 +12495,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11793,7 +12583,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11814,8 +12607,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11895,7 +12691,10 @@
           "missing-subnet-api",
           "missing-sse"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 3,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -11914,8 +12713,11 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -11998,7 +12800,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12022,8 +12829,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12106,7 +12918,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "source-repo"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12130,8 +12947,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12211,7 +13033,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12232,8 +13057,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12312,7 +13140,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12333,8 +13164,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12417,7 +13251,13 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 1,
         "missing_critical_count": 6,
+        "missing_identity": [
+          "source-repo",
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12443,8 +13283,14 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12520,7 +13366,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12541,8 +13390,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12625,7 +13477,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12646,8 +13501,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12732,7 +13590,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12753,8 +13614,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12839,7 +13703,12 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "partial",
+        "identity_surface_count": 2,
         "missing_critical_count": 5,
+        "missing_identity": [
+          "website"
+        ],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12863,8 +13732,13 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_identity": [
+        "website"
+      ],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -12941,7 +13815,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -12962,8 +13839,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -13047,7 +13927,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -13068,8 +13951,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -13148,7 +14034,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -13169,8 +14058,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -13248,7 +14140,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -13269,8 +14164,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -13348,7 +14246,10 @@
           "missing-sse",
           "missing-data-artifact"
         ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
         "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -13369,8 +14270,11 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
@@ -13443,6 +14347,10 @@
       "high": 74,
       "low": 6,
       "medium": 49
+    },
+    "by_identity_level": {
+      "complete": 101,
+      "partial": 28
     },
     "by_profile_level": {
       "adapter-backed": 2,

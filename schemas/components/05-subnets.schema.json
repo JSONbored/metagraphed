@@ -347,7 +347,10 @@
         "required": [
           "score",
           "profile_level",
+          "identity_level",
+          "identity_surface_count",
           "confidence",
+          "missing_identity",
           "missing_required",
           "missing_operational",
           "missing_critical_count",
@@ -367,8 +370,22 @@
               "adapter-backed"
             ]
           },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
           "confidence": {
             "enum": ["low", "medium", "high"]
+          },
+          "missing_identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           },
           "missing_required": {
             "type": "array",
@@ -457,7 +474,10 @@
           "review_state",
           "confidence",
           "profile_level",
+          "identity_level",
+          "identity_surface_count",
           "completeness_score",
+          "missing_identity",
           "missing_required",
           "missing_operational",
           "missing_critical_count",
@@ -567,10 +587,24 @@
               "adapter-backed"
             ]
           },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
           "completeness_score": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100
+          },
+          "missing_identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           },
           "missing_required": {
             "type": "array",
@@ -623,6 +657,7 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "by_identity_level",
                   "by_profile_level",
                   "by_confidence"
                 ],
@@ -637,6 +672,9 @@
                     "maximum": 100
                   },
                   "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_identity_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
                   "by_confidence": {

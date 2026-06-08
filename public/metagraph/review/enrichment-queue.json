@@ -23,8 +23,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 22,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact"
       ],
@@ -90,8 +93,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -171,8 +180,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -250,8 +264,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -328,8 +347,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -415,8 +437,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -503,8 +528,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -588,8 +616,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -666,8 +700,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -750,8 +787,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -828,8 +871,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -917,8 +963,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1006,8 +1055,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1093,8 +1145,11 @@
       ],
       "endpoint_count": 11,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -1172,8 +1227,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1239,8 +1300,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1312,8 +1379,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -1391,8 +1461,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1464,8 +1540,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -1542,8 +1621,13 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1610,8 +1694,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1677,8 +1767,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1744,8 +1840,14 @@
       ],
       "endpoint_count": 5,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 1,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1818,8 +1920,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1907,8 +2012,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -1995,8 +2103,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2082,8 +2193,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2169,8 +2283,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2256,8 +2373,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2337,8 +2457,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse"
@@ -2416,8 +2539,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2495,8 +2621,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2571,8 +2702,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2659,8 +2793,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2749,8 +2886,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2830,8 +2970,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 10,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "maintainer-review",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -2913,8 +3056,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3003,8 +3149,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3091,8 +3240,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3174,8 +3326,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "maintainer-review",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse",
@@ -3256,8 +3411,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3343,8 +3501,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3430,8 +3591,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3517,8 +3681,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3605,8 +3772,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3695,8 +3865,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3781,8 +3954,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3856,8 +4034,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -3943,8 +4124,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4030,8 +4214,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4118,8 +4305,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4207,8 +4397,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4297,8 +4490,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4387,8 +4583,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4476,8 +4675,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4564,8 +4766,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4643,8 +4850,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4732,8 +4942,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4821,8 +5034,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4910,8 +5126,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -4998,8 +5217,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5085,8 +5307,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5171,8 +5396,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5240,8 +5470,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "maintainer-review",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5315,8 +5548,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 17,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse"
@@ -5394,8 +5630,13 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5471,8 +5712,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5545,8 +5791,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5617,8 +5868,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 8,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "maintainer-review",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -5694,8 +5948,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "maintainer-review",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse",
@@ -5768,8 +6025,13 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -5841,8 +6103,11 @@
       ],
       "endpoint_count": 12,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -5927,8 +6192,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6016,8 +6284,11 @@
       ],
       "endpoint_count": 11,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6104,8 +6375,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -6190,8 +6464,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6277,8 +6554,11 @@
       ],
       "endpoint_count": 13,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6364,8 +6644,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6451,8 +6734,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6538,8 +6824,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6625,8 +6914,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6712,8 +7004,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6801,8 +7096,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6890,8 +7188,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -6977,8 +7278,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7064,8 +7368,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7151,8 +7458,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7228,8 +7538,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse"
@@ -7299,8 +7612,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7382,8 +7698,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7456,8 +7777,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7534,8 +7860,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7613,8 +7942,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7679,8 +8013,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7749,8 +8088,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7818,8 +8162,13 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7892,8 +8241,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -7980,8 +8332,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8070,8 +8425,11 @@
       ],
       "endpoint_count": 11,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8153,8 +8511,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8221,8 +8582,13 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8288,8 +8654,13 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [
+        "source-repo"
+      ],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8356,8 +8727,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8429,8 +8803,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -8508,8 +8885,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -8596,8 +8976,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8677,8 +9060,11 @@
       ],
       "endpoint_count": 11,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8753,8 +9139,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8841,8 +9230,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -8928,8 +9320,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9005,8 +9400,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 13,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse"
@@ -9073,8 +9471,11 @@
       ],
       "endpoint_count": 6,
       "evidence_action": "verify-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9148,8 +9549,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9222,8 +9626,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 12,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9292,8 +9699,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 15,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse"
@@ -9357,8 +9767,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 16,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "sse",
         "subnet-api"
@@ -9427,8 +9840,11 @@
       ],
       "endpoint_count": 11,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "openapi",
         "sse",
@@ -9495,8 +9911,11 @@
       ],
       "endpoint_count": 10,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9568,8 +9987,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9641,8 +10063,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9710,8 +10135,11 @@
       ],
       "endpoint_count": 9,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9779,8 +10207,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9848,8 +10279,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9917,8 +10351,11 @@
       ],
       "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -9986,8 +10423,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -10055,8 +10495,11 @@
       ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "direct-submission",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -10120,8 +10563,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 12,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse"
@@ -10181,8 +10627,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 11,
       "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "adapter-candidate",
       "manual_review_required": true,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "sse"
@@ -10242,8 +10691,11 @@
       "direct_submission_kinds": [],
       "endpoint_count": 14,
       "evidence_action": "monitor",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
       "lane": "baseline-monitoring",
       "manual_review_required": false,
+      "missing_identity": [],
       "missing_kinds": [
         "data-artifact",
         "openapi",
@@ -10296,6 +10748,10 @@
       "review-existing-evidence": 1,
       "submit-new-evidence": 29,
       "verify-existing-evidence": 1
+    },
+    "identity_level_counts": {
+      "complete": 101,
+      "partial": 28
     },
     "lane_counts": {
       "adapter-candidate": 11,

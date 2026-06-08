@@ -161,7 +161,10 @@
           "confidence",
           "curation_level",
           "gap_reasons",
+          "identity_level",
+          "identity_surface_count",
           "missing_critical_count",
+          "missing_identity",
           "missing_operational",
           "missing_required",
           "name",
@@ -198,9 +201,23 @@
               "type": "string"
             }
           },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
           "missing_critical_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "missing_identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           },
           "missing_operational": {
             "type": "array",
@@ -293,8 +310,11 @@
           "direct_submission_kinds",
           "endpoint_count",
           "evidence_action",
+          "identity_level",
+          "identity_surface_count",
           "lane",
           "manual_review_required",
+          "missing_identity",
           "missing_kinds",
           "name",
           "netuid",
@@ -350,6 +370,14 @@
           "evidence_action": {
             "$ref": "#/components/schemas/ReviewEvidenceAction"
           },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
           "lane": {
             "$ref": "#/components/schemas/ReviewEnrichmentLane"
           },
@@ -357,6 +385,12 @@
             "type": "boolean"
           },
           "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_identity": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SurfaceKind"
@@ -831,6 +865,7 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
                   "critical_gap_counts"
@@ -854,6 +889,9 @@
                     "maximum": 100
                   },
                   "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_identity_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
                   "by_confidence": {
@@ -895,6 +933,7 @@
                   "baseline_monitoring_count",
                   "direct_submission_count",
                   "evidence_action_counts",
+                  "identity_level_counts",
                   "lane_counts",
                   "maintainer_review_count",
                   "manual_review_required_count",
@@ -917,6 +956,9 @@
                     "minimum": 0
                   },
                   "evidence_action_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "identity_level_counts": {
                     "$ref": "#/components/schemas/CountMap"
                   },
                   "lane_counts": {

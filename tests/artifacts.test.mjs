@@ -433,6 +433,15 @@ test("public artifacts are internally consistent", () => {
         Number.isInteger(profile.completeness_score) &&
         profile.completeness_score >= 0 &&
         profile.completeness_score <= 100 &&
+        ["none", "directory", "partial", "complete"].includes(
+          profile.identity_level,
+        ) &&
+        Number.isInteger(profile.identity_surface_count) &&
+        profile.identity_surface_count >= 0 &&
+        profile.identity_surface_count <= 3 &&
+        Array.isArray(profile.missing_identity) &&
+        profile.identity_surface_count + profile.missing_identity.length ===
+          3 &&
         Array.isArray(profile.missing_required) &&
         Array.isArray(profile.missing_operational) &&
         Array.isArray(profile.gap_reasons) &&
@@ -445,8 +454,13 @@ test("public artifacts are internally consistent", () => {
     profileCompleteness.profiles.every(
       (profile) =>
         Array.isArray(profile.missing_required) &&
+        Array.isArray(profile.missing_identity) &&
         Array.isArray(profile.missing_operational) &&
         Array.isArray(profile.supported_interface_kinds) &&
+        ["none", "directory", "partial", "complete"].includes(
+          profile.identity_level,
+        ) &&
+        Number.isInteger(profile.identity_surface_count) &&
         Number.isInteger(profile.source_count) &&
         Number.isInteger(profile.operational_interface_count) &&
         typeof profile.curation_level === "string" &&
@@ -717,6 +731,29 @@ test("public artifacts are internally consistent", () => {
     profileCompleteness.summary.by_profile_level,
     profileCompleteness.profiles.reduce((counts, profile) => {
       counts[profile.profile_level] = (counts[profile.profile_level] || 0) + 1;
+      return counts;
+    }, {}),
+  );
+  assert.deepEqual(
+    profiles.summary.by_identity_level,
+    profiles.profiles.reduce((counts, profile) => {
+      counts[profile.identity_level] =
+        (counts[profile.identity_level] || 0) + 1;
+      return counts;
+    }, {}),
+  );
+  assert.deepEqual(
+    profileCompleteness.summary.by_identity_level,
+    profileCompleteness.profiles.reduce((counts, profile) => {
+      counts[profile.identity_level] =
+        (counts[profile.identity_level] || 0) + 1;
+      return counts;
+    }, {}),
+  );
+  assert.deepEqual(
+    enrichmentQueue.summary.identity_level_counts,
+    enrichmentQueue.queue.reduce((counts, entry) => {
+      counts[entry.identity_level] = (counts[entry.identity_level] || 0) + 1;
       return counts;
     }, {}),
   );

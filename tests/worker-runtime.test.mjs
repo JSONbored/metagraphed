@@ -971,6 +971,20 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/review/profile-completeness?identity_level=partial",
+        (body) =>
+          body.data.profiles.length > 0 &&
+          body.data.profiles.every(
+            (profile) => profile.identity_level === "partial",
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/review/enrichment-queue?identity_level=partial",
+        (body) =>
+          body.data.queue.length > 0 &&
+          body.data.queue.every((entry) => entry.identity_level === "partial"),
+      ],
+      [
         "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=openapi",
         (body) =>
           body.data.queue.length > 0 &&
@@ -1031,7 +1045,9 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
       "https://metagraph.sh/api/v1/review/adapter-candidates?recommended_adapter_kind=generic",
+      "https://metagraph.sh/api/v1/review/profile-completeness?identity_level=unknown",
       "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=seed-node",
+      "https://metagraph.sh/api/v1/review/enrichment-queue?identity_level=unknown",
       "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=seed-node",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];

@@ -944,8 +944,11 @@ function buildSubnetProfileArtifacts({
       curation_level: profile.curation_level,
       gap_reasons: profile.completeness.gap_reasons,
       missing_critical_count: profile.missing_critical_count,
+      identity_level: profile.identity_level,
+      identity_surface_count: profile.identity_surface_count,
       missing_operational: profile.completeness.missing_operational,
       missing_required: profile.completeness.missing_required,
+      missing_identity: profile.missing_identity,
       name: profile.name,
       native_name_quality: profile.native_name_quality,
       netuid: profile.netuid,
@@ -983,6 +986,7 @@ function buildSubnetProfileArtifacts({
       ).length,
       average_completeness_score: averageScore(profiles),
       by_profile_level: countBy(profiles, "profile_level"),
+      by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
       critical_gap_counts: countGapReasons(reviewProfiles),
     },
@@ -990,6 +994,7 @@ function buildSubnetProfileArtifacts({
       profile_count: profiles.length,
       average_completeness_score: averageScore(profiles),
       by_profile_level: countBy(profiles, "profile_level"),
+      by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
     },
   };
@@ -1070,6 +1075,7 @@ function buildEnrichmentQueueArtifacts({
         (entry) => entry.manual_review_required,
       ).length,
       lane_counts: countBy(queue, "lane"),
+      identity_level_counts: countBy(queue, "identity_level"),
       evidence_action_counts: countBy(queue, "evidence_action"),
       top_direct_submission_kinds: countDirectSubmissionKinds(queue),
     },
@@ -1220,8 +1226,11 @@ function enrichmentQueueEntry({
     direct_submission_kinds: directSubmissionKinds,
     endpoint_count: profile.endpoint_count,
     evidence_action: evidenceAction,
+    identity_level: profile.identity_level,
+    identity_surface_count: profile.identity_surface_count,
     lane,
     manual_review_required: manualReviewRequired,
+    missing_identity: profile.missing_identity,
     missing_kinds: missingKinds,
     name: profile.name,
     netuid: profile.netuid,
@@ -1672,8 +1681,11 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     review_state: subnet.curation.review_state,
     confidence,
     profile_level: completeness.profile_level,
+    identity_level: completeness.identity_level,
+    identity_surface_count: completeness.identity_surface_count,
     completeness_score: completeness.score,
     missing_required: completeness.missing_required,
+    missing_identity: completeness.missing_identity,
     missing_operational: completeness.missing_operational,
     missing_critical_count: completeness.missing_critical_count,
     gap_reasons: completeness.gap_reasons,
@@ -1691,6 +1703,25 @@ function subnetProfileCompleteness({
   supportedKinds,
 }) {
   const kindSet = new Set(supportedKinds);
+  const identityEntries = [
+    ["docs", primaryLinks.docs_url || kindSet.has("docs")],
+    ["source-repo", primaryLinks.source_repo || kindSet.has("source-repo")],
+    ["website", primaryLinks.website_url || kindSet.has("website")],
+  ];
+  const identitySurfaceCount = identityEntries.filter(
+    ([, present]) => present,
+  ).length;
+  const missingIdentity = identityEntries
+    .filter(([, present]) => !present)
+    .map(([kind]) => kind);
+  const identityLevel =
+    identitySurfaceCount === identityEntries.length
+      ? "complete"
+      : identitySurfaceCount > 0
+        ? "partial"
+        : primaryLinks.dashboard_url || kindSet.has("dashboard")
+          ? "directory"
+          : "none";
   const missingRecommended = [
     ["docs", primaryLinks.docs_url || kindSet.has("docs")],
   ]
@@ -1743,6 +1774,8 @@ function subnetProfileCompleteness({
   return {
     score,
     profile_level: profileLevel,
+    identity_level: identityLevel,
+    identity_surface_count: identitySurfaceCount,
     confidence:
       curationLevel === "adapter-backed" ||
       curationLevel === "maintainer-reviewed"
@@ -1750,6 +1783,7 @@ function subnetProfileCompleteness({
         : curationLevel === "machine-verified"
           ? "medium"
           : "low",
+    missing_identity: missingIdentity,
     missing_required: missingRequired,
     missing_operational: missingOperational,
     missing_critical_count: missingRequired.length + missingOperational.length,

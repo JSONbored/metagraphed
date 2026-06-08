@@ -1809,7 +1809,8 @@
       "query_filter_names": [
         "netuid",
         "profile_level",
-        "confidence"
+        "confidence",
+        "identity_level"
       ],
       "query_parameters": [
         {
@@ -1843,6 +1844,18 @@
           }
         },
         {
+          "name": "identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1863,6 +1876,8 @@
             "enum": [
               "candidate_count",
               "completeness_score",
+              "identity_level",
+              "identity_surface_count",
               "missing_critical_count",
               "name",
               "netuid",
@@ -2039,6 +2054,7 @@
         "curation_level",
         "direct_submission_kinds",
         "evidence_action",
+        "identity_level",
         "lane",
         "missing_kinds",
         "netuid",
@@ -2093,6 +2109,18 @@
               "review-existing-evidence",
               "maintainer-review-existing-evidence",
               "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
             ],
             "type": "string"
           }
@@ -2204,6 +2232,8 @@
               "curation_level",
               "endpoint_count",
               "evidence_action",
+              "identity_level",
+              "identity_surface_count",
               "lane",
               "name",
               "netuid",

@@ -1511,6 +1511,7 @@ export interface components {
                 baseline_monitoring_count: number;
                 direct_submission_count: number;
                 evidence_action_counts: components["schemas"]["CountMap"];
+                identity_level_counts: components["schemas"]["CountMap"];
                 lane_counts: components["schemas"]["CountMap"];
                 maintainer_review_count: number;
                 manual_review_required_count: number;
@@ -1532,8 +1533,12 @@ export interface components {
             direct_submission_kinds: components["schemas"]["SurfaceKind"][];
             endpoint_count: number;
             evidence_action: components["schemas"]["ReviewEvidenceAction"];
+            /** @enum {unknown} */
+            identity_level: "none" | "directory" | "partial" | "complete";
+            identity_surface_count: number;
             lane: components["schemas"]["ReviewEnrichmentLane"];
             manual_review_required: boolean;
+            missing_identity: components["schemas"]["SurfaceKind"][];
             missing_kinds: components["schemas"]["SurfaceKind"][];
             name: string;
             netuid: number;
@@ -1579,6 +1584,7 @@ export interface components {
             summary: {
                 average_completeness_score: number;
                 by_confidence: components["schemas"]["CountMap"];
+                by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
                 critical_gap_counts: components["schemas"]["CountMap"];
                 needs_identity_count: number;
@@ -1595,7 +1601,11 @@ export interface components {
             confidence: "low" | "medium" | "high";
             curation_level: components["schemas"]["CurationLevel"];
             gap_reasons: string[];
+            /** @enum {unknown} */
+            identity_level: "none" | "directory" | "partial" | "complete";
+            identity_surface_count: number;
             missing_critical_count: number;
+            missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             name: string;
@@ -1926,8 +1936,12 @@ export interface components {
             curation_level: components["schemas"]["CurationLevel"];
             endpoint_count: number;
             gap_reasons: string[];
+            /** @enum {unknown} */
+            identity_level: "none" | "directory" | "partial" | "complete";
+            identity_surface_count: number;
             interface_count?: number;
             missing_critical_count: number;
+            missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             monitored_endpoint_count: number;
@@ -1968,7 +1982,11 @@ export interface components {
             /** @enum {unknown} */
             confidence: "low" | "medium" | "high";
             gap_reasons: string[];
+            /** @enum {unknown} */
+            identity_level: "none" | "directory" | "partial" | "complete";
+            identity_surface_count: number;
             missing_critical_count: number;
+            missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             /** @enum {unknown} */
@@ -1998,6 +2016,7 @@ export interface components {
             summary: {
                 average_completeness_score: number;
                 by_confidence: components["schemas"]["CountMap"];
+                by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
                 profile_count: number;
             };
@@ -3877,6 +3896,7 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                identity_level?: "none" | "directory" | "partial" | "complete";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
@@ -3887,7 +3907,7 @@ export interface operations {
                 q?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
+                sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -4037,9 +4057,10 @@ export interface operations {
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
+                identity_level?: "none" | "directory" | "partial" | "complete";
                 limit?: number;
                 cursor?: number;
-                sort?: "candidate_count" | "completeness_score" | "missing_critical_count" | "name" | "netuid" | "priority_score" | "profile_level";
+                sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_surface_count" | "missing_critical_count" | "name" | "netuid" | "priority_score" | "profile_level";
                 order?: "asc" | "desc";
             };
             header?: never;

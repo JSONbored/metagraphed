@@ -152,8 +152,16 @@ const checks = [
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],
   [
-    "/api/v1/review/profile-completeness?limit=3",
-    (body) => assert.equal(body.data.profiles.length <= 3, true),
+    "/api/v1/review/profile-completeness?identity_level=partial&limit=3",
+    (body) => {
+      assert.equal(body.data.profiles.length <= 3, true);
+      assert.equal(
+        body.data.profiles.every(
+          (profile) => profile.identity_level === "partial",
+        ),
+        true,
+      );
+    },
   ],
   [
     "/api/v1/review/adapter-candidates?limit=3",

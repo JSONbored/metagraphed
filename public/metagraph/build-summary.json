@@ -7,18 +7,18 @@
   },
   "artifact_budgets": [],
   "artifact_count": 22,
-  "artifact_size_bytes": 4645826,
+  "artifact_size_bytes": 4715140,
   "artifacts": [
     {
       "path": "api-index.json",
-      "sha256": "4f5b64f88a1728791fffe1acc03efcefeccbf2f58f16930a4376925e0fa0275a",
-      "size_bytes": 75670,
+      "sha256": "7bc60e0ced0b2a274dde5db9d96a441e59a2eb27da4bdffd9c66649392b58ba6",
+      "size_bytes": 79922,
       "storage_tier": "dual"
     },
     {
       "path": "changelog.json",
-      "sha256": "5bb7063e63892c836200f6e6e77078d9a60eccb45d8d5db2bcf705a5b413b1e8",
-      "size_bytes": 1481,
+      "sha256": "2bbba99f5c28e52199d2de04f0d6e1f1893d456d537ab9cef0c821dae5c8e397",
+      "size_bytes": 1914,
       "storage_tier": "dual"
     },
     {
@@ -59,14 +59,14 @@
     },
     {
       "path": "openapi.json",
-      "sha256": "58cbd2f1bacb35879f88cbf76b8f99ce4d4b7fe306b1e6aa0b3eb21c085530e4",
-      "size_bytes": 328524,
+      "sha256": "f6fc9fa37cf4e6fc2bc901d235f0ca613ceaa9112ddad618b8947c41d2d11569",
+      "size_bytes": 336190,
       "storage_tier": "dual"
     },
     {
       "path": "profiles.json",
-      "sha256": "6ad9f5ff7e136ea5ea0cc8e4a41df49a80a5a183652efc8da759d5b4ab71a3d2",
-      "size_bytes": 419706,
+      "sha256": "93885545344c24e59b9512756973ffbf5400e3318d08c1fd18fb1d9c4f48e2fa",
+      "size_bytes": 448599,
       "storage_tier": "dual"
     },
     {
@@ -89,8 +89,8 @@
     },
     {
       "path": "review/enrichment-queue.json",
-      "sha256": "9d03b4fb73b5c726eb9804d3f040d08776f6c8f91d516402e02876ab0e8e6cbb",
-      "size_bytes": 353506,
+      "sha256": "647590d7e691538c82e56ea0a5131da9360d2052c672a3cf5e3aa7b371867d0f",
+      "size_bytes": 367543,
       "storage_tier": "dual"
     },
     {
@@ -107,8 +107,8 @@
     },
     {
       "path": "review/profile-completeness.json",
-      "sha256": "a6734327856a8d701aeec455f7e5e32855f52c97bdf4a843ee8afb08cbb779f4",
-      "size_bytes": 129947,
+      "sha256": "e6658c097afc446a4df9d336a8edbd754a65e5224ea788431bb4d9319725d8b1",
+      "size_bytes": 143980,
       "storage_tier": "git"
     },
     {
@@ -181,7 +181,7 @@
   },
   "endpoint_count": 1107,
   "full_artifact_count": 1232,
-  "full_artifact_size_bytes": 47891020,
+  "full_artifact_size_bytes": 47987342,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 77,
@@ -196,9 +196,9 @@
     "r2": 1210
   },
   "storage_tier_size_bytes": {
-    "dual": 4515879,
-    "git": 129947,
-    "r2": 43245194
+    "dual": 4571160,
+    "git": 143980,
+    "r2": 43272202
   },
   "subnet_count": 129,
   "surface_count": 1107

@@ -3454,6 +3454,9 @@
                   "evidence_action_counts": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "identity_level_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
                   "lane_counts": {
                     "$ref": "#/components/schemas/CountMap"
                   },
@@ -3486,6 +3489,7 @@
                   "baseline_monitoring_count",
                   "direct_submission_count",
                   "evidence_action_counts",
+                  "identity_level_counts",
                   "lane_counts",
                   "maintainer_review_count",
                   "manual_review_required_count",
@@ -3544,11 +3548,30 @@
           "evidence_action": {
             "$ref": "#/components/schemas/ReviewEvidenceAction"
           },
+          "identity_level": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ]
+          },
+          "identity_surface_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
           "lane": {
             "$ref": "#/components/schemas/ReviewEnrichmentLane"
           },
           "manual_review_required": {
             "type": "boolean"
+          },
+          "missing_identity": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           },
           "missing_kinds": {
             "items": {
@@ -3648,8 +3671,11 @@
           "direct_submission_kinds",
           "endpoint_count",
           "evidence_action",
+          "identity_level",
+          "identity_surface_count",
           "lane",
           "manual_review_required",
+          "missing_identity",
           "missing_kinds",
           "name",
           "netuid",
@@ -3788,6 +3814,9 @@
                   "by_confidence": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "by_identity_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
@@ -3812,6 +3841,7 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
                   "critical_gap_counts"
@@ -3855,9 +3885,28 @@
             },
             "type": "array"
           },
+          "identity_level": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ]
+          },
+          "identity_surface_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
           "missing_critical_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "missing_identity": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           },
           "missing_operational": {
             "items": {
@@ -3927,7 +3976,10 @@
           "confidence",
           "curation_level",
           "gap_reasons",
+          "identity_level",
+          "identity_surface_count",
           "missing_critical_count",
+          "missing_identity",
           "missing_operational",
           "missing_required",
           "name",
@@ -5269,6 +5321,19 @@
             },
             "type": "array"
           },
+          "identity_level": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ]
+          },
+          "identity_surface_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
           "interface_count": {
             "minimum": 0,
             "type": "integer"
@@ -5276,6 +5341,12 @@
           "missing_critical_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "missing_identity": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           },
           "missing_operational": {
             "items": {
@@ -5407,7 +5478,10 @@
           "review_state",
           "confidence",
           "profile_level",
+          "identity_level",
+          "identity_surface_count",
           "completeness_score",
+          "missing_identity",
           "missing_required",
           "missing_operational",
           "missing_critical_count",
@@ -5480,9 +5554,28 @@
             },
             "type": "array"
           },
+          "identity_level": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ]
+          },
+          "identity_surface_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
           "missing_critical_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "missing_identity": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           },
           "missing_operational": {
             "items": {
@@ -5513,7 +5606,10 @@
         "required": [
           "score",
           "profile_level",
+          "identity_level",
+          "identity_surface_count",
           "confidence",
+          "missing_identity",
           "missing_required",
           "missing_operational",
           "missing_critical_count",
@@ -5626,6 +5722,9 @@
                   "by_confidence": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "by_identity_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
@@ -5637,6 +5736,7 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "by_identity_level",
                   "by_profile_level",
                   "by_confidence"
                 ],
@@ -9838,6 +9938,20 @@
           },
           {
             "in": "query",
+            "name": "identity_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "none",
+                "directory",
+                "partial",
+                "complete"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "lane",
             "required": false,
             "schema": {
@@ -9965,6 +10079,8 @@
                 "curation_level",
                 "endpoint_count",
                 "evidence_action",
+                "identity_level",
+                "identity_surface_count",
                 "lane",
                 "name",
                 "netuid",
@@ -10289,6 +10405,20 @@
           },
           {
             "in": "query",
+            "name": "identity_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "none",
+                "directory",
+                "partial",
+                "complete"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -10314,6 +10444,8 @@
               "enum": [
                 "candidate_count",
                 "completeness_score",
+                "identity_level",
+                "identity_surface_count",
                 "missing_critical_count",
                 "name",
                 "netuid",
