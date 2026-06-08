@@ -123,7 +123,7 @@ function ProvidersGrid() {
                   name={p.name ?? p.slug}
                   fallback={p.slug}
                   size={36}
-                />)
+                />
                 <div className="min-w-0">
                   <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                     {p.kind ?? "provider"}
