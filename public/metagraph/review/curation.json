@@ -500,7 +500,7 @@
       "slug": "sn-72"
     },
     {
-      "candidate_api_count": 5,
+      "candidate_api_count": 6,
       "curation_level": "adapter-backed",
       "name": "Gittensor",
       "netuid": 74,
@@ -3440,7 +3440,7 @@
       "verified_candidate_count": 3
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "curation_level": "adapter-backed",
       "missing_kinds": [
         "dashboard",
@@ -3450,7 +3450,7 @@
       ],
       "name": "Gittensor",
       "netuid": 74,
-      "priority_score": 23,
+      "priority_score": 24,
       "review_state": "maintainer-reviewed",
       "slug": "gittensor",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",

@@ -19,6 +19,7 @@ import {
   artifactOutputPath,
   createLocalArtifactEnv,
   flattenSurfaces,
+  formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
   isHtmlContentType,
@@ -43,6 +44,7 @@ import {
   slugify,
   stableStringify,
   writeJson,
+  writeRepositoryJson,
 } from "../scripts/lib.mjs";
 import {
   ARTIFACT_STORAGE_TIERS,
@@ -68,6 +70,7 @@ import {
   validateCandidateForSubmission,
   validateSubmissionProvenance,
 } from "../scripts/submission-policy.mjs";
+import { submissionFormattingErrors } from "../scripts/submission-formatting.mjs";
 
 const native = {
   subnets: [
@@ -105,6 +108,51 @@ describe("script utility contracts", () => {
         await listJsonFilesRecursive(path.join(dir, "missing")),
         [],
       );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("formats contributor JSON with repository style", async () => {
+    const document = {
+      schema_version: 1,
+      source_urls: ["https://docs.all-ways.io/how-it-works.html"],
+    };
+    const formatted = await formatRepositoryJson(document);
+
+    assert.match(
+      formatted,
+      /"source_urls": \["https:\/\/docs\.all-ways\.io\/how-it-works\.html"\]/,
+    );
+    assert.equal(formatted.endsWith("\n"), true);
+    assert.deepEqual(
+      await submissionFormattingErrors([
+        {
+          file: "registry/candidates/community/example.json",
+          raw: `${JSON.stringify(document, null, 2)}\n`,
+          document,
+        },
+      ]),
+      [
+        "registry/candidates/community/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run candidate:new/provider:new",
+      ],
+    );
+    assert.deepEqual(
+      await submissionFormattingErrors([
+        {
+          file: "registry/candidates/community/example.json",
+          raw: formatted,
+          document,
+        },
+      ]),
+      [],
+    );
+
+    const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-json-"));
+    try {
+      const filePath = path.join(dir, "candidate.json");
+      await writeRepositoryJson(filePath, document);
+      assert.equal(await readFile(filePath, "utf8"), formatted);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -63,6 +63,16 @@ export async function writeJson(filePath, value) {
   await fs.writeFile(filePath, `${stableStringify(value)}\n`, "utf8");
 }
 
+export async function formatRepositoryJson(value) {
+  const prettier = await import("prettier");
+  return prettier.format(`${stableStringify(value)}\n`, { parser: "json" });
+}
+
+export async function writeRepositoryJson(filePath, value) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, await formatRepositoryJson(value), "utf8");
+}
+
 export function artifactFilePath(relativePath, options = {}) {
   const normalized = artifactRelativePath(relativePath);
   const tier = artifactStorageTierForRelativePath(normalized);

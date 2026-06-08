@@ -15,6 +15,7 @@ import {
   buildPrSubmissionReport,
   normalizeChangedFiles,
 } from "./submission-policy.mjs";
+import { submissionFormattingErrors } from "./submission-formatting.mjs";
 
 const args = process.argv.slice(2);
 const changedFilesPath = valueAfter("--changed-files");
@@ -43,6 +44,18 @@ const candidateDocument = directCandidateFile
 const providerDocument = directProviderFile
   ? await readJson(path.resolve(directProviderFile))
   : null;
+const directSubmissionRaw = new Map(
+  (
+    await Promise.all(
+      [directCandidateFile, directProviderFile]
+        .filter(Boolean)
+        .map(async (file) => [
+          file,
+          await fs.readFile(path.resolve(file), "utf8"),
+        ]),
+    )
+  ).map(([file, raw]) => [file, raw]),
+);
 const existingCandidates = directCandidateFile
   ? (await loadCandidates()).filter(
       (candidate) =>
@@ -68,13 +81,42 @@ const report = buildPrSubmissionReport({
   existingSubnets: await loadSubnets(),
 });
 
+const formattingErrors = await submissionFormattingErrors([
+  {
+    file: directCandidateFile,
+    raw: directSubmissionRaw.get(directCandidateFile),
+    document: candidateDocument,
+  },
+  {
+    file: directProviderFile,
+    raw: directSubmissionRaw.get(directProviderFile),
+    document: providerDocument,
+  },
+]);
+const outputReport =
+  formattingErrors.length === 0
+    ? report
+    : {
+        ...report,
+        state: "schema-invalid",
+        public_state: "fix_required",
+        errors: [...report.errors, ...formattingErrors],
+        error_categories: [
+          ...report.error_categories,
+          ...formattingErrors.map(() => "unsupported-shape"),
+        ],
+        blocking: true,
+        private_review_required: false,
+        next_action: "resubmission-needed",
+      };
+
 if (outPath) {
-  await writeJson(path.resolve(outPath), report);
+  await writeJson(path.resolve(outPath), outputReport);
 }
 
-console.log(stableStringify(report));
+console.log(stableStringify(outputReport));
 
-if (failOnBlocking && report.blocking) {
+if (failOnBlocking && outputReport.blocking) {
   process.exit(1);
 }
 

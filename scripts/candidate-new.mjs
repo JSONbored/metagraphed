@@ -8,7 +8,7 @@ import {
   repoRoot,
   slugify,
   stableStringify,
-  writeJson,
+  writeRepositoryJson,
 } from "./lib.mjs";
 import {
   buildPrSubmissionReport,
@@ -102,7 +102,7 @@ if (report.blocking) {
 }
 
 if (write) {
-  await writeJson(outputPath, document);
+  await writeRepositoryJson(outputPath, document);
 }
 
 console.log(

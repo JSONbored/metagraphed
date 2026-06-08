@@ -1809,6 +1809,23 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
+      "candidate_count": 17,
+      "completeness_score": 63,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
+      "missing_critical_count": 3,
+      "name": "Gittensor",
+      "netuid": 74,
+      "priority_score": 69,
+      "profile_level": "adapter-backed",
+      "slug": "gittensor",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
       "candidate_count": 19,
       "completeness_score": 65,
       "confidence": "medium",
@@ -1840,23 +1857,6 @@
       "priority_score": 69,
       "profile_level": "operational",
       "slug": "sn-88",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
-      "candidate_count": 16,
-      "completeness_score": 63,
-      "confidence": "high",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse"
-      ],
-      "missing_critical_count": 3,
-      "name": "Gittensor",
-      "netuid": 74,
-      "priority_score": 68,
-      "profile_level": "adapter-backed",
-      "slug": "gittensor",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {

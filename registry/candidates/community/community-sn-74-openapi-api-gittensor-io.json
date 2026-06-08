@@ -15,9 +15,7 @@
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
       "source_url": "https://api.gittensor.io/swagger",
-      "source_urls": [
-        "https://api.gittensor.io/swagger"
-      ],
+      "source_urls": ["https://api.gittensor.io/swagger"],
       "state": "schema-valid",
       "url": "https://api.gittensor.io/swagger-json"
     }
