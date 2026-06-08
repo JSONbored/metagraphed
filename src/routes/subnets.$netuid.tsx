@@ -427,7 +427,7 @@ function EndpointsTableLoader({ netuid }: { netuid: number }) {
         title="No endpoints recorded"
         description="This subnet has no tracked endpoints yet."
         lastChecked={meta?.generated_at}
-        action={{ label: "Browse all endpoints", href: "/endpoints" }}
+        action={RECOVERY.endpoints}
       />
     );
   }
