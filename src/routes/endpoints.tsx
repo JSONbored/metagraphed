@@ -138,50 +138,15 @@ function EndpointsTable() {
   );
 }
 
-function durationLabel(start?: string | null, end?: string | null): string {
-  if (!start) return "—";
-  const s = new Date(start).getTime();
-  const e = end ? new Date(end).getTime() : Date.now();
-  const sec = Math.max(0, Math.round((e - s) / 1000));
-  if (sec < 60) return `${sec}s`;
-  if (sec < 3600) return `${Math.round(sec / 60)}m`;
-  if (sec < 86400) return `${(sec / 3600).toFixed(1)}h`;
-  return `${(sec / 86400).toFixed(1)}d`;
-}
-
 function IncidentsTable() {
   const { data } = useSuspenseQuery(endpointIncidentsQuery());
   const rows = (data.data ?? []) as EndpointIncident[];
   if (rows.length === 0) return <EmptyState title="No incidents in window" />;
   return (
     <ul className="grid gap-2 md:grid-cols-2">
-      {rows.map((i) => {
-        const ongoing = !i.ended_at;
-        return (
-          <li key={i.id} className="rounded border border-border bg-card p-3 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <HealthPill state={i.state} />
-                <span className="font-mono text-[11px] text-ink-strong truncate">{i.endpoint_id ?? "—"}</span>
-              </div>
-              <span className={`font-mono text-[10px] uppercase tracking-widest ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
-                {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
-              </span>
-            </div>
-            {i.message ? <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p> : null}
-            <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
-              <span>started <TimeAgo at={i.started_at} /></span>
-              <span>
-                {i.ended_at ? (
-                  <>ended <TimeAgo at={i.ended_at} /></>
-                ) : (
-                  "—"
-                )}
-              </span>
-            </div>
-          </li>
-        );
-      })}
+      {rows.map((i) => (
+        <IncidentCard key={i.id} incident={i} />
+      ))}
     </ul>
   );
 }
