@@ -1739,7 +1739,7 @@
         "https://backprop.finance/dtao/subnets/6-numinous"
       ],
       "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
+      "subnet_slug": "numinous",
       "url": "https://backprop.finance/dtao/subnets/6-numinous"
     },
     {
@@ -1771,8 +1771,156 @@
         "https://github.com/numinouslabs/numinous/blob/main/README.md"
       ],
       "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
+      "subnet_slug": "numinous",
       "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-api-health",
+      "kind": "subnet-api",
+      "name": "Numinous API health",
+      "netuid": 6,
+      "notes": "Safe read-only health endpoint for the Numinous API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://api.numinouslabs.io/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-leaderboard",
+      "kind": "subnet-api",
+      "name": "Numinous leaderboard API",
+      "netuid": 6,
+      "notes": "Read-only leaderboard endpoint documented by the Numinous OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://api.numinouslabs.io/api/v1/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-openapi-schema",
+      "kind": "openapi",
+      "name": "Numinous OpenAPI schema",
+      "netuid": 6,
+      "notes": "Machine-readable OpenAPI 3.1 schema for the public Numinous API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.numinouslabs.io/api/openapi.json",
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://api.numinouslabs.io/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-source-repo",
+      "kind": "source-repo",
+      "name": "Numinous source repository",
+      "netuid": 6,
+      "notes": "Public source repository for the Numinous forecasting agent competition.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/numinouslabs/numinous",
+        "https://numinouslabs.io/"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://github.com/numinouslabs/numinous"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-swagger",
+      "kind": "openapi",
+      "name": "Numinous Swagger UI",
+      "netuid": 6,
+      "notes": "Swagger UI for the public Numinous API. The page links to the machine-readable OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.numinouslabs.io/api/openapi.json",
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://api.numinouslabs.io/api/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-website",
+      "kind": "website",
+      "name": "Numinous website",
+      "netuid": 6,
+      "notes": "Official Numinous website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "source_urls": [
+        "https://numinouslabs.io/",
+        "https://github.com/numinouslabs/numinous"
+      ],
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "url": "https://numinouslabs.io/"
     },
     {
       "auth_required": false,
@@ -1803,72 +1951,8 @@
         "https://subnetradar.com/subnet/6"
       ],
       "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
+      "subnet_slug": "numinous",
       "url": "https://subnetradar.com/subnet/6"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-6-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Numinous source repository",
-      "netuid": 6,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
-      ],
-      "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
-      "url": "https://github.com/numinouslabs/numinous"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-6-taomarketcap-website",
-      "kind": "website",
-      "name": "Numinous website",
-      "netuid": 6,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6"
-      ],
-      "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
-      "url": "https://numinouslabs.io/"
     },
     {
       "auth_required": false,
@@ -1899,7 +1983,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx"
       ],
       "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
+      "subnet_slug": "numinous",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx"
     },
     {
@@ -1931,7 +2015,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
       "subnet_name": "Numinous",
-      "subnet_slug": "sn-6",
+      "subnet_slug": "numinous",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6"
     },
     {
@@ -3496,6 +3580,31 @@
     },
     {
       "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-12-compute-horde-grafana",
+      "kind": "dashboard",
+      "name": "Compute Horde Grafana dashboard",
+      "netuid": 12,
+      "notes": "Project-linked public Grafana metagraph dashboard. The originally discovered bactensor.io URL redirects to bittensor.church.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde",
+        "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+      ],
+      "subnet_name": "Compute Horde",
+      "subnet_slug": "sn-12",
+      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "id": "sn-12-compute-horde-source",
       "kind": "source-repo",
@@ -4047,41 +4156,104 @@
         "https://backprop.finance/dtao/subnets/14-cacheon"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://backprop.finance/dtao/subnets/14-cacheon"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-14-github-readme-latent-to-cacheon-docs-1",
+      "authority": "official",
+      "id": "sn-14-cacheon-api-contract-docs",
+      "kind": "docs",
+      "name": "Cacheon miner API contract docs",
+      "netuid": 14,
+      "notes": "Official miner API contract documentation for Cacheon. This is documentation for miner-hosted OpenAI-compatible endpoints, not a promoted shared public API endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "source_urls": [
+        "https://cacheon.ai/docs/miners/api-contract",
+        "https://github.com/latent-to/cacheon"
+      ],
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "url": "https://cacheon.ai/docs/miners/api-contract"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-14-cacheon-docs",
       "kind": "docs",
       "name": "Cacheon docs",
       "netuid": 14,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official Cacheon documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "source_urls": [
+        "https://cacheon.ai/docs",
+        "https://github.com/latent-to/cacheon"
+      ],
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "url": "https://cacheon.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-14-cacheon-source-repo",
+      "kind": "source-repo",
+      "name": "Cacheon source repository",
+      "netuid": 14,
+      "notes": "Public Cacheon source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "cacheon",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://cacheon.ai/",
-        "https://github.com/latent-to/cacheon/blob/main/README.md"
+        "https://github.com/latent-to/cacheon",
+        "https://cacheon.ai/"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
-      "url": "https://cacheon.ai/docs"
+      "subnet_slug": "cacheon",
+      "url": "https://github.com/latent-to/cacheon"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-14-cacheon-website",
+      "kind": "website",
+      "name": "Cacheon website",
+      "netuid": 14,
+      "notes": "Official Cacheon website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "source_urls": [
+        "https://cacheon.ai/",
+        "https://github.com/latent-to/cacheon"
+      ],
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "url": "https://cacheon.ai/"
     },
     {
       "auth_required": false,
@@ -4112,7 +4284,7 @@
         "https://github.com/latent-to/taohash/blob/main/README.md"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://taohash.com/leaderboard"
     },
     {
@@ -4144,71 +4316,8 @@
         "https://subnetradar.com/subnet/14"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://subnetradar.com/subnet/14"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-14-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Cacheon source repository",
-      "netuid": 14,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/14"
-      ],
-      "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
-      "url": "https://github.com/latent-to/cacheon"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-14-taomarketcap-website",
-      "kind": "website",
-      "name": "Cacheon website",
-      "netuid": 14,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/14"
-      ],
-      "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
-      "url": "https://cacheon.ai/"
     },
     {
       "auth_required": false,
@@ -4239,7 +4348,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx"
     },
     {
@@ -4271,7 +4380,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/14"
     },
     {
@@ -4302,7 +4411,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://github.com/latent-to/taohash"
     },
     {
@@ -4334,7 +4443,7 @@
         "https://cacheon.ai/"
       ],
       "subnet_name": "Cacheon",
-      "subnet_slug": "sn-14",
+      "subnet_slug": "cacheon",
       "url": "https://cacheon.ai/docs/evaluation/harness"
     },
     {

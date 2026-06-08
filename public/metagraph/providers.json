@@ -93,6 +93,18 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://cacheon.ai/docs",
+      "github_url": "https://github.com/latent-to/cacheon",
+      "id": "cacheon",
+      "kind": "subnet-team",
+      "name": "Cacheon",
+      "notes": "The public API contract documentation describes miner-required OpenAI-compatible endpoints. No shared hosted public subnet API endpoint is promoted from that contract.",
+      "public_notes": "Provider profile for Cacheon / SN14. Public surfaces include the Cacheon website, documentation, source repository, and miner API contract documentation.",
+      "schema_version": 1,
+      "website_url": "https://cacheon.ai/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://docs.chipforge.io/",
       "github_url": "https://github.com/TatsuProject/ChipForge_SN84",
       "id": "chipforge",
@@ -447,6 +459,18 @@
       "notes": "Public RPC provider referenced by public endpoint directories. Exact endpoint entries require active verification before promotion.",
       "schema_version": 1,
       "website_url": "https://nodies.app"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://api.numinouslabs.io/api/docs",
+      "github_url": "https://github.com/numinouslabs/numinous",
+      "id": "numinous",
+      "kind": "subnet-team",
+      "name": "Numinous",
+      "notes": "The public API exposes a machine-readable OpenAPI 3.1 schema and a safe read-only health endpoint.",
+      "public_notes": "Provider profile for Numinous / SN6. Public surfaces include the Numinous website, source repository, Swagger UI, OpenAPI schema, and read-only health/API data surfaces.",
+      "schema_version": 1,
+      "website_url": "https://numinouslabs.io/"
     },
     {
       "authority": "provider-claimed",

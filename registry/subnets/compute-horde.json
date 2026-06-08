@@ -7,21 +7,23 @@
   "categories": [
     "baseline-curated",
     "compute",
+    "dashboard",
     "identity-reviewed",
     "official-website",
     "official-source-repo"
   ],
   "website_url": "https://computehorde.io/",
   "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
-  "dashboard_url": "https://taomarketcap.com/subnets/12",
-  "notes": "Reviewed overlay for SN12 using the official Compute Horde website and source repository. No official docs/API surface is verified yet.",
+  "dashboard_url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
+  "notes": "Reviewed overlay for SN12 using the official Compute Horde website/source repository and the project-linked Grafana metagraph dashboard. No safe public subnet API/OpenAPI surface is verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 4,
+    "reviewed_at": "2026-06-08T15:45:00.000Z",
+    "verified_at": "2026-06-08T15:45:00.000Z",
+    "source_count": 5,
     "gap_notes": [
+      "Project-linked Grafana metagraph dashboard is verified live.",
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
@@ -71,6 +73,28 @@
         "timeout_ms": 10000
       },
       "notes": "Official Compute Horde source repository."
+    },
+    {
+      "id": "sn-12-compute-horde-grafana",
+      "name": "Compute Horde Grafana dashboard",
+      "kind": "dashboard",
+      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde",
+        "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Project-linked public Grafana metagraph dashboard. The originally discovered bactensor.io URL redirects to bittensor.church."
     }
   ]
 }

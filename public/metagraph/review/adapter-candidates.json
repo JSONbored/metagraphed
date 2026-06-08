@@ -41,6 +41,19 @@
       "slug": "sn-58"
     },
     {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Numinous",
+      "netuid": 6,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 4,
+      "priority_score": 91,
+      "slug": "numinous"
+    },
+    {
       "candidate_api_count": 8,
       "curation_level": "maintainer-reviewed",
       "name": "Green Compute",
@@ -552,22 +565,22 @@
     {
       "candidate_api_count": 6,
       "curation_level": "maintainer-reviewed",
+      "name": "Cacheon",
+      "netuid": 14,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 11,
+      "slug": "cacheon"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
       "name": "Hippius",
       "netuid": 75,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 11,
       "slug": "sn-75"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Cacheon",
-      "netuid": 14,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 10,
-      "slug": "sn-14"
     },
     {
       "candidate_api_count": 5,
@@ -730,6 +743,16 @@
       "slug": "sn-11"
     },
     {
+      "candidate_api_count": 1,
+      "curation_level": "maintainer-reviewed",
+      "name": "Compute Horde",
+      "netuid": 12,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-12"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "404—GEN",
@@ -860,16 +883,6 @@
       "slug": "sn-5"
     },
     {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Numinous",
-      "netuid": 6,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-6"
-    },
-    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Vanta",
@@ -878,16 +891,6 @@
       "operational_surface_count": 0,
       "priority_score": 7,
       "slug": "sn-8"
-    },
-    {
-      "candidate_api_count": 1,
-      "curation_level": "maintainer-reviewed",
-      "name": "Compute Horde",
-      "netuid": 12,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-12"
     },
     {
       "candidate_api_count": 5,

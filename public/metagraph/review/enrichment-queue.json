@@ -393,98 +393,6 @@
       "verified_candidate_count": 17
     },
     {
-      "adapter_score": 10,
-      "candidate_count": 20,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 10,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Cacheon",
-      "netuid": 14,
-      "operational_interface_count": 0,
-      "priority_score": 127,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-14-backprop-dashboard",
-        "sn-14-github-readme-latent-to-cacheon-docs-1",
-        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
-        "sn-14-github-readme-latent-to-taohash-dashboard-1",
-        "sn-14-subnetradar-dashboard"
-      ],
-      "sample_live_candidate_ids": [
-        "sn-14-github-readme-latent-to-cacheon-subnet-api-2"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-14-website-common-openapi-json",
-        "sn-14-website-common-swagger",
-        "sn-14-website-common-swagger-json",
-        "sn-14-website-common-api",
-        "sn-14-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
-        "sn-14-website-common-openapi-json",
-        "sn-14-website-common-swagger",
-        "sn-14-website-common-swagger-json",
-        "sn-14-website-common-api"
-      ],
-      "slug": "sn-14",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/14",
-        "https://backprop.finance/dtao/subnets/14-cacheon",
-        "https://cacheon.ai/",
-        "https://cacheon.ai/docs",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx",
-        "https://github.com/latent-to/cacheon",
-        "https://github.com/latent-to/cacheon/blob/main/README.md",
-        "https://github.com/latent-to/taohash/blob/main/README.md"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 10,
-      "verified_candidate_count": 15
-    },
-    {
       "adapter_score": 0,
       "candidate_count": 7,
       "candidate_evidence_summary": {
@@ -1796,89 +1704,6 @@
       "stale_candidate_count": 5,
       "surface_count": 8,
       "verified_candidate_count": 13
-    },
-    {
-      "adapter_score": 7,
-      "candidate_count": 19,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
-        "reviewable_count": 6,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "verify-existing-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Numinous",
-      "netuid": 6,
-      "operational_interface_count": 0,
-      "priority_score": 123,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-6-backprop-dashboard",
-        "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
-        "sn-6-subnetradar-dashboard",
-        "sn-6-taomarketcap-dashboard",
-        "sn-6-taomarketcap-source-repo"
-      ],
-      "sample_live_candidate_ids": [
-        "sn-6-website-link-numinouslabs-io-subnet-api-2"
-      ],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-6-website-link-numinouslabs-io-subnet-api-2",
-        "sn-6-website-common-openapi-json",
-        "sn-6-website-common-swagger",
-        "sn-6-website-common-swagger-json",
-        "sn-6-website-common-api"
-      ],
-      "slug": "sn-6",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6",
-        "https://backprop.finance/dtao/subnets/6-numinous",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
-        "https://github.com/numinouslabs/numinous",
-        "https://github.com/numinouslabs/numinous/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json",
-        "https://numinouslabs.io/",
-        "https://subnetradar.com/subnet/6"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 7,
-      "verified_candidate_count": 12
     },
     {
       "adapter_score": 8,
@@ -7182,6 +7007,67 @@
       "verified_candidate_count": 18
     },
     {
+      "adapter_score": 91,
+      "candidate_count": 19,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 85,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 11,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "sse"
+      ],
+      "name": "Numinous",
+      "netuid": 6,
+      "operational_interface_count": 2,
+      "priority_score": 102,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for openapi, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-6-backprop-dashboard",
+        "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
+        "sn-6-subnetradar-dashboard",
+        "sn-6-taomarketcap-dashboard",
+        "sn-6-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "numinous",
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json",
+        "https://backprop.finance/dtao/subnets/6-numinous",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
+        "https://github.com/numinouslabs/numinous",
+        "https://github.com/numinouslabs/numinous/blob/main/README.md",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json",
+        "https://numinouslabs.io/"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 11,
+      "verified_candidate_count": 12
+    },
+    {
       "adapter_score": 9,
       "candidate_count": 22,
       "candidate_evidence_summary": {
@@ -7950,6 +7836,97 @@
       "stale_candidate_count": 2,
       "surface_count": 7,
       "verified_candidate_count": 19
+    },
+    {
+      "adapter_score": 11,
+      "candidate_count": 20,
+      "candidate_evidence_summary": {
+        "candidate_count": 6,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [
+          "subnet-api"
+        ],
+        "live_or_redirected_count": 1,
+        "reviewable_count": 6,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 11,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Cacheon",
+      "netuid": 14,
+      "operational_interface_count": 0,
+      "priority_score": 99,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-14-backprop-dashboard",
+        "sn-14-github-readme-latent-to-cacheon-docs-1",
+        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
+        "sn-14-github-readme-latent-to-taohash-dashboard-1",
+        "sn-14-subnetradar-dashboard"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-14-github-readme-latent-to-cacheon-subnet-api-2"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-14-website-common-openapi-json",
+        "sn-14-website-common-swagger",
+        "sn-14-website-common-swagger-json",
+        "sn-14-website-common-api",
+        "sn-14-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
+        "sn-14-website-common-openapi-json",
+        "sn-14-website-common-swagger",
+        "sn-14-website-common-swagger-json",
+        "sn-14-website-common-api"
+      ],
+      "slug": "cacheon",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/14-cacheon",
+        "https://cacheon.ai/",
+        "https://cacheon.ai/docs",
+        "https://cacheon.ai/docs/miners/api-contract",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx",
+        "https://github.com/latent-to/cacheon",
+        "https://github.com/latent-to/taohash/blob/main/README.md",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 11,
+      "verified_candidate_count": 15
     },
     {
       "adapter_score": 0,
@@ -9262,7 +9239,7 @@
       "verified_candidate_count": 10
     },
     {
-      "adapter_score": 7,
+      "adapter_score": 8,
       "candidate_count": 8,
       "candidate_evidence_summary": {
         "candidate_count": 1,
@@ -9287,7 +9264,7 @@
         "subnet-api",
         "data-artifact"
       ],
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "evidence_action": "review-existing-evidence",
       "lane": "direct-submission",
       "manual_review_required": false,
@@ -9300,7 +9277,7 @@
       "name": "Compute Horde",
       "netuid": 12,
       "operational_interface_count": 0,
-      "priority_score": 79,
+      "priority_score": 80,
       "profile_level": "identity-complete",
       "reason_codes": [
         "missing-data-artifact",
@@ -9331,11 +9308,11 @@
         "https://github.com/backend-developers-ltd/ComputeHorde",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json",
-        "https://learnbittensor.org/subnets/12",
-        "https://subnetradar.com/subnet/12"
+        "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
       ],
       "stale_candidate_count": 0,
-      "surface_count": 7,
+      "surface_count": 8,
       "verified_candidate_count": 8
     },
     {
@@ -10015,31 +9992,31 @@
   ],
   "schema_version": 1,
   "summary": {
-    "adapter_candidate_count": 10,
+    "adapter_candidate_count": 11,
     "baseline_monitoring_count": 0,
-    "direct_submission_count": 96,
+    "direct_submission_count": 95,
     "evidence_action_counts": {
-      "maintainer-review-existing-evidence": 33,
+      "maintainer-review-existing-evidence": 34,
       "replace-stale-evidence": 62,
       "review-existing-evidence": 2,
       "submit-new-evidence": 30,
-      "verify-existing-evidence": 2
+      "verify-existing-evidence": 1
     },
     "lane_counts": {
-      "adapter-candidate": 10,
-      "direct-submission": 96,
+      "adapter-candidate": 11,
+      "direct-submission": 95,
       "maintainer-review": 23
     },
     "maintainer_review_count": 23,
-    "manual_review_required_count": 33,
+    "manual_review_required_count": 34,
     "monitoring_followup_count": 0,
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 60,
-      "openapi": 69,
+      "data-artifact": 59,
+      "openapi": 68,
       "source-repo": 20,
-      "subnet-api": 69,
+      "subnet-api": 68,
       "website": 16
     }
   }

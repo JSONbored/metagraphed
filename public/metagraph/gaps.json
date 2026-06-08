@@ -166,30 +166,29 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
       "name": "Numinous",
       "netuid": 6,
-      "slug": "sn-6"
+      "slug": "numinous"
     },
     {
       "coverage_level": "probed",
@@ -330,6 +329,7 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Project-linked Grafana metagraph dashboard is verified live.",
           "No verified official docs URL yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
@@ -382,13 +382,14 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, source repository, and miner API contract documentation are verified live.",
+          "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -405,7 +406,7 @@
       },
       "name": "Cacheon",
       "netuid": 14,
-      "slug": "sn-14"
+      "slug": "cacheon"
     },
     {
       "coverage_level": "probed",

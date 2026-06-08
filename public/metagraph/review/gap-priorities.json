@@ -183,24 +183,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Cacheon",
-      "netuid": 14,
-      "priority_score": 64,
-      "review_state": "machine-generated",
-      "slug": "sn-14",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 10,
-      "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 20,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "404—GEN",
       "netuid": 17,
       "priority_score": 64,
@@ -264,24 +246,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
       "verified_candidate_count": 7
-    },
-    {
-      "candidate_count": 19,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Numinous",
-      "netuid": 6,
-      "priority_score": 63,
-      "review_state": "machine-generated",
-      "slug": "sn-6",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 12
     },
     {
       "candidate_count": 19,
@@ -1357,6 +1321,22 @@
       "candidate_count": 19,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Numinous",
+      "netuid": 6,
+      "priority_score": 26,
+      "review_state": "maintainer-reviewed",
+      "slug": "numinous",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 11,
+      "verified_candidate_count": 12
+    },
+    {
+      "candidate_count": 19,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
         "openapi",
         "subnet-api",
         "sse"
@@ -1812,6 +1792,24 @@
         "sse",
         "data-artifact"
       ],
+      "name": "Cacheon",
+      "netuid": 14,
+      "priority_score": 19,
+      "review_state": "maintainer-reviewed",
+      "slug": "cacheon",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 11,
+      "verified_candidate_count": 15
+    },
+    {
+      "candidate_count": 20,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
       "name": "TensorUSD",
       "netuid": 113,
       "priority_score": 19,
@@ -2158,7 +2156,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-12",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 7,
+      "surface_count": 8,
       "verified_candidate_count": 8
     },
     {

@@ -531,63 +531,70 @@
     {
       "candidate_count": 19,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "forecasting",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "openapi",
+        "subnet-api"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-openapi",
-          "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 4,
+        "missing_critical_count": 2,
         "missing_operational": [
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "identity-complete",
-        "score": 50
+        "profile_level": "operational",
+        "score": 85
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 7,
-      "interface_count": 4,
-      "missing_critical_count": 4,
-      "monitored_endpoint_count": 7,
+      "completeness_score": 85,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 11,
+      "interface_count": 6,
+      "missing_critical_count": 2,
+      "monitored_endpoint_count": 11,
       "name": "Numinous",
       "native_name": "Numinous",
       "native_name_quality": "chain",
       "netuid": 6,
-      "operational_interface_count": 0,
-      "operational_interface_kinds": [],
+      "operational_interface_count": 2,
+      "operational_interface_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "primary_app_surface": {
-        "id": "sn-6-taomarketcap-website",
-        "kind": "website",
-        "name": "Numinous website",
-        "provider": "taomarketcap",
-        "url": "https://numinouslabs.io/"
+        "id": "sn-6-numinous-api-health",
+        "kind": "subnet-api",
+        "name": "Numinous API health",
+        "provider": "numinous",
+        "url": "https://api.numinouslabs.io/api/health"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/6-numinous",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
+        "docs_url": "https://api.numinouslabs.io/api/docs",
         "source_repo": "https://github.com/numinouslabs/numinous",
         "website_url": "https://numinouslabs.io/"
       },
-      "profile_level": "identity-complete",
+      "profile_level": "operational",
       "project_name": "Numinous",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/6",
+          "https://api.numinouslabs.io/api/docs",
+          "https://api.numinouslabs.io/api/openapi.json",
           "https://backprop.finance/dtao/subnets/6-numinous",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
           "https://github.com/numinouslabs/numinous",
@@ -597,17 +604,19 @@
           "https://subnetradar.com/subnet/6"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-6",
+      "review_state": "maintainer-reviewed",
+      "slug": "numinous",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
+        "openapi",
         "source-repo",
+        "subnet-api",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 11,
       "symbol": "ζ",
       "team": null
     },
@@ -1040,6 +1049,7 @@
         "baseline-augmented",
         "baseline-curated",
         "compute",
+        "dashboard",
         "identity-reviewed",
         "official-source-repo",
         "official-website"
@@ -1066,10 +1076,10 @@
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 8,
       "name": "Compute Horde",
       "native_name": "Compute Horde",
       "native_name_quality": "chain",
@@ -1084,7 +1094,7 @@
         "url": "https://computehorde.io/"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/12",
+        "dashboard_url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx",
         "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
         "website_url": "https://computehorde.io/"
@@ -1094,9 +1104,9 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 9,
+        "interface_source_count": 10,
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/12",
           "https://backprop.finance/dtao/subnets/12-compute-horde",
@@ -1104,9 +1114,10 @@
           "https://github.com/backend-developers-ltd/ComputeHorde",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json",
+          "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
+          "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
           "https://learnbittensor.org/subnets/12",
-          "https://subnetradar.com/subnet/12",
-          "https://taomarketcap.com/subnets/12"
+          "https://subnetradar.com/subnet/12"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -1119,7 +1130,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "μ",
       "team": null
     },
@@ -1220,10 +1231,16 @@
     {
       "candidate_count": 20,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "inference",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -1239,15 +1256,15 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 10,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 11,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 10,
+      "monitored_endpoint_count": 11,
       "name": "Cacheon",
       "native_name": "Cacheon",
       "native_name_quality": "chain",
@@ -1255,10 +1272,10 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-14-taomarketcap-website",
+        "id": "sn-14-cacheon-website",
         "kind": "website",
         "name": "Cacheon website",
-        "provider": "taomarketcap",
+        "provider": "cacheon",
         "url": "https://cacheon.ai/"
       },
       "primary_links": {
@@ -1270,26 +1287,25 @@
       "profile_level": "identity-complete",
       "project_name": "Cacheon",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 10,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/14",
           "https://backprop.finance/dtao/subnets/14-cacheon",
           "https://cacheon.ai/",
           "https://cacheon.ai/docs",
+          "https://cacheon.ai/docs/miners/api-contract",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx",
           "https://github.com/latent-to/cacheon",
-          "https://github.com/latent-to/cacheon/blob/main/README.md",
           "https://github.com/latent-to/taohash/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json",
           "https://subnetradar.com/subnet/14"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-14",
+      "review_state": "maintainer-reviewed",
+      "slug": "cacheon",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -1298,7 +1314,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 11,
       "symbol": "ㄷ",
       "team": null
     },
@@ -11221,17 +11237,17 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 54,
+    "average_completeness_score": 55,
     "by_confidence": {
-      "high": 71,
+      "high": 73,
       "low": 6,
-      "medium": 52
+      "medium": 50
     },
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 25,
-      "identity-complete": 60,
-      "operational": 42
+      "identity-complete": 59,
+      "operational": 43
     },
     "profile_count": 129
   }

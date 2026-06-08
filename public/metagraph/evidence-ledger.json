@@ -6612,6 +6612,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Compute Horde Grafana dashboard is a public dashboard surface for SN12.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/backend-developers-ltd/ComputeHorde",
+      "subject": "surface:sn-12-compute-horde-grafana",
+      "support_summary": "Listed in curated overlay for sn-12.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Compute Horde source repository is a public source-repo surface for SN12.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7587,18 +7598,51 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/14-cacheon",
       "subject": "surface:sn-14-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon miner API contract docs is a public docs surface for SN14.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://cacheon.ai/docs/miners/api-contract",
+      "subject": "surface:sn-14-cacheon-api-contract-docs",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
       "claim": "Cacheon docs is a public docs surface for SN14.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://cacheon.ai/docs",
+      "subject": "surface:sn-14-cacheon-docs",
+      "support_summary": "Listed in curated overlay for cacheon.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon source repository is a public source-repo surface for SN14.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/latent-to/cacheon",
+      "subject": "surface:sn-14-cacheon-source-repo",
+      "support_summary": "Listed in curated overlay for cacheon.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon website is a public website surface for SN14.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://cacheon.ai/",
-      "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-1",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "subject": "surface:sn-14-cacheon-website",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7609,7 +7653,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
       "subject": "surface:sn-14-github-readme-latent-to-taohash-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7620,29 +7664,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/14",
       "subject": "surface:sn-14-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon source repository is a public source-repo surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/14",
-      "subject": "surface:sn-14-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon website is a public website surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/14",
-      "subject": "surface:sn-14-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7653,7 +7675,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx",
       "subject": "surface:sn-14-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7664,7 +7686,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json",
       "subject": "surface:sn-14-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7675,7 +7697,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json",
       "subject": "surface:sn-14-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7686,7 +7708,7 @@
       "source_type": "registry-observed",
       "source_url": "https://cacheon.ai/",
       "subject": "surface:sn-14-website-link-cacheon-ai-docs-3",
-      "support_summary": "Listed in curated overlay for sn-14.",
+      "support_summary": "Listed in curated overlay for cacheon.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12383,7 +12405,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/6-numinous",
       "subject": "surface:sn-6-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "support_summary": "Listed in curated overlay for numinous.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12394,7 +12416,73 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
       "subject": "surface:sn-6-github-readme-numinouslabs-numinous-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous API health is a public subnet-api surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://api.numinouslabs.io/api/docs",
+      "subject": "surface:sn-6-numinous-api-health",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous leaderboard API is a public subnet-api surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://api.numinouslabs.io/api/docs",
+      "subject": "surface:sn-6-numinous-leaderboard",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous OpenAPI schema is a public openapi surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://api.numinouslabs.io/api/docs",
+      "subject": "surface:sn-6-numinous-openapi-schema",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous source repository is a public source-repo surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/numinouslabs/numinous",
+      "subject": "surface:sn-6-numinous-source-repo",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous Swagger UI is a public openapi surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://api.numinouslabs.io/api/docs",
+      "subject": "surface:sn-6-numinous-swagger",
+      "support_summary": "Listed in curated overlay for numinous.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous website is a public website surface for SN6.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://numinouslabs.io/",
+      "subject": "surface:sn-6-numinous-website",
+      "support_summary": "Listed in curated overlay for numinous.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12405,29 +12493,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/6",
       "subject": "surface:sn-6-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-6.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Numinous source repository is a public source-repo surface for SN6.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/6",
-      "subject": "surface:sn-6-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-6.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Numinous website is a public website surface for SN6.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/6",
-      "subject": "surface:sn-6-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "support_summary": "Listed in curated overlay for numinous.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12438,7 +12504,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
       "subject": "surface:sn-6-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "support_summary": "Listed in curated overlay for numinous.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12449,7 +12515,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json",
       "subject": "surface:sn-6-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "support_summary": "Listed in curated overlay for numinous.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -16562,8 +16628,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1505,
+    "claim_count": 1511,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1126
+    "surface_claim_count": 1132
   }
 }

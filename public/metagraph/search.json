@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1329,
+  "document_count": 1337,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -145,6 +145,20 @@
       ],
       "type": "provider",
       "url": "https://www.byzantiumai.net/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:cacheon",
+      "subtitle": "subnet-team",
+      "title": "Cacheon",
+      "tokens": [
+        "cacheon",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://cacheon.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -634,6 +648,20 @@
       ],
       "type": "provider",
       "url": "https://nodies.app"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:numinous",
+      "subtitle": "subnet-team",
+      "title": "Numinous",
+      "tokens": [
+        "numinous",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://numinouslabs.io/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1651,15 +1679,22 @@
       "artifact_path": "/metagraph/subnets/14.json",
       "id": "subnet:14",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "SN14 ㄷ",
       "title": "Cacheon",
       "tokens": [
-        "14",
+        "augmented",
         "baseline",
         "cacheon",
         "curated",
-        "sn"
+        "docs",
+        "identity",
+        "inference",
+        "official",
+        "repo",
+        "reviewed",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/14"
@@ -1814,6 +1849,7 @@
         "baseline",
         "compute",
         "curated",
+        "dashboard",
         "horde",
         "identity",
         "official",
@@ -3000,15 +3036,24 @@
       "artifact_path": "/metagraph/subnets/6.json",
       "id": "subnet:6",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "SN6 ζ",
       "title": "Numinous",
       "tokens": [
-        "6",
+        "api",
+        "augmented",
         "baseline",
         "curated",
+        "forecasting",
+        "identity",
         "numinous",
-        "sn"
+        "official",
+        "openapi",
+        "repo",
+        "reviewed",
+        "source",
+        "subnet",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/6"
@@ -7998,16 +8043,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-backprop-dashboard",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "dashboard / backprop-finance",
       "title": "Cacheon Backprop Finance dashboard",
       "tokens": [
-        "14",
         "backprop",
         "cacheon",
         "dashboard",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/14-cacheon"
@@ -8016,15 +8059,13 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-github-readme-latent-to-taohash-dashboard-1",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "dashboard / tensorplex-subnet-docs",
       "title": "Cacheon dashboard",
       "tokens": [
-        "14",
         "cacheon",
         "dashboard",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -8033,17 +8074,14 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-14-github-readme-latent-to-cacheon-docs-1",
+      "id": "surface:sn-14-cacheon-docs",
       "netuid": 14,
-      "slug": "sn-14",
-      "subtitle": "docs / taomarketcap",
+      "slug": "cacheon",
+      "subtitle": "docs / cacheon",
       "title": "Cacheon docs",
       "tokens": [
-        "14",
         "cacheon",
-        "docs",
-        "sn",
-        "taomarketcap"
+        "docs"
       ],
       "type": "surface",
       "url": "https://cacheon.ai/docs"
@@ -8052,14 +8090,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-website-link-cacheon-ai-docs-3",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "docs / taomarketcap",
       "title": "Cacheon docs",
       "tokens": [
-        "14",
         "cacheon",
         "docs",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -8067,19 +8103,33 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-14-taomarketcap-source-repo",
+      "id": "surface:sn-14-cacheon-api-contract-docs",
       "netuid": 14,
-      "slug": "sn-14",
-      "subtitle": "source-repo / taomarketcap",
+      "slug": "cacheon",
+      "subtitle": "docs / cacheon",
+      "title": "Cacheon miner API contract docs",
+      "tokens": [
+        "api",
+        "cacheon",
+        "contract",
+        "docs",
+        "miner"
+      ],
+      "type": "surface",
+      "url": "https://cacheon.ai/docs/miners/api-contract"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-14-cacheon-source-repo",
+      "netuid": 14,
+      "slug": "cacheon",
+      "subtitle": "source-repo / cacheon",
       "title": "Cacheon source repository",
       "tokens": [
-        "14",
         "cacheon",
         "repo",
         "repository",
-        "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/latent-to/cacheon"
@@ -8088,16 +8138,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-tensorplex-source-repo-1",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "source-repo / tensorplex-subnet-docs",
       "title": "Cacheon source repository",
       "tokens": [
-        "14",
         "cacheon",
         "docs",
         "repo",
         "repository",
-        "sn",
         "source",
         "subnet",
         "tensorplex"
@@ -8109,14 +8157,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-subnetradar-dashboard",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "dashboard / subnetradar",
       "title": "Cacheon SubnetRadar dashboard",
       "tokens": [
-        "14",
         "cacheon",
         "dashboard",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -8126,16 +8172,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-taopedia-article",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "docs / taopedia-articles",
       "title": "Cacheon Taopedia article",
       "tokens": [
-        "14",
         "article",
         "articles",
         "cacheon",
         "docs",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -8145,14 +8189,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-14-tensorplex-docs",
       "netuid": 14,
-      "slug": "sn-14",
+      "slug": "cacheon",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Cacheon Tensorplex subnet docs",
       "tokens": [
-        "14",
         "cacheon",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -8161,16 +8203,13 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-14-taomarketcap-website",
+      "id": "surface:sn-14-cacheon-website",
       "netuid": 14,
-      "slug": "sn-14",
-      "subtitle": "website / taomarketcap",
+      "slug": "cacheon",
+      "subtitle": "website / cacheon",
       "title": "Cacheon website",
       "tokens": [
-        "14",
         "cacheon",
-        "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -9299,6 +9338,24 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/12-compute-horde"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-12-compute-horde-grafana",
+      "netuid": 12,
+      "slug": "sn-12",
+      "subtitle": "dashboard / compute-horde",
+      "title": "Compute Horde Grafana dashboard",
+      "tokens": [
+        "12",
+        "compute",
+        "dashboard",
+        "grafana",
+        "horde",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17849,18 +17906,32 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-6-numinous-api-health",
+      "netuid": 6,
+      "slug": "numinous",
+      "subtitle": "subnet-api / numinous",
+      "title": "Numinous API health",
+      "tokens": [
+        "api",
+        "health",
+        "numinous",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://api.numinouslabs.io/api/health"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-6-backprop-dashboard",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "dashboard / backprop-finance",
       "title": "Numinous Backprop Finance dashboard",
       "tokens": [
-        "6",
         "backprop",
         "dashboard",
         "finance",
-        "numinous",
-        "sn"
+        "numinous"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/6-numinous"
@@ -17869,14 +17940,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-6-github-readme-numinouslabs-numinous-dashboard-1",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "dashboard / taomarketcap",
       "title": "Numinous dashboard",
       "tokens": [
-        "6",
         "dashboard",
         "numinous",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -17884,19 +17953,47 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-6-taomarketcap-source-repo",
+      "id": "surface:sn-6-numinous-leaderboard",
       "netuid": 6,
-      "slug": "sn-6",
-      "subtitle": "source-repo / taomarketcap",
+      "slug": "numinous",
+      "subtitle": "subnet-api / numinous",
+      "title": "Numinous leaderboard API",
+      "tokens": [
+        "api",
+        "leaderboard",
+        "numinous",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://api.numinouslabs.io/api/v1/leaderboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-6-numinous-openapi-schema",
+      "netuid": 6,
+      "slug": "numinous",
+      "subtitle": "openapi / numinous",
+      "title": "Numinous OpenAPI schema",
+      "tokens": [
+        "numinous",
+        "openapi",
+        "schema"
+      ],
+      "type": "surface",
+      "url": "https://api.numinouslabs.io/api/openapi.json"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-6-numinous-source-repo",
+      "netuid": 6,
+      "slug": "numinous",
+      "subtitle": "source-repo / numinous",
       "title": "Numinous source repository",
       "tokens": [
-        "6",
         "numinous",
         "repo",
         "repository",
-        "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/numinouslabs/numinous"
@@ -17905,14 +18002,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-6-subnetradar-dashboard",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "dashboard / subnetradar",
       "title": "Numinous SubnetRadar dashboard",
       "tokens": [
-        "6",
         "dashboard",
         "numinous",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -17920,18 +18015,32 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-6-numinous-swagger",
+      "netuid": 6,
+      "slug": "numinous",
+      "subtitle": "openapi / numinous",
+      "title": "Numinous Swagger UI",
+      "tokens": [
+        "numinous",
+        "openapi",
+        "swagger",
+        "ui"
+      ],
+      "type": "surface",
+      "url": "https://api.numinouslabs.io/api/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-6-taopedia-article",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "docs / taopedia-articles",
       "title": "Numinous Taopedia article",
       "tokens": [
-        "6",
         "article",
         "articles",
         "docs",
         "numinous",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -17941,14 +18050,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-6-tensorplex-docs",
       "netuid": 6,
-      "slug": "sn-6",
+      "slug": "numinous",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Numinous Tensorplex subnet docs",
       "tokens": [
-        "6",
         "docs",
         "numinous",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -17957,16 +18064,13 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-6-taomarketcap-website",
+      "id": "surface:sn-6-numinous-website",
       "netuid": 6,
-      "slug": "sn-6",
-      "subtitle": "website / taomarketcap",
+      "slug": "numinous",
+      "subtitle": "website / numinous",
       "title": "Numinous website",
       "tokens": [
-        "6",
         "numinous",
-        "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",

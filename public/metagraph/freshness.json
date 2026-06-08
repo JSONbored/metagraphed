@@ -95,7 +95,7 @@
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-08T14:38:20.711Z",
+      "as_of": "2026-06-08T14:55:31.651Z",
       "id": "surface-health",
       "lane": "health-probe",
       "notes": "Observed health is probe-derived.",
@@ -104,7 +104,7 @@
       "stale_after_hours": 6,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T14:38:20.711Z",
+      "timestamp": "2026-06-08T14:55:31.651Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -113,12 +113,12 @@
     "adapter_snapshot_as_of": "2026-06-07T21:52:49.513Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T14:11:05.342Z",
-    "health_probe_as_of": "2026-06-08T14:38:20.711Z",
-    "health_surface_count": 1119,
+    "health_probe_as_of": "2026-06-08T14:55:31.651Z",
+    "health_surface_count": 1125,
     "missing_blocking_source_count": 0,
     "native_data_as_of": "2026-06-07T21:51:54Z",
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
-    "openapi_surface_count": 33,
+    "openapi_surface_count": 35,
     "publish_ready_without_age_check": true,
     "schema_snapshot_as_of": null,
     "stale_window_warnings": [

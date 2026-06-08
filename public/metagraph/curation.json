@@ -259,42 +259,40 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 6,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T15:45:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
       "name": "Numinous",
       "netuid": 6,
-      "slug": "sn-6",
-      "surface_count": 7
+      "slug": "numinous",
+      "surface_count": 11
     },
     {
       "candidate_count": 15,
@@ -509,6 +507,7 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "Project-linked Grafana metagraph dashboard is verified live.",
           "No verified official docs URL yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
@@ -517,13 +516,14 @@
         ],
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 8,
-        "verified_at": "2026-06-08T10:10:00.000Z"
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
+        "source_count": 10,
+        "verified_at": "2026-06-08T15:45:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
+          "Project-linked Grafana metagraph dashboard is verified live.",
           "No verified official docs URL yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
@@ -546,7 +546,7 @@
       "name": "Compute Horde",
       "netuid": 12,
       "slug": "sn-12",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
       "candidate_count": 23,
@@ -595,24 +595,26 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, source repository, and miner API contract documentation are verified live.",
+          "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 8,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T15:45:00.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T15:45:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, source repository, and miner API contract documentation are verified live.",
+          "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -629,8 +631,8 @@
       },
       "name": "Cacheon",
       "netuid": 14,
-      "slug": "sn-14",
-      "surface_count": 10
+      "slug": "cacheon",
+      "surface_count": 11
     },
     {
       "candidate_count": 22,
