@@ -592,7 +592,12 @@ await writeJson(
 await writeJson(artifactFile("openapi.json"), openApi);
 await writeJson(
   artifactFile("search.json"),
-  buildSearchIndex(mergedSubnets, surfaces, providers),
+  buildSearchIndex(
+    mergedSubnets,
+    surfaces,
+    providers,
+    profileArtifacts.byNetuid,
+  ),
 );
 await writeJson(
   artifactFile("freshness.json"),
@@ -2813,24 +2818,33 @@ function sameStringSet(a, b) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function buildSearchIndex(subnets, surfacesForIndex, providerList) {
+function buildSearchIndex(
+  subnets,
+  surfacesForIndex,
+  providerList,
+  profilesByNetuid = new Map(),
+) {
   const documents = [
-    ...subnets.map((subnet) => ({
-      id: `subnet:${subnet.netuid}`,
-      type: "subnet",
-      netuid: subnet.netuid,
-      slug: subnet.slug,
-      title: subnet.name,
-      subtitle: `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
-      url: `/subnets/${subnet.netuid}`,
-      artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
-      tokens: compactTokens([
-        subnet.name,
-        subnet.slug,
-        subnet.symbol,
-        subnet.categories?.join(" "),
-      ]),
-    })),
+    ...subnets.map((subnet) => {
+      const profile = profilesByNetuid.get(subnet.netuid);
+      return {
+        id: `subnet:${subnet.netuid}`,
+        type: "subnet",
+        netuid: subnet.netuid,
+        slug: subnet.slug,
+        title: subnet.name,
+        subtitle: `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
+        url: `/subnets/${subnet.netuid}`,
+        artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
+        tokens: compactTokens([
+          subnet.name,
+          subnet.slug,
+          subnet.symbol,
+          subnet.categories?.join(" "),
+          nativeIdentityTokenText(profile?.native_identity),
+        ]),
+      };
+    }),
     ...surfacesForIndex.map((surface) => ({
       id: `surface:${surface.id}`,
       type: "surface",
@@ -2876,6 +2890,23 @@ function buildSearchIndex(subnets, surfacesForIndex, providerList) {
     document_count: documents.length,
     documents,
   };
+}
+
+function nativeIdentityTokenText(identity) {
+  if (!identity || typeof identity !== "object") {
+    return "";
+  }
+  return [
+    identity.subnet_name,
+    identity.description,
+    identity.additional,
+    identity.website_url,
+    identity.github_url,
+    identity.discord_url,
+    identity.logo_url,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function compactTokens(values) {

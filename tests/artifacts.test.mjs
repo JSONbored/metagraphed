@@ -598,6 +598,14 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(changelog.source, "generated-artifact-diff");
   assert.equal(search.document_count, search.documents.length);
+  const nodexoSearchDocument = search.documents.find(
+    (document) => document.id === "subnet:27",
+  );
+  assert.equal(
+    nodexoSearchDocument?.tokens.includes("decentralized") &&
+      nodexoSearchDocument.tokens.includes("compute"),
+    true,
+  );
   assert.equal(
     freshness.summary.native_snapshot_captured_at,
     native.captured_at,
