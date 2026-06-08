@@ -1,21 +1,34 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { classNames } from "@/lib/metagraphed/format";
+import {
+  resolveBrandOverride,
+  type BrandOverrideLookup,
+} from "@/lib/metagraphed/brand-overrides";
 
 /**
- * Module-level caches.
+ * Multi-source favicon resolution with low-resolution rejection.
  *
- * `urlCache` memoises the derived favicon URL per (domain, size).
- * `failedUrls` records favicons that failed this session — sibling renders
- *   skip the network request and fall straight to the monogram.
- * `loadedUrls` records favicons that already resolved successfully — we
- *   skip the skeleton placeholder for instant paint on subsequent renders.
- * `prefetched` tracks URLs we've already hinted to the browser so we don't
- *   inject duplicate <link rel="prefetch"> tags.
+ * The chain (in priority order):
+ *   1. Explicit `iconUrl` prop (curated CDN logo or API-provided override).
+ *   2. Curated provider/subnet override map.
+ *   3. GitHub org avatar derived from a `repo` URL (always >=128 crisp).
+ *   4. DuckDuckGo icon service — usually serves the site's largest favicon.
+ *   5. Google S2 at sz=128 — broad coverage, often upscaled.
+ *   6. Monogram tile.
+ *
+ * We advance to the next candidate on either:
+ *   - `<img>` `onError`, or
+ *   - `onLoad` where `naturalWidth < displaySize` (would render blurry).
+ *
+ * Successful and failed candidates are memoised at module scope so the chain
+ * is walked at most once per source URL per session.
  */
-const urlCache = new Map<string, string>();
+
 const failedUrls = new Set<string>();
 const loadedUrls = new Set<string>();
 const prefetched = new Set<string>();
+/** Per-host winning candidate URL — short-circuits the chain on rerender. */
+const winnerByHost = new Map<string, string>();
 
 function extractHost(input?: string | null): string | null {
   if (!input) return null;
@@ -29,36 +42,92 @@ function extractHost(input?: string | null): string | null {
   }
 }
 
-function deriveFaviconUrl(host: string, size: number): string {
-  const key = `${host}@${size}`;
-  const cached = urlCache.get(key);
-  if (cached) return cached;
-  const url = `https://www.google.com/s2/favicons?sz=${size}&domain=${encodeURIComponent(host)}`;
-  urlCache.set(key, url);
-  return url;
+function githubOrgFromUrl(input?: string | null): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input.includes("://") ? input : `https://${input}`);
+    if (!u.hostname.endsWith("github.com")) return null;
+    const seg = u.pathname.split("/").filter(Boolean);
+    return seg[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function duckDuckGoUrl(host: string): string {
+  return `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`;
+}
+
+function googleS2Url(host: string, size = 128): string {
+  return `https://www.google.com/s2/favicons?sz=${size}&domain=${encodeURIComponent(host)}`;
+}
+
+function githubAvatarUrl(org: string, size = 192): string {
+  return `https://github.com/${encodeURIComponent(org)}.png?size=${size}`;
+}
+
+interface ChainInputs {
+  url?: string | null;
+  iconUrl?: string | null;
+  repoUrl?: string | null;
+  lookup?: BrandOverrideLookup;
+}
+
+function buildCandidateChain({
+  url,
+  iconUrl,
+  repoUrl,
+  lookup,
+}: ChainInputs): string[] {
+  const out: string[] = [];
+  const push = (u: string | null | undefined) => {
+    if (!u) return;
+    if (failedUrls.has(u)) return;
+    if (!out.includes(u)) out.push(u);
+  };
+
+  if (iconUrl) push(iconUrl);
+  if (lookup) push(resolveBrandOverride(lookup));
+
+  const repoOrg = githubOrgFromUrl(repoUrl);
+  if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
+
+  const host = extractHost(url);
+  if (host) {
+    push(duckDuckGoUrl(host));
+    push(googleS2Url(host, 128));
+  }
+  return out;
 }
 
 /**
- * Derive (and cache) a favicon URL without rendering — call from list
- * components to prefetch icons for rows near the viewport. Safe to invoke
- * many times; duplicate requests are coalesced by the browser cache.
+ * Warm the favicon cache for items in or near the viewport. Coalesces
+ * duplicate prefetches and respects the module-level success/failure caches.
  */
-export function prefetchBrandIcon(url?: string | null, size = 32): void {
+export function prefetchBrandIcon(
+  url?: string | null,
+  _size = 32,
+  extra?: { iconUrl?: string | null; repoUrl?: string | null; lookup?: BrandOverrideLookup },
+): void {
   if (typeof window === "undefined") return;
-  const host = extractHost(url);
-  if (!host) return;
-  const href = deriveFaviconUrl(host, size * 2);
-  if (prefetched.has(href) || failedUrls.has(href) || loadedUrls.has(href)) return;
-  prefetched.add(href);
-  // Use Image() to warm the HTTP cache without polluting <head>; the browser
-  // dedupes the real request issued by the eventual <img> render.
+  const chain = buildCandidateChain({
+    url,
+    iconUrl: extra?.iconUrl,
+    repoUrl: extra?.repoUrl,
+    lookup: extra?.lookup,
+  });
+  const first = chain[0];
+  if (!first) return;
+  if (prefetched.has(first) || failedUrls.has(first) || loadedUrls.has(first))
+    return;
+  prefetched.add(first);
   try {
     const img = new Image();
     img.decoding = "async";
     img.referrerPolicy = "no-referrer";
-    img.onload = () => loadedUrls.add(href);
-    img.onerror = () => failedUrls.add(href);
-    img.src = href;
+    img.onload = () => loadedUrls.add(first);
+    img.onerror = () => failedUrls.add(first);
+    img.src = first;
   } catch {
     /* ignore */
   }
@@ -80,43 +149,101 @@ function monogramFor(name?: string | null, fallback?: string | number | null): s
 export interface BrandIconProps {
   url?: string | null;
   iconUrl?: string | null;
+  repoUrl?: string | null;
   name?: string | null;
   fallback?: string | number | null;
   size?: number;
   className?: string;
   /** Visually decorative (default). When false, exposes an aria-label. */
   decorative?: boolean;
+  /** Identifiers used to look up curated icon overrides. */
+  providerSlug?: string | null;
+  subnetSlug?: string | null;
+  netuid?: number | string | null;
 }
 
 export function BrandIcon({
   url,
   iconUrl,
+  repoUrl,
   name,
   fallback,
   size = 32,
   className,
   decorative = true,
+  providerSlug,
+  subnetSlug,
+  netuid,
 }: BrandIconProps) {
   const host = useMemo(() => extractHost(url), [url]);
-  const fetchSize = size * 2;
 
-  const candidate = useMemo(() => {
-    if (iconUrl) return iconUrl;
-    if (host) return deriveFaviconUrl(host, fetchSize);
-    return null;
-  }, [iconUrl, host, fetchSize]);
-
-  const [errored, setErrored] = useState(
-    () => !candidate || failedUrls.has(candidate),
-  );
-  const [loaded, setLoaded] = useState(
-    () => !!candidate && loadedUrls.has(candidate),
+  const lookup = useMemo<BrandOverrideLookup>(
+    () => ({ providerSlug, subnetSlug, netuid }),
+    [providerSlug, subnetSlug, netuid],
   );
 
+  const chain = useMemo(
+    () => buildCandidateChain({ url, iconUrl, repoUrl, lookup }),
+    [url, iconUrl, repoUrl, lookup],
+  );
+
+  // Start from the cached winner for this host, if any.
+  const initialIndex = useMemo(() => {
+    if (!host) return 0;
+    const winner = winnerByHost.get(host);
+    if (!winner) return 0;
+    const idx = chain.indexOf(winner);
+    return idx >= 0 ? idx : 0;
+  }, [host, chain]);
+
+  const [index, setIndex] = useState(initialIndex);
+  const [loaded, setLoaded] = useState(false);
+
+  // Reset when inputs change.
   useEffect(() => {
-    setErrored(!candidate || failedUrls.has(candidate));
-    setLoaded(!!candidate && loadedUrls.has(candidate));
+    setIndex(initialIndex);
+    setLoaded(false);
+  }, [initialIndex, chain]);
+
+  const candidate = chain[index] ?? null;
+  const exhausted = !candidate;
+
+  // If this candidate previously loaded, mark loaded immediately to skip
+  // the skeleton flash on remount.
+  useEffect(() => {
+    if (candidate && loadedUrls.has(candidate)) setLoaded(true);
   }, [candidate]);
+
+  const advance = useCallback(() => {
+    setIndex((i) => i + 1);
+    setLoaded(false);
+  }, []);
+
+  const onImgError = useCallback(() => {
+    if (candidate) failedUrls.add(candidate);
+    advance();
+  }, [candidate, advance]);
+
+  const onImgLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      // Reject results that would be upscaled (blurry). Allow a small
+      // tolerance — some services return a square close to but slightly
+      // under the requested size.
+      const min = Math.max(16, Math.floor(size * 0.9));
+      if (img.naturalWidth > 0 && img.naturalWidth < min) {
+        if (candidate) failedUrls.add(candidate);
+        advance();
+        return;
+      }
+      if (candidate) {
+        loadedUrls.add(candidate);
+        if (host) winnerByHost.set(host, candidate);
+      }
+      setLoaded(true);
+    },
+    [candidate, advance, host, size],
+  );
 
   const baseClasses = classNames(
     "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
@@ -128,8 +255,7 @@ export function BrandIcon({
   const ariaLabel = decorative ? undefined : labelText ? `${labelText} icon` : "icon";
   const ariaHidden = decorative ? true : undefined;
 
-  // Monogram fallback (no candidate or load failed).
-  if (!candidate || errored) {
+  if (exhausted) {
     return (
       <span
         className={classNames(baseClasses, "bg-accent/10 text-ink-strong")}
@@ -150,7 +276,6 @@ export function BrandIcon({
     );
   }
 
-  // Image with skeleton placeholder until first paint.
   return (
     <span
       className={baseClasses}
@@ -167,7 +292,8 @@ export function BrandIcon({
         />
       ) : null}
       <img
-        src={candidate}
+        key={candidate ?? "x"}
+        src={candidate!}
         alt=""
         width={size}
         height={size}
@@ -178,15 +304,14 @@ export function BrandIcon({
           "relative block transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0",
         )}
-        style={{ width: size, height: size, objectFit: "contain" }}
-        onLoad={() => {
-          loadedUrls.add(candidate);
-          setLoaded(true);
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          imageRendering: "-webkit-optimize-contrast",
         }}
-        onError={() => {
-          failedUrls.add(candidate);
-          setErrored(true);
-        }}
+        onLoad={onImgLoad}
+        onError={onImgError}
       />
     </span>
   );
