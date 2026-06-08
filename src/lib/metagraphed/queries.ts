@@ -244,11 +244,107 @@ export const subnetQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
+function pickStr(...vals: unknown[]): string | undefined {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return undefined;
+}
+
+function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
+  const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
+    string,
+    unknown
+  >;
+  const profile = (root.profile as Record<string, unknown> | undefined) ?? {};
+  const subnet = (root.subnet as Record<string, unknown> | undefined) ?? {};
+  const links = (profile.primary_links as Record<string, unknown> | undefined) ?? {};
+  const completenessObj = profile.completeness as Record<string, unknown> | undefined;
+  const score =
+    (typeof completenessObj?.score === "number" ? (completenessObj.score as number) : undefined) ??
+    (typeof profile.completeness_score === "number"
+      ? (profile.completeness_score as number)
+      : undefined);
+  const completenessRatio =
+    typeof score === "number" ? Math.max(0, Math.min(1, score / 100)) : undefined;
+  const curation = (subnet.curation as Record<string, unknown> | undefined) ?? {};
+  const gaps = (subnet.gaps as Record<string, unknown> | undefined) ??
+    (root.gaps as Record<string, unknown> | undefined) ?? {};
+
+  const website = pickStr(links.website_url, links.website, subnet.website_url);
+  const docs = pickStr(links.docs_url, links.docs, subnet.docs_url);
+  const repo = pickStr(links.source_repo, links.repo, subnet.source_repo);
+  const dashboard = pickStr(links.dashboard_url, links.dashboard, subnet.dashboard_url);
+
+  const status = statusToHealth((subnet.status as string) ?? (profile.status as string));
+
+  return {
+    netuid: (subnet.netuid as number) ?? (profile.netuid as number) ?? netuid,
+    name: pickStr(profile.name, subnet.name, subnet.native_name, profile.native_name),
+    slug: pickStr(profile.slug, subnet.slug, subnet.native_slug),
+    native_name: pickStr(subnet.native_name, profile.native_name),
+    symbol: pickStr(subnet.symbol),
+    description: pickStr(subnet.notes, profile.notes),
+    notes: pickStr(subnet.notes, profile.notes),
+    subnet_type: pickStr(subnet.subnet_type, profile.subnet_type),
+    categories: (profile.categories as string[]) ?? (subnet.categories as string[]) ?? [],
+    block: subnet.block as number | undefined,
+    registered_at_block: subnet.registered_at_block as number | undefined,
+    tempo: subnet.tempo as number | undefined,
+    participants: (subnet.participant_count as number) ?? (subnet.participants as number),
+    mechanism_count: subnet.mechanism_count as number | undefined,
+    // links
+    website,
+    homepage: website,
+    docs,
+    repo,
+    dashboard,
+    primary_links: { website, docs, repo, dashboard },
+    // curation
+    curation_level: (profile.curation_level as CurationLevel) ??
+      (subnet.curation_level as CurationLevel) ??
+      ((curation.level as CurationLevel) || undefined),
+    coverage_level: subnet.coverage_level as SubnetProfile["coverage_level"],
+    review_state: pickStr(profile.review_state, curation.review_state as string),
+    reviewed_at: pickStr(curation.reviewed_at as string),
+    confidence: pickStr(profile.confidence as string),
+    completeness: completenessRatio,
+    completeness_score: score,
+    // counts
+    surface_count: (profile.surface_count as number) ?? (subnet.surface_count as number),
+    surfaces_count: (profile.surface_count as number) ?? (subnet.surface_count as number),
+    endpoint_count: (profile.endpoint_count as number) ?? (subnet.probed_surface_count as number),
+    candidate_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
+    candidates_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
+    monitored_endpoint_count: profile.monitored_endpoint_count as number | undefined,
+    operational_interface_kinds:
+      (profile.operational_interface_kinds as string[]) ?? [],
+    supported_interface_kinds:
+      (profile.supported_interface_kinds as string[]) ??
+      (gaps.supported_kinds as string[]) ??
+      [],
+    missing_kinds: (gaps.missing_kinds as string[]) ?? (profile.missing_operational as string[]) ?? [],
+    gap_notes: (gaps.gap_notes as string[]) ?? [],
+    primary_app_surface: profile.primary_app_surface as PrimaryAppSurface | undefined,
+    // embedded
+    surfaces: (root.surfaces as Surface[]) ?? [],
+    endpoints: (root.endpoints as Endpoint[]) ?? [],
+    candidate_surfaces: (root.candidate_surfaces as Candidate[]) ?? [],
+    health: status,
+  } as SubnetProfile;
+}
+
 export const subnetProfileQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-profile", netuid),
-    queryFn: ({ signal }) =>
-      fetchDetail<SubnetProfile>(`/api/v1/subnets/${netuid}/profile`, "profile", signal),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/profile`, { signal });
+      return {
+        data: normalizeSubnetProfile(res.data, netuid),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetProfile>;
+    },
     staleTime: STALE_MED,
   });
 
