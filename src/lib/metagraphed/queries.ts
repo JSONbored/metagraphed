@@ -183,6 +183,42 @@ export const surfacesQuery = (params?: QueryParams) =>
     staleTime: STALE_MED,
   });
 
+/** Cursor pagination helper — extracts a next-cursor token from API meta. */
+function extractNextCursor(meta: ApiResult<unknown>["meta"]): string | undefined {
+  const p = (meta?.pagination ?? {}) as { next_cursor?: string | number | null };
+  const nc = p.next_cursor ?? (meta?.next_cursor as string | null | undefined);
+  if (nc == null || nc === "") return undefined;
+  return String(nc);
+}
+
+/** Server-driven cursor-paginated subnets. */
+export const subnetsInfiniteQuery = (baseParams: QueryParams = {}) =>
+  infiniteQueryOptions({
+    queryKey: k("subnets-infinite", baseParams),
+    initialPageParam: "" as string,
+    queryFn: ({ pageParam, signal }) => {
+      const params: QueryParams = { ...baseParams };
+      if (pageParam) params.cursor = pageParam;
+      return fetchList<Subnet>("/api/v1/subnets", "subnets", params, signal);
+    },
+    getNextPageParam: (last) => extractNextCursor(last.meta),
+    staleTime: STALE_MED,
+  });
+
+/** Server-driven cursor-paginated surfaces. */
+export const surfacesInfiniteQuery = (baseParams: QueryParams = {}) =>
+  infiniteQueryOptions({
+    queryKey: k("surfaces-infinite", baseParams),
+    initialPageParam: "" as string,
+    queryFn: ({ pageParam, signal }) => {
+      const params: QueryParams = { ...baseParams };
+      if (pageParam) params.cursor = pageParam;
+      return fetchList<Surface>("/api/v1/surfaces", "surfaces", params, signal);
+    },
+    getNextPageParam: (last) => extractNextCursor(last.meta),
+    staleTime: STALE_MED,
+  });
+
 export const endpointsQuery = (params?: QueryParams) =>
   queryOptions({
     queryKey: k("endpoints", params ?? {}),
