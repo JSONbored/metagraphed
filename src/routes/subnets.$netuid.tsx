@@ -12,6 +12,7 @@ import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ProfileHero } from "@/components/metagraphed/profile-hero";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { CoverageCard } from "@/components/metagraphed/coverage-card";
@@ -126,6 +127,15 @@ function ProfileShell({ netuid }: { netuid: number }) {
   return (
     <>
       <ProfileHero
+        icon={
+          <BrandIcon
+            url={profile?.website ?? profile?.homepage}
+            iconUrl={profile?.icon_url}
+            name={profile?.name}
+            fallback={netuid}
+            size={48}
+          />
+        }
         eyebrow={
           <span className="inline-flex items-center gap-2">
             <span>Netuid {String(netuid).padStart(3, "0")}</span>

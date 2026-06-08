@@ -3,6 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -195,13 +196,22 @@ function SubnetsTable() {
           className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="font-mono text-[11px] text-ink-muted">
-                #{String(s.netuid).padStart(3, "0")}
-                {s.symbol ? ` · ${s.symbol}` : ""}
-              </div>
-              <div className="font-medium text-ink-strong truncate">
-                {s.name ?? `Subnet ${s.netuid}`}
+            <div className="flex items-center gap-3 min-w-0">
+              <BrandIcon
+                url={s.website}
+                iconUrl={s.icon_url}
+                name={s.name}
+                fallback={s.netuid}
+                size={32}
+              />
+              <div className="min-w-0">
+                <div className="font-mono text-[11px] text-ink-muted">
+                  #{String(s.netuid).padStart(3, "0")}
+                  {s.symbol ? ` · ${s.symbol}` : ""}
+                </div>
+                <div className="font-medium text-ink-strong truncate">
+                  {s.name ?? `Subnet ${s.netuid}`}
+                </div>
               </div>
             </div>
             <HealthPill state={s.health} />
@@ -237,8 +247,15 @@ function SubnetsTable() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5">
-                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="font-medium text-ink-strong hover:underline">
-                    {s.name ?? `Subnet ${s.netuid}`}
+                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline">
+                    <BrandIcon
+                      url={s.website}
+                      iconUrl={s.icon_url}
+                      name={s.name}
+                      fallback={s.netuid}
+                      size={20}
+                    />
+                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">{s.symbol ?? "—"}</td>

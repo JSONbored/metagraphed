@@ -65,6 +65,8 @@ export interface Subnet {
   health_score?: number;
   freshness?: string; // iso
   updated_at?: string;
+  website?: string;
+  icon_url?: string;
   [key: string]: unknown;
 }
 
@@ -73,6 +75,7 @@ export interface PrimaryLinks {
   docs?: string;
   repo?: string;
   dashboard?: string;
+  icon_url?: string;
 }
 
 export interface PrimaryAppSurface {
@@ -205,6 +208,7 @@ export interface Provider {
   surfaces_count?: number;
   endpoint_summary?: ProviderEndpointSummary;
   generated_at?: string;
+  icon_url?: string;
   [key: string]: unknown;
 }
 
