@@ -275,6 +275,7 @@ function SubnetsTable() {
                     <BrandIcon
                       url={s.website}
                       iconUrl={s.icon_url}
+                      netuid={s.netuid}
                       name={s.name}
                       fallback={s.netuid}
                       size={20}
