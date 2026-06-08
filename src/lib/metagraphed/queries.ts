@@ -711,11 +711,62 @@ export const reviewEnrichmentQueueQuery = () =>
     staleTime: STALE_LONG,
   });
 
+function normalizeSchema(raw: unknown): SchemaInfo {
+  if (!raw || typeof raw !== "object") return raw as SchemaInfo;
+  const s = raw as Record<string, unknown>;
+  const snap = (s.snapshot as Record<string, unknown> | undefined) ?? {};
+  const drift = (s.drift_status as string | undefined) ?? (snap.drift_status as string | undefined);
+  return {
+    ...(s as object),
+    id:
+      (s.id as string) ??
+      (s.surface_id as string) ??
+      `${(s.netuid as number) ?? "?"}-${(s.path as string) ?? (s.url as string) ?? "schema"}`,
+    name:
+      (snap.title as string) ??
+      (s.name as string) ??
+      (s.surface_id as string),
+    url: (s.schema_url as string) ?? (s.url as string) ?? (s.surface_url as string),
+    netuid: (s.netuid as number) ?? (snap.netuid as number),
+    surface_id: (s.surface_id as string) ?? (snap.surface_id as string),
+    drift_status: drift,
+    drift: drift != null && drift !== "unchanged",
+    artifact_path: s.path as string | undefined,
+    hash: s.hash as string | undefined,
+    previous_hash: s.previous_hash as string | undefined,
+    status: s.status as string | undefined,
+    updated_at:
+      (s.observed_at as string) ??
+      (snap.observed_at as string) ??
+      (s.generated_at as string) ??
+      (snap.generated_at as string),
+  } as SchemaInfo;
+}
+
 export const schemasQuery = () =>
   queryOptions({
     queryKey: k("schemas"),
-    queryFn: ({ signal }) =>
-      fetchList<SchemaInfo>("/api/v1/schemas", "schemas", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/schemas", "schemas", undefined, signal);
+      return { ...res, data: res.data.map(normalizeSchema) } as ApiResult<SchemaInfo[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Schemas filtered down to a single netuid. The profile envelope doesn't
+ * currently expose schema drift, so we join against /api/v1/schemas here
+ * until the upstream payload grows native drift fields.
+ */
+export const subnetSchemasQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-schemas", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/schemas", "schemas", undefined, signal);
+      const all = res.data.map(normalizeSchema);
+      const mine = all.filter((s) => s.netuid === netuid);
+      return { ...res, data: mine } as ApiResult<SchemaInfo[]>;
+    },
     staleTime: STALE_MED,
   });
 

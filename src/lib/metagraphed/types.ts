@@ -265,6 +265,11 @@ export interface SchemaInfo {
   netuid?: number;
   surface_id?: string;
   drift?: boolean;
+  drift_status?: string;
+  status?: string;
+  hash?: string;
+  previous_hash?: string;
+  artifact_path?: string;
   updated_at?: string;
   [key: string]: unknown;
 }
