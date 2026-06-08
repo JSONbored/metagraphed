@@ -70,17 +70,14 @@
       "adapter_score": 12,
       "candidate_count": 26,
       "candidate_evidence_summary": {
-        "candidate_count": 7,
+        "candidate_count": 5,
         "kinds_with_candidates": [
           "openapi",
-          "source-repo",
           "subnet-api"
         ],
-        "live_kinds": [
-          "source-repo"
-        ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 7,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
         "stale_kinds": [
           "openapi",
           "subnet-api"
@@ -96,7 +93,7 @@
         "source-repo"
       ],
       "endpoint_count": 12,
-      "evidence_action": "review-existing-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "identity_surface_count": 2,
       "lane": "direct-submission",
@@ -128,15 +125,9 @@
         "sn-118-native-chain-website",
         "sn-118-subnetradar-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-118-taomarketcap-source-repo",
-        "sn-118-tensorplex-source-repo-1"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-118-taomarketcap-source-repo",
-        "sn-118-tensorplex-source-repo-1"
-      ],
+      "sample_target_candidate_ids": [],
       "slug": "sn-118",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/118",
@@ -2528,19 +2519,13 @@
       "adapter_score": 9,
       "candidate_count": 18,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -2597,7 +2582,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 9,
       "verified_candidate_count": 11
     },
@@ -3326,21 +3311,17 @@
       "adapter_score": 9,
       "candidate_count": 16,
       "candidate_evidence_summary": {
-        "candidate_count": 6,
+        "candidate_count": 1,
         "kinds_with_candidates": [
-          "openapi",
-          "source-repo",
-          "subnet-api"
+          "source-repo"
         ],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 6,
+        "reviewable_count": 1,
         "stale_kinds": [
-          "openapi",
-          "source-repo",
-          "subnet-api"
+          "source-repo"
         ],
-        "stale_or_failed_count": 6,
+        "stale_or_failed_count": 1,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3401,7 +3382,7 @@
         "https://taomarketcap.com/subnets/20",
         "https://www.groundlayer.xyz/"
       ],
-      "stale_candidate_count": 6,
+      "stale_candidate_count": 1,
       "surface_count": 9,
       "verified_candidate_count": 9
     },
@@ -3596,22 +3577,17 @@
       "adapter_score": 27,
       "candidate_count": 16,
       "candidate_evidence_summary": {
-        "candidate_count": 6,
+        "candidate_count": 1,
         "kinds_with_candidates": [
-          "openapi",
-          "source-repo",
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
           "source-repo"
         ],
-        "stale_or_failed_count": 4,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 1,
+        "stale_kinds": [
+          "source-repo"
+        ],
+        "stale_or_failed_count": 1,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3671,7 +3647,7 @@
         "https://models.actual.inc/",
         "https://subnetradar.com/subnet/95"
       ],
-      "stale_candidate_count": 4,
+      "stale_candidate_count": 1,
       "surface_count": 7,
       "verified_candidate_count": 12
     },
@@ -4419,19 +4395,13 @@
       "adapter_score": 7,
       "candidate_count": 15,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -4488,7 +4458,7 @@
         "https://subnetradar.com/subnet/30",
         "https://taomarketcap.com/subnets/30"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 7,
       "verified_candidate_count": 8
     },
@@ -4650,21 +4620,17 @@
       "adapter_score": 8,
       "candidate_count": 14,
       "candidate_evidence_summary": {
-        "candidate_count": 6,
+        "candidate_count": 1,
         "kinds_with_candidates": [
-          "openapi",
-          "source-repo",
-          "subnet-api"
+          "source-repo"
         ],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 6,
+        "reviewable_count": 1,
         "stale_kinds": [
-          "openapi",
-          "source-repo",
-          "subnet-api"
+          "source-repo"
         ],
-        "stale_or_failed_count": 6,
+        "stale_or_failed_count": 1,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -4725,7 +4691,7 @@
         "https://nodexo.ai/",
         "https://subnetradar.com/subnet/27"
       ],
-      "stale_candidate_count": 6,
+      "stale_candidate_count": 1,
       "surface_count": 8,
       "verified_candidate_count": 6
     },
@@ -7030,17 +6996,13 @@
       "adapter_score": 0,
       "candidate_count": 7,
       "candidate_evidence_summary": {
-        "candidate_count": 1,
-        "kinds_with_candidates": [
-          "source-repo"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "stale_kinds": [
-          "source-repo"
-        ],
-        "stale_or_failed_count": 1,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7051,7 +7013,7 @@
         "source-repo"
       ],
       "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "identity_surface_count": 2,
       "lane": "direct-submission",
@@ -7084,12 +7046,8 @@
         "sn-92-taostats-metagraph"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-92",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92",
@@ -7100,7 +7058,7 @@
         "https://www.tensorclaw.ai/",
         "https://www.tensorclaw.ai/dashboard"
       ],
-      "stale_candidate_count": 1,
+      "stale_candidate_count": 0,
       "surface_count": 7,
       "verified_candidate_count": 6
     },
@@ -7338,17 +7296,13 @@
       "adapter_score": 0,
       "candidate_count": 7,
       "candidate_evidence_summary": {
-        "candidate_count": 1,
-        "kinds_with_candidates": [
-          "source-repo"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "stale_kinds": [
-          "source-repo"
-        ],
-        "stale_or_failed_count": 1,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7359,7 +7313,7 @@
         "source-repo"
       ],
       "endpoint_count": 6,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "identity_surface_count": 2,
       "lane": "direct-submission",
@@ -7392,12 +7346,8 @@
         "sn-116-taostats-metagraph"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-116-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-116-tensorplex-source-repo-1"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "taolend",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/116",
@@ -7407,7 +7357,7 @@
         "https://subnetradar.com/subnet/116",
         "https://taolend.io/"
       ],
-      "stale_candidate_count": 1,
+      "stale_candidate_count": 0,
       "surface_count": 6,
       "verified_candidate_count": 6
     },
@@ -7575,7 +7525,7 @@
       "adapter_score": 7,
       "candidate_count": 22,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
+        "candidate_count": 4,
         "kinds_with_candidates": [
           "openapi",
           "subnet-api"
@@ -7584,11 +7534,11 @@
           "subnet-api"
         ],
         "live_or_redirected_count": 2,
-        "reviewable_count": 5,
+        "reviewable_count": 4,
         "stale_kinds": [
           "openapi"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 2,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7638,14 +7588,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-85-website-common-api",
         "sn-85-website-common-health",
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "slug": "sn-85",
@@ -7659,7 +7607,7 @@
         "https://taomarketcap.com/subnets/85",
         "https://vidaio.io/"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 2,
       "surface_count": 7,
       "verified_candidate_count": 18
     },
@@ -8398,19 +8346,13 @@
       "adapter_score": 12,
       "candidate_count": 18,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8423,7 +8365,7 @@
         "data-artifact"
       ],
       "endpoint_count": 12,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -8455,20 +8397,8 @@
         "sn-11-taomarketcap-dashboard"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-11",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/11",
@@ -8480,7 +8410,7 @@
         "https://trajrl.com/",
         "https://trajrl.com/docs"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 12,
       "verified_candidate_count": 13
     },
@@ -8651,19 +8581,13 @@
       "adapter_score": 10,
       "candidate_count": 18,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8676,7 +8600,7 @@
         "data-artifact"
       ],
       "endpoint_count": 10,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -8708,20 +8632,8 @@
         "sn-5-taomarketcap-dashboard"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-5",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/5",
@@ -8733,7 +8645,7 @@
         "https://taomarketcap.com/subnets/5",
         "https://www.hone.training/"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 10,
       "verified_candidate_count": 11
     },
@@ -8741,19 +8653,13 @@
       "adapter_score": 10,
       "candidate_count": 17,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8766,7 +8672,7 @@
         "data-artifact"
       ],
       "endpoint_count": 10,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -8798,20 +8704,8 @@
         "sn-8-taomarketcap-dashboard"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-8",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/8",
@@ -8823,7 +8717,7 @@
         "https://www.vantanetwork.io/",
         "https://www.vantanetwork.io/dashboard"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 10,
       "verified_candidate_count": 11
     },
@@ -8831,7 +8725,7 @@
       "adapter_score": 8,
       "candidate_count": 17,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
+        "candidate_count": 4,
         "kinds_with_candidates": [
           "openapi",
           "subnet-api"
@@ -8840,11 +8734,11 @@
           "subnet-api"
         ],
         "live_or_redirected_count": 2,
-        "reviewable_count": 5,
+        "reviewable_count": 4,
         "stale_kinds": [
           "openapi"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 2,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8894,14 +8788,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-2-website-common-api",
         "sn-2-website-common-health",
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "slug": "dsperse",
@@ -8914,7 +8806,7 @@
         "https://sn2-docs.inferencelabs.com/",
         "https://subnet2.inferencelabs.com/"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 2,
       "surface_count": 8,
       "verified_candidate_count": 14
     },
@@ -9185,19 +9077,13 @@
       "adapter_score": 8,
       "candidate_count": 14,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
         "live_kinds": [],
         "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -9210,7 +9096,7 @@
         "data-artifact"
       ],
       "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -9242,20 +9128,8 @@
         "sn-10-taomarketcap-dashboard"
       ],
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-10",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/10",
@@ -9267,7 +9141,7 @@
         "https://subnetradar.com/subnet/10",
         "https://taomarketcap.com/subnets/10"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 0,
       "surface_count": 8,
       "verified_candidate_count": 8
     },
@@ -9275,20 +9149,13 @@
       "adapter_score": 8,
       "candidate_count": 14,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi"
-        ],
-        "stale_or_failed_count": 3,
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -9301,7 +9168,7 @@
         "data-artifact"
       ],
       "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -9332,22 +9199,9 @@
         "sn-16-subnetradar-dashboard",
         "sn-16-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-16",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/16",
@@ -9359,7 +9213,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
         "https://subnetradar.com/subnet/16"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 0,
       "surface_count": 8,
       "verified_candidate_count": 11
     },
@@ -10718,9 +10572,9 @@
     "evidence_action_counts": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 79,
-      "review-existing-evidence": 2,
-      "submit-new-evidence": 29,
+      "replace-stale-evidence": 72,
+      "review-existing-evidence": 1,
+      "submit-new-evidence": 37,
       "verify-existing-evidence": 1
     },
     "identity_level_counts": {

@@ -1044,6 +1044,20 @@ test("limited R2 upload dry run skips control manifests", () => {
   assert.equal(summary.planned_object_count, 5);
 });
 
+test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
+  const queue = readArtifact("review/enrichment-queue.json");
+  const ditto = queue.queue.find((entry) => entry.netuid === 118);
+
+  assert(ditto, "expected SN118 Ditto enrichment queue entry");
+  assert.equal(ditto.evidence_action, "submit-new-evidence");
+  assert.deepEqual(ditto.sample_target_candidate_ids, []);
+  assert.deepEqual(ditto.sample_live_candidate_ids, []);
+  assert.equal(
+    ditto.candidate_evidence_summary.live_kinds.includes("source-repo"),
+    false,
+  );
+});
+
 test("Worker API serves public artifact envelopes", async () => {
   const env = createLocalArtifactEnv();
 

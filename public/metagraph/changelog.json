@@ -3,28 +3,12 @@
     "added": [],
     "modified": [
       {
-        "hash": "c186c3dd1cd1dda45d0f5bfc018b19ba8b8b8f38693e7861060d22565dc971fc",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "c301e681525773558497a2c880e8ad5b0c9068240528cb223fb9c3bc0a5db639",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "0a9712c54d52e4bbb063a60f0ebea4feff18b92212e06d991263e0b123e035c6",
+        "hash": "5c5a20e0644297c71b9f497d040a3fa53b633cccd941195268f56261ae0613ca",
         "path": "review/enrichment-queue.json"
       },
       {
-        "hash": "7386c2c45c8126ee0b56b91b0c0f855b1525dda2758bfd69065be4ce2b6f678c",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "1b214dbb72502fade87c83a62e7eb8b6ca72b7195b20ceae0a674218b3fc402e",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "d27a30f3ec152624e1beda62d1d6cb32b09d3278cbe6beb128c18edfd74cc01b",
-        "path": "surfaces.json"
+        "hash": "ae53d8889f6f7e6549b36507e6f94a421f065b47d348f762864255e263126bc4",
+        "path": "review/enrichment-targets.json"
       }
     ],
     "removed": []
@@ -44,7 +28,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 6,
+    "artifact_modified_count": 2,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 1270,
-  "artifact_size_bytes": 50271935,
+  "artifact_size_bytes": 50253457,
   "artifacts": [
     {
       "path": "adapters/allways.json",
@@ -716,8 +716,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "9bd8dfb3dd4e281ed5b2f63fa96c862d517d23c0d4c002fc973aa0327569627e",
-      "size_bytes": 2067
+      "sha256": "5e3bafb17bcc701ba9aab645b8ae40ca10518969fda7d86bbc85cf21d27ba9a0",
+      "size_bytes": 1513
     },
     {
       "path": "contracts.json",
@@ -1300,7 +1300,7 @@
   },
   "endpoint_count": 1135,
   "full_artifact_count": 1258,
-  "full_artifact_size_bytes": 50262851,
+  "full_artifact_size_bytes": 50244373,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 89,
@@ -1315,9 +1315,9 @@
     "r2": 1235
   },
   "storage_tier_size_bytes": {
-    "dual": 4888205,
-    "git": 1020954,
-    "r2": 44353692
+    "dual": 4883775,
+    "git": 1011697,
+    "r2": 44348901
   },
   "subnet_count": 129,
   "surface_count": 1135

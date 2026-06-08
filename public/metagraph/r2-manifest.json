@@ -1,6 +1,6 @@
 {
   "artifact_count": 24,
-  "artifact_size_bytes": 6112188,
+  "artifact_size_bytes": 6098501,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "9bd8dfb3dd4e281ed5b2f63fa96c862d517d23c0d4c002fc973aa0327569627e",
-      "size_bytes": 2067,
+      "sha256": "5e3bafb17bcc701ba9aab645b8ae40ca10518969fda7d86bbc85cf21d27ba9a0",
+      "size_bytes": 1513,
       "storage_tier": "dual"
     },
     {
@@ -124,8 +124,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-queue.json",
       "latest_key": "latest/review/enrichment-queue.json",
       "path": "/metagraph/review/enrichment-queue.json",
-      "sha256": "0a9712c54d52e4bbb063a60f0ebea4feff18b92212e06d991263e0b123e035c6",
-      "size_bytes": 370592,
+      "sha256": "5c5a20e0644297c71b9f497d040a3fa53b633cccd941195268f56261ae0613ca",
+      "size_bytes": 366716,
       "storage_tier": "dual"
     },
     {
@@ -133,8 +133,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-targets.json",
       "latest_key": "latest/review/enrichment-targets.json",
       "path": "/metagraph/review/enrichment-targets.json",
-      "sha256": "40b5a64699a4a29578df392652775194fffa28ab40467ff2c31fb1e44487ad6b",
-      "size_bytes": 761955,
+      "sha256": "ae53d8889f6f7e6549b36507e6f94a421f065b47d348f762864255e263126bc4",
+      "size_bytes": 752698,
       "storage_tier": "git"
     },
     {
@@ -223,7 +223,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1271,
-  "full_artifact_size_bytes": 50474964,
+  "full_artifact_size_bytes": 50456486,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -246,8 +246,8 @@
     "r2": 1247
   },
   "storage_tier_size_bytes": {
-    "dual": 5091234,
-    "git": 1020954,
-    "r2": 44362776
+    "dual": 5086804,
+    "git": 1011697,
+    "r2": 44357985
   }
 }

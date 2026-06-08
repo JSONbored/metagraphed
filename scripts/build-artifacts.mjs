@@ -328,6 +328,7 @@ const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
+  subnets: activeOverlays,
   verification,
 });
 const enrichmentQueue = enrichmentArtifacts.queueArtifact;
@@ -1070,6 +1071,7 @@ function buildEnrichmentQueueArtifacts({
   curationReview,
   profiles,
   reviewProfiles,
+  subnets,
   verification,
 }) {
   const verificationByCandidate = new Map(
@@ -1090,6 +1092,12 @@ function buildEnrichmentQueueArtifacts({
       candidate,
     ]),
   );
+  const excludedCandidateIdsByNetuid = new Map(
+    subnets.map((subnet) => [
+      subnet.netuid,
+      new Set(subnet.baseline_excluded_surface_ids || []),
+    ]),
+  );
   const candidatesByNetuid = groupByNetuid(candidates);
 
   const fullQueue = profiles
@@ -1099,7 +1107,10 @@ function buildEnrichmentQueueArtifacts({
         gapPriority: gapPriorityByNetuid.get(profile.netuid),
         profile,
         reviewProfile: reviewProfileByNetuid.get(profile.netuid),
-        subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+        subnetCandidates: enrichmentCandidatesForSubnet({
+          excludedIds: excludedCandidateIdsByNetuid.get(profile.netuid),
+          subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+        }),
         verificationByCandidate,
       }),
     )
@@ -1173,6 +1184,13 @@ function buildEnrichmentQueueArtifacts({
     queue,
   });
   return { evidenceArtifact, queueArtifact, targetArtifact };
+}
+
+function enrichmentCandidatesForSubnet({ excludedIds, subnetCandidates }) {
+  if (!excludedIds || excludedIds.size === 0) {
+    return subnetCandidates;
+  }
+  return subnetCandidates.filter((candidate) => !excludedIds.has(candidate.id));
 }
 
 function buildEnrichmentTargetsArtifact({ evidenceEntries, queue }) {

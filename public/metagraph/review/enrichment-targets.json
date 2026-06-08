@@ -276,9 +276,9 @@
     "by_evidence_action": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 123,
-      "review-existing-evidence": 26,
-      "submit-new-evidence": 127,
+      "replace-stale-evidence": 112,
+      "review-existing-evidence": 24,
+      "submit-new-evidence": 140,
       "verify-existing-evidence": 2
     },
     "by_kind": {
@@ -301,8 +301,8 @@
       "surface-candidate": 278
     },
     "manual_review_required_count": 18,
-    "new_evidence_count": 127,
-    "stale_replacement_count": 123,
+    "new_evidence_count": 140,
+    "stale_replacement_count": 112,
     "subnet_count": 129,
     "target_count": 296
   },
@@ -350,21 +350,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 118 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "live": 2
-        },
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-118-taomarketcap-source-repo",
-          "sn-118-tensorplex-source-repo-1"
-        ],
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Confirm and submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "review-existing-evidence",
+      "contribution_prompt": "Submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "kind": "source-repo",
       "lane": "direct-submission",
@@ -384,15 +379,9 @@
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [
-        "sn-118-taomarketcap-source-repo",
-        "sn-118-tensorplex-source-repo-1"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-118-taomarketcap-source-repo",
-        "sn-118-tensorplex-source-repo-1"
-      ],
+      "sample_target_candidate_ids": [],
       "slug": "sn-118",
       "source_requirements": [
         "Prefer an official project/team source.",
@@ -405,7 +394,7 @@
         "https://backprop.finance/dtao/subnets/118-ditto"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "review-existing-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-118-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
@@ -12907,20 +12896,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 92 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "dead": 1
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-92-tensorplex-source-repo-1"
-        ],
-        "stale_or_failed_count": 1,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "kind": "source-repo",
       "lane": "direct-submission",
@@ -12941,12 +12926,8 @@
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-92",
       "source_requirements": [
         "Prefer an official project/team source.",
@@ -12959,7 +12940,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-92-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
@@ -12967,20 +12948,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 116 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "dead": 1
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-116-tensorplex-source-repo-1"
-        ],
-        "stale_or_failed_count": 1,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "kind": "source-repo",
       "lane": "direct-submission",
@@ -13001,12 +12978,8 @@
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-116-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-116-tensorplex-source-repo-1"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "taolend",
       "source_requirements": [
         "Prefer an official project/team source.",
@@ -13019,7 +12992,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-116-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
@@ -13425,14 +13398,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-85-website-common-api",
         "sn-85-website-common-health",
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "slug": "sn-85",
@@ -13526,18 +13497,17 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 85 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
+        "candidate_count": 2,
         "classifications": {
-          "content-mismatch": 3
+          "content-mismatch": 2
         },
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
+        "reviewable_count": 2,
         "sample_candidate_ids": [
           "sn-85-website-common-openapi-json",
-          "sn-85-website-common-swagger",
           "sn-85-website-common-swagger-json"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 2,
         "unverified_count": 0
       },
       "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
@@ -13568,14 +13538,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-85-website-common-api",
         "sn-85-website-common-health",
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "slug": "sn-85",
@@ -13709,14 +13677,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-85-website-common-api",
         "sn-85-website-common-health",
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger",
         "sn-85-website-common-swagger-json"
       ],
       "slug": "sn-85",
@@ -14977,20 +14943,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-11",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15184,22 +15138,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 11 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-11-website-common-openapi-json",
-          "sn-11-website-common-swagger",
-          "sn-11-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -15221,20 +15169,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-11",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15247,7 +15183,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-11-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -15434,21 +15370,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 11 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-11-website-common-api",
-          "sn-11-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -15470,20 +15401,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-11",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15496,7 +15415,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-11-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -15659,20 +15578,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-5",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15693,22 +15600,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 5 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-5-website-common-openapi-json",
-          "sn-5-website-common-swagger",
-          "sn-5-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -15730,20 +15631,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-5",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15756,7 +15645,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-5-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -15764,21 +15653,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 5 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-5-website-common-api",
-          "sn-5-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -15800,20 +15684,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-5",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15826,7 +15698,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-5-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -15865,20 +15737,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-8",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15899,22 +15759,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 8 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-8-website-common-openapi-json",
-          "sn-8-website-common-swagger",
-          "sn-8-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -15936,20 +15790,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-8",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -15962,7 +15804,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-8-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -15970,21 +15812,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 8 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-8-website-common-api",
-          "sn-8-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -16006,20 +15843,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-8",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -16032,7 +15857,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-8-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -16076,14 +15901,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-2-website-common-api",
         "sn-2-website-common-health",
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "slug": "dsperse",
@@ -16106,18 +15929,17 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 2 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
+        "candidate_count": 2,
         "classifications": {
-          "content-mismatch": 3
+          "content-mismatch": 2
         },
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
+        "reviewable_count": 2,
         "sample_candidate_ids": [
           "sn-2-website-common-openapi-json",
-          "sn-2-website-common-swagger",
           "sn-2-website-common-swagger-json"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 2,
         "unverified_count": 0
       },
       "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
@@ -16148,14 +15970,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-2-website-common-api",
         "sn-2-website-common-health",
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "slug": "dsperse",
@@ -16219,14 +16039,12 @@
       ],
       "sample_stale_candidate_ids": [
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
         "sn-2-website-common-api",
         "sn-2-website-common-health",
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger",
         "sn-2-website-common-swagger-json"
       ],
       "slug": "dsperse",
@@ -16883,20 +16701,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-10",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -16947,22 +16753,9 @@
         "missing-subnet-api"
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-16",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -16983,22 +16776,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 10 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-10-website-common-openapi-json",
-          "sn-10-website-common-swagger",
-          "sn-10-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -17020,20 +16807,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-10",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -17046,7 +16821,7 @@
         "https://docs.taofi.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-10-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -17054,22 +16829,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 16 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "content-mismatch": 3
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-16-website-common-openapi-json",
-          "sn-16-website-common-swagger",
-          "sn-16-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -17090,22 +16859,9 @@
         "missing-subnet-api"
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-16",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -17118,7 +16874,7 @@
         "https://bitads.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-16-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -17126,21 +16882,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
+        "candidate_count": 0,
+        "classifications": {},
         "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-10-website-common-api",
-          "sn-10-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -17162,20 +16913,8 @@
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-10",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -17188,7 +16927,7 @@
         "https://docs.taofi.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-10-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -17196,21 +16935,16 @@
       "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 16 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "live": 2
-        },
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-16-website-common-api",
-          "sn-16-website-common-health"
-        ],
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "review-existing-evidence",
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -17231,22 +16965,9 @@
         "missing-subnet-api"
       ],
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-16",
       "source_requirements": [
         "The URL must be public-safe and read-only.",
@@ -17259,7 +16980,7 @@
         "https://bitads.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "review-existing-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-16-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
