@@ -154,7 +154,7 @@ function SubnetsTable() {
       for (const s of rows)
         prefetchBrandIcon(s.website, 32, {
           iconUrl: s.icon_url,
-          lookup: { netuid: s.netuid, subnetSlug: s.slug },
+          lookup: { netuid: s.netuid },
         });
     });
     return () => {
