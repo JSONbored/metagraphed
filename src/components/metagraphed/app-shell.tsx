@@ -128,8 +128,9 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           className="flex items-center gap-2 group"
         >
           <span className="size-5 bg-ink-strong rounded-sm" aria-hidden />
-          <span className="font-display text-base font-semibold tracking-tight text-ink-strong">
+          <span className="font-display text-base font-semibold tracking-tight text-ink-strong inline-flex items-baseline gap-0.5">
             Metagraphed
+            <span aria-hidden className="inline-block size-1.5 rounded-full bg-accent translate-y-[-0.15em]" />
           </span>
         </Link>
         <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted flex items-center gap-1">
