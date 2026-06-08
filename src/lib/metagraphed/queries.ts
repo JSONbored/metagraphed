@@ -396,19 +396,74 @@ export const surfacesInfiniteQuery = (
     staleTime: STALE_MED,
   });
 
+function statusToHealth(v: unknown): HealthState | undefined {
+  if (typeof v !== "string") return undefined;
+  if (v === "ok" || v === "live") return "ok";
+  if (v === "degraded" || v === "warn" || v === "redirected" || v === "transient")
+    return "warn";
+  if (v === "failed" || v === "down" || v === "unsupported") return "down";
+  return "unknown";
+}
+
+function normalizeEndpoint(raw: unknown): Endpoint {
+  if (!raw || typeof raw !== "object") return raw as Endpoint;
+  const e = raw as Record<string, unknown>;
+  return {
+    ...(e as object),
+    id: e.id as string,
+    health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
+    provider_slug:
+      (e.provider_slug as string) ?? (e.provider as string) ?? (e.operator as string),
+    last_probed_at:
+      (e.last_probed_at as string) ??
+      (e.last_checked as string) ??
+      (e.observed_at as string),
+  } as Endpoint;
+}
+
+function normalizeIncident(raw: unknown): EndpointIncident {
+  if (!raw || typeof raw !== "object") return raw as EndpointIncident;
+  const i = raw as Record<string, unknown>;
+  // API uses state="active" and a separate status="failed|degraded|ok".
+  // For the UI pill we want a HealthState derived from status/severity.
+  const sev = i.severity as string | undefined;
+  const sevHealth: HealthState | undefined =
+    sev === "critical" ? "down" : sev === "warning" ? "warn" : undefined;
+  const stateHealth = statusToHealth(i.status) ?? sevHealth ?? "unknown";
+  const ended = i.state === "resolved" || i.resolved_at;
+  return {
+    ...(i as object),
+    id: i.id as string,
+    state: stateHealth,
+    message: (i.message as string) ?? (i.reason as string),
+    started_at:
+      (i.started_at as string) ??
+      (i.detected_at as string) ??
+      (i.observed_at as string),
+    ended_at:
+      (i.ended_at as string | null | undefined) ??
+      (i.resolved_at as string | null | undefined) ??
+      (ended ? (i.last_checked as string) : null),
+  } as EndpointIncident;
+}
+
 export const endpointsQuery = (params?: QueryParams) =>
   queryOptions({
     queryKey: k("endpoints", params ?? {}),
-    queryFn: ({ signal }) =>
-      fetchList<Endpoint>("/api/v1/endpoints", "endpoints", params, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/endpoints", "endpoints", params, signal);
+      return { ...res, data: res.data.map(normalizeEndpoint) } as ApiResult<Endpoint[]>;
+    },
     staleTime: STALE_MED,
   });
 
 export const rpcEndpointsQuery = () =>
   queryOptions({
     queryKey: k("rpc-endpoints"),
-    queryFn: ({ signal }) =>
-      fetchList<Endpoint>("/api/v1/rpc/endpoints", "endpoints", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/rpc/endpoints", "endpoints", undefined, signal);
+      return { ...res, data: res.data.map(normalizeEndpoint) } as ApiResult<Endpoint[]>;
+    },
     staleTime: STALE_MED,
   });
 
@@ -430,8 +485,15 @@ export const endpointPoolsQuery = () =>
 export const endpointIncidentsQuery = () =>
   queryOptions({
     queryKey: k("endpoint-incidents"),
-    queryFn: ({ signal }) =>
-      fetchList<EndpointIncident>("/api/v1/endpoint-incidents", "incidents", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        "/api/v1/endpoint-incidents",
+        "incidents",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeIncident) } as ApiResult<EndpointIncident[]>;
+    },
     staleTime: STALE_SHORT,
   });
 
@@ -453,8 +515,15 @@ export const providerQuery = (slug: string) =>
 export const providerEndpointsQuery = (slug: string) =>
   queryOptions({
     queryKey: k("provider-endpoints", slug),
-    queryFn: ({ signal }) =>
-      fetchList<Endpoint>(`/api/v1/providers/${slug}/endpoints`, "endpoints", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/providers/${slug}/endpoints`,
+        "endpoints",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeEndpoint) } as ApiResult<Endpoint[]>;
+    },
     staleTime: STALE_MED,
   });
 
