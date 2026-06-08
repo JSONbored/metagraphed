@@ -66,7 +66,7 @@ export interface Subnet {
   freshness?: string; // iso
   updated_at?: string;
   website?: string;
-  icon_url?: string;
+  icon_url?: string | { light: string; dark?: string };
   [key: string]: unknown;
 }
 
@@ -75,7 +75,7 @@ export interface PrimaryLinks {
   docs?: string;
   repo?: string;
   dashboard?: string;
-  icon_url?: string;
+  icon_url?: string | { light: string; dark?: string };
 }
 
 export interface PrimaryAppSurface {
@@ -208,7 +208,7 @@ export interface Provider {
   surfaces_count?: number;
   endpoint_summary?: ProviderEndpointSummary;
   generated_at?: string;
-  icon_url?: string;
+  icon_url?: string | { light: string; dark?: string };
   [key: string]: unknown;
 }
 

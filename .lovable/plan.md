@@ -1,42 +1,83 @@
 ## Goal
-Eliminate blurry favicons across `/providers`, `/providers/:slug`, `/subnets`, `/subnets/:netuid`.
+Frontend-side scaffolding for the three remaining items: backend `icon_url` respect, dark-mode logo variants with auto-contrast tile, and a proxy-aware `BrandIcon` ready for the Cloudflare-KV-backed icon service you'll run separately.
 
-## Root cause
-`BrandIcon` calls Google S2 at `sz = displaySize × 2` (~64px). Many ecosystem sites only expose a 16×16 `favicon.ico`, which S2 upscales — that's the blur. Retina screens make it worse.
+---
 
-## Fix
+## 1. Icon proxy integration (frontend-ready, backend lives elsewhere)
 
-### 1. Multi-source candidate chain in `BrandIcon`
-Replace the single-source render with an ordered chain, advancing on `onError` or when `naturalWidth < displaySize` (would upscale):
+### Config
+- Add `VITE_ICON_PROXY_URL` env var (e.g. `https://metagraph.sh/api/v1/icon`). When set, `BrandIcon` adds the proxy as the **highest-priority auto candidate** in the resolution chain, ahead of DDG/S2/GitHub.
+- Falls through to the existing chain on 4xx/5xx, so the app keeps working before the backend ships.
 
-1. Explicit `iconUrl` prop (curated override or API-provided)
-2. `https://icons.duckduckgo.com/ip3/{host}.ico` — usually serves the site's largest favicon
-3. `https://www.google.com/s2/favicons?sz=128&domain={host}` — bumped from 64 to 128
-4. GitHub org avatar when a `repo` URL is `github.com/{org}/...` → `https://github.com/{org}.png?size=128`
-5. Monogram tile
+### Contract (documented in `src/lib/metagraphed/brand-overrides.ts`)
+Defines what the backend route must implement. No code change to backend; just the spec your separate project will implement:
+```
+GET {VITE_ICON_PROXY_URL}?host={domain}&size={px}&theme={light|dark}
+  → 200 image/png|svg (normalized square, ≥ size)
+  → 404 if no usable source found
+Cache-Control: public, max-age=2592000, immutable
+ETag supported
+```
+- `theme` is optional; backend may serve a dark-mode variant when one exists.
+- `size` is a hint, backend should serve ≥ size and ≤ 2×size.
 
-Cache the winning candidate per host in the existing module-level map so the chain only walks once. Keep `loading="lazy"`, fixed dimensions, and the skeleton placeholder.
+### Client behavior
+- Send the requested size at `displaySize × 2` for retina; render at displaySize.
+- Existing low-res rejection still applies — if proxy returns something smaller than displaySize, we advance.
+- Per-host winner cache means a successful proxy hit short-circuits all later renders.
 
-### 2. Curated overrides (`src/lib/metagraphed/brand-overrides.ts` — new)
-`resolveBrandIcon({ providerSlug?, netuid?, subnetSlug?, website? })` returns a CDN URL when we have a hand-picked logo. I'll source as many as I can confidently find — official site `/apple-touch-icon.png` (typically 180×180), press-kit SVG/PNG, or GitHub org avatar — at ≥128px or SVG. Uploaded via `lovable-assets create` and referenced as `.asset.json` imports. Targets include: Bittensor/OTF, TaoStats, Tensorplex, Macrocosmos, Datura, Nineteen, Corcel, Manifold, Cortex.t, Allways (SN7), Gittensor (SN74), Targon, Bitmind, Compute Horde, Subnet 1 (Apex), and anything visible on the current `/providers` list.
+---
 
-If I can't find a clean ≥128px source for an entry, I skip it and let the auto chain handle it.
+## 2. Dark-mode variants
 
-### 3. Retina-aware rendering
-- Provide `srcset` for the S2/DDG candidates with `1x` at displaySize and `2x` at `displaySize × 2` so devices fetch the right density.
-- Apply `image-rendering: -webkit-optimize-contrast` to mitigate any residual upscale.
-- Prefetch (existing `prefetchBrandIcon`) warms only the first candidate.
+### Override schema (`src/lib/metagraphed/brand-overrides.ts`)
+Switch override entries from `string` to `{ light: string; dark?: string }`. Existing string entries auto-coerce to `{ light: <url> }`. Backwards compatible.
 
-### 4. Wire overrides at call sites
-`providers.index.tsx`, `providers.$slug.tsx`, `subnets.index.tsx`, `subnets.$netuid.tsx` pass `providerSlug` / `netuid` / `subnetSlug` so `BrandIcon` can resolve curated overrides before falling back to the auto chain.
+```ts
+{ light: "https://github.com/opentensor.png?size=192",
+  dark:  "https://.../opentensor-dark.png" }   // optional
+```
+
+`resolveBrandOverride()` gains a `theme` arg and returns the dark URL when present + theme is dark, otherwise light.
+
+### Theme detection
+- Read from the project's existing theme system. (I'll check `__root.tsx` / a `useTheme` hook; if none exists, fall back to `window.matchMedia('(prefers-color-scheme: dark)')` inside a hydration-safe hook.)
+- `BrandIcon` re-resolves the candidate chain when theme changes.
+
+### Auto-contrast tile (handles the long tail with no dark variant)
+After a successful image load:
+1. Draw it to an offscreen `<canvas>` at small size (~16×16).
+2. Sample alpha-weighted mean luminance of non-transparent pixels.
+3. If the active theme is dark and mean luminance < threshold (logo is dark-on-light), wrap the `<img>` in a white-ish tile background (`bg-white/95`) with the existing rounded border. Otherwise leave transparent over the surface token.
+4. Cache the decision per source URL at module scope (same map style as `winnerByHost`) so we only sample once per session.
+
+Failure-safe: any canvas/CORS issue silently skips the analysis and renders as-is.
+
+---
+
+## 3. Backend `icon_url` respect (already in place, formalize)
+
+Frontend already passes `iconUrl` through to `BrandIcon`. To make the contract clearer for the registry side:
+- Extend types so `icon_url` on `Provider` / `Subnet` / `SubnetProfile` accepts either a string or `{ light: string; dark?: string }`.
+- `BrandIcon` accepts both shapes via a new `iconUrl: string | { light: string; dark?: string } | null` prop signature.
+- Document in `src/lib/metagraphed/brand-overrides.ts` (header comment) the resolution priority used everywhere:
+  1. `iconUrl` from API (per-entry, registry-controlled)
+  2. Curated frontend overrides (this file)
+  3. Icon proxy (when `VITE_ICON_PROXY_URL` set)
+  4. GitHub org avatar (from `repo` URL)
+  5. DuckDuckGo icons
+  6. Google S2 @128
+  7. Monogram tile
+
+---
 
 ## Files
-- `src/components/metagraphed/brand-icon.tsx` — chain + srcset + low-res rejection
-- `src/lib/metagraphed/brand-overrides.ts` — **new**, override maps + resolver
-- `src/assets/brand/*.png.asset.json` — **new**, curated CDN logos
-- `src/routes/providers.index.tsx`, `src/routes/providers.$slug.tsx`, `src/routes/subnets.index.tsx`, `src/routes/subnets.$netuid.tsx` — pass slug/netuid props
+- `src/components/metagraphed/brand-icon.tsx` — proxy candidate, theme-aware chain, canvas luminance check, contrast tile, dark prop plumbing.
+- `src/lib/metagraphed/brand-overrides.ts` — `{ light, dark? }` schema, `resolveBrandOverride(lookup, theme)`, backend contract docblock.
+- `src/lib/metagraphed/types.ts` — widen `icon_url` typing on `Provider` / `Subnet` / `SubnetProfile` / `PrimaryLinks`.
+- `src/hooks/use-color-scheme.ts` *(new, only if no existing theme hook)* — hydration-safe `'light' | 'dark'` resolver.
+- `.env.example` — add `VITE_ICON_PROXY_URL=` with a comment pointing at the backend contract.
 
-## Out of scope
-- Backend `icon_url` population (still respected when present)
-- Dark-mode logo variants
-- Server-side image proxy/resizer
+## Out of scope (still)
+- Building the actual proxy/resize Worker — you said your backend project will own this.
+- Sourcing dark-mode logo URLs en masse — I'll seed 2–3 obvious ones (Opentensor, TaoStats) and leave the rest for organic growth.

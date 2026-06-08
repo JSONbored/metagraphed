@@ -1,34 +1,28 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { classNames } from "@/lib/metagraphed/format";
+import { useTheme, type ResolvedTheme } from "@/lib/theme";
 import {
   resolveBrandOverride,
+  buildProxyIconUrl,
+  pickIconSource,
   type BrandOverrideLookup,
+  type IconSource,
 } from "@/lib/metagraphed/brand-overrides";
 
 /**
- * Multi-source favicon resolution with low-resolution rejection.
+ * Multi-source favicon resolution with low-resolution rejection and
+ * theme-aware sourcing + auto-contrast tile.
  *
- * The chain (in priority order):
- *   1. Explicit `iconUrl` prop (curated CDN logo or API-provided override).
- *   2. Curated provider/subnet override map.
- *   3. GitHub org avatar derived from a `repo` URL (always >=128 crisp).
- *   4. DuckDuckGo icon service — usually serves the site's largest favicon.
- *   5. Google S2 at sz=128 — broad coverage, often upscaled.
- *   6. Monogram tile.
- *
- * We advance to the next candidate on either:
- *   - `<img>` `onError`, or
- *   - `onLoad` where `naturalWidth < displaySize` (would render blurry).
- *
- * Successful and failed candidates are memoised at module scope so the chain
- * is walked at most once per source URL per session.
+ * See `brand-overrides.ts` for the full resolution priority chain and the
+ * documented icon-proxy contract.
  */
 
 const failedUrls = new Set<string>();
 const loadedUrls = new Set<string>();
 const prefetched = new Set<string>();
-/** Per-host winning candidate URL — short-circuits the chain on rerender. */
 const winnerByHost = new Map<string, string>();
+/** Cached "is this logo dark-on-light?" decision per source URL. */
+const isDarkLogo = new Map<string, boolean>();
 
 function extractHost(input?: string | null): string | null {
   if (!input) return null;
@@ -68,9 +62,11 @@ function githubAvatarUrl(org: string, size = 192): string {
 
 interface ChainInputs {
   url?: string | null;
-  iconUrl?: string | null;
+  iconUrl?: IconSource | null;
   repoUrl?: string | null;
   lookup?: BrandOverrideLookup;
+  theme: ResolvedTheme;
+  size: number;
 }
 
 function buildCandidateChain({
@@ -78,6 +74,8 @@ function buildCandidateChain({
   iconUrl,
   repoUrl,
   lookup,
+  theme,
+  size,
 }: ChainInputs): string[] {
   const out: string[] = [];
   const push = (u: string | null | undefined) => {
@@ -86,13 +84,15 @@ function buildCandidateChain({
     if (!out.includes(u)) out.push(u);
   };
 
-  if (iconUrl) push(iconUrl);
-  if (lookup) push(resolveBrandOverride(lookup));
+  push(pickIconSource(iconUrl, theme));
+  if (lookup) push(resolveBrandOverride(lookup, theme));
+
+  const host = extractHost(url);
+  if (host) push(buildProxyIconUrl(host, size * 2, theme));
 
   const repoOrg = githubOrgFromUrl(repoUrl);
   if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
 
-  const host = extractHost(url);
   if (host) {
     push(duckDuckGoUrl(host));
     push(googleS2Url(host, 128));
@@ -106,8 +106,13 @@ function buildCandidateChain({
  */
 export function prefetchBrandIcon(
   url?: string | null,
-  _size = 32,
-  extra?: { iconUrl?: string | null; repoUrl?: string | null; lookup?: BrandOverrideLookup },
+  size = 32,
+  extra?: {
+    iconUrl?: IconSource | null;
+    repoUrl?: string | null;
+    lookup?: BrandOverrideLookup;
+    theme?: ResolvedTheme;
+  },
 ): void {
   if (typeof window === "undefined") return;
   const chain = buildCandidateChain({
@@ -115,6 +120,8 @@ export function prefetchBrandIcon(
     iconUrl: extra?.iconUrl,
     repoUrl: extra?.repoUrl,
     lookup: extra?.lookup,
+    theme: extra?.theme ?? "light",
+    size,
   });
   const first = chain[0];
   if (!first) return;
@@ -146,17 +153,54 @@ function monogramFor(name?: string | null, fallback?: string | number | null): s
   return "··";
 }
 
+/**
+ * Sample the average alpha-weighted luminance of an image. Returns null when
+ * the canvas is tainted (cross-origin without CORS) or the draw fails.
+ *
+ * Heuristic threshold: luminance < 0.55 → "logo is dark-on-light" and we'll
+ * place it on a white tile in dark mode for legibility.
+ */
+function analyseLogoLuminance(img: HTMLImageElement): number | null {
+  try {
+    const w = 16;
+    const h = 16;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    let weighted = 0;
+    let totalAlpha = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i]!;
+      const g = data[i + 1]!;
+      const b = data[i + 2]!;
+      const a = data[i + 3]! / 255;
+      if (a < 0.05) continue;
+      // Rec. 709 luma, normalised to 0..1.
+      const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      weighted += luma * a;
+      totalAlpha += a;
+    }
+    if (totalAlpha === 0) return null;
+    return weighted / totalAlpha;
+  } catch {
+    return null;
+  }
+}
+
 export interface BrandIconProps {
   url?: string | null;
-  iconUrl?: string | null;
+  iconUrl?: IconSource | null;
   repoUrl?: string | null;
   name?: string | null;
   fallback?: string | number | null;
   size?: number;
   className?: string;
-  /** Visually decorative (default). When false, exposes an aria-label. */
   decorative?: boolean;
-  /** Identifiers used to look up curated icon overrides. */
   providerSlug?: string | null;
   subnetSlug?: string | null;
   netuid?: number | string | null;
@@ -175,6 +219,7 @@ export function BrandIcon({
   subnetSlug,
   netuid,
 }: BrandIconProps) {
+  const { resolved: theme } = useTheme();
   const host = useMemo(() => extractHost(url), [url]);
 
   const lookup = useMemo<BrandOverrideLookup>(
@@ -183,8 +228,8 @@ export function BrandIcon({
   );
 
   const chain = useMemo(
-    () => buildCandidateChain({ url, iconUrl, repoUrl, lookup }),
-    [url, iconUrl, repoUrl, lookup],
+    () => buildCandidateChain({ url, iconUrl, repoUrl, lookup, theme, size }),
+    [url, iconUrl, repoUrl, lookup, theme, size],
   );
 
   // Start from the cached winner for this host, if any.
@@ -198,25 +243,28 @@ export function BrandIcon({
 
   const [index, setIndex] = useState(initialIndex);
   const [loaded, setLoaded] = useState(false);
+  const [needsContrastTile, setNeedsContrastTile] = useState(false);
 
-  // Reset when inputs change.
   useEffect(() => {
     setIndex(initialIndex);
     setLoaded(false);
+    setNeedsContrastTile(false);
   }, [initialIndex, chain]);
 
   const candidate = chain[index] ?? null;
   const exhausted = !candidate;
 
-  // If this candidate previously loaded, mark loaded immediately to skip
-  // the skeleton flash on remount.
   useEffect(() => {
     if (candidate && loadedUrls.has(candidate)) setLoaded(true);
-  }, [candidate]);
+    if (candidate && isDarkLogo.has(candidate)) {
+      setNeedsContrastTile(theme === "dark" && isDarkLogo.get(candidate)!);
+    }
+  }, [candidate, theme]);
 
   const advance = useCallback(() => {
     setIndex((i) => i + 1);
     setLoaded(false);
+    setNeedsContrastTile(false);
   }, []);
 
   const onImgError = useCallback(() => {
@@ -227,9 +275,6 @@ export function BrandIcon({
   const onImgLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
-      // Reject results that would be upscaled (blurry). Allow a small
-      // tolerance — some services return a square close to but slightly
-      // under the requested size.
       const min = Math.max(16, Math.floor(size * 0.9));
       if (img.naturalWidth > 0 && img.naturalWidth < min) {
         if (candidate) failedUrls.add(candidate);
@@ -239,15 +284,26 @@ export function BrandIcon({
       if (candidate) {
         loadedUrls.add(candidate);
         if (host) winnerByHost.set(host, candidate);
+
+        // Luminance check (once per source URL). Skipped on cross-origin
+        // images without CORS — drawImage taints the canvas and we silently
+        // fall back to the default surface.
+        if (!isDarkLogo.has(candidate)) {
+          const luma = analyseLogoLuminance(img);
+          if (luma !== null) isDarkLogo.set(candidate, luma < 0.55);
+        }
+        const isDark = isDarkLogo.get(candidate);
+        setNeedsContrastTile(theme === "dark" && isDark === true);
       }
       setLoaded(true);
     },
-    [candidate, advance, host, size],
+    [candidate, advance, host, size, theme],
   );
 
   const baseClasses = classNames(
     "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border bg-surface",
+    "rounded-md border border-border",
+    needsContrastTile ? "bg-white/95" : "bg-surface",
     className,
   );
   const style = { width: size, height: size };
@@ -300,6 +356,7 @@ export function BrandIcon({
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
         className={classNames(
           "relative block transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0",
