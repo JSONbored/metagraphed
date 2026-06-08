@@ -14,6 +14,22 @@ This performs dry-run sync/discovery/verification, contract validation, Worker r
 
 The contract checks include schema bundle drift, schema/query enum parity, OpenAPI example validation, generated TypeScript freshness, and generated client freshness.
 
+## Operator Briefs
+
+Contributor curation:
+
+```bash
+npm run curation:brief
+```
+
+Endpoint operations:
+
+```bash
+npm run endpoint:brief
+```
+
+The endpoint brief summarizes monitored resources, root RPC/WSS/archive advisory pools, provider scores, incidents, and the disabled proxy contract from existing artifacts. Health, latency, latest block, incidents, and pool eligibility remain probe-derived only.
+
 ## Refreshing Artifacts
 
 ```bash

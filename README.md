@@ -201,6 +201,8 @@ npm run validate:docs
 npm run validate:intake
 npm run validate:workflows
 npm run submission:pr -- --changed-files changed-files.txt
+npm run curation:brief
+npm run endpoint:brief
 npm run r2:manifest:dry-run
 npm run r2:download:dry-run
 npm run kv:publish:dry-run
@@ -217,6 +219,10 @@ npm run probes:smoke
 `curate:baseline` derives generated baseline overlays for every active netuid that does not already have a hand-curated overlay. Git stores only a compact checksum summary; the expanded generated overlay bundle is staged outside Git for R2.
 
 `review:promote` applies public-safe maintainer review decisions from `registry/reviews/maintainer-reviewed.json`.
+
+`curation:brief` summarizes the lowest-completeness subnets, highest-priority curation gaps, and adapter candidates for GitHub-native contributor targeting.
+
+`endpoint:brief` summarizes monitored endpoint resources, root RPC/WSS/archive advisory pools, provider scores, active incidents, and the disabled proxy contract. It is an operator aid over existing artifacts, not a separate API or health authority.
 
 `schemas:snapshot` captures machine-readable OpenAPI/Swagger schema summaries and drift state.
 

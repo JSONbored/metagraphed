@@ -82,7 +82,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "submission-gate:health": "node scripts/submission-gate-health.mjs",
-    "curation:brief": "node scripts/curation-brief.mjs"
+    "curation:brief": "node scripts/curation-brief.mjs",
+    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

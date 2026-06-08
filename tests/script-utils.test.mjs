@@ -55,6 +55,7 @@ import {
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
+import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -210,6 +211,80 @@ describe("script utility contracts", () => {
     assert.match(brief, /SN33 ReadyAI - priority 93/);
     assert.match(brief, /SN64 Chutes - score 72/);
     assert.match(brief, /Health, uptime, latency, incidents/);
+  });
+
+  test("renders an endpoint operations brief from pool artifacts", () => {
+    const brief = renderEndpointOpsBrief({
+      endpoint_summary: {
+        endpoint_count: 853,
+        monitored_count: 852,
+        pool_eligible_count: 6,
+        by_status: { degraded: 2, ok: 849, unknown: 2 },
+        by_layer: {
+          "bittensor-base": 6,
+          "subnet-app": 232,
+        },
+        by_publication_state: {
+          monitored: 846,
+          "pool-eligible": 6,
+          verified: 1,
+        },
+      },
+      rpc_summary: {
+        endpoint_count: 6,
+        ok_count: 6,
+        archive_supported_count: 6,
+        providers: ["nodies", "onfinality", "opentensor"],
+      },
+      pools: [
+        {
+          id: "finney-rpc",
+          kind: "subtensor-rpc",
+          endpoint_count: 2,
+          eligible_count: 2,
+          best_endpoint_id: "endpoint-onfinality-finney-rpc",
+          top_endpoints: [
+            "onfinality/endpoint-onfinality-finney-rpc (ok, 607ms, score 89)",
+          ],
+        },
+      ],
+      provider_scores: [
+        {
+          provider: "onfinality",
+          average_score: 89,
+          endpoint_count: 2,
+          ok_count: 2,
+          pool_eligible_count: 2,
+        },
+      ],
+      active_incidents: [
+        {
+          netuid: 33,
+          subnet_name: "ReadyAI",
+          kind: "data-artifact",
+          status: "degraded",
+          reason: "dead",
+          provider: "taomarketcap",
+          endpoint_id: "endpoint-sn-33-data",
+        },
+      ],
+      disabled_proxy_contract: {
+        enabled: false,
+        feature_flag: "METAGRAPH_ENABLE_RPC_PROXY",
+        allowed_methods: ["chain_getHeader"],
+        denied_method_patterns: ["author_"],
+        waf_required: true,
+        rate_limit_required: true,
+      },
+    });
+
+    assert.match(brief, /Metagraphed Endpoint Operations Brief/);
+    assert.match(brief, /Endpoint resources: 853/);
+    assert.match(brief, /finney-rpc \(subtensor-rpc\) - 2\/2 eligible/);
+    assert.match(brief, /onfinality - score 89; ok 2\/2/);
+    assert.match(brief, /SN33 ReadyAI data-artifact - degraded\/dead/);
+    assert.match(brief, /Enabled: false/);
+    assert.match(brief, /probe-derived only/);
   });
 
   test("refresh pipeline persists candidate discovery timestamps", async () => {
