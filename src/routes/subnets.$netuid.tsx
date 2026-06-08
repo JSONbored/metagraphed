@@ -473,7 +473,7 @@ function GapsPanel({
         <EmptyState
           title="No outstanding gaps"
           description="Profile looks complete."
-          action={{ label: "Browse registry gaps", href: "/gaps" }}
+          action={RECOVERY.gaps}
         />
       </SectionAnchor>
     );
