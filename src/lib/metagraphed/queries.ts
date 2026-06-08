@@ -641,6 +641,55 @@ export const providersQuery = () =>
     staleTime: STALE_MED,
   });
 
+export type ProviderCounts = {
+  surfaces: number;
+  endpoints: number;
+  subnets: number;
+};
+
+/**
+ * Aggregated counts of surfaces/endpoints/subnets per provider slug.
+ * The /api/v1/providers list endpoint does not include these counts —
+ * we derive them from the surfaces and endpoints collections, both of
+ * which carry a `provider` slug per row.
+ */
+export const providerCountsQuery = () =>
+  queryOptions({
+    queryKey: k("provider-counts"),
+    queryFn: async ({ signal }) => {
+      const [surfaces, endpoints] = await Promise.all([
+        fetchList<Record<string, unknown>>(
+          "/api/v1/surfaces",
+          "surfaces",
+          { limit: 2000 },
+          signal,
+        ),
+        fetchList<Record<string, unknown>>(
+          "/api/v1/endpoints",
+          "endpoints",
+          { limit: 2000 },
+          signal,
+        ),
+      ]);
+      const map = new Map<string, { surfaces: number; endpoints: number; subnets: Set<number> }>();
+      const bump = (slug: unknown, kind: "surfaces" | "endpoints", netuid: unknown) => {
+        if (typeof slug !== "string" || !slug) return;
+        const entry = map.get(slug) ?? { surfaces: 0, endpoints: 0, subnets: new Set<number>() };
+        entry[kind] += 1;
+        if (typeof netuid === "number") entry.subnets.add(netuid);
+        map.set(slug, entry);
+      };
+      for (const s of surfaces.data) bump(s.provider, "surfaces", s.netuid);
+      for (const e of endpoints.data) bump(e.provider, "endpoints", e.netuid);
+      const out: Record<string, ProviderCounts> = {};
+      for (const [slug, v] of map) {
+        out[slug] = { surfaces: v.surfaces, endpoints: v.endpoints, subnets: v.subnets.size };
+      }
+      return out;
+    },
+    staleTime: STALE_MED,
+  });
+
 function normalizeProvider(raw: unknown, slug: string): Provider {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
     string,

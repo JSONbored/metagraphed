@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
-import { Globe, Github, BookOpen } from "lucide-react";
+import { Suspense, type ReactNode } from "react";
+import { Globe, Github, BookOpen, Radio, Layers } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { providersQuery } from "@/lib/metagraphed/queries";
+import { providersQuery, providerCountsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { Provider } from "@/lib/metagraphed/types";
 
@@ -69,6 +69,7 @@ function authorityTone(a?: string): string {
 
 function ProvidersGrid() {
   const { data } = useSuspenseQuery(providersQuery());
+  const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = (data.data ?? []) as Provider[];
   if (rows.length === 0)
     return (
@@ -155,9 +156,40 @@ function ProvidersGrid() {
                 <span className="font-mono text-[10px]">no public links yet</span>
               ) : null}
             </div>
+            <ProviderCountsRow counts={counts[p.slug]} />
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function ProviderCountsRow({ counts }: { counts?: { surfaces: number; endpoints: number; subnets: number } }) {
+  const s = counts?.surfaces ?? 0;
+  const e = counts?.endpoints ?? 0;
+  const n = counts?.subnets ?? 0;
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
+      <CountTile icon={<Layers className="size-3" />} label="Surfaces" value={s} />
+      <CountTile icon={<Radio className="size-3" />} label="Endpoints" value={e} />
+      <CountTile label="Subnets" value={n} />
+    </div>
+  );
+}
+
+function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
+  return (
+    <div className="flex flex-col">
+      <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+        {icon}
+        {label}
+      </span>
+      <span className={classNames(
+        "font-mono text-sm tabular-nums",
+        value > 0 ? "text-ink-strong" : "text-ink-muted",
+      )}>
+        {value > 0 ? value : "—"}
+      </span>
     </div>
   );
 }
