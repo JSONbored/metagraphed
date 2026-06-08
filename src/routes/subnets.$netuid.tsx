@@ -131,6 +131,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
           <BrandIcon
             url={profile?.website ?? profile?.homepage}
             iconUrl={profile?.icon_url}
+            netuid={netuid}
+            subnetSlug={profile?.slug}
             name={profile?.name}
             fallback={netuid}
             size={48}
