@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1339,
+  "document_count": 1337,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -11248,21 +11248,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-2-website-common-docs",
-      "netuid": 2,
-      "slug": "dsperse",
-      "subtitle": "docs / taomarketcap",
-      "title": "DSperse docs",
-      "tokens": [
-        "docs",
-        "dsperse",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://subnet2.inferencelabs.com/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-dsperse-source-repo",
       "netuid": 2,
       "slug": "dsperse",
@@ -11278,23 +11263,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/inference-labs-inc/subnet-2"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-2-website-common-swagger",
-      "netuid": 2,
-      "slug": "dsperse",
-      "subtitle": "openapi / taomarketcap",
-      "title": "DSperse Swagger UI",
-      "tokens": [
-        "dsperse",
-        "openapi",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://subnet2.inferencelabs.com/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

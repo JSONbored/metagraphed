@@ -68,6 +68,7 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -75,7 +76,6 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "openapi",
           "source-repo",
           "website"
         ]

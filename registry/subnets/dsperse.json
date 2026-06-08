@@ -18,6 +18,10 @@
   "dashboard_url": null,
   "source_repo": "https://github.com/inference-labs-inc/subnet-2",
   "notes": "Reviewed overlay for SN2 DSperse / Inference Labs. Official website, docs, and source repository are verified live. Common API/OpenAPI probe paths currently serve the public SPA shell, so no machine-readable API or schema surface is promoted yet.",
+  "baseline_excluded_surface_ids": [
+    "sn-2-website-common-docs",
+    "sn-2-website-common-swagger"
+  ],
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",

@@ -17,7 +17,7 @@
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "network": "finney",
   "probed_count": 129,
-  "probed_surface_count": 1126,
+  "probed_surface_count": 1124,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
@@ -31,5 +31,5 @@
     },
     "overlays": "registry/subnets"
   },
-  "surface_count": 1133
+  "surface_count": 1131
 }

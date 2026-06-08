@@ -201,41 +201,41 @@
       "completeness": {
         "confidence": "high",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 70
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 70,
+      "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 10,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 10,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "DSperse",
       "native_name": "DSperse",
       "native_name_quality": "chain",
       "netuid": 2,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-2-website-common-swagger",
-        "kind": "openapi",
-        "name": "DSperse Swagger UI",
-        "provider": "taomarketcap",
-        "url": "https://subnet2.inferencelabs.com/swagger"
+        "id": "sn-2-dsperse-website",
+        "kind": "website",
+        "name": "DSperse website",
+        "provider": "inference-labs",
+        "url": "https://subnet2.inferencelabs.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/2-dsperse",
@@ -243,7 +243,7 @@
         "source_repo": "https://github.com/inference-labs-inc/subnet-2",
         "website_url": "https://subnet2.inferencelabs.com/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "DSperse",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -268,11 +268,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 8,
       "symbol": "β",
       "team": null
     },
@@ -11254,8 +11253,8 @@
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 25,
-      "identity-complete": 59,
-      "operational": 43
+      "identity-complete": 60,
+      "operational": 42
     },
     "profile_count": 129
   }

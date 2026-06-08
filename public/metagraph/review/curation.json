@@ -277,18 +277,6 @@
       "slug": "sn-107"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "DSperse",
-      "netuid": 2,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 30,
-      "slug": "dsperse"
-    },
-    {
       "candidate_api_count": 6,
       "curation_level": "machine-verified",
       "name": "lium.io",
@@ -721,6 +709,16 @@
       "operational_surface_count": 0,
       "priority_score": 9,
       "slug": "sn-113"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "DSperse",
+      "netuid": 2,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "dsperse"
     },
     {
       "candidate_api_count": 5,
@@ -3056,6 +3054,24 @@
       "verified_candidate_count": 6
     },
     {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "DSperse",
+      "netuid": 2,
+      "priority_score": 16,
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 15
+    },
+    {
       "candidate_count": 9,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -3156,23 +3172,6 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 6,
       "verified_candidate_count": 7
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "DSperse",
-      "netuid": 2,
-      "priority_score": 12,
-      "review_state": "maintainer-reviewed",
-      "slug": "dsperse",
-      "suggested_next_action": "evaluate for subnet-specific adapter",
-      "surface_count": 10,
-      "verified_candidate_count": 15
     },
     {
       "candidate_count": 11,
@@ -3435,7 +3434,7 @@
     "adapter_candidate_count": 98,
     "gap_kind_counts": {
       "data-artifact": 115,
-      "openapi": 100,
+      "openapi": 101,
       "source-repo": 20,
       "sse": 128,
       "subnet-api": 116,

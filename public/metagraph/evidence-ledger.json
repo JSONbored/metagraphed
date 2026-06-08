@@ -8273,28 +8273,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "DSperse docs is a public docs surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://subnet2.inferencelabs.com/",
-      "subject": "surface:sn-2-website-common-docs",
-      "support_summary": "Listed in curated overlay for dsperse.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse Swagger UI is a public openapi surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://subnet2.inferencelabs.com/",
-      "subject": "surface:sn-2-website-common-swagger",
-      "support_summary": "Listed in curated overlay for dsperse.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "GroundLayer Backprop Finance dashboard is a public dashboard surface for SN20.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16639,8 +16617,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1512,
+    "claim_count": 1510,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1133
+    "surface_claim_count": 1131
   }
 }

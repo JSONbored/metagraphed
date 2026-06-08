@@ -1973,6 +1973,24 @@
       "verified_candidate_count": 6
     },
     {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "DSperse",
+      "netuid": 2,
+      "priority_score": 16,
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 15
+    },
+    {
       "candidate_count": 9,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -2073,23 +2091,6 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 6,
       "verified_candidate_count": 7
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "DSperse",
-      "netuid": 2,
-      "priority_score": 12,
-      "review_state": "maintainer-reviewed",
-      "slug": "dsperse",
-      "suggested_next_action": "evaluate for subnet-specific adapter",
-      "surface_count": 10,
-      "verified_candidate_count": 15
     },
     {
       "candidate_count": 11,

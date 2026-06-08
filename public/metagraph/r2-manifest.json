@@ -1,6 +1,6 @@
 {
   "artifact_count": 23,
-  "artifact_size_bytes": 4683764,
+  "artifact_size_bytes": 4679768,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "0ee8f76253b5c3b0f1e1539f5d13f37d70d386c7babdec26b31477f32eb84774",
-      "size_bytes": 1349,
+      "sha256": "0057d4fcf2b852a7eb37f0088c9a9f3c606b8c08237c84ef03e061054f24b039",
+      "size_bytes": 1211,
       "storage_tier": "dual"
     },
     {
@@ -34,7 +34,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/coverage.json",
       "latest_key": "latest/coverage.json",
       "path": "/metagraph/coverage.json",
-      "sha256": "47a6ff122a50617440f175a26f1d933e7d041eed697497a98153c6142584bacb",
+      "sha256": "39f3b79639d6da7727b9c4a279a8a89729b9602cc1fe110fb3c51b198098efe5",
       "size_bytes": 984,
       "storage_tier": "dual"
     },
@@ -43,8 +43,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/curation.json",
       "latest_key": "latest/curation.json",
       "path": "/metagraph/curation.json",
-      "sha256": "0cc2854cd4474e531c29edbaa582974a1c11f6d2c0d6408a3814f3b93177c70d",
-      "size_bytes": 165484,
+      "sha256": "875cf41c80704c39fe9bb2c73ae19498939176f220037df62458672c6c3a56ce",
+      "size_bytes": 165483,
       "storage_tier": "dual"
     },
     {
@@ -52,8 +52,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/evidence-ledger.json",
       "latest_key": "latest/evidence-ledger.json",
       "path": "/metagraph/evidence-ledger.json",
-      "sha256": "e9cd55f6a6ff0fb48fdb5556299e6a6993692710d949c1b8ce78a975ed691075",
-      "size_bytes": 852789,
+      "sha256": "cf58988658b3db71b8a68a169cafa8c9f8a6f32ce18cd6d40972099c45fcb644",
+      "size_bytes": 851751,
       "storage_tier": "dual"
     },
     {
@@ -61,7 +61,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "518089d1ceb311ce001ac83a0ed59ebec656c0cd1abff1d1246217b88430fd49",
+      "sha256": "778d31eab57586c42c8cbe084d51f7f57b6adb4d0c5c5368f0a470fc02647395",
       "size_bytes": 4324,
       "storage_tier": "dual"
     },
@@ -70,7 +70,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/gaps.json",
       "latest_key": "latest/gaps.json",
       "path": "/metagraph/gaps.json",
-      "sha256": "22c2b728f3247c7654b3e8038f4366c4cb721ad1a894d1a98e7a255dac90759a",
+      "sha256": "3ea2b7e641eb6f64a30d9672332e30e35d000bff8ef936b2ae55d8b2d2f08fcd",
       "size_bytes": 94599,
       "storage_tier": "dual"
     },
@@ -88,7 +88,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/profiles.json",
       "latest_key": "latest/profiles.json",
       "path": "/metagraph/profiles.json",
-      "sha256": "154cd03a3879174870088d0da84b14fa2003f600d064f98d9dd32daac653813f",
+      "sha256": "87d69a4fce08c77b363f351827edcaf404b39c06e4e9ebdca7f40a38a283a3e1",
       "size_bytes": 370049,
       "storage_tier": "dual"
     },
@@ -106,8 +106,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/adapter-candidates.json",
       "latest_key": "latest/review/adapter-candidates.json",
       "path": "/metagraph/review/adapter-candidates.json",
-      "sha256": "0363f978437823fab45ac59a0c05b2063c72ecdf3039008dbb341acd65f77b68",
-      "size_bytes": 26609,
+      "sha256": "b20323e1532c8626c308705df2d325664ce82159c778af3302ff8de52b459485",
+      "size_bytes": 26583,
       "storage_tier": "dual"
     },
     {
@@ -115,8 +115,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/curation.json",
       "latest_key": "latest/review/curation.json",
       "path": "/metagraph/review/curation.json",
-      "sha256": "4da140093c390d61792b0c54c0e973fddbd858f104fbeb30cb366e4b013f74fe",
-      "size_bytes": 93788,
+      "sha256": "eec770b409f32090f47ff57c006f5495591cde0572641423079b2ab67f06ac92",
+      "size_bytes": 93810,
       "storage_tier": "dual"
     },
     {
@@ -124,8 +124,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-queue.json",
       "latest_key": "latest/review/enrichment-queue.json",
       "path": "/metagraph/review/enrichment-queue.json",
-      "sha256": "fef5dfee41745a1cbc43aaf009ed66d4374317f25f2f525b1a26b2e0c171626d",
-      "size_bytes": 345527,
+      "sha256": "2c5b25b009e5bfbc1588fc6867094c4671b140c6f1aad236c53a40cc91871d0a",
+      "size_bytes": 346049,
       "storage_tier": "dual"
     },
     {
@@ -133,8 +133,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/gap-priorities.json",
       "latest_key": "latest/review/gap-priorities.json",
       "path": "/metagraph/review/gap-priorities.json",
-      "sha256": "6d659594487e817ce7dfa66d63623fa40c9e7a6f08dab2842df2ce339e1d85da",
-      "size_bytes": 65330,
+      "sha256": "6385530f8dcafa8607f576f2963fc3efabeb7b36c6e818f93b5c51c4601b1714",
+      "size_bytes": 65378,
       "storage_tier": "dual"
     },
     {
@@ -151,8 +151,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/profile-completeness.json",
       "latest_key": "latest/review/profile-completeness.json",
       "path": "/metagraph/review/profile-completeness.json",
-      "sha256": "a48a1843cfb2543431b5cd8387be312e9bef8c8a5991c28ab62a1447e07fd029",
-      "size_bytes": 129494,
+      "sha256": "c68fa75dc6ed77fb9593720a3b56e05a9564ac2969631a99971b310c4dafa662",
+      "size_bytes": 129527,
       "storage_tier": "git"
     },
     {
@@ -160,8 +160,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/schema-drift.json",
       "latest_key": "latest/schema-drift.json",
       "path": "/metagraph/schema-drift.json",
-      "sha256": "0e1da1e625f052abe18ab7aba7c5d421b816a9330f89b42f2ae40d4f8e22b9fd",
-      "size_bytes": 12449,
+      "sha256": "904631860b6735cc769fdd1c946144475515bfe0cdfc976308e6ef361bb2be0d",
+      "size_bytes": 12100,
       "storage_tier": "dual"
     },
     {
@@ -178,8 +178,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/search.json",
       "latest_key": "latest/search.json",
       "path": "/metagraph/search.json",
-      "sha256": "c0583b88269d3eb308ace5d2d7e6720b9f97233209b00f5fc9b487091f096a1e",
-      "size_bytes": 611589,
+      "sha256": "1619a5ac2044c372f9e8c34e01b0e02b00729533e782a4e376716cd249ec4dbc",
+      "size_bytes": 610754,
       "storage_tier": "dual"
     },
     {
@@ -187,8 +187,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/subnets.json",
       "latest_key": "latest/subnets.json",
       "path": "/metagraph/subnets.json",
-      "sha256": "d57a9de09dfbe3e7ef39b78c4f643dc7fb9e1a89995127f36d033326f3e21fb3",
-      "size_bytes": 127657,
+      "sha256": "979590679c303e876a9c089e3c0dd848fd4c8b7d402557fb115a30a74fe4ee7b",
+      "size_bytes": 127655,
       "storage_tier": "dual"
     },
     {
@@ -196,8 +196,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/surfaces.json",
       "latest_key": "latest/surfaces.json",
       "path": "/metagraph/surfaces.json",
-      "sha256": "bcdd36509a00df601007e41caeebf4805e7872f6d9c499d8df934b188ff01e0f",
-      "size_bytes": 1144683,
+      "sha256": "6b1beae3981ccde2be44604d182b46ba47984a6e60657407be2b36a6d512ecd5",
+      "size_bytes": 1142451,
       "storage_tier": "dual"
     },
     {
@@ -214,7 +214,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1226,
-  "full_artifact_size_bytes": 48221712,
+  "full_artifact_size_bytes": 48188226,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -237,8 +237,8 @@
     "r2": 1203
   },
   "storage_tier_size_bytes": {
-    "dual": 4554270,
-    "git": 129494,
-    "r2": 43537948
+    "dual": 4550241,
+    "git": 129527,
+    "r2": 43508458
   }
 }

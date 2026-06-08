@@ -277,18 +277,6 @@
       "slug": "sn-107"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "DSperse",
-      "netuid": 2,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 30,
-      "slug": "dsperse"
-    },
-    {
       "candidate_api_count": 6,
       "curation_level": "machine-verified",
       "name": "lium.io",
@@ -721,6 +709,16 @@
       "operational_surface_count": 0,
       "priority_score": 9,
       "slug": "sn-113"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "DSperse",
+      "netuid": 2,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "dsperse"
     },
     {
       "candidate_api_count": 5,

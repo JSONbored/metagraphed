@@ -102,7 +102,7 @@
         "source_count": 7,
         "verified_at": "2026-06-08T16:10:00.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Official website, docs, and source repository are verified live.",
@@ -113,6 +113,7 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -120,7 +121,6 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "openapi",
           "source-repo",
           "website"
         ]
@@ -128,7 +128,7 @@
       "name": "DSperse",
       "netuid": 2,
       "slug": "dsperse",
-      "surface_count": 10
+      "surface_count": 8
     },
     {
       "candidate_count": 7,
