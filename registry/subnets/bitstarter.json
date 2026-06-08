@@ -7,14 +7,31 @@
   "categories": ["baseline-curated", "identity-reviewed", "official-website"],
   "dashboard_url": "https://taomarketcap.com/subnets/91",
   "website_url": "https://bitstarter.ai/",
-  "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, and universal TaoMarketCap dashboard. No verified source repository, OpenAPI schema, safe public subnet API endpoint, or SSE surface has been found yet.",
+  "baseline_excluded_surface_ids": [
+    "sn-91-taomarketcap-website",
+    "sn-91-website-common-api",
+    "sn-91-website-common-docs",
+    "sn-91-website-common-health",
+    "sn-91-website-common-openapi-json",
+    "sn-91-website-common-swagger",
+    "sn-91-website-common-swagger-json",
+    "sn-91-website-link-bitstarter-ai-website-1",
+    "sn-91-website-link-bitstarter-ai-website-2",
+    "sn-91-website-link-bitstarter-ai-website-3",
+    "sn-91-website-link-bitstarter-ai-website-4",
+    "sn-91-website-link-bitstarter-ai-website-5"
+  ],
+  "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, how-it-works page, project submission page, and universal TaoMarketCap dashboard. Common docs/API/OpenAPI paths currently return 404 and no verified source repository, machine-readable schema, safe public subnet API endpoint, or SSE surface has been found yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:25:00.000Z",
     "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 4,
+    "source_count": 6,
     "gap_notes": [
+      "Official website, app, how-it-works, and project submission pages are live and verified.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+      "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
       "No verified source repository yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -59,6 +76,48 @@
         "timeout_ms": 10000
       },
       "notes": "Public Bitstarter app surface."
+    },
+    {
+      "id": "sn-91-bitstarter-how-it-works",
+      "name": "Bitstarter how it works",
+      "kind": "docs",
+      "url": "https://app.bitstarter.ai/how-it-works/",
+      "provider": "bitstarter",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/how-it-works/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Bitstarter app information page."
+    },
+    {
+      "id": "sn-91-bitstarter-submit-project",
+      "name": "Bitstarter project submission",
+      "kind": "dashboard",
+      "url": "https://app.bitstarter.ai/submit-a-project/incubator/",
+      "provider": "bitstarter",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/submit-a-project/incubator/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Bitstarter app workflow for incubator project submissions."
     }
   ]
 }

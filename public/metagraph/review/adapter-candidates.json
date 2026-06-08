@@ -1450,6 +1450,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-91-website-common-api",
+        "sn-91-website-common-health",
+        "sn-91-website-common-openapi-json",
+        "sn-91-website-common-swagger",
+        "sn-91-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-91",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-98-website-common-api",
         "sn-98-website-common-health",
         "sn-98-website-common-openapi-json",
@@ -1764,6 +1791,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-18",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-20-website-common-api",
+        "sn-20-website-common-health",
+        "sn-20-website-common-openapi-json",
+        "sn-20-website-common-swagger",
+        "sn-20-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 8,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-20",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2337,33 +2391,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-20-website-common-api",
-        "sn-20-website-common-health",
-        "sn-20-website-common-openapi-json",
-        "sn-20-website-common-swagger",
-        "sn-20-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-20",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-21-website-common-api",
         "sn-21-website-common-health",
         "sn-21-website-common-openapi-json",
@@ -2603,33 +2630,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-85",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-91-website-common-api",
-        "sn-91-website-common-health",
-        "sn-91-website-common-openapi-json",
-        "sn-91-website-common-swagger",
-        "sn-91-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-91",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {

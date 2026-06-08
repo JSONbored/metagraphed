@@ -8262,6 +8262,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "GroundLayer roadmap is a public website surface for SN20.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.groundlayer.xyz/",
+      "subject": "surface:sn-20-groundlayer-roadmap",
+      "support_summary": "Listed in curated overlay for sn-20.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "GroundLayer subnet page is a public website surface for SN20.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.groundlayer.xyz/",
+      "subject": "surface:sn-20-groundlayer-subnet-page",
+      "support_summary": "Listed in curated overlay for sn-20.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "GroundLayer website is a public website surface for SN20.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8291,17 +8313,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/20",
       "subject": "surface:sn-20-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-20.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "GroundLayer website is a public website surface for SN20.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/20",
-      "subject": "surface:sn-20-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-20.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -15577,6 +15588,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Bitstarter how it works is a public docs surface for SN91.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://app.bitstarter.ai/",
+      "subject": "surface:sn-91-bitstarter-how-it-works",
+      "support_summary": "Listed in curated overlay for sn-91.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitstarter project submission is a public dashboard surface for SN91.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://app.bitstarter.ai/",
+      "subject": "surface:sn-91-bitstarter-submit-project",
+      "support_summary": "Listed in curated overlay for sn-91.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Bitstarter website is a public website surface for SN91.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16430,8 +16463,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1493,
+    "claim_count": 1496,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1114
+    "surface_claim_count": 1117
   }
 }

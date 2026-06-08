@@ -15,7 +15,17 @@
   "docs_url": null,
   "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
   "source_repo": null,
-  "baseline_excluded_surface_ids": ["sn-95-website-common-docs"],
+  "baseline_excluded_surface_ids": [
+    "sn-95-taomarketcap-source-repo",
+    "sn-95-taomarketcap-website",
+    "sn-95-website-common-api",
+    "sn-95-website-common-docs",
+    "sn-95-website-common-health",
+    "sn-95-website-common-openapi-json",
+    "sn-95-website-common-swagger",
+    "sn-95-website-common-swagger-json",
+    "sn-95-website-link-actual-inc-website-1"
+  ],
   "notes": "Reviewed overlay for SN95 Actual. The Actual Computer website metadata identifies the project with Bittensor, Subnet 95, decentralized AI, and inference software. The previous GitHub organization candidate currently returns 404 and is not promoted.",
   "curation": {
     "level": "maintainer-reviewed",
@@ -26,7 +36,7 @@
     "gap_notes": [
       "Previously discovered GitHub organization/source candidate currently returns 404.",
       "No verified live source repository yet.",
-      "Authenticated docs redirect to login and are not promoted as public docs.",
+      "Common docs/API/health/OpenAPI/Swagger paths redirect to login and are not promoted as public docs, API, or schema surfaces.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."

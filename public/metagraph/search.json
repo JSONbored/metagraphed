@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1327,
+  "document_count": 1330,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -7436,6 +7436,45 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-91-bitstarter-how-it-works",
+      "netuid": 91,
+      "slug": "sn-91",
+      "subtitle": "docs / bitstarter",
+      "title": "Bitstarter how it works",
+      "tokens": [
+        "1",
+        "91",
+        "bitstarter",
+        "docs",
+        "how",
+        "it",
+        "sn",
+        "works"
+      ],
+      "type": "surface",
+      "url": "https://app.bitstarter.ai/how-it-works/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-91-bitstarter-submit-project",
+      "netuid": 91,
+      "slug": "sn-91",
+      "subtitle": "dashboard / bitstarter",
+      "title": "Bitstarter project submission",
+      "tokens": [
+        "1",
+        "91",
+        "bitstarter",
+        "dashboard",
+        "project",
+        "sn",
+        "submission"
+      ],
+      "type": "surface",
+      "url": "https://app.bitstarter.ai/submit-a-project/incubator/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-91-bitstarter-website",
       "netuid": 91,
       "slug": "sn-91",
@@ -13521,6 +13560,41 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-20-groundlayer-roadmap",
+      "netuid": 20,
+      "slug": "sn-20",
+      "subtitle": "website / groundlayer",
+      "title": "GroundLayer roadmap",
+      "tokens": [
+        "20",
+        "groundlayer",
+        "roadmap",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.groundlayer.xyz/roadmap"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-20-groundlayer-subnet-page",
+      "netuid": 20,
+      "slug": "sn-20",
+      "subtitle": "website / groundlayer",
+      "title": "GroundLayer subnet page",
+      "tokens": [
+        "20",
+        "groundlayer",
+        "page",
+        "sn",
+        "subnet",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.groundlayer.xyz/subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-20-subnetradar-dashboard",
       "netuid": 20,
       "slug": "sn-20",
@@ -13605,23 +13679,6 @@
       ],
       "type": "surface",
       "url": "https://www.groundlayer.xyz/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-20-taomarketcap-website",
-      "netuid": 20,
-      "slug": "sn-20",
-      "subtitle": "website / taomarketcap",
-      "title": "GroundLayer website",
-      "tokens": [
-        "20",
-        "groundlayer",
-        "sn",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://groundlayer.xyz/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

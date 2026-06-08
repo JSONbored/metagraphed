@@ -1084,7 +1084,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-91",
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
-      "surface_count": 7,
+      "surface_count": 9,
       "verified_candidate_count": 11
     },
     {
@@ -1241,7 +1241,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-20",
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
-      "surface_count": 7,
+      "surface_count": 8,
       "verified_candidate_count": 9
     },
     {

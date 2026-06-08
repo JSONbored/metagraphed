@@ -2230,7 +2230,7 @@
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "gap_reasons": [
         "missing-source-repo",
         "missing-openapi",
@@ -2254,7 +2254,7 @@
       "missing_required": [
         "source-repo"
       ],
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 8,
       "name": "GroundLayer",
       "native_name": "GroundLayer",
       "native_name_quality": "chain",
@@ -2262,11 +2262,11 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-20-groundlayer-website",
+        "id": "sn-20-groundlayer-roadmap",
         "kind": "website",
-        "name": "GroundLayer website",
+        "name": "GroundLayer roadmap",
         "provider": "groundlayer",
-        "url": "https://www.groundlayer.xyz/"
+        "url": "https://www.groundlayer.xyz/roadmap"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/20",
@@ -2279,7 +2279,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 9,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_urls": [
@@ -2289,7 +2289,9 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/20/subnet.json",
           "https://subnetradar.com/subnet/20",
           "https://taomarketcap.com/subnets/20",
-          "https://www.groundlayer.xyz/"
+          "https://www.groundlayer.xyz/",
+          "https://www.groundlayer.xyz/roadmap",
+          "https://www.groundlayer.xyz/subnet"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2304,7 +2306,7 @@
         "docs",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "υ",
       "team": null
     },
@@ -10182,7 +10184,7 @@
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 9,
       "gap_reasons": [
         "missing-source-repo",
         "missing-openapi",
@@ -10206,7 +10208,7 @@
       "missing_required": [
         "source-repo"
       ],
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 9,
       "name": "Bitstarter #1",
       "native_name": "Bitstarter #1",
       "native_name_quality": "chain",
@@ -10222,7 +10224,7 @@
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/91",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
+        "docs_url": "https://app.bitstarter.ai/how-it-works/",
         "source_repo": null,
         "website_url": "https://bitstarter.ai/"
       },
@@ -10231,12 +10233,14 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
+        "interface_source_count": 10,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/91",
           "https://app.bitstarter.ai/",
+          "https://app.bitstarter.ai/how-it-works/",
+          "https://app.bitstarter.ai/submit-a-project/incubator/",
           "https://backprop.finance/dtao/subnets/91-bitstarter-1",
           "https://bitstarter.ai/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
@@ -10257,7 +10261,7 @@
         "docs",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 9,
       "symbol": "ᚁ",
       "team": null
     },

@@ -173,7 +173,7 @@
       "timestamp_field": "native_data_as_of"
     },
     {
-      "as_of": "2026-06-08T18:26:37.780Z",
+      "as_of": "2026-06-08T19:26:48.018Z",
       "id": "schema-drift",
       "lane": "schema-snapshot",
       "notes": "Schema drift snapshots are warning-only until more subnets publish machine-readable schemas.",
@@ -182,11 +182,11 @@
       "stale_after_hours": 168,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-08T18:26:37.780Z",
+      "timestamp": "2026-06-08T19:26:48.018Z",
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-08T19:05:44.847Z",
+      "as_of": "2026-06-08T19:26:23.003Z",
       "id": "surface-health",
       "lane": "health-probe",
       "notes": "Observed health is probe-derived.",
@@ -195,7 +195,7 @@
       "stale_after_hours": 6,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T19:05:44.847Z",
+      "timestamp": "2026-06-08T19:26:23.003Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -204,14 +204,14 @@
     "adapter_snapshot_as_of": "2026-06-08T16:07:27.131Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T14:11:05.342Z",
-    "health_probe_as_of": "2026-06-08T19:05:44.847Z",
-    "health_surface_count": 1107,
+    "health_probe_as_of": "2026-06-08T19:26:23.003Z",
+    "health_surface_count": 1110,
     "missing_blocking_source_count": 0,
     "native_data_as_of": "2026-06-07T21:51:54Z",
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
     "openapi_surface_count": 12,
     "publish_ready_without_age_check": true,
-    "schema_snapshot_as_of": "2026-06-08T18:26:37.780Z",
+    "schema_snapshot_as_of": "2026-06-08T19:26:48.018Z",
     "stale_window_warnings": [],
     "verification_as_of": "2026-06-08T15:38:22.213Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",

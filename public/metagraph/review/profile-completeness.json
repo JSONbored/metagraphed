@@ -441,7 +441,7 @@
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-91",
-      "source_count": 8,
+      "source_count": 10,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
         "dashboard",
@@ -484,7 +484,7 @@
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-20",
-      "source_count": 7,
+      "source_count": 9,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
         "dashboard",

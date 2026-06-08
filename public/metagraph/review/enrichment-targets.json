@@ -167,8 +167,8 @@
         "sn-101-surface-candidate-source-repo",
         "sn-104-surface-candidate-source-repo",
         "sn-91-surface-candidate-source-repo",
-        "sn-95-surface-candidate-source-repo",
         "sn-20-surface-candidate-source-repo",
+        "sn-95-surface-candidate-source-repo",
         "sn-30-surface-candidate-source-repo",
         "sn-27-surface-candidate-source-repo",
         "sn-76-surface-candidate-source-repo",
@@ -5148,6 +5148,59 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 91 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "kind": "source-repo",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "priority_score": 121,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-source-repo"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-91",
+      "source_requirements": [
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/91",
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/how-it-works/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-91-surface-candidate-source-repo",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 60 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -6471,59 +6524,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 91 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "kind": "source-repo",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "priority_score": 120,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-91",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/91",
-        "https://app.bitstarter.ai/",
-        "https://backprop.finance/dtao/subnets/91-bitstarter-1"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-91-surface-candidate-source-repo",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 8 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -7790,6 +7790,67 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-128-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 20 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 1,
+        "classifications": {
+          "dead": 1
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 1,
+        "sample_candidate_ids": [
+          "sn-20-taomarketcap-source-repo"
+        ],
+        "stale_or_failed_count": 1,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "kind": "source-repo",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "GroundLayer",
+      "netuid": 20,
+      "priority_score": 118,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-source-repo"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-20-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-20-taomarketcap-source-repo"
+      ],
+      "slug": "sn-20",
+      "source_requirements": [
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/20",
+        "https://backprop.finance/dtao/subnets/20-groundlayer",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-20-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
     {
@@ -9189,67 +9250,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-120-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 20 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "dead": 1
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-20-taomarketcap-source-repo"
-        ],
-        "stale_or_failed_count": 1,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "partial",
-      "kind": "source-repo",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "GroundLayer",
-      "netuid": 20,
-      "priority_score": 117,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-20-taomarketcap-source-repo"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-20-taomarketcap-source-repo"
-      ],
-      "slug": "sn-20",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/20",
-        "https://backprop.finance/dtao/subnets/20-groundlayer",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-20-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
     {

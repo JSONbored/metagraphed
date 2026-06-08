@@ -5662,6 +5662,54 @@
     {
       "auth_required": false,
       "authority": "official",
+      "id": "sn-20-groundlayer-roadmap",
+      "kind": "website",
+      "name": "GroundLayer roadmap",
+      "netuid": 20,
+      "notes": "Official GroundLayer roadmap page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.groundlayer.xyz/",
+        "https://www.groundlayer.xyz/roadmap"
+      ],
+      "subnet_name": "GroundLayer",
+      "subnet_slug": "sn-20",
+      "url": "https://www.groundlayer.xyz/roadmap"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-20-groundlayer-subnet-page",
+      "kind": "website",
+      "name": "GroundLayer subnet page",
+      "netuid": 20,
+      "notes": "Official GroundLayer subnet information page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.groundlayer.xyz/",
+        "https://www.groundlayer.xyz/subnet"
+      ],
+      "subnet_name": "GroundLayer",
+      "subnet_slug": "sn-20",
+      "url": "https://www.groundlayer.xyz/subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-20-groundlayer-website",
       "kind": "website",
       "name": "GroundLayer website",
@@ -5746,38 +5794,6 @@
       "subnet_name": "GroundLayer",
       "subnet_slug": "sn-20",
       "url": "https://taomarketcap.com/subnets/20"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-20-taomarketcap-website",
-      "kind": "website",
-      "name": "GroundLayer website",
-      "netuid": 20,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/20"
-      ],
-      "subnet_name": "GroundLayer",
-      "subnet_slug": "sn-20",
-      "url": "https://groundlayer.xyz/"
     },
     {
       "auth_required": false,
@@ -23794,6 +23810,54 @@
       "subnet_name": "Bitstarter #1",
       "subnet_slug": "sn-91",
       "url": "https://app.bitstarter.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-how-it-works",
+      "kind": "docs",
+      "name": "Bitstarter how it works",
+      "netuid": 91,
+      "notes": "Public Bitstarter app information page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/how-it-works/"
+      ],
+      "subnet_name": "Bitstarter #1",
+      "subnet_slug": "sn-91",
+      "url": "https://app.bitstarter.ai/how-it-works/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-submit-project",
+      "kind": "dashboard",
+      "name": "Bitstarter project submission",
+      "netuid": 91,
+      "notes": "Public Bitstarter app workflow for incubator project submissions.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/submit-a-project/incubator/"
+      ],
+      "subnet_name": "Bitstarter #1",
+      "subnet_slug": "sn-91",
+      "url": "https://app.bitstarter.ai/submit-a-project/incubator/"
     },
     {
       "auth_required": false,

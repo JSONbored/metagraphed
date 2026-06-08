@@ -551,6 +551,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Official website, subnet, and roadmap pages are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Previously discovered GitHub source repository candidate currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -744,6 +747,7 @@
       "gaps": {
         "gap_notes": [
           "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths on nodexo.ai are not promoted because the origin rejects simple machine probes.",
           "Previously discovered GitHub source repository candidates currently return 404.",
           "No verified live source repository yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -830,6 +834,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Official website and documentation are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths on endure.network currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Generic email-protection pages are not listed as subnet interfaces.",
           "No verified source repository yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
@@ -2519,6 +2526,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Official website, app, how-it-works, and project submission pages are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
           "No verified source repository yet.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -2634,7 +2644,7 @@
         "gap_notes": [
           "Previously discovered GitHub organization/source candidate currently returns 404.",
           "No verified live source repository yet.",
-          "Authenticated docs redirect to login and are not promoted as public docs.",
+          "Common docs/API/health/OpenAPI/Swagger paths redirect to login and are not promoted as public docs, API, or schema surfaces.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."

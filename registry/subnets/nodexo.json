@@ -16,15 +16,26 @@
   "docs_url": "https://docs.nodexo.ai/",
   "dashboard_url": "https://console.nodexo.ai/",
   "source_repo": null,
+  "baseline_excluded_surface_ids": [
+    "sn-27-taomarketcap-source-repo",
+    "sn-27-taomarketcap-website",
+    "sn-27-website-common-api",
+    "sn-27-website-common-docs",
+    "sn-27-website-common-health",
+    "sn-27-website-common-openapi-json",
+    "sn-27-website-common-swagger",
+    "sn-27-website-common-swagger-json"
+  ],
   "notes": "Reviewed overlay for SN27 Nodexo Compute. Official browser-facing website, docs, and console surfaces are known, but simple Node/HEAD probes currently receive connection resets. The previously discovered source repository candidate currently returns 404 and is not promoted.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T14:15:00.000Z",
     "verified_at": "2026-06-08T14:15:00.000Z",
-    "source_count": 5,
+    "source_count": 6,
     "gap_notes": [
       "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths on nodexo.ai are not promoted because the origin rejects simple machine probes.",
       "Previously discovered GitHub source repository candidates currently return 404.",
       "No verified live source repository yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
