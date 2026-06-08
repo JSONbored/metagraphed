@@ -3,6 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -208,7 +209,7 @@ function SubnetsTable() {
           <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
             <span>{formatNumber(s.participants)} participants</span>
             <span>{s.surfaces_count ?? 0} surfaces</span>
-            <span>{formatRelative(s.updated_at ?? s.freshness)}</span>
+            <span><TimeAgo at={s.updated_at ?? s.freshness} /></span>
           </div>
           <div className="mt-1.5"><CurationChip level={s.curation_level} /></div>
         </Link>
@@ -245,7 +246,7 @@ function SubnetsTable() {
                 <td className="px-4 py-2.5"><CurationChip level={s.curation_level} /></td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px]">{s.surfaces_count ?? "—"}</td>
                 <td className="px-4 py-2.5"><HealthPill state={s.health} /></td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">{formatRelative(s.updated_at ?? s.freshness)}</td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.updated_at ?? s.freshness} /></td>
               </tr>
             ))}
           </tbody>

@@ -21,6 +21,7 @@ import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/met
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
@@ -436,7 +437,7 @@ function SchemasPanel({ netuid }: { netuid: number }) {
               <span className="truncate text-sm font-medium text-ink-strong">{s.name ?? s.url}</span>
             </div>
             <span className="font-mono text-[10px] text-ink-muted shrink-0">
-              {formatRelative(s.updated_at)}
+              <TimeAgo at={s.updated_at} />
             </span>
           </div>
           {s.schema_url ? (
@@ -485,7 +486,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
               ) : null}
             </div>
             <span className="font-mono text-[10px] text-ink-muted shrink-0">
-              {formatRelative(s.updated_at)}
+              <TimeAgo at={s.updated_at} />
             </span>
           </div>
         </li>
@@ -557,7 +558,7 @@ function CandidatesList({ netuid }: { netuid: number }) {
               {c.notes ? <p className="mt-1 text-xs text-ink-muted">{c.notes}</p> : null}
             </div>
             <span className="font-mono text-[10px] text-ink-muted shrink-0">
-              {formatRelative(c.discovered_at)}
+              <TimeAgo at={c.discovered_at} />
             </span>
           </div>
         </li>

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -239,7 +240,7 @@ function PilotCard({
       )}
       {generated ? (
         <div className="mt-2 font-mono text-[10px] text-ink-muted">
-          updated {formatRelative(generated)}
+          updated <TimeAgo at={generated} />
         </div>
       ) : null}
     </Link>
@@ -336,7 +337,7 @@ function SubnetPreviewTable() {
                   <HealthPill state={s.health ?? healthBySubnet.get(s.netuid) ?? "unknown"} />
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
-                  {formatRelative(s.updated_at ?? s.freshness)}
+                  <TimeAgo at={s.updated_at ?? s.freshness} />
                 </td>
               </tr>
             ))}

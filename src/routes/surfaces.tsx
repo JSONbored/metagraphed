@@ -3,6 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
@@ -195,7 +196,7 @@ function SurfacesTable() {
                 <Link to="/providers/$slug" params={{ slug: s.provider_slug }}>{s.provider ?? s.provider_slug}</Link>
               ) : (s.provider ?? "—")}
             </span>
-            <span>{formatRelative(s.updated_at)}</span>
+            <span><TimeAgo at={s.updated_at} /></span>
           </div>
         </div>
       ))}
@@ -229,7 +230,7 @@ function SurfacesTable() {
                   ) : (s.provider ?? "—")}
                 </td>
                 <td className="px-3 py-2"><CurationChip level={s.curation_level} /></td>
-                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(s.updated_at)}</td>
+                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.updated_at} /></td>
               </tr>
             ))}
           </tbody>
