@@ -70,10 +70,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 74,
+      "auto_review_candidate_count": 75,
       "kind": "data-artifact",
       "manual_review_required_count": 0,
-      "target_count": 74,
+      "target_count": 75,
       "target_ids": [
         "sn-17-surface-candidate-data-artifact",
         "sn-65-surface-candidate-data-artifact",
@@ -83,18 +83,18 @@
         "sn-37-surface-candidate-data-artifact",
         "sn-26-surface-candidate-data-artifact",
         "sn-36-surface-candidate-data-artifact",
+        "sn-112-surface-candidate-data-artifact",
         "sn-55-surface-candidate-data-artifact",
         "sn-99-surface-candidate-data-artifact",
         "sn-126-surface-candidate-data-artifact",
         "sn-60-surface-candidate-data-artifact",
         "sn-78-surface-candidate-data-artifact",
         "sn-94-surface-candidate-data-artifact",
-        "sn-35-surface-candidate-data-artifact",
         "sn-44-surface-candidate-data-artifact",
         "sn-54-surface-candidate-data-artifact",
         "sn-67-surface-candidate-data-artifact",
         "sn-80-surface-candidate-data-artifact",
-        "sn-112-surface-candidate-data-artifact"
+        "sn-127-surface-candidate-data-artifact"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
@@ -106,15 +106,15 @@
         37,
         26,
         36,
-        55,
-        99
+        112,
+        55
       ]
     },
     {
-      "auto_review_candidate_count": 83,
+      "auto_review_candidate_count": 84,
       "kind": "openapi",
       "manual_review_required_count": 0,
-      "target_count": 83,
+      "target_count": 84,
       "target_ids": [
         "sn-17-surface-candidate-openapi",
         "sn-65-surface-candidate-openapi",
@@ -127,13 +127,13 @@
         "sn-37-surface-candidate-openapi",
         "sn-26-surface-candidate-openapi",
         "sn-36-surface-candidate-openapi",
+        "sn-112-surface-candidate-openapi",
         "sn-55-surface-candidate-openapi",
         "sn-99-surface-candidate-openapi",
         "sn-126-surface-candidate-openapi",
         "sn-60-surface-candidate-openapi",
         "sn-78-surface-candidate-openapi",
         "sn-94-surface-candidate-openapi",
-        "sn-35-surface-candidate-openapi",
         "sn-44-surface-candidate-openapi",
         "sn-54-surface-candidate-openapi"
       ],
@@ -193,10 +193,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 83,
+      "auto_review_candidate_count": 84,
       "kind": "subnet-api",
       "manual_review_required_count": 0,
-      "target_count": 83,
+      "target_count": 84,
       "target_ids": [
         "sn-17-surface-candidate-subnet-api",
         "sn-65-surface-candidate-subnet-api",
@@ -209,13 +209,13 @@
         "sn-37-surface-candidate-subnet-api",
         "sn-26-surface-candidate-subnet-api",
         "sn-36-surface-candidate-subnet-api",
+        "sn-112-surface-candidate-subnet-api",
         "sn-55-surface-candidate-subnet-api",
         "sn-99-surface-candidate-subnet-api",
         "sn-126-surface-candidate-subnet-api",
         "sn-60-surface-candidate-subnet-api",
         "sn-78-surface-candidate-subnet-api",
         "sn-94-surface-candidate-subnet-api",
-        "sn-35-surface-candidate-subnet-api",
         "sn-44-surface-candidate-subnet-api",
         "sn-54-surface-candidate-subnet-api"
       ],
@@ -234,21 +234,20 @@
       ]
     },
     {
-      "auto_review_candidate_count": 15,
+      "auto_review_candidate_count": 14,
       "kind": "website",
       "manual_review_required_count": 0,
-      "target_count": 15,
+      "target_count": 14,
       "target_ids": [
         "sn-73-surface-candidate-website",
         "sn-119-surface-candidate-website",
         "sn-28-surface-candidate-website",
         "sn-31-surface-candidate-website",
         "sn-69-surface-candidate-website",
-        "sn-81-surface-candidate-website",
         "sn-86-surface-candidate-website",
         "sn-101-surface-candidate-website",
         "sn-104-surface-candidate-website",
-        "sn-38-surface-candidate-website",
+        "sn-81-surface-candidate-website",
         "sn-89-surface-candidate-website",
         "sn-47-surface-candidate-website",
         "sn-109-surface-candidate-website",
@@ -262,50 +261,50 @@
         28,
         31,
         69,
-        81,
         86,
         101,
         104,
-        38
+        81,
+        89
       ]
     }
   ],
   "notes": "Contributor-oriented enrichment target pack derived from the queue and evidence artifacts. It provides public-safe submission guidance only; observed health and registry truth remain probe/generated artifacts.",
   "schema_version": 1,
   "summary": {
-    "auto_review_candidate_count": 276,
+    "auto_review_candidate_count": 278,
     "by_evidence_action": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 208,
-      "review-existing-evidence": 5,
+      "replace-stale-evidence": 211,
+      "review-existing-evidence": 4,
       "submit-new-evidence": 60,
       "verify-existing-evidence": 3
     },
     "by_kind": {
-      "data-artifact": 74,
-      "openapi": 83,
+      "data-artifact": 75,
+      "openapi": 84,
       "source-repo": 21,
-      "subnet-api": 83,
-      "website": 15
+      "subnet-api": 84,
+      "website": 14
     },
     "by_lane": {
       "adapter-candidate": 12,
       "baseline-monitoring": 1,
-      "direct-submission": 276,
+      "direct-submission": 278,
       "maintainer-review": 5
     },
     "by_target_type": {
       "adapter-review": 12,
       "maintainer-review": 5,
       "monitoring-followup": 1,
-      "surface-candidate": 276
+      "surface-candidate": 278
     },
     "manual_review_required_count": 18,
     "new_evidence_count": 60,
-    "stale_replacement_count": 208,
+    "stale_replacement_count": 211,
     "subnet_count": 129,
-    "target_count": 294
+    "target_count": 296
   },
   "targets": [
     {
@@ -483,7 +482,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-119-taomarketcap-source-repo"
+          "sn-119-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -513,10 +512,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-119-taomarketcap-source-repo"
+        "sn-119-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-119-taomarketcap-source-repo"
+        "sn-119-native-chain-github"
       ],
       "slug": "satori",
       "source_requirements": [
@@ -629,10 +628,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-119-taomarketcap-source-repo"
+        "sn-119-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-119-taomarketcap-source-repo"
+        "sn-119-native-chain-github"
       ],
       "slug": "satori",
       "source_requirements": [
@@ -709,7 +708,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17",
         "https://backprop.finance/dtao/subnets/17-404-gen",
-        "https://github.com/404-Repo/404-gen-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -776,7 +775,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/65",
         "https://backprop.finance/dtao/subnets/65-tao-private-network",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -843,7 +842,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93",
         "https://backprop.finance/dtao/subnets/93-bitcast",
-        "https://github.com/bitcast-network/bitcast"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -915,7 +914,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17",
         "https://backprop.finance/dtao/subnets/17-404-gen",
-        "https://github.com/404-Repo/404-gen-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -988,7 +987,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/65",
         "https://backprop.finance/dtao/subnets/65-tao-private-network",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1061,7 +1060,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93",
         "https://backprop.finance/dtao/subnets/93-bitcast",
-        "https://github.com/bitcast-network/bitcast"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1132,7 +1131,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17",
         "https://backprop.finance/dtao/subnets/17-404-gen",
-        "https://github.com/404-Repo/404-gen-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1204,7 +1203,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/65",
         "https://backprop.finance/dtao/subnets/65-tao-private-network",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1276,7 +1275,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93",
         "https://backprop.finance/dtao/subnets/93-bitcast",
-        "https://github.com/bitcast-network/bitcast"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1342,7 +1341,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/108",
         "https://backprop.finance/dtao/subnets/108-talkhead",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1483,7 +1482,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/68",
         "https://backprop.finance/dtao/subnets/68-nova",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1532,18 +1531,18 @@
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api",
-        "sn-70-website-common-health"
+        "sn-70-website-common-api"
       ],
       "sample_target_candidate_ids": [
+        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api",
-        "sn-70-website-common-health"
+        "sn-70-website-common-api"
       ],
       "slug": "sn-70",
       "source_requirements": [
@@ -1554,7 +1553,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/70",
         "https://backprop.finance/dtao/subnets/70-nexisgen",
-        "https://github.com/RendixNetwork/nexisgen"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -1626,7 +1625,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/108",
         "https://backprop.finance/dtao/subnets/108-talkhead",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2089,7 +2088,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/68",
         "https://backprop.finance/dtao/subnets/68-nova",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2102,7 +2101,8 @@
       "candidate_evidence": {
         "candidate_count": 2,
         "classifications": {
-          "dead": 2
+          "dead": 1,
+          "unsupported": 1
         },
         "live_or_redirected_count": 0,
         "reviewable_count": 2,
@@ -2137,18 +2137,18 @@
       "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api",
-        "sn-70-website-common-health"
+        "sn-70-website-common-api"
       ],
       "sample_target_candidate_ids": [
+        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api",
-        "sn-70-website-common-health"
+        "sn-70-website-common-api"
       ],
       "slug": "sn-70",
       "source_requirements": [
@@ -2159,7 +2159,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/70",
         "https://backprop.finance/dtao/subnets/70-nexisgen",
-        "https://github.com/RendixNetwork/nexisgen"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2230,7 +2230,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/108",
         "https://backprop.finance/dtao/subnets/108-talkhead",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2397,59 +2397,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
       "target_id": "sn-69-surface-candidate-website",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 81 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "kind": "website",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Grail",
-      "netuid": 81,
-      "priority_score": 125,
-      "profile_level": "identity-partial",
-      "reason_codes": [
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-81",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/81",
-        "https://backprop.finance/dtao/subnets/81-deprecated",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-81-surface-candidate-website",
       "target_type": "surface-candidate"
     },
     {
@@ -2674,7 +2621,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/18",
         "https://backprop.finance/dtao/subnets/18-zeus",
-        "https://github.com/Orpheus-AI/Zeus"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2813,7 +2760,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/18",
         "https://backprop.finance/dtao/subnets/18-zeus",
-        "https://github.com/Orpheus-AI/Zeus"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -2958,7 +2905,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/18",
         "https://backprop.finance/dtao/subnets/18-zeus",
-        "https://github.com/Orpheus-AI/Zeus"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3095,7 +3042,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/26",
         "https://backprop.finance/dtao/subnets/26-perturb",
-        "https://github.com/0xsigurd/Perturb"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3161,11 +3108,77 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/36",
         "https://backprop.finance/dtao/subnets/36-eirel",
-        "https://eirel.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-36-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 112 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "minotaur",
+      "netuid": 112,
+      "priority_score": 123,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "slug": "sn-112",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/112",
+        "https://backprop.finance/dtao/subnets/112-minotaur",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-112-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
     {
@@ -3233,7 +3246,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/26",
         "https://backprop.finance/dtao/subnets/26-perturb",
-        "https://github.com/0xsigurd/Perturb"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3305,11 +3318,83 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/36",
         "https://backprop.finance/dtao/subnets/36-eirel",
-        "https://eirel.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-36-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 112 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-112-website-common-openapi-json",
+          "sn-112-website-common-swagger",
+          "sn-112-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "minotaur",
+      "netuid": 112,
+      "priority_score": 123,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "slug": "sn-112",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/112",
+        "https://backprop.finance/dtao/subnets/112-minotaur",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-112-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -3376,7 +3461,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/26",
         "https://backprop.finance/dtao/subnets/26-perturb",
-        "https://github.com/0xsigurd/Perturb"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3447,11 +3532,135 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/36",
         "https://backprop.finance/dtao/subnets/36-eirel",
-        "https://eirel.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-36-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 112 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-112-website-common-api",
+          "sn-112-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "minotaur",
+      "netuid": 112,
+      "priority_score": 123,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "slug": "sn-112",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/112",
+        "https://backprop.finance/dtao/subnets/112-minotaur",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-112-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 81 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "kind": "website",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "Grail",
+      "netuid": 81,
+      "priority_score": 123,
+      "profile_level": "identity-partial",
+      "reason_codes": [
+        "missing-website",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-81",
+      "source_requirements": [
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/81",
+        "https://backprop.finance/dtao/subnets/81-deprecated",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-81-surface-candidate-website",
       "target_type": "surface-candidate"
     },
     {
@@ -3545,7 +3754,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/51",
         "https://backprop.finance/dtao/subnets/51-lium-io",
-        "https://docs.lium.io/bittensor-subnet/overview"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "maintainer-review",
       "target_action": "maintainer-review",
@@ -3611,7 +3820,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/55",
         "https://backprop.finance/dtao/subnets/55-niome",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_55/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3679,7 +3888,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/99",
         "https://backprop.finance/dtao/subnets/99-leoma",
-        "https://docs.leoma.ai/storage"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3745,7 +3954,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/126",
         "https://backprop.finance/dtao/subnets/126-poker44",
-        "https://github.com/Poker44/Poker44-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3817,7 +4026,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/55",
         "https://backprop.finance/dtao/subnets/55-niome",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_55/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3891,7 +4100,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/99",
         "https://backprop.finance/dtao/subnets/99-leoma",
-        "https://docs.leoma.ai/storage"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -3963,7 +4172,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/126",
         "https://backprop.finance/dtao/subnets/126-poker44",
-        "https://github.com/Poker44/Poker44-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4034,7 +4243,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/55",
         "https://backprop.finance/dtao/subnets/55-niome",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_55/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4108,7 +4317,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/99",
         "https://backprop.finance/dtao/subnets/99-leoma",
-        "https://docs.leoma.ai/storage"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4179,7 +4388,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/126",
         "https://backprop.finance/dtao/subnets/126-poker44",
-        "https://github.com/Poker44/Poker44-subnet"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4230,7 +4439,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/46",
         "https://backprop.finance/dtao/subnets/46-zipcode",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_46/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "maintainer-review",
       "target_action": "maintainer-review",
@@ -4364,7 +4573,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/78",
         "https://backprop.finance/dtao/subnets/78-vocence",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4576,7 +4785,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/78",
         "https://backprop.finance/dtao/subnets/78-vocence",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4845,7 +5054,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/78",
         "https://backprop.finance/dtao/subnets/78-vocence",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -4925,72 +5134,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 35 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "OxMarkets",
-      "netuid": 35,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "slug": "sn-35",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/35",
-        "https://backprop.finance/dtao/subnets/35-oxmarkets",
-        "https://github.com/General-Tao-Ventures/cartha-validator"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-35-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 44 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -5048,7 +5191,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44",
         "https://backprop.finance/dtao/subnets/44-score",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5114,7 +5257,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/54",
         "https://backprop.finance/dtao/subnets/54-yanez-miid",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_54/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5180,7 +5323,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/67",
         "https://backprop.finance/dtao/subnets/67-harnyx",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_67/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5247,77 +5390,11 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/80",
         "https://backprop.finance/dtao/subnets/80-dogelayer",
-        "https://dogelayer.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-80-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 112 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "minotaur",
-      "netuid": 112,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "slug": "sn-112",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112",
-        "https://backprop.finance/dtao/subnets/112-minotaur",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-112-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
     {
@@ -5379,83 +5456,11 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/127",
         "https://backprop.finance/dtao/subnets/127-astrid",
-        "https://github.com/astridintelligence/sn-127"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-127-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 35 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-35-website-common-openapi-json",
-          "sn-35-website-common-swagger",
-          "sn-35-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "OxMarkets",
-      "netuid": 35,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "slug": "sn-35",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/35",
-        "https://backprop.finance/dtao/subnets/35-oxmarkets",
-        "https://github.com/General-Tao-Ventures/cartha-validator"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-35-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -5523,7 +5528,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44",
         "https://backprop.finance/dtao/subnets/44-score",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5596,7 +5601,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/54",
         "https://backprop.finance/dtao/subnets/54-yanez-miid",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_54/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5668,7 +5673,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/67",
         "https://backprop.finance/dtao/subnets/67-harnyx",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_67/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -5741,83 +5746,11 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/80",
         "https://backprop.finance/dtao/subnets/80-dogelayer",
-        "https://dogelayer.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-80-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 112 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-112-website-common-openapi-json",
-          "sn-112-website-common-swagger",
-          "sn-112-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "minotaur",
-      "netuid": 112,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "slug": "sn-112",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112",
-        "https://backprop.finance/dtao/subnets/112-minotaur",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-112-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -5885,82 +5818,11 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/127",
         "https://backprop.finance/dtao/subnets/127-astrid",
-        "https://github.com/astridintelligence/sn-127"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-127-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 35 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-35-website-common-api",
-          "sn-35-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "OxMarkets",
-      "netuid": 35,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "slug": "sn-35",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/35",
-        "https://backprop.finance/dtao/subnets/35-oxmarkets",
-        "https://github.com/General-Tao-Ventures/cartha-validator"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-35-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -6027,7 +5889,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44",
         "https://backprop.finance/dtao/subnets/44-score",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -6098,7 +5960,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/54",
         "https://backprop.finance/dtao/subnets/54-yanez-miid",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_54/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -6169,7 +6031,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/67",
         "https://backprop.finance/dtao/subnets/67-harnyx",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_67/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -6242,82 +6104,11 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/80",
         "https://backprop.finance/dtao/subnets/80-dogelayer",
-        "https://dogelayer.ai/"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-80-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 112 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-112-website-common-api",
-          "sn-112-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "minotaur",
-      "netuid": 112,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-112-website-common-openapi-json",
-        "sn-112-website-common-swagger",
-        "sn-112-website-common-swagger-json",
-        "sn-112-website-common-api",
-        "sn-112-website-common-health"
-      ],
-      "slug": "sn-112",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112",
-        "https://backprop.finance/dtao/subnets/112-minotaur",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-112-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -6384,11 +6175,77 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/127",
         "https://backprop.finance/dtao/subnets/127-astrid",
-        "https://github.com/astridintelligence/sn-127"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-127-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 35 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "OxMarkets",
+      "netuid": 35,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "slug": "sn-35",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/35",
+        "https://backprop.finance/dtao/subnets/35-oxmarkets",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-35-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
     {
@@ -6519,11 +6376,78 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/50",
         "https://backprop.finance/dtao/subnets/50-synth",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-50-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 105 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Beam",
+      "netuid": 105,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "slug": "sn-105",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/105",
+        "https://b1m.ai/",
+        "https://backprop.finance/dtao/subnets/105-beam"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-105-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
     {
@@ -6586,7 +6510,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124",
         "https://backprop.finance/dtao/subnets/124-swarm",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -6658,6 +6582,78 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-128-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 35 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-35-website-common-openapi-json",
+          "sn-35-website-common-swagger",
+          "sn-35-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "OxMarkets",
+      "netuid": 35,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "slug": "sn-35",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/35",
+        "https://backprop.finance/dtao/subnets/35-oxmarkets",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-35-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -6800,11 +6796,85 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/50",
         "https://backprop.finance/dtao/subnets/50-synth",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-50-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 105 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "content-mismatch": 1,
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-105-website-common-openapi-json",
+          "sn-105-website-common-swagger",
+          "sn-105-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Beam",
+      "netuid": 105,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "slug": "sn-105",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/105",
+        "https://b1m.ai/",
+        "https://backprop.finance/dtao/subnets/105-beam"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-105-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -6873,7 +6943,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124",
         "https://backprop.finance/dtao/subnets/124-swarm",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -6964,7 +7034,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-20-taomarketcap-source-repo"
+          "sn-20-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -6992,10 +7062,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-20-taomarketcap-source-repo"
+        "sn-20-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-20-taomarketcap-source-repo"
+        "sn-20-native-chain-github"
       ],
       "slug": "sn-20",
       "source_requirements": [
@@ -7006,7 +7076,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/20",
         "https://backprop.finance/dtao/subnets/20-groundlayer",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7024,7 +7094,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-95-taomarketcap-source-repo"
+          "sn-95-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -7052,10 +7122,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-95-taomarketcap-source-repo"
+        "sn-95-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-95-taomarketcap-source-repo"
+        "sn-95-native-chain-github"
       ],
       "slug": "actual",
       "source_requirements": [
@@ -7071,6 +7141,77 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-95-surface-candidate-source-repo",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 35 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-35-website-common-api",
+          "sn-35-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "OxMarkets",
+      "netuid": 35,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "slug": "sn-35",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/35",
+        "https://backprop.finance/dtao/subnets/35-oxmarkets",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-35-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -7212,11 +7353,83 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/50",
         "https://backprop.finance/dtao/subnets/50-synth",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-50-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 105 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "redirected": 2
+        },
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-105-website-common-api",
+          "sn-105-website-common-health"
+        ],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Beam",
+      "netuid": 105,
+      "priority_score": 118,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger-json"
+      ],
+      "slug": "sn-105",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/105",
+        "https://b1m.ai/",
+        "https://backprop.finance/dtao/subnets/105-beam"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-105-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -7284,7 +7497,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124",
         "https://backprop.finance/dtao/subnets/124-swarm",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7423,7 +7636,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/71",
         "https://backprop.finance/dtao/subnets/71-leadpoet",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7490,7 +7703,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/77",
         "https://backprop.finance/dtao/subnets/77-liquidity",
-        "https://github.com/creativebuilds/sn77"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7566,73 +7779,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 105 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Beam",
-      "netuid": 105,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health",
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "slug": "sn-105",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/105",
-        "https://b1m.ai/",
-        "https://backprop.finance/dtao/subnets/105-beam"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-105-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 106 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -7690,7 +7836,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/106",
         "https://backprop.finance/dtao/subnets/106-voidai",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7756,7 +7902,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/120",
         "https://backprop.finance/dtao/subnets/120-affine",
-        "https://github.com/AffineFoundation/affine"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7829,7 +7975,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/71",
         "https://backprop.finance/dtao/subnets/71-leadpoet",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7903,7 +8049,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/77",
         "https://backprop.finance/dtao/subnets/77-liquidity",
-        "https://github.com/creativebuilds/sn77"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -7985,80 +8131,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 105 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "content-mismatch": 1,
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-105-website-common-openapi-json",
-          "sn-105-website-common-swagger",
-          "sn-105-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Beam",
-      "netuid": 105,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health",
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "slug": "sn-105",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/105",
-        "https://b1m.ai/",
-        "https://backprop.finance/dtao/subnets/105-beam"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-105-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 106 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 3,
@@ -8122,7 +8194,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/106",
         "https://backprop.finance/dtao/subnets/106-voidai",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8194,7 +8266,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/120",
         "https://backprop.finance/dtao/subnets/120-affine",
-        "https://github.com/AffineFoundation/affine"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8266,7 +8338,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/71",
         "https://backprop.finance/dtao/subnets/71-leadpoet",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8338,7 +8410,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/77",
         "https://backprop.finance/dtao/subnets/77-liquidity",
-        "https://github.com/creativebuilds/sn77"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8419,78 +8491,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 105 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "redirected": 2
-        },
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-105-website-common-api",
-          "sn-105-website-common-health"
-        ],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Beam",
-      "netuid": 105,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health",
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger-json"
-      ],
-      "slug": "sn-105",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/105",
-        "https://b1m.ai/",
-        "https://backprop.finance/dtao/subnets/105-beam"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-105-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 106 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -8553,7 +8553,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/106",
         "https://backprop.finance/dtao/subnets/106-voidai",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8624,7 +8624,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/120",
         "https://backprop.finance/dtao/subnets/120-affine",
-        "https://github.com/AffineFoundation/affine"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -8674,7 +8674,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/107",
         "https://backprop.finance/dtao/subnets/107-minos",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_107/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "maintainer-review",
       "target_action": "maintainer-review",
@@ -8792,7 +8792,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-27-taomarketcap-source-repo"
+          "sn-27-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -8820,10 +8820,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-27-taomarketcap-source-repo"
+        "sn-27-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-27-taomarketcap-source-repo"
+        "sn-27-native-chain-github"
       ],
       "slug": "nodexo",
       "source_requirements": [
@@ -8934,66 +8934,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 38 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "live": 1
-        },
-        "live_or_redirected_count": 1,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-38-taomarketcap-website"
-        ],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Confirm and submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "review-existing-evidence",
-      "identity_level": "partial",
-      "kind": "website",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "colosseum",
-      "netuid": 38,
-      "priority_score": 114,
-      "profile_level": "identity-partial",
-      "reason_codes": [
-        "missing-website"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [
-        "sn-38-taomarketcap-website"
-      ],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-38-taomarketcap-website"
-      ],
-      "slug": "colosseum",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38",
-        "https://backprop.finance/dtao/subnets/38-colosseum",
-        "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "review-existing-candidate",
-      "target_id": "sn-38-surface-candidate-website",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 89 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 1,
@@ -9003,7 +8943,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-89-taomarketcap-website"
+          "sn-89-native-chain-website"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -9031,10 +8971,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-89-taomarketcap-website"
+        "sn-89-native-chain-website"
       ],
       "sample_target_candidate_ids": [
-        "sn-89-taomarketcap-website"
+        "sn-89-native-chain-website"
       ],
       "slug": "sn-89",
       "source_requirements": [
@@ -9216,7 +9156,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/72",
         "https://backprop.finance/dtao/subnets/72-streetvision-by-natix",
-        "https://docs.natix.network/whitepaper"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -9285,7 +9225,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/72",
         "https://backprop.finance/dtao/subnets/72-streetvision-by-natix",
-        "https://docs.natix.network/whitepaper"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -9337,7 +9277,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/47",
         "https://backprop.finance/dtao/subnets/47-evolai",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_47/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
@@ -10504,7 +10444,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/25",
         "https://backprop.finance/dtao/subnets/25-mainframe",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -10782,7 +10722,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/25",
         "https://backprop.finance/dtao/subnets/25-mainframe",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -11064,7 +11004,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/25",
         "https://backprop.finance/dtao/subnets/25-mainframe",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -12855,7 +12795,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-40-taomarketcap-source-repo"
+          "sn-40-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -12883,10 +12823,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-40-taomarketcap-source-repo"
+        "sn-40-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-40-taomarketcap-source-repo"
+        "sn-40-native-chain-github"
       ],
       "slug": "chunking",
       "source_requirements": [
@@ -12915,7 +12855,7 @@
         "live_or_redirected_count": 0,
         "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-53-taomarketcap-source-repo"
+          "sn-53-native-chain-github"
         ],
         "stale_or_failed_count": 1,
         "unverified_count": 0
@@ -12943,10 +12883,10 @@
       "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-53-taomarketcap-source-repo"
+        "sn-53-native-chain-github"
       ],
       "sample_target_candidate_ids": [
-        "sn-53-taomarketcap-source-repo"
+        "sn-53-native-chain-github"
       ],
       "slug": "efficientfrontier",
       "source_requirements": [
@@ -13865,60 +13805,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 39 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Basilica",
-      "netuid": 39,
-      "priority_score": 99,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-39",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/39",
-        "https://backprop.finance/dtao/subnets/39-deprecated",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-39-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 117 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -13964,7 +13850,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/117",
         "https://backprop.finance/dtao/subnets/117-brainplay",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
@@ -14046,60 +13932,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 39 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Basilica",
-      "netuid": 39,
-      "priority_score": 99,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-39",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/39",
-        "https://backprop.finance/dtao/subnets/39-deprecated",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-39-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 117 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -14145,7 +13977,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/117",
         "https://backprop.finance/dtao/subnets/117-brainplay",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
@@ -14332,60 +14164,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 39 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Basilica",
-      "netuid": 39,
-      "priority_score": 99,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-39",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/39",
-        "https://backprop.finance/dtao/subnets/39-deprecated",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-39-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 117 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -14431,7 +14209,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/117",
         "https://backprop.finance/dtao/subnets/117-brainplay",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
@@ -14496,7 +14274,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/100",
         "https://backprop.finance/dtao/subnets/100-pla-form",
-        "https://github.com/PlatformNetwork/platform"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -14760,7 +14538,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/100",
         "https://backprop.finance/dtao/subnets/100-pla-form",
-        "https://github.com/PlatformNetwork/platform"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -15034,7 +14812,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/100",
         "https://backprop.finance/dtao/subnets/100-pla-form",
-        "https://github.com/PlatformNetwork/platform"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
@@ -15232,6 +15010,60 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 39 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Basilica",
+      "netuid": 39,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-39",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39",
+        "https://backprop.finance/dtao/subnets/39-deprecated",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-39-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 102 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -15418,6 +15250,60 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-11-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 39 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Basilica",
+      "netuid": 39,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-39",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39",
+        "https://backprop.finance/dtao/subnets/39-deprecated",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-39-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -15613,6 +15499,60 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-11-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 39 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Basilica",
+      "netuid": 39,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-39",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39",
+        "https://backprop.finance/dtao/subnets/39-deprecated",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-39-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -16514,6 +16454,215 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 38 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "slug": "colosseum",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://backprop.finance/dtao/subnets/38-colosseum",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-38-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 38 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "content-mismatch": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-38-website-common-openapi-json",
+          "sn-38-website-common-swagger",
+          "sn-38-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "slug": "colosseum",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://backprop.finance/dtao/subnets/38-colosseum",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-38-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 38 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "live": 2
+        },
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-38-website-common-api",
+          "sn-38-website-common-health"
+        ],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "slug": "colosseum",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://backprop.finance/dtao/subnets/38-colosseum",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-38-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 10 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -16538,7 +16687,7 @@
       ],
       "name": "Swap",
       "netuid": 10,
-      "priority_score": 91,
+      "priority_score": 89,
       "profile_level": "identity-complete",
       "reason_codes": [
         "missing-data-artifact",
@@ -16575,147 +16724,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-10-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 10 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-10-website-common-openapi-json",
-          "sn-10-website-common-swagger",
-          "sn-10-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 91,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "slug": "sn-10",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://backprop.finance/dtao/subnets/10-swap",
-        "https://docs.taofi.com/"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-10-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-10-website-common-api",
-          "sn-10-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 91,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "slug": "sn-10",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://backprop.finance/dtao/subnets/10-swap",
-        "https://docs.taofi.com/"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-10-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -16782,6 +16790,77 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-16-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 10 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-10-website-common-openapi-json",
+          "sn-10-website-common-swagger",
+          "sn-10-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "slug": "sn-10",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://backprop.finance/dtao/subnets/10-swap",
+        "https://docs.taofi.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-10-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -16854,6 +16933,76 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-16-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-10-website-common-api",
+          "sn-10-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "slug": "sn-10",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://backprop.finance/dtao/subnets/10-swap",
+        "https://docs.taofi.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-10-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -17197,7 +17346,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/23",
         "https://backprop.finance/dtao/subnets/23-trishool",
-        "https://github.com/TrishoolAI/trishool-phase2"
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "adapter-request",
       "target_action": "adapter-review",

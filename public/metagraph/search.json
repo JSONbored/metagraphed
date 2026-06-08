@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1347,
+  "document_count": 1350,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -4246,20 +4246,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-17-taomarketcap-source-repo",
+      "id": "surface:sn-17-native-chain-github",
       "netuid": 17,
       "slug": "sn-17",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "404—GEN source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "404—GEN GitHub source repository",
       "tokens": [
         "17",
         "404",
         "gen",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/404-Repo/404-gen-subnet"
@@ -4345,17 +4346,17 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-17-taomarketcap-website",
+      "id": "surface:sn-17-native-chain-website",
       "netuid": 17,
       "slug": "sn-17",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "404—GEN website",
       "tokens": [
         "17",
         "404",
         "gen",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -4868,33 +4869,34 @@
       "id": "surface:sn-120-github-readme-affinefoundation-affine-dashboard-1",
       "netuid": 120,
       "slug": "sn-120",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / opentensor",
       "title": "Affine dashboard",
       "tokens": [
         "120",
         "affine",
         "dashboard",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.affine.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-120-taomarketcap-source-repo",
+      "id": "surface:sn-120-native-chain-github",
       "netuid": 120,
       "slug": "sn-120",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Affine source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Affine GitHub source repository",
       "tokens": [
         "120",
         "affine",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/AffineFoundation/affine"
@@ -4955,16 +4957,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-120-taomarketcap-website",
+      "id": "surface:sn-120-native-chain-website",
       "netuid": 120,
       "slug": "sn-120",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Affine website",
       "tokens": [
         "120",
         "affine",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -5090,54 +5092,55 @@
       "id": "surface:sn-97-website-common-docs",
       "netuid": 97,
       "slug": "sn-97",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Albedo docs",
       "tokens": [
         "97",
         "albedo",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://us-east-1.hippius.com/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-97-native-chain-github",
+      "netuid": 97,
+      "slug": "sn-97",
+      "subtitle": "source-repo / opentensor",
+      "title": "Albedo GitHub source repository",
+      "tokens": [
+        "97",
+        "albedo",
+        "github",
+        "opentensor",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/unarbos/albedo"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-97-website-common-openapi-json",
       "netuid": 97,
       "slug": "sn-97",
-      "subtitle": "openapi / taomarketcap",
+      "subtitle": "openapi / opentensor",
       "title": "Albedo OpenAPI JSON",
       "tokens": [
         "97",
         "albedo",
         "json",
         "openapi",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://us-east-1.hippius.com/openapi.json"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-taomarketcap-source-repo",
-      "netuid": 97,
-      "slug": "sn-97",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Albedo source repository",
-      "tokens": [
-        "97",
-        "albedo",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/unarbos/albedo"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5233,16 +5236,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-taomarketcap-website",
+      "id": "surface:sn-97-native-chain-website",
       "netuid": 97,
       "slug": "sn-97",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Albedo website",
       "tokens": [
         "97",
         "albedo",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -5332,12 +5335,11 @@
       "id": "surface:sn-7-website-common-docs",
       "netuid": 7,
       "slug": "allways",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / allways",
       "title": "Allways docs",
       "tokens": [
         "allways",
-        "docs",
-        "taomarketcap"
+        "docs"
       ],
       "type": "surface",
       "url": "https://all-ways.io/docs"
@@ -5624,33 +5626,34 @@
       "id": "surface:sn-41-website-common-docs",
       "netuid": 41,
       "slug": "sn-41",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Almanac docs",
       "tokens": [
         "41",
         "almanac",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://almanac.market/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-41-taomarketcap-source-repo",
+      "id": "surface:sn-41-native-chain-github",
       "netuid": 41,
       "slug": "sn-41",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Almanac source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Almanac GitHub source repository",
       "tokens": [
         "41",
         "almanac",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/sportstensor/sn41"
@@ -5728,16 +5731,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-41-taomarketcap-website",
+      "id": "surface:sn-41-native-chain-website",
       "netuid": 41,
       "slug": "sn-41",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Almanac website",
       "tokens": [
         "41",
         "almanac",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -5893,14 +5896,14 @@
       "id": "surface:sn-1-website-link-apex-macrocosmos-ai-docs-3",
       "netuid": 1,
       "slug": "sn-1",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "Apex docs",
       "tokens": [
         "1",
         "apex",
         "docs",
-        "sn",
-        "taomarketcap"
+        "macrocosmos",
+        "sn"
       ],
       "type": "surface",
       "url": "https://macrocosmos.ai/delegation-guide"
@@ -6032,19 +6035,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-127-taomarketcap-source-repo",
+      "id": "surface:sn-127-native-chain-github",
       "netuid": 127,
       "slug": "sn-127",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Astrid source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Astrid GitHub source repository",
       "tokens": [
         "127",
         "astrid",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/astridintelligence/sn-127"
@@ -6122,16 +6126,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-127-taomarketcap-website",
+      "id": "surface:sn-127-native-chain-website",
       "netuid": 127,
       "slug": "sn-127",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Astrid website",
       "tokens": [
         "127",
         "astrid",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -6157,19 +6161,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-37-taomarketcap-source-repo",
+      "id": "surface:sn-37-native-chain-github",
       "netuid": 37,
       "slug": "sn-37",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Aurelius source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Aurelius GitHub source repository",
       "tokens": [
         "37",
         "aurelius",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol"
@@ -6268,16 +6273,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-37-taomarketcap-website",
+      "id": "surface:sn-37-native-chain-website",
       "netuid": 37,
       "slug": "sn-37",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Aurelius website",
       "tokens": [
         "37",
         "aurelius",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -6288,16 +6293,16 @@
       "id": "surface:sn-59-github-readme-babelbit-babelbit-subnet-subnet-api-1",
       "netuid": 59,
       "slug": "sn-59",
-      "subtitle": "subnet-api / taomarketcap",
+      "subtitle": "subnet-api / opentensor",
       "title": "Babelbit API surface",
       "tokens": [
         "59",
         "api",
         "babelbit",
+        "opentensor",
         "sn",
         "subnet",
-        "surface",
-        "taomarketcap"
+        "surface"
       ],
       "type": "surface",
       "url": "https://api.babelbit.ai/"
@@ -6322,19 +6327,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-59-taomarketcap-source-repo",
+      "id": "surface:sn-59-native-chain-github",
       "netuid": 59,
       "slug": "sn-59",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Babelbit source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Babelbit GitHub source repository",
       "tokens": [
         "59",
         "babelbit",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/babelbit/babelbit_subnet"
@@ -6412,16 +6418,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-59-taomarketcap-website",
+      "id": "surface:sn-59-native-chain-website",
       "netuid": 59,
       "slug": "sn-59",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Babelbit website",
       "tokens": [
         "59",
         "babelbit",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -6488,17 +6494,37 @@
       "id": "surface:sn-105-website-common-docs",
       "netuid": 105,
       "slug": "sn-105",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Beam docs",
       "tokens": [
         "105",
         "beam",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://b1m.ai/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-105-native-chain-github",
+      "netuid": 105,
+      "slug": "sn-105",
+      "subtitle": "repo-registry / opentensor",
+      "title": "Beam GitHub repository registry",
+      "tokens": [
+        "105",
+        "beam",
+        "github",
+        "opentensor",
+        "registry",
+        "repo",
+        "repository",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://github.com/orgs/Beam-Network/repositories"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6592,16 +6618,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-105-taomarketcap-website",
+      "id": "surface:sn-105-native-chain-website",
       "netuid": 105,
       "slug": "sn-105",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Beam website",
       "tokens": [
         "105",
         "beam",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -6769,33 +6795,34 @@
       "id": "surface:sn-93-website-common-docs",
       "netuid": 93,
       "slug": "sn-93",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Bitcast docs",
       "tokens": [
         "93",
         "bitcast",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://stats.bitcast.network/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-93-taomarketcap-source-repo",
+      "id": "surface:sn-93-native-chain-github",
       "netuid": 93,
       "slug": "sn-93",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Bitcast source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Bitcast GitHub source repository",
       "tokens": [
         "93",
         "bitcast",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/bitcast-network/bitcast"
@@ -6873,16 +6900,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-93-taomarketcap-website",
+      "id": "surface:sn-93-native-chain-website",
       "netuid": 93,
       "slug": "sn-93",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Bitcast website",
       "tokens": [
         "93",
         "bitcast",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -7121,15 +7148,15 @@
       "id": "surface:sn-60-github-readme-bitsec-ai-sandbox-docs-1",
       "netuid": 60,
       "slug": "sn-60",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Bitsec.ai docs",
       "tokens": [
         "60",
         "ai",
         "bitsec",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.bitsec.ai/"
@@ -7139,35 +7166,36 @@
       "id": "surface:sn-60-website-common-docs",
       "netuid": 60,
       "slug": "sn-60",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Bitsec.ai docs",
       "tokens": [
         "60",
         "ai",
         "bitsec",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://bitsec.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-60-taomarketcap-source-repo",
+      "id": "surface:sn-60-native-chain-github",
       "netuid": 60,
       "slug": "sn-60",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Bitsec.ai source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Bitsec.ai GitHub source repository",
       "tokens": [
         "60",
         "ai",
         "bitsec",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/Bitsec-AI/sandbox"
@@ -7271,17 +7299,17 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-60-taomarketcap-website",
+      "id": "surface:sn-60-native-chain-website",
       "netuid": 60,
       "slug": "sn-60",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Bitsec.ai website",
       "tokens": [
         "60",
         "ai",
         "bitsec",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -7310,33 +7338,34 @@
       "id": "surface:sn-94-website-common-docs",
       "netuid": 94,
       "slug": "sn-94",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Bitsota docs",
       "tokens": [
         "94",
         "bitsota",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://bitsota.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-94-taomarketcap-source-repo",
+      "id": "surface:sn-94-native-chain-github",
       "netuid": 94,
       "slug": "sn-94",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Bitsota source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Bitsota GitHub source repository",
       "tokens": [
         "94",
         "bitsota",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/AlveusLabs/SN94-BitSota"
@@ -7414,16 +7443,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-94-taomarketcap-website",
+      "id": "surface:sn-94-native-chain-website",
       "netuid": 94,
       "slug": "sn-94",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Bitsota website",
       "tokens": [
         "94",
         "bitsota",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -7672,14 +7701,13 @@
       "id": "surface:sn-19-website-common-docs",
       "netuid": 19,
       "slug": "sn-19",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / blockmachine",
       "title": "blockmachine docs",
       "tokens": [
         "19",
         "blockmachine",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://blockmachine.io/docs"
@@ -7956,33 +7984,34 @@
       "id": "surface:sn-128-website-common-docs",
       "netuid": 128,
       "slug": "sn-128",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "ByteLeap docs",
       "tokens": [
         "128",
         "byteleap",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://byteleap.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-128-taomarketcap-source-repo",
+      "id": "surface:sn-128-native-chain-github",
       "netuid": 128,
       "slug": "sn-128",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "ByteLeap source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "ByteLeap GitHub source repository",
       "tokens": [
         "128",
         "byteleap",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/byteleapai/byteleap-Miner"
@@ -8081,16 +8110,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-128-taomarketcap-website",
+      "id": "surface:sn-128-native-chain-website",
       "netuid": 128,
       "slug": "sn-128",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "ByteLeap website",
       "tokens": [
         "128",
         "byteleap",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -8253,12 +8282,11 @@
       "id": "surface:sn-14-website-link-cacheon-ai-docs-3",
       "netuid": 14,
       "slug": "cacheon",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / cacheon",
       "title": "Cacheon docs",
       "tokens": [
         "cacheon",
-        "docs",
-        "taomarketcap"
+        "docs"
       ],
       "type": "surface",
       "url": "https://cacheon.ai/docs/evaluation/harness"
@@ -8567,15 +8595,14 @@
       "id": "surface:sn-64-website-link-chutes-ai-data-artifact-5",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / chutes",
       "title": "Chutes data artifact",
       "tokens": [
         "64",
         "artifact",
         "chutes",
         "data",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://chutes.ai/app?type=llm"
@@ -8585,15 +8612,14 @@
       "id": "surface:sn-64-website-link-chutes-ai-data-artifact-6",
       "netuid": 64,
       "slug": "sn-64",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / chutes",
       "title": "Chutes data artifact",
       "tokens": [
         "64",
         "artifact",
         "chutes",
         "data",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://chutes.ai/app?type=diffusion"
@@ -8860,33 +8886,34 @@
       "id": "surface:sn-83-website-common-docs",
       "netuid": 83,
       "slug": "sn-83",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "CliqueAI docs",
       "tokens": [
         "83",
         "cliqueai",
         "docs",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://cliqueai.toptensor.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-83-taomarketcap-source-repo",
+      "id": "surface:sn-83-native-chain-github",
       "netuid": 83,
       "slug": "sn-83",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "CliqueAI source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "CliqueAI GitHub source repository",
       "tokens": [
         "83",
         "cliqueai",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/toptensor/CliqueAI"
@@ -8964,16 +8991,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-83-taomarketcap-website",
+      "id": "surface:sn-83-native-chain-website",
       "netuid": 83,
       "slug": "sn-83",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "CliqueAI website",
       "tokens": [
         "83",
         "cliqueai",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -9235,6 +9262,21 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-native-chain-website",
+      "netuid": 38,
+      "slug": "colosseum",
+      "subtitle": "website / tao-colosseum",
+      "title": "colosseum website",
+      "tokens": [
+        "colosseum",
+        "tao",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.taocolosseum.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9552,14 +9594,14 @@
       "id": "surface:sn-102-website-common-docs",
       "netuid": 102,
       "slug": "sn-102",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / connito",
       "title": "ConnitoAI docs",
       "tokens": [
         "102",
+        "connito",
         "connitoai",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://connito.ai/docs"
@@ -9569,14 +9611,14 @@
       "id": "surface:sn-102-website-link-connito-ai-docs-1",
       "netuid": 102,
       "slug": "sn-102",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / connito",
       "title": "ConnitoAI docs",
       "tokens": [
         "102",
+        "connito",
         "connitoai",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://connito.ai/docs/miner/prerequisites"
@@ -9712,14 +9754,14 @@
       "id": "surface:sn-13-github-readme-macrocosm-os-data-universe-docs-1",
       "netuid": 13,
       "slug": "sn-13",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "Data Universe docs",
       "tokens": [
         "13",
         "data",
         "docs",
+        "macrocosmos",
         "sn",
-        "taomarketcap",
         "universe"
       ],
       "type": "surface",
@@ -9730,14 +9772,14 @@
       "id": "surface:sn-13-website-link-www-macrocosmos-ai-docs-2",
       "netuid": 13,
       "slug": "sn-13",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "Data Universe docs",
       "tokens": [
         "13",
         "data",
         "docs",
+        "macrocosmos",
         "sn",
-        "taomarketcap",
         "universe"
       ],
       "type": "surface",
@@ -9858,16 +9900,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-13-taomarketcap-website",
+      "id": "surface:sn-13-native-chain-website",
       "netuid": 13,
       "slug": "sn-13",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / macrocosmos",
       "title": "Data Universe website",
       "tokens": [
         "13",
         "data",
+        "macrocosmos",
         "sn",
-        "taomarketcap",
         "universe",
         "website"
       ],
@@ -10330,32 +10372,49 @@
       "id": "surface:sn-22-website-common-docs",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / desearch",
       "title": "Desearch docs",
       "tokens": [
         "22",
         "desearch",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://desearch.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-22-native-chain-github",
+      "netuid": 22,
+      "slug": "sn-22",
+      "subtitle": "source-repo / desearch",
+      "title": "Desearch GitHub source repository",
+      "tokens": [
+        "22",
+        "desearch",
+        "github",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/datura-ai/desearch"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-22-website-common-openapi-json",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "openapi / taomarketcap",
+      "subtitle": "openapi / desearch",
       "title": "Desearch OpenAPI JSON",
       "tokens": [
         "22",
         "desearch",
         "json",
         "openapi",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://desearch.ai/openapi.json"
@@ -10394,25 +10453,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/Desearch-ai/subnet-22"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-taomarketcap-source-repo",
-      "netuid": 22,
-      "slug": "sn-22",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Desearch source repository",
-      "tokens": [
-        "22",
-        "desearch",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/datura-ai/desearch"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10503,16 +10543,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-taomarketcap-website",
+      "id": "surface:sn-22-native-chain-website",
       "netuid": 22,
       "slug": "sn-22",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / desearch",
       "title": "Desearch website",
       "tokens": [
         "22",
         "desearch",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -10758,14 +10797,13 @@
       "id": "surface:sn-103-website-common-docs",
       "netuid": 103,
       "slug": "sn-103",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / djinn",
       "title": "Djinn docs",
       "tokens": [
         "103",
         "djinn",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://djinn.gg/docs"
@@ -10877,16 +10915,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-103-taomarketcap-website",
+      "id": "surface:sn-103-native-chain-website",
       "netuid": 103,
       "slug": "sn-103",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / djinn",
       "title": "Djinn website",
       "tokens": [
         "103",
         "djinn",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -10915,14 +10952,14 @@
       "id": "surface:sn-80-website-common-docs",
       "netuid": 80,
       "slug": "sn-80",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "dogelayer docs",
       "tokens": [
         "80",
         "docs",
         "dogelayer",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://dogelayer.ai/docs"
@@ -10932,33 +10969,34 @@
       "id": "surface:sn-80-website-link-dogelayer-ai-docs-2",
       "netuid": 80,
       "slug": "sn-80",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "dogelayer docs",
       "tokens": [
         "80",
         "docs",
         "dogelayer",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://dogelayer.ai/en/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-taomarketcap-source-repo",
+      "id": "surface:sn-80-native-chain-github",
       "netuid": 80,
       "slug": "sn-80",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "dogelayer source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "dogelayer GitHub source repository",
       "tokens": [
         "80",
         "dogelayer",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/dogelayer-ai/dogelayer"
@@ -11036,16 +11074,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-taomarketcap-website",
+      "id": "surface:sn-80-native-chain-website",
       "netuid": 80,
       "slug": "sn-80",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "dogelayer website",
       "tokens": [
         "80",
         "dogelayer",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -11240,12 +11278,13 @@
       "id": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
       "netuid": 2,
       "slug": "dsperse",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / inference-labs",
       "title": "DSperse dashboard",
       "tokens": [
         "dashboard",
         "dsperse",
-        "taomarketcap"
+        "inference",
+        "labs"
       ],
       "type": "surface",
       "url": "https://sn2-stats.inferencelabs.com/"
@@ -11255,12 +11294,13 @@
       "id": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
       "netuid": 2,
       "slug": "dsperse",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / inference-labs",
       "title": "DSperse dashboard",
       "tokens": [
         "dashboard",
         "dsperse",
-        "taomarketcap"
+        "inference",
+        "labs"
       ],
       "type": "surface",
       "url": "https://wandb.ai/inferencelabs/subnet-2"
@@ -11467,33 +11507,34 @@
       "id": "surface:sn-36-website-common-docs",
       "netuid": 36,
       "slug": "sn-36",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Eirel docs",
       "tokens": [
         "36",
         "docs",
         "eirel",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://eirel.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-36-taomarketcap-source-repo",
+      "id": "surface:sn-36-native-chain-github",
       "netuid": 36,
       "slug": "sn-36",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Eirel source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Eirel GitHub source repository",
       "tokens": [
         "36",
         "eirel",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/RendixNetwork/eirel-ai"
@@ -11571,16 +11612,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-36-taomarketcap-website",
+      "id": "surface:sn-36-native-chain-website",
       "netuid": 36,
       "slug": "sn-36",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Eirel website",
       "tokens": [
         "36",
         "eirel",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -11923,6 +11964,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-47-native-chain-github",
+      "netuid": 47,
+      "slug": "sn-47",
+      "subtitle": "source-repo / evolai",
+      "title": "EvolAI GitHub source repository",
+      "tokens": [
+        "47",
+        "evolai",
+        "github",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/openevolai/evolai.git"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-47-evolai-source",
       "netuid": 47,
       "slug": "sn-47",
@@ -11938,25 +11998,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/openevolai/evolai"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-47-taomarketcap-source-repo",
-      "netuid": 47,
-      "slug": "sn-47",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "EvolAI source repository",
-      "tokens": [
-        "47",
-        "evolai",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/openevolai/evolai.git"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12214,14 +12255,13 @@
       "id": "surface:sn-98-website-link-forevermoney-ai-docs-2",
       "netuid": 98,
       "slug": "sn-98",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / forevermoney",
       "title": "ForeverMoney docs",
       "tokens": [
         "98",
         "docs",
         "forevermoney",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.forevermoney.ai/"
@@ -12596,12 +12636,11 @@
       "id": "surface:sn-74-github-readme-entrius-gittensor-docs-1",
       "netuid": 74,
       "slug": "gittensor",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / gittensor",
       "title": "Gittensor docs",
       "tokens": [
         "docs",
-        "gittensor",
-        "taomarketcap"
+        "gittensor"
       ],
       "type": "surface",
       "url": "https://docs.gittensor.io/miner.html"
@@ -12611,15 +12650,31 @@
       "id": "surface:sn-74-website-common-docs",
       "netuid": 74,
       "slug": "gittensor",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / gittensor",
       "title": "Gittensor docs",
       "tokens": [
         "docs",
-        "gittensor",
-        "taomarketcap"
+        "gittensor"
       ],
       "type": "surface",
       "url": "https://gittensor.io/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-74-native-chain-github",
+      "netuid": 74,
+      "slug": "gittensor",
+      "subtitle": "source-repo / gittensor",
+      "title": "Gittensor GitHub source repository",
+      "tokens": [
+        "github",
+        "gittensor",
+        "repo",
+        "repository",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/entrius/gittensor/tree/main"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12703,23 +12758,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/entrius/gittensor"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-74-taomarketcap-source-repo",
-      "netuid": 74,
-      "slug": "gittensor",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Gittensor source repository",
-      "tokens": [
-        "gittensor",
-        "repo",
-        "repository",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/entrius/gittensor/tree/main"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13064,12 +13102,11 @@
       "id": "surface:sn-56-website-common-docs",
       "netuid": 56,
       "slug": "gradients",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / gradients",
       "title": "Gradients docs",
       "tokens": [
         "docs",
-        "gradients",
-        "taomarketcap"
+        "gradients"
       ],
       "type": "surface",
       "url": "https://www.gradients.io/docs"
@@ -13517,7 +13554,7 @@
       "id": "surface:sn-110-website-link-www-green-compute-com-data-artifact-10",
       "netuid": 110,
       "slug": "sn-110",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / green-compute",
       "title": "Green Compute data artifact",
       "tokens": [
         "110",
@@ -13525,8 +13562,7 @@
         "compute",
         "data",
         "green",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct"
@@ -13536,7 +13572,7 @@
       "id": "surface:sn-110-website-link-www-green-compute-com-data-artifact-9",
       "netuid": 110,
       "slug": "sn-110",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / green-compute",
       "title": "Green Compute data artifact",
       "tokens": [
         "110",
@@ -13544,8 +13580,7 @@
         "compute",
         "data",
         "green",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct"
@@ -13824,6 +13859,22 @@
       ],
       "type": "surface",
       "url": "https://www.groundlayer.xyz/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-20-native-chain-website",
+      "netuid": 20,
+      "slug": "sn-20",
+      "subtitle": "website / groundlayer",
+      "title": "GroundLayer website",
+      "tokens": [
+        "20",
+        "groundlayer",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://groundlayer.xyz/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14116,37 +14167,34 @@
       "id": "surface:sn-67-github-readme-harnyx-harnyx-dashboard-1",
       "netuid": 67,
       "slug": "sn-67",
-      "subtitle": "dashboard / tensorplex-subnet-docs",
+      "subtitle": "dashboard / opentensor",
       "title": "Harnyx dashboard",
       "tokens": [
         "67",
         "dashboard",
-        "docs",
         "harnyx",
-        "sn",
-        "subnet",
-        "tensorplex"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://dashboard.harnyx.ai/benchmark"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-67-tensorplex-source-repo-1",
+      "id": "surface:sn-67-native-chain-github",
       "netuid": 67,
       "slug": "sn-67",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Harnyx source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Harnyx GitHub source repository",
       "tokens": [
         "67",
-        "docs",
+        "github",
         "harnyx",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "subnet",
-        "tensorplex"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/harnyx/harnyx"
@@ -14207,16 +14255,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-67-taomarketcap-website",
+      "id": "surface:sn-67-native-chain-website",
       "netuid": 67,
       "slug": "sn-67",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Harnyx website",
       "tokens": [
         "67",
         "harnyx",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -14383,19 +14431,19 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-75-taomarketcap-source-repo",
+      "id": "surface:sn-75-native-chain-github",
       "netuid": 75,
       "slug": "sn-75",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Hippius source repository",
+      "subtitle": "source-repo / hippius",
+      "title": "Hippius GitHub source repository",
       "tokens": [
         "75",
+        "github",
         "hippius",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/thenervelab/thebrain"
@@ -14992,14 +15040,14 @@
       "id": "surface:sn-9-website-common-docs",
       "netuid": 9,
       "slug": "sn-9",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "iota docs",
       "tokens": [
         "9",
         "docs",
         "iota",
-        "sn",
-        "taomarketcap"
+        "macrocosmos",
+        "sn"
       ],
       "type": "surface",
       "url": "https://iota.macrocosmos.ai/docs"
@@ -15009,14 +15057,14 @@
       "id": "surface:sn-9-website-link-iota-macrocosmos-ai-docs-5",
       "netuid": 9,
       "slug": "sn-9",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "iota docs",
       "tokens": [
         "9",
         "docs",
         "iota",
-        "sn",
-        "taomarketcap"
+        "macrocosmos",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.macrocosmos.ai/"
@@ -15261,33 +15309,34 @@
       "id": "surface:sn-71-website-common-docs",
       "netuid": 71,
       "slug": "sn-71",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Leadpoet docs",
       "tokens": [
         "71",
         "docs",
         "leadpoet",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://leadpoet.com/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-71-taomarketcap-source-repo",
+      "id": "surface:sn-71-native-chain-github",
       "netuid": 71,
       "slug": "sn-71",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Leadpoet source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Leadpoet GitHub source repository",
       "tokens": [
         "71",
+        "github",
         "leadpoet",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/leadpoet/leadpoet"
@@ -15365,16 +15414,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-71-taomarketcap-website",
+      "id": "surface:sn-71-native-chain-website",
       "netuid": 71,
       "slug": "sn-71",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Leadpoet website",
       "tokens": [
         "71",
         "leadpoet",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -15403,14 +15452,14 @@
       "id": "surface:sn-99-github-readme-rendixnetwork-leoma-docs-2",
       "netuid": 99,
       "slug": "sn-99",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Leoma docs",
       "tokens": [
         "99",
         "docs",
         "leoma",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.leoma.ai/storage"
@@ -15420,33 +15469,34 @@
       "id": "surface:sn-99-website-common-docs",
       "netuid": 99,
       "slug": "sn-99",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Leoma docs",
       "tokens": [
         "99",
         "docs",
         "leoma",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://leoma.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-99-taomarketcap-source-repo",
+      "id": "surface:sn-99-native-chain-github",
       "netuid": 99,
       "slug": "sn-99",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Leoma source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Leoma GitHub source repository",
       "tokens": [
         "99",
+        "github",
         "leoma",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/RendixNetwork/leoma"
@@ -15545,16 +15595,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-99-taomarketcap-website",
+      "id": "surface:sn-99-native-chain-website",
       "netuid": 99,
       "slug": "sn-99",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Leoma website",
       "tokens": [
         "99",
         "leoma",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -15603,33 +15653,34 @@
       "id": "surface:sn-77-website-common-docs",
       "netuid": 77,
       "slug": "sn-77",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Liquidity docs",
       "tokens": [
         "77",
         "docs",
         "liquidity",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://sn77.xyz/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-77-taomarketcap-source-repo",
+      "id": "surface:sn-77-native-chain-github",
       "netuid": 77,
       "slug": "sn-77",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Liquidity source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Liquidity GitHub source repository",
       "tokens": [
         "77",
+        "github",
         "liquidity",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/creativebuilds/sn77"
@@ -15707,16 +15758,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-77-taomarketcap-website",
+      "id": "surface:sn-77-native-chain-website",
       "netuid": 77,
       "slug": "sn-77",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Liquidity website",
       "tokens": [
         "77",
         "liquidity",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -15727,16 +15778,16 @@
       "id": "surface:sn-51-website-common-api",
       "netuid": 51,
       "slug": "sn-51",
-      "subtitle": "subnet-api / taomarketcap",
+      "subtitle": "subnet-api / opentensor",
       "title": "lium.io API",
       "tokens": [
         "51",
         "api",
         "io",
         "lium",
+        "opentensor",
         "sn",
-        "subnet",
-        "taomarketcap"
+        "subnet"
       ],
       "type": "surface",
       "url": "https://lium.io/api"
@@ -15765,15 +15816,15 @@
       "id": "surface:sn-51-github-readme-datura-ai-lium-io-docs-1",
       "netuid": 51,
       "slug": "sn-51",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "lium.io docs",
       "tokens": [
         "51",
         "docs",
         "io",
         "lium",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.lium.io/bittensor-subnet/overview"
@@ -15783,35 +15834,36 @@
       "id": "surface:sn-51-website-link-lium-io-docs-8",
       "netuid": 51,
       "slug": "sn-51",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "lium.io docs",
       "tokens": [
         "51",
         "docs",
         "io",
         "lium",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.lium.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-51-taomarketcap-source-repo",
+      "id": "surface:sn-51-native-chain-github",
       "netuid": 51,
       "slug": "sn-51",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "lium.io source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "lium.io GitHub source repository",
       "tokens": [
         "51",
+        "github",
         "io",
         "lium",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/Datura-ai/lium-io"
@@ -15893,17 +15945,17 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-51-taomarketcap-website",
+      "id": "surface:sn-51-native-chain-website",
       "netuid": 51,
       "slug": "sn-51",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "lium.io website",
       "tokens": [
         "51",
         "io",
         "lium",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -16176,14 +16228,14 @@
       "id": "surface:sn-25-github-readme-macrocosm-os-mainframe-dashboard-1",
       "netuid": 25,
       "slug": "sn-25",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / macrocosmos",
       "title": "Mainframe dashboard",
       "tokens": [
         "25",
         "dashboard",
+        "macrocosmos",
         "mainframe",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.macrocosmos.ai/sn25/dashboard"
@@ -16193,14 +16245,14 @@
       "id": "surface:sn-25-website-link-macrocosmos-ai-docs-3",
       "netuid": 25,
       "slug": "sn-25",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "Mainframe docs",
       "tokens": [
         "25",
         "docs",
+        "macrocosmos",
         "mainframe",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.macrocosmos.ai/"
@@ -16210,14 +16262,14 @@
       "id": "surface:sn-25-website-link-macrocosmos-ai-docs-6",
       "netuid": 25,
       "slug": "sn-25",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / macrocosmos",
       "title": "Mainframe docs",
       "tokens": [
         "25",
         "docs",
+        "macrocosmos",
         "mainframe",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://macrocosmos.ai/delegation-guide"
@@ -16297,16 +16349,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-25-taomarketcap-website",
+      "id": "surface:sn-25-native-chain-website",
       "netuid": 25,
       "slug": "sn-25",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / macrocosmos",
       "title": "Mainframe website",
       "tokens": [
         "25",
+        "macrocosmos",
         "mainframe",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -16424,16 +16476,16 @@
       "id": "surface:sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-1",
       "netuid": 107,
       "slug": "sn-107",
-      "subtitle": "subnet-api / taomarketcap",
+      "subtitle": "subnet-api / opentensor",
       "title": "Minos API surface",
       "tokens": [
         "107",
         "api",
         "minos",
+        "opentensor",
         "sn",
         "subnet",
-        "surface",
-        "taomarketcap"
+        "surface"
       ],
       "type": "surface",
       "url": "https://api.theminos.ai/"
@@ -16461,14 +16513,14 @@
       "id": "surface:sn-107-website-common-docs",
       "netuid": 107,
       "slug": "sn-107",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Minos docs",
       "tokens": [
         "107",
         "docs",
         "minos",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://theminos.ai/docs"
@@ -16478,33 +16530,34 @@
       "id": "surface:sn-107-website-link-theminos-ai-docs-3",
       "netuid": 107,
       "slug": "sn-107",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Minos docs",
       "tokens": [
         "107",
         "docs",
         "minos",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://theminos.ai/whitepaper"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-107-taomarketcap-source-repo",
+      "id": "surface:sn-107-native-chain-github",
       "netuid": 107,
       "slug": "sn-107",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Minos source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Minos GitHub source repository",
       "tokens": [
         "107",
+        "github",
         "minos",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/minos-protocol/minos_subnet"
@@ -16603,16 +16656,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-107-taomarketcap-website",
+      "id": "surface:sn-107-native-chain-website",
       "netuid": 107,
       "slug": "sn-107",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Minos website",
       "tokens": [
         "107",
         "minos",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -16638,37 +16691,37 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-112-website-subdomain-docs-docs-minotaursubnet-com",
+      "id": "surface:sn-112-website-link-minotaursubnet-com-docs-1",
       "netuid": 112,
       "slug": "sn-112",
-      "subtitle": "docs / taomarketcap",
-      "title": "minotaur docs subdomain",
+      "subtitle": "docs / opentensor",
+      "title": "minotaur docs",
       "tokens": [
         "112",
         "docs",
         "minotaur",
-        "sn",
-        "subdomain",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.minotaursubnet.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-112-taomarketcap-source-repo",
+      "id": "surface:sn-112-native-chain-github",
       "netuid": 112,
       "slug": "sn-112",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "minotaur source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "minotaur GitHub source repository",
       "tokens": [
         "112",
+        "github",
         "minotaur",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/subnet112/minotaur_subnet"
@@ -16746,16 +16799,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-112-taomarketcap-website",
+      "id": "surface:sn-112-native-chain-website",
       "netuid": 112,
       "slug": "sn-112",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "minotaur website",
       "tokens": [
         "112",
         "minotaur",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -16784,15 +16837,15 @@
       "id": "surface:sn-79-github-readme-taos-im-sn-79-docs-1",
       "netuid": 79,
       "slug": "sn-79",
-      "subtitle": "docs / tensorplex-subnet-docs",
+      "subtitle": "docs / taos-im",
       "title": "MVTRX docs",
       "tokens": [
         "79",
         "docs",
+        "im",
         "mvtrx",
         "sn",
-        "subnet",
-        "tensorplex"
+        "taos"
       ],
       "type": "surface",
       "url": "https://simulate.trading/taos-im-paper"
@@ -17194,15 +17247,15 @@
       "id": "surface:sn-70-website-link-nexisgen-ai-data-artifact-5",
       "netuid": 70,
       "slug": "sn-70",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / opentensor",
       "title": "NexisGen data artifact",
       "tokens": [
         "70",
         "artifact",
         "data",
         "nexisgen",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://nexisgen.ai/commission"
@@ -17212,33 +17265,34 @@
       "id": "surface:sn-70-website-common-docs",
       "netuid": 70,
       "slug": "sn-70",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "NexisGen docs",
       "tokens": [
         "70",
         "docs",
         "nexisgen",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://nexisgen.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-70-taomarketcap-source-repo",
+      "id": "surface:sn-70-native-chain-github",
       "netuid": 70,
       "slug": "sn-70",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "NexisGen source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "NexisGen GitHub source repository",
       "tokens": [
         "70",
+        "github",
         "nexisgen",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/RendixNetwork/nexisgen"
@@ -17316,16 +17370,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-70-taomarketcap-website",
+      "id": "surface:sn-70-native-chain-website",
       "netuid": 70,
       "slug": "sn-70",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "NexisGen website",
       "tokens": [
         "70",
         "nexisgen",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -17354,14 +17408,14 @@
       "id": "surface:sn-66-website-common-docs",
       "netuid": 66,
       "slug": "sn-66",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / unarbos",
       "title": "ninja docs",
       "tokens": [
         "66",
         "docs",
         "ninja",
         "sn",
-        "taomarketcap"
+        "unarbos"
       ],
       "type": "surface",
       "url": "https://ninja.arbos.life/docs"
@@ -17572,19 +17626,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-55-taomarketcap-source-repo",
+      "id": "surface:sn-55-native-chain-github",
       "netuid": 55,
       "slug": "sn-55",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "NIOME source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "NIOME GitHub source repository",
       "tokens": [
         "55",
+        "github",
         "niome",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/genomesio/subnet-niome"
@@ -17662,16 +17717,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-55-taomarketcap-website",
+      "id": "surface:sn-55-native-chain-website",
       "netuid": 55,
       "slug": "sn-55",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "NIOME website",
       "tokens": [
         "55",
         "niome",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -17840,15 +17895,15 @@
       "id": "surface:sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "netuid": 68,
       "slug": "sn-68",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / opentensor",
       "title": "NOVA data artifact",
       "tokens": [
         "68",
         "artifact",
         "data",
         "nova",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.metanova-labs.ai/models"
@@ -17858,33 +17913,34 @@
       "id": "surface:sn-68-website-link-www-metanova-labs-ai-docs-3",
       "netuid": 68,
       "slug": "sn-68",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "NOVA docs",
       "tokens": [
         "68",
         "docs",
         "nova",
-        "sn",
-        "taomarketcap"
+        "opentensor",
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.metanova-labs.ai/whitepapers"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-68-taomarketcap-source-repo",
+      "id": "surface:sn-68-native-chain-github",
       "netuid": 68,
       "slug": "sn-68",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "NOVA source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "NOVA GitHub source repository",
       "tokens": [
         "68",
+        "github",
         "nova",
+        "opentensor",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/metanova-labs/nova"
@@ -17962,16 +18018,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-68-taomarketcap-website",
+      "id": "surface:sn-68-native-chain-website",
       "netuid": 68,
       "slug": "sn-68",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "NOVA website",
       "tokens": [
         "68",
         "nova",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -18014,12 +18070,11 @@
       "id": "surface:sn-6-github-readme-numinouslabs-numinous-dashboard-1",
       "netuid": 6,
       "slug": "numinous",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / numinous",
       "title": "Numinous dashboard",
       "tokens": [
         "dashboard",
-        "numinous",
-        "taomarketcap"
+        "numinous"
       ],
       "type": "surface",
       "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest"
@@ -18475,14 +18530,13 @@
       "id": "surface:sn-15-github-readme-oro-ai-oro-dashboard-1",
       "netuid": 15,
       "slug": "sn-15",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / oro",
       "title": "ORO dashboard",
       "tokens": [
         "15",
         "dashboard",
         "oro",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://oroagents.com/"
@@ -18492,14 +18546,13 @@
       "id": "surface:sn-15-website-common-docs",
       "netuid": 15,
       "slug": "sn-15",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / oro",
       "title": "ORO docs",
       "tokens": [
         "15",
         "docs",
         "oro",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://oroagents.com/docs"
@@ -18631,37 +18684,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "id": "surface:sn-35-native-chain-github",
       "netuid": 35,
       "slug": "sn-35",
-      "subtitle": "docs / taomarketcap",
-      "title": "OxMarkets docs subdomain",
+      "subtitle": "source-repo / opentensor",
+      "title": "OxMarkets GitHub source repository",
       "tokens": [
         "35",
-        "docs",
-        "oxmarkets",
-        "sn",
-        "subdomain",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.0xmarkets.io/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-35-taomarketcap-source-repo",
-      "netuid": 35,
-      "slug": "sn-35",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "OxMarkets source repository",
-      "tokens": [
-        "35",
+        "github",
+        "opentensor",
         "oxmarkets",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/General-Tao-Ventures/cartha-validator"
@@ -18760,16 +18796,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-35-taomarketcap-website",
+      "id": "surface:sn-35-native-chain-website",
       "netuid": 35,
       "slug": "sn-35",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "OxMarkets website",
       "tokens": [
         "35",
+        "opentensor",
         "oxmarkets",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -18940,33 +18976,34 @@
       "id": "surface:sn-26-website-link-www-perturbai-io-docs-2",
       "netuid": 26,
       "slug": "sn-26",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Perturb docs",
       "tokens": [
         "26",
         "docs",
+        "opentensor",
         "perturb",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.perturbai.io/whitepaper"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-26-taomarketcap-source-repo",
+      "id": "surface:sn-26-native-chain-github",
       "netuid": 26,
       "slug": "sn-26",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Perturb source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Perturb GitHub source repository",
       "tokens": [
         "26",
+        "github",
+        "opentensor",
         "perturb",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/0xsigurd/Perturb"
@@ -19044,16 +19081,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-26-taomarketcap-website",
+      "id": "surface:sn-26-native-chain-website",
       "netuid": 26,
       "slug": "sn-26",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Perturb website",
       "tokens": [
         "26",
+        "opentensor",
         "perturb",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -19214,6 +19251,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-native-chain-website",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "website / platform-network",
+      "title": "Plaτform website",
+      "tokens": [
+        "100",
+        "form",
+        "network",
+        "pla",
+        "platform",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://platform.network/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-126-backprop-dashboard",
       "netuid": 126,
       "slug": "sn-126",
@@ -19232,19 +19288,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-126-taomarketcap-source-repo",
+      "id": "surface:sn-126-native-chain-github",
       "netuid": 126,
       "slug": "sn-126",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Poker44 source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Poker44 GitHub source repository",
       "tokens": [
         "126",
+        "github",
+        "opentensor",
         "poker44",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/Poker44/Poker44-subnet"
@@ -19322,16 +19379,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-126-taomarketcap-website",
+      "id": "surface:sn-126-native-chain-website",
       "netuid": 126,
       "slug": "sn-126",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Poker44 website",
       "tokens": [
         "126",
+        "opentensor",
         "poker44",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -19533,15 +19590,16 @@
       "id": "surface:sn-24-website-link-silxinc-com-data-artifact-3",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "data-artifact / taomarketcap",
+      "subtitle": "data-artifact / silx-labs",
       "title": "Quasar data artifact",
       "tokens": [
         "24",
         "artifact",
         "data",
+        "labs",
         "quasar",
-        "sn",
-        "taomarketcap"
+        "silx",
+        "sn"
       ],
       "type": "surface",
       "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
@@ -20362,19 +20420,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-44-taomarketcap-source-repo",
+      "id": "surface:sn-44-native-chain-github",
       "netuid": 44,
       "slug": "sn-44",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Score source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Score GitHub source repository",
       "tokens": [
         "44",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "score",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/score-technologies/turbovision"
@@ -20473,16 +20532,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-44-taomarketcap-website",
+      "id": "surface:sn-44-native-chain-website",
       "netuid": 44,
       "slug": "sn-44",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Score website",
       "tokens": [
         "44",
+        "opentensor",
         "score",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -20852,10 +20911,10 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-72-taomarketcap-website",
+      "id": "surface:sn-72-native-chain-website",
       "netuid": 72,
       "slug": "sn-72",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / natix",
       "title": "StreetVision by NATIX website",
       "tokens": [
         "72",
@@ -20863,7 +20922,6 @@
         "natix",
         "sn",
         "streetvision",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21275,14 +21333,14 @@
       "id": "surface:sn-124-github-readme-swarm-subnet-swarm-dashboard-1",
       "netuid": 124,
       "slug": "sn-124",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / opentensor",
       "title": "Swarm dashboard",
       "tokens": [
         "124",
         "dashboard",
+        "opentensor",
         "sn",
-        "swarm",
-        "taomarketcap"
+        "swarm"
       ],
       "type": "surface",
       "url": "https://swarm124.com/benchmark"
@@ -21292,33 +21350,34 @@
       "id": "surface:sn-124-website-common-docs",
       "netuid": 124,
       "slug": "sn-124",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Swarm docs",
       "tokens": [
         "124",
         "docs",
+        "opentensor",
         "sn",
-        "swarm",
-        "taomarketcap"
+        "swarm"
       ],
       "type": "surface",
       "url": "https://www.swarm124.com/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-124-taomarketcap-source-repo",
+      "id": "surface:sn-124-native-chain-github",
       "netuid": 124,
       "slug": "sn-124",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Swarm source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Swarm GitHub source repository",
       "tokens": [
         "124",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "swarm",
-        "taomarketcap"
+        "swarm"
       ],
       "type": "surface",
       "url": "https://github.com/swarm-subnet/swarm"
@@ -21379,16 +21438,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-124-taomarketcap-website",
+      "id": "surface:sn-124-native-chain-website",
       "netuid": 124,
       "slug": "sn-124",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Swarm website",
       "tokens": [
         "124",
+        "opentensor",
         "sn",
         "swarm",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21417,33 +21476,34 @@
       "id": "surface:sn-50-website-common-docs",
       "netuid": 50,
       "slug": "sn-50",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Synth docs",
       "tokens": [
         "50",
         "docs",
+        "opentensor",
         "sn",
-        "synth",
-        "taomarketcap"
+        "synth"
       ],
       "type": "surface",
       "url": "https://synthdata.co/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-50-taomarketcap-source-repo",
+      "id": "surface:sn-50-native-chain-github",
       "netuid": 50,
       "slug": "sn-50",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Synth source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Synth GitHub source repository",
       "tokens": [
         "50",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "synth",
-        "taomarketcap"
+        "synth"
       ],
       "type": "surface",
       "url": "https://github.com/mode-network/synth-subnet"
@@ -21521,16 +21581,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-50-taomarketcap-website",
+      "id": "surface:sn-50-native-chain-website",
       "netuid": 50,
       "slug": "sn-50",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Synth website",
       "tokens": [
         "50",
+        "opentensor",
         "sn",
         "synth",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21560,15 +21620,14 @@
       "id": "surface:sn-45-website-link-ai-talisman-xyz-docs-10",
       "netuid": 45,
       "slug": "sn-45",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / talisman-ai",
       "title": "Talisman AI docs",
       "tokens": [
         "45",
         "ai",
         "docs",
         "sn",
-        "talisman",
-        "taomarketcap"
+        "talisman"
       ],
       "type": "surface",
       "url": "https://docs.talisman.xyz/talisman/about/privacy-policy"
@@ -21578,15 +21637,14 @@
       "id": "surface:sn-45-website-link-ai-talisman-xyz-docs-8",
       "netuid": 45,
       "slug": "sn-45",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / talisman-ai",
       "title": "Talisman AI docs",
       "tokens": [
         "45",
         "ai",
         "docs",
         "sn",
-        "talisman",
-        "taomarketcap"
+        "talisman"
       ],
       "type": "surface",
       "url": "https://docs.talisman.xyz/talisman/about/security"
@@ -21722,19 +21780,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-108-taomarketcap-source-repo",
+      "id": "surface:sn-108-native-chain-github",
       "netuid": 108,
       "slug": "sn-108",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "TalkHead source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "TalkHead GitHub source repository",
       "tokens": [
         "108",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "talkhead",
-        "taomarketcap"
+        "talkhead"
       ],
       "type": "surface",
       "url": "https://github.com/talkheadai/talkhead-subnet"
@@ -21812,16 +21871,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-108-taomarketcap-website",
+      "id": "surface:sn-108-native-chain-website",
       "netuid": 108,
       "slug": "sn-108",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "TalkHead website",
       "tokens": [
         "108",
+        "opentensor",
         "sn",
         "talkhead",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21869,16 +21928,16 @@
       "id": "surface:sn-65-website-common-docs",
       "netuid": 65,
       "slug": "sn-65",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "TAO Private Network docs",
       "tokens": [
         "65",
         "docs",
         "network",
+        "opentensor",
         "private",
         "sn",
-        "tao",
-        "taomarketcap"
+        "tao"
       ],
       "type": "surface",
       "url": "https://tpn.taofu.xyz/docs"
@@ -21888,37 +21947,38 @@
       "id": "surface:sn-65-website-link-tpn-taofu-xyz-docs-1",
       "netuid": 65,
       "slug": "sn-65",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "TAO Private Network docs",
       "tokens": [
         "65",
         "docs",
         "network",
+        "opentensor",
         "private",
         "sn",
-        "tao",
-        "taomarketcap"
+        "tao"
       ],
       "type": "surface",
       "url": "https://tpn.taofu.xyz/docs/Examples/quickstart"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-65-taomarketcap-source-repo",
+      "id": "surface:sn-65-native-chain-github",
       "netuid": 65,
       "slug": "sn-65",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "TAO Private Network source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "TAO Private Network GitHub source repository",
       "tokens": [
         "65",
+        "github",
         "network",
+        "opentensor",
         "private",
         "repo",
         "repository",
         "sn",
         "source",
-        "tao",
-        "taomarketcap"
+        "tao"
       ],
       "type": "surface",
       "url": "https://github.com/taofu-labs/tpn-subnet"
@@ -22004,18 +22064,18 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-65-taomarketcap-website",
+      "id": "surface:sn-65-native-chain-website",
       "netuid": 65,
       "slug": "sn-65",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "TAO Private Network website",
       "tokens": [
         "65",
         "network",
+        "opentensor",
         "private",
         "sn",
         "tao",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -22454,13 +22514,12 @@
       "id": "surface:sn-113-website-link-tensorusd-com-docs-1",
       "netuid": 113,
       "slug": "sn-113",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / tensorusd",
       "title": "TensorUSD docs",
       "tokens": [
         "113",
         "docs",
         "sn",
-        "taomarketcap",
         "tensorusd"
       ],
       "type": "surface",
@@ -22852,13 +22911,12 @@
       "id": "surface:sn-23-website-link-trishool-ai-docs-1",
       "netuid": 23,
       "slug": "sn-23",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / trishool",
       "title": "Trishool docs",
       "tokens": [
         "23",
         "docs",
         "sn",
-        "taomarketcap",
         "trishool"
       ],
       "type": "surface",
@@ -22869,13 +22927,12 @@
       "id": "surface:sn-23-website-link-trishool-ai-docs-2",
       "netuid": 23,
       "slug": "sn-23",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / trishool",
       "title": "Trishool docs",
       "tokens": [
         "23",
         "docs",
         "sn",
-        "taomarketcap",
         "trishool"
       ],
       "type": "surface",
@@ -22978,15 +23035,14 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-23-taomarketcap-website",
+      "id": "surface:sn-23-native-chain-website",
       "netuid": 23,
       "slug": "sn-23",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / trishool",
       "title": "Trishool website",
       "tokens": [
         "23",
         "sn",
-        "taomarketcap",
         "trishool",
         "website"
       ],
@@ -22995,19 +23051,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-117-taomarketcap-source-repo",
+      "id": "surface:sn-117-native-chain-github",
       "netuid": 117,
       "slug": "sn-117",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Unknown source repository",
+      "subtitle": "source-repo / shiftlayer",
+      "title": "Unknown GitHub source repository",
       "tokens": [
         "117",
         "brainplay",
+        "github",
         "repo",
         "repository",
+        "shiftlayer",
         "sn",
         "source",
-        "taomarketcap",
         "unknown"
       ],
       "type": "surface",
@@ -23547,13 +23604,13 @@
       "id": "surface:sn-78-website-common-docs",
       "netuid": 78,
       "slug": "sn-78",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Vocence docs",
       "tokens": [
         "78",
         "docs",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "vocence"
       ],
       "type": "surface",
@@ -23561,18 +23618,19 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-78-taomarketcap-source-repo",
+      "id": "surface:sn-78-native-chain-github",
       "netuid": 78,
       "slug": "sn-78",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Vocence source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Vocence GitHub source repository",
       "tokens": [
         "78",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "vocence"
       ],
       "type": "surface",
@@ -23693,15 +23751,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-78-taomarketcap-website",
+      "id": "surface:sn-78-native-chain-website",
       "netuid": 78,
       "slug": "sn-78",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Vocence website",
       "tokens": [
         "78",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "vocence",
         "website"
       ],
@@ -23731,13 +23789,13 @@
       "id": "surface:sn-106-website-common-docs",
       "netuid": 106,
       "slug": "sn-106",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "VoidAI docs",
       "tokens": [
         "106",
         "docs",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "voidai"
       ],
       "type": "surface",
@@ -23745,18 +23803,19 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-106-taomarketcap-source-repo",
+      "id": "surface:sn-106-native-chain-github",
       "netuid": 106,
       "slug": "sn-106",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "VoidAI source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "VoidAI GitHub source repository",
       "tokens": [
         "106",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "voidai"
       ],
       "type": "surface",
@@ -23835,15 +23894,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-106-taomarketcap-website",
+      "id": "surface:sn-106-native-chain-website",
       "netuid": 106,
       "slug": "sn-106",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "VoidAI website",
       "tokens": [
         "106",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "voidai",
         "website"
       ],
@@ -23874,14 +23933,14 @@
       "id": "surface:sn-54-github-readme-yanez-compliance-miid-subnet-dashboard-1",
       "netuid": 54,
       "slug": "sn-54",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / opentensor",
       "title": "Yanez MIID dashboard",
       "tokens": [
         "54",
         "dashboard",
         "miid",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "yanez"
       ],
       "type": "surface",
@@ -23889,19 +23948,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-54-taomarketcap-source-repo",
+      "id": "surface:sn-54-native-chain-github",
       "netuid": 54,
       "slug": "sn-54",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Yanez MIID source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Yanez MIID GitHub source repository",
       "tokens": [
         "54",
+        "github",
         "miid",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "yanez"
       ],
       "type": "surface",
@@ -23966,16 +24026,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-54-taomarketcap-website",
+      "id": "surface:sn-54-native-chain-website",
       "netuid": 54,
       "slug": "sn-54",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Yanez MIID website",
       "tokens": [
         "54",
         "miid",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website",
         "yanez"
       ],
@@ -24005,13 +24065,13 @@
       "id": "surface:sn-18-website-link-www-zeussubnet-com-docs-4",
       "netuid": 18,
       "slug": "sn-18",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Zeus docs",
       "tokens": [
         "18",
         "docs",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "zeus"
       ],
       "type": "surface",
@@ -24019,18 +24079,19 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-18-taomarketcap-source-repo",
+      "id": "surface:sn-18-native-chain-github",
       "netuid": 18,
       "slug": "sn-18",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Zeus source repository",
+      "subtitle": "source-repo / opentensor",
+      "title": "Zeus GitHub source repository",
       "tokens": [
         "18",
+        "github",
+        "opentensor",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "zeus"
       ],
       "type": "surface",
@@ -24109,15 +24170,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-18-taomarketcap-website",
+      "id": "surface:sn-18-native-chain-website",
       "netuid": 18,
       "slug": "sn-18",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Zeus website",
       "tokens": [
         "18",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website",
         "zeus"
       ],
@@ -24147,13 +24208,13 @@
       "id": "surface:sn-46-github-readme-resi-labs-ai-resi-models-dashboard-1",
       "netuid": 46,
       "slug": "sn-46",
-      "subtitle": "dashboard / taomarketcap",
+      "subtitle": "dashboard / opentensor",
       "title": "Zipcode dashboard",
       "tokens": [
         "46",
         "dashboard",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "zipcode"
       ],
       "type": "surface",
@@ -24164,13 +24225,13 @@
       "id": "surface:sn-46-website-common-docs",
       "netuid": 46,
       "slug": "sn-46",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / opentensor",
       "title": "Zipcode docs",
       "tokens": [
         "46",
         "docs",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "zipcode"
       ],
       "type": "surface",
@@ -24178,40 +24239,41 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-46-native-chain-github",
+      "netuid": 46,
+      "slug": "sn-46",
+      "subtitle": "source-repo / opentensor",
+      "title": "Zipcode GitHub source repository",
+      "tokens": [
+        "46",
+        "github",
+        "opentensor",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "zipcode"
+      ],
+      "type": "surface",
+      "url": "https://github.com/resi-labs-ai/RESI-models"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-46-website-common-openapi-json",
       "netuid": 46,
       "slug": "sn-46",
-      "subtitle": "openapi / taomarketcap",
+      "subtitle": "openapi / opentensor",
       "title": "Zipcode OpenAPI JSON",
       "tokens": [
         "46",
         "json",
         "openapi",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "zipcode"
       ],
       "type": "surface",
       "url": "https://zipcode.ai/openapi.json"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-46-taomarketcap-source-repo",
-      "netuid": 46,
-      "slug": "sn-46",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Zipcode source repository",
-      "tokens": [
-        "46",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap",
-        "zipcode"
-      ],
-      "type": "surface",
-      "url": "https://github.com/resi-labs-ai/RESI-models"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -24311,15 +24373,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-46-taomarketcap-website",
+      "id": "surface:sn-46-native-chain-website",
       "netuid": 46,
       "slug": "sn-46",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / opentensor",
       "title": "Zipcode website",
       "tokens": [
         "46",
+        "opentensor",
         "sn",
-        "taomarketcap",
         "website",
         "zipcode"
       ],

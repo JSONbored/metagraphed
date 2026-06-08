@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { repoRoot } from "./lib.mjs";
+import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
 
 const trackedPublicArtifacts = execFileSync(
   "git",
@@ -23,6 +24,7 @@ for (const relativePath of trackedPublicArtifacts) {
     content: existsSync(filePath) ? await readFile(filePath) : null,
   });
 }
+const schemaSnapshotDetails = await loadSchemaSnapshotDetails();
 
 const result = spawnSync(process.execPath, ["scripts/build-artifacts.mjs"], {
   cwd: repoRoot,
@@ -44,6 +46,12 @@ for (const [relativePath, original] of originals) {
   await writeFile(filePath, original.content);
 }
 
+for (const [relativePath, content] of schemaSnapshotDetails) {
+  const filePath = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content);
+}
+
 process.stdout.write(result.stdout || "");
 process.stderr.write(result.stderr || "");
 
@@ -62,3 +70,30 @@ console.log(
     2,
   ),
 );
+
+async function loadSchemaSnapshotDetails() {
+  const indexPath = path.join(repoRoot, "public/metagraph/schemas/index.json");
+  if (!existsSync(indexPath)) {
+    return new Map();
+  }
+
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  const details = new Map();
+  for (const entry of index.schemas || []) {
+    const relativePath = String(entry.path || "")
+      .replace(/^\/+metagraph\//, "")
+      .replace(/^\/+/, "");
+    if (!relativePath || relativePath === "schemas/index.json") {
+      continue;
+    }
+    const filePath = path.join(
+      repoRoot,
+      R2_STAGING_RELATIVE_ROOT,
+      relativePath,
+    );
+    if (existsSync(filePath)) {
+      details.set(relativePath, await readFile(filePath));
+    }
+  }
+  return details;
+}

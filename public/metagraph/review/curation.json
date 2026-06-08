@@ -1393,6 +1393,33 @@
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-20-website-common-api",
+        "sn-20-website-common-health",
+        "sn-20-website-common-openapi-json",
+        "sn-20-website-common-swagger",
+        "sn-20-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-20",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
       "candidate_api_count": 6,
       "candidate_api_ids": [
         "sn-25-github-readme-macrocosm-os-mainframe-subnet-api-3",
@@ -1418,33 +1445,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-25",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-35-website-common-api",
-        "sn-35-website-common-health",
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "OxMarkets",
-      "netuid": 35,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 9,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-35",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1585,6 +1585,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-100-website-common-api",
+        "sn-100-website-common-health",
+        "sn-100-website-common-openapi-json",
+        "sn-100-website-common-swagger",
+        "sn-100-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Plaτform",
+      "netuid": 100,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-100",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-102-website-common-api",
         "sn-102-website-common-health",
         "sn-102-website-common-openapi-json",
@@ -1634,6 +1661,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-103",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "machine-verified",
+      "name": "Beam",
+      "netuid": 105,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-105",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1850,33 +1904,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-20-website-common-api",
-        "sn-20-website-common-health",
-        "sn-20-website-common-openapi-json",
-        "sn-20-website-common-swagger",
-        "sn-20-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-20",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-26-website-common-api",
         "sn-26-website-common-health",
         "sn-26-website-common-openapi-json",
@@ -1926,6 +1953,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "nodexo",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-35-website-common-api",
+        "sn-35-website-common-health",
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "machine-verified",
+      "name": "OxMarkets",
+      "netuid": 35,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 8,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-35",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2256,60 +2310,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-100-website-common-api",
-        "sn-100-website-common-health",
-        "sn-100-website-common-openapi-json",
-        "sn-100-website-common-swagger",
-        "sn-100-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "Plaτform",
-      "netuid": 100,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-100",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Beam",
-      "netuid": 105,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-105",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-106-website-common-api",
         "sn-106-website-common-health",
         "sn-106-website-common-openapi-json",
@@ -2468,6 +2468,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-32",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "colosseum",
+      "netuid": 38,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 7,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "colosseum",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2770,33 +2797,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health",
-        "sn-38-website-common-openapi-json",
-        "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 6,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "colosseum",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-62-website-common-api",
         "sn-62-website-common-health",
         "sn-62-website-common-openapi-json",
@@ -3034,25 +3034,6 @@
       "verified_candidate_count": 10
     },
     {
-      "candidate_count": 8,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Grail",
-      "netuid": 81,
-      "priority_score": 64,
-      "review_state": "needs-review",
-      "slug": "sn-81",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
-      "verified_candidate_count": 7
-    },
-    {
       "candidate_count": 19,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -3087,6 +3068,25 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
       "verified_candidate_count": 13
+    },
+    {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Grail",
+      "netuid": 81,
+      "priority_score": 63,
+      "review_state": "needs-review",
+      "slug": "sn-81",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 9,
+      "verified_candidate_count": 7
     },
     {
       "candidate_count": 18,
@@ -3141,6 +3141,24 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 7,
       "verified_candidate_count": 10
+    },
+    {
+      "candidate_count": 18,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "minotaur",
+      "netuid": 112,
+      "priority_score": 62,
+      "review_state": "machine-generated",
+      "slug": "sn-112",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 8,
+      "verified_candidate_count": 12
     },
     {
       "candidate_count": 18,
@@ -3276,24 +3294,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "OxMarkets",
-      "netuid": 35,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-35",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
-      "verified_candidate_count": 10
-    },
-    {
-      "candidate_count": 16,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Score",
       "netuid": 44,
       "priority_score": 60,
@@ -3358,24 +3358,6 @@
       "verified_candidate_count": 12
     },
     {
-      "candidate_count": 16,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "minotaur",
-      "netuid": 112,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-112",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 10
-    },
-    {
       "candidate_count": 19,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -3391,6 +3373,24 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
       "verified_candidate_count": 11
+    },
+    {
+      "candidate_count": 15,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "OxMarkets",
+      "netuid": 35,
+      "priority_score": 59,
+      "review_state": "machine-generated",
+      "slug": "sn-35",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 8,
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 15,
@@ -3426,6 +3426,24 @@
       "slug": "sn-50",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
+      "verified_candidate_count": 12
+    },
+    {
+      "candidate_count": 15,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Beam",
+      "netuid": 105,
+      "priority_score": 59,
+      "review_state": "machine-generated",
+      "slug": "sn-105",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 9,
       "verified_candidate_count": 12
     },
     {
@@ -3562,24 +3580,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Beam",
-      "netuid": 105,
-      "priority_score": 58,
-      "review_state": "machine-generated",
-      "slug": "sn-105",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 11
-    },
-    {
-      "candidate_count": 14,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "VoidAI",
       "netuid": 106,
       "priority_score": 58,
@@ -3588,24 +3588,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
       "verified_candidate_count": 9
-    },
-    {
-      "candidate_count": 8,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Basilica",
-      "netuid": 39,
-      "priority_score": 52,
-      "review_state": "needs-review",
-      "slug": "sn-39",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 7
     },
     {
       "candidate_count": 8,
@@ -3641,6 +3623,24 @@
       "slug": "sn-3",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
+      "verified_candidate_count": 7
+    },
+    {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Basilica",
+      "netuid": 39,
+      "priority_score": 51,
+      "review_state": "needs-review",
+      "slug": "sn-39",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 8,
       "verified_candidate_count": 7
     },
     {
@@ -3708,7 +3708,7 @@
       "verified_candidate_count": 22
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
         "source-repo",
@@ -3719,12 +3719,12 @@
       ],
       "name": "Ditto",
       "netuid": 118,
-      "priority_score": 36,
+      "priority_score": 37,
       "review_state": "maintainer-reviewed",
       "slug": "sn-118",
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 12,
-      "verified_candidate_count": 19
+      "verified_candidate_count": 20
     },
     {
       "candidate_count": 16,
@@ -3745,23 +3745,6 @@
       "verified_candidate_count": 12
     },
     {
-      "candidate_count": 26,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "name": "MVTRX",
-      "netuid": 79,
-      "priority_score": 33,
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-79",
-      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 9,
-      "verified_candidate_count": 19
-    },
-    {
       "candidate_count": 25,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -3777,6 +3760,23 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 12,
       "verified_candidate_count": 17
+    },
+    {
+      "candidate_count": 25,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "name": "MVTRX",
+      "netuid": 79,
+      "priority_score": 32,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-79",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 9,
+      "verified_candidate_count": 19
     },
     {
       "candidate_count": 7,
@@ -4008,7 +4008,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-20",
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
-      "surface_count": 8,
+      "surface_count": 9,
       "verified_candidate_count": 9
     },
     {
@@ -4117,25 +4117,6 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 8,
       "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 14,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "colosseum",
-      "netuid": 38,
-      "priority_score": 25,
-      "review_state": "maintainer-reviewed",
-      "slug": "colosseum",
-      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 6,
-      "verified_candidate_count": 10
     },
     {
       "candidate_count": 14,
@@ -4529,7 +4510,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-100",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 8,
+      "surface_count": 9,
       "verified_candidate_count": 15
     },
     {
@@ -4888,14 +4869,32 @@
         "sse",
         "data-artifact"
       ],
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 14,
+      "review_state": "maintainer-reviewed",
+      "slug": "colosseum",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 7,
+      "verified_candidate_count": 10
+    },
+    {
+      "candidate_count": 14,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
       "name": "Swap",
       "netuid": 10,
-      "priority_score": 14,
+      "priority_score": 13,
       "review_state": "maintainer-reviewed",
       "slug": "sn-10",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 9
+      "verified_candidate_count": 8
     },
     {
       "candidate_count": 14,
@@ -5249,7 +5248,7 @@
       "source-repo": 21,
       "sse": 128,
       "subnet-api": 115,
-      "website": 15
+      "website": 14
     },
     "maintainer_decision_count": 3,
     "needs_maintainer_review_count": 42,

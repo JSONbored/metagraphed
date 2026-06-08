@@ -14,15 +14,16 @@
   "native_only_count": 0,
   "native_only_with_candidates": 0,
   "native_only_without_candidates": 0,
-  "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
+  "native_snapshot_captured_at": "2026-06-08T20:51:35Z",
   "network": "finney",
   "probed_count": 129,
-  "probed_surface_count": 1122,
+  "probed_surface_count": 1125,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
     "candidates": "registry/candidates",
     "native": {
+      "identity_storage": "SubtensorModule.SubnetIdentitiesV3",
       "kind": "bittensor-sdk",
       "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
       "package": "bittensor",
@@ -31,5 +32,5 @@
     },
     "overlays": "registry/subnets"
   },
-  "surface_count": 1129
+  "surface_count": 1132
 }

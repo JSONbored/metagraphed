@@ -134,7 +134,7 @@
       "timestamp_field": null
     },
     {
-      "as_of": "2026-06-08T14:11:05.342Z",
+      "as_of": null,
       "id": "candidate-discovery",
       "lane": "candidate-discovery",
       "notes": "",
@@ -142,12 +142,12 @@
       "required_for_publish": true,
       "stale_after_hours": 24,
       "stale_behavior": "block",
-      "status": "captured",
-      "timestamp": "2026-06-08T14:11:05.342Z",
+      "status": "missing",
+      "timestamp": null,
       "timestamp_field": "candidate_discovery_as_of"
     },
     {
-      "as_of": "2026-06-08T15:38:22.213Z",
+      "as_of": "2026-06-08T20:57:44.926Z",
       "id": "candidate-verification",
       "lane": "candidate-verification",
       "notes": "",
@@ -156,11 +156,11 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T15:38:22.213Z",
+      "timestamp": "2026-06-08T20:57:44.926Z",
       "timestamp_field": "verification_as_of"
     },
     {
-      "as_of": "2026-06-07T21:51:54Z",
+      "as_of": "2026-06-08T20:51:35Z",
       "id": "native-subnets",
       "lane": "native-data",
       "notes": "",
@@ -169,11 +169,11 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T21:51:54Z",
+      "timestamp": "2026-06-08T20:51:35Z",
       "timestamp_field": "native_data_as_of"
     },
     {
-      "as_of": "2026-06-08T20:16:58.319Z",
+      "as_of": "2026-06-08T21:03:47.659Z",
       "id": "schema-drift",
       "lane": "schema-snapshot",
       "notes": "Schema drift snapshots are warning-only until more subnets publish machine-readable schemas.",
@@ -182,11 +182,11 @@
       "stale_after_hours": 168,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-08T20:16:58.319Z",
+      "timestamp": "2026-06-08T21:03:47.659Z",
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-08T20:16:44.940Z",
+      "as_of": "2026-06-08T20:59:06.551Z",
       "id": "surface-health",
       "lane": "health-probe",
       "notes": "Observed health is probe-derived.",
@@ -195,7 +195,7 @@
       "stale_after_hours": 6,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T20:16:44.940Z",
+      "timestamp": "2026-06-08T20:59:06.551Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -203,17 +203,19 @@
     "adapter_count": 9,
     "adapter_snapshot_as_of": "2026-06-08T16:07:27.131Z",
     "blocking_source_count": 5,
-    "candidate_discovery_as_of": "2026-06-08T14:11:05.342Z",
-    "health_probe_as_of": "2026-06-08T20:16:44.940Z",
-    "health_surface_count": 1122,
-    "missing_blocking_source_count": 0,
-    "native_data_as_of": "2026-06-07T21:51:54Z",
-    "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
+    "candidate_discovery_as_of": null,
+    "health_probe_as_of": "2026-06-08T20:59:06.551Z",
+    "health_surface_count": 1125,
+    "missing_blocking_source_count": 1,
+    "native_data_as_of": "2026-06-08T20:51:35Z",
+    "native_snapshot_captured_at": "2026-06-08T20:51:35Z",
     "openapi_surface_count": 12,
-    "publish_ready_without_age_check": true,
-    "schema_snapshot_as_of": "2026-06-08T20:16:58.319Z",
-    "stale_window_warnings": [],
-    "verification_as_of": "2026-06-08T15:38:22.213Z",
+    "publish_ready_without_age_check": false,
+    "schema_snapshot_as_of": "2026-06-08T21:03:47.659Z",
+    "stale_window_warnings": [
+      "candidate-discovery has no observed timestamp; production publish should block."
+    ],
+    "verification_as_of": "2026-06-08T20:57:44.926Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
     "warning_source_count": 10
   }

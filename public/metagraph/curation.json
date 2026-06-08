@@ -437,7 +437,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -587,7 +587,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 11,
+        "source_count": 12,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
       "gap_count": 4,
@@ -761,7 +761,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -803,7 +803,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -892,7 +892,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
-        "source_count": 8,
+        "source_count": 9,
         "verified_at": "2026-06-08T11:15:00.000Z"
       },
       "gap_count": 5,
@@ -924,7 +924,7 @@
       "name": "GroundLayer",
       "netuid": 20,
       "slug": "sn-20",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
       "candidate_count": 24,
@@ -981,7 +981,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:45:00.000Z",
-        "source_count": 12,
+        "source_count": 13,
         "verified_at": "2026-06-08T07:45:00.000Z"
       },
       "gap_count": 2,
@@ -1021,7 +1021,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 8,
+        "source_count": 9,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 3,
@@ -1106,7 +1106,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 8,
+        "source_count": 9,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 4,
@@ -1151,7 +1151,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1549,7 +1549,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1588,7 +1588,7 @@
       "name": "OxMarkets",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 9
+      "surface_count": 8
     },
     {
       "candidate_count": 18,
@@ -1603,7 +1603,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1645,7 +1645,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1675,7 +1675,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1691,10 +1691,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T19:30:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T19:30:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "TAO Colosseum source repository is live and promoted.",
@@ -1707,7 +1707,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1716,16 +1715,17 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
       "slug": "colosseum",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1831,7 +1831,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1963,7 +1963,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2048,7 +2048,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2090,7 +2090,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -2215,7 +2215,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2256,7 +2256,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2389,7 +2389,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2431,7 +2431,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2596,7 +2596,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2637,7 +2637,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2849,7 +2849,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2931,7 +2931,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2972,7 +2972,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3062,7 +3062,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3103,7 +3103,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -3144,7 +3144,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 10,
+        "source_count": 11,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
       "gap_count": 3,
@@ -3237,7 +3237,7 @@
         "level": "adapter-backed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-06T00:00:00.000Z",
-        "source_count": 12,
+        "source_count": 13,
         "verified_at": null
       },
       "gap_count": 2,
@@ -3280,7 +3280,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 10,
+        "source_count": 11,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -3368,7 +3368,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -3410,7 +3410,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -3440,7 +3440,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 26,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3494,7 +3494,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -3524,7 +3524,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3628,7 +3628,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4088,7 +4088,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4130,7 +4130,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4255,7 +4255,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4340,7 +4340,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4386,7 +4386,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T19:30:00.000Z",
-        "source_count": 8,
+        "source_count": 9,
         "verified_at": "2026-06-08T19:30:00.000Z"
       },
       "gap_count": 4,
@@ -4417,7 +4417,7 @@
       "name": "Plaτform",
       "netuid": 100,
       "slug": "sn-100",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
       "candidate_count": 6,
@@ -4525,7 +4525,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 4,
@@ -4606,7 +4606,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4618,7 +4618,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4638,6 +4638,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "repo-registry",
           "source-repo",
           "website"
         ]
@@ -4645,7 +4646,7 @@
       "name": "Beam",
       "netuid": 105,
       "slug": "sn-105",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
       "candidate_count": 14,
@@ -4660,7 +4661,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4701,7 +4702,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4742,7 +4743,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4902,7 +4903,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4914,7 +4915,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5145,7 +5146,7 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:50:00.000Z"
       },
       "gap_count": 4,
@@ -5178,7 +5179,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5293,7 +5294,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5467,7 +5468,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5553,7 +5554,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5595,7 +5596,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5637,7 +5638,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,

@@ -1,8 +1,9 @@
 {
-  "captured_at": "2026-06-07T21:51:54Z",
+  "captured_at": "2026-06-08T20:51:35Z",
   "network": "finney",
   "schema_version": 1,
   "source": {
+    "identity_storage": "SubtensorModule.SubnetIdentitiesV3",
     "kind": "bittensor-sdk",
     "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
     "package": "bittensor",
@@ -11,7 +12,7 @@
   },
   "subnets": [
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "root",
       "native_name_quality": "chain",
@@ -25,7 +26,18 @@
       "tempo": 100
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Open competitions for algorithmic and agentic optimization",
+        "discord": "macrocrux",
+        "github_repo": "https://github.com/macrocosm-os/apex",
+        "logo_url": "https://www.macrocosmos.ai/images/mc_logo_black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Apex",
+        "subnet_url": "https://apex.macrocosmos.ai"
+      },
       "mechanism_count": 1,
       "name": "Apex",
       "native_name_quality": "chain",
@@ -39,7 +51,18 @@
       "tempo": 99
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Verifiable and distributed inference on Bittensor",
+        "discord": null,
+        "github_repo": "https://github.com/inference-labs-inc/subnet-2",
+        "logo_url": "https://dsperse.inferencelabs.com/logo-512.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "DSperse",
+        "subnet_url": "https://subnet2.inferencelabs.com"
+      },
       "mechanism_count": 1,
       "name": "DSperse",
       "native_name_quality": "chain",
@@ -53,7 +76,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "deprecated",
+        "discord": "deprecated",
+        "github_repo": "https://github.com/username/repo",
+        "logo_url": "https://deprecated.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "deprecated",
+        "subnet_url": "www.deprecated.com"
+      },
       "mechanism_count": 1,
       "name": "deprecated",
       "native_name_quality": "chain",
@@ -67,7 +101,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Incentivized Compute Marketplace powered by the Targon Virtual Machine (TVM).",
+        "discord": null,
+        "github_repo": "https://github.com/manifold-inc/targon",
+        "logo_url": "https://www.manifold.inc/favicon.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Targon",
+        "subnet_url": "https://targon.com"
+      },
       "mechanism_count": 1,
       "name": "Targon",
       "native_name_quality": "chain",
@@ -81,7 +126,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Hone training",
+        "discord": null,
+        "github_repo": "https://github.com/manifold-inc/hone",
+        "logo_url": "https://www.hone.training/logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Hone",
+        "subnet_url": "https://www.hone.training/"
+      },
       "mechanism_count": 1,
       "name": "Hone",
       "native_name_quality": "chain",
@@ -95,7 +151,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Numinous is a forecasting protocol whose goal is to aggregate agents into superhuman LLM forecasters.",
+        "discord": "amedeo_ma",
+        "github_repo": "https://github.com/numinouslabs/numinous",
+        "logo_url": "https://numinouslabs.io/numinous-logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Numinous",
+        "subnet_url": "https://numinouslabs.io/"
+      },
       "mechanism_count": 1,
       "name": "Numinous",
       "native_name_quality": "chain",
@@ -109,7 +176,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "universal transaction layer",
+        "discord": null,
+        "github_repo": "https://github.com/entrius/allways",
+        "logo_url": "https://allways-905418005698-us-east-2-an.s3.us-east-2.amazonaws.com/sn7-light.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Allways",
+        "subnet_url": "https://all-ways.io/"
+      },
       "mechanism_count": 1,
       "name": "Allways",
       "native_name_quality": "chain",
@@ -123,7 +201,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Vanta Network is the first decentralized, trustless liquidity and execution engine for prop firms and traders. It live-trades top-performing miners who deposit alpha for funding, rewards them based on verifiable performance, and uses profits to buy back alpha, creating a transparent, risk-adjusted, and incentive-aligned trading ecosystem.",
+        "contact_present": false,
+        "description": "The first decentralized & trustless liquidity and execution engine for prop firms and traders",
+        "discord": "tl_arrash",
+        "github_repo": "https://github.com/taoshidev/vanta-network",
+        "logo_url": "https://website-git-ken-vanta-taoshi.vercel.app/black-white.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Vanta",
+        "subnet_url": "https://www.vantanetwork.io/"
+      },
       "mechanism_count": 1,
       "name": "Vanta",
       "native_name_quality": "chain",
@@ -137,7 +226,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "The world's first permissionless pipeline parallel training architecture",
+        "discord": "macrocrux",
+        "github_repo": "https://github.com/macrocosm-os/iota",
+        "logo_url": "https://www.macrocosmos.ai/images/mc_logo_black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "iota",
+        "subnet_url": "https://iota.macrocosmos.ai/"
+      },
       "mechanism_count": 1,
       "name": "iota",
       "native_name_quality": "chain",
@@ -151,7 +251,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Swap is onboarding users to Bittensor.",
+        "discord": null,
+        "github_repo": "https://github.com/Swap-Subnet/swap-subnet",
+        "logo_url": "https://www.taofi.com/images/SN10-Swap-Dark.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Swap",
+        "subnet_url": "https://www.taofi.com/pool"
+      },
       "mechanism_count": 1,
       "name": "Swap",
       "native_name_quality": "chain",
@@ -165,7 +276,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Agentic RL as a Service, Optimize agent trajectories to make agents cheaper, safer, and more reliable.",
+        "discord": null,
+        "github_repo": "https://github.com/trajectoryRL/trajectoryRL",
+        "logo_url": "https://pbs.twimg.com/profile_images/2018928039716089856/2PZ-Bhm2_400x400.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "TrajectoryRL",
+        "subnet_url": "https://trajrl.com"
+      },
       "mechanism_count": 1,
       "name": "TrajectoryRL",
       "native_name_quality": "chain",
@@ -179,7 +301,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/backend-developers-ltd/ComputeHorde/",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Compute Horde",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Compute Horde",
       "native_name_quality": "chain",
@@ -193,7 +326,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Scraping the world's social media data",
+        "discord": "macrocrux",
+        "github_repo": "https://github.com/macrocosm-os/data-universe",
+        "logo_url": "https://www.macrocosmos.ai/images/mc_logo_black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Data Universe",
+        "subnet_url": "https://www.macrocosmos.ai/gravity"
+      },
       "mechanism_count": 1,
       "name": "Data Universe",
       "native_name_quality": "chain",
@@ -207,7 +351,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "A competition where miners submit containerized inference servers to compete on speed and correctness when serving an open-source model",
+        "discord": "https://discord.com/invite/bittensor",
+        "github_repo": "https://github.com/latent-to/cacheon",
+        "logo_url": "https://cacheon.ai/icon-192.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Cacheon",
+        "subnet_url": "https://cacheon.ai"
+      },
       "mechanism_count": 1,
       "name": "Cacheon",
       "native_name_quality": "chain",
@@ -221,7 +376,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "AI commerce agents",
+        "discord": "https://discord.gg/MHqAVWTdka",
+        "github_repo": "https://github.com/ORO-AI/oro",
+        "logo_url": "https://raw.githubusercontent.com/ORO-AI/oro/main/brand/profile-snowcap.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ORO",
+        "subnet_url": "https://oroagents.com"
+      },
       "mechanism_count": 1,
       "name": "ORO",
       "native_name_quality": "chain",
@@ -235,7 +401,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "https://x.com/bitads_ai",
+        "contact_present": false,
+        "description": "BitAds is a decentralized, Proof of Sale marketing network where merchandisers stake or rent ALPHA to own marketing bandwidth, and miners earn on verified sales.",
+        "discord": "https://discord.gg/qasY3HA9F9",
+        "github_repo": "https://github.com/FirstTensorLabs/BitAds",
+        "logo_url": "https://raw.githubusercontent.com/FirstTensorLabs/BitAds-Assets/refs/heads/main/Logo-white-green-black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "BitAds",
+        "subnet_url": "https://bitads.ai"
+      },
       "mechanism_count": 2,
       "name": "BitAds",
       "native_name_quality": "chain",
@@ -249,7 +426,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "a decentralized 3D content generation competition",
+        "discord": null,
+        "github_repo": "https://github.com/404-Repo/404-gen-subnet",
+        "logo_url": "https://avatars.githubusercontent.com/u/154099142?s=200&v=4",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "404—GEN",
+        "subnet_url": "https://www.404.xyz"
+      },
       "mechanism_count": 1,
       "name": "404—GEN",
       "native_name_quality": "chain",
@@ -263,7 +451,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Powered by Ørpheus AI",
+        "contact_present": false,
+        "description": "Pushing weather forecasts beyond state-of-the-art",
+        "discord": "wouter_orpheusai",
+        "github_repo": "https://github.com/Orpheus-AI/Zeus",
+        "logo_url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/refs/heads/main/static/zeus-icon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Zeus",
+        "subnet_url": "https://www.zeussubnet.com/"
+      },
       "mechanism_count": 1,
       "name": "Zeus",
       "native_name_quality": "chain",
@@ -277,7 +476,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Harnessing Bittensor's incentive layer to forge self-optimizing infrastructure.",
+        "discord": null,
+        "github_repo": "https://github.com/taostat/blockmachine/",
+        "logo_url": "https://blockmachine.io/logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "blockmachine",
+        "subnet_url": "blockmachine.io"
+      },
       "mechanism_count": 1,
       "name": "blockmachine",
       "native_name_quality": "chain",
@@ -291,7 +501,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "The Capital Layer for Bittensor",
+        "contact_present": true,
+        "description": "Structured OTC deals for subnet tokens.",
+        "discord": null,
+        "github_repo": "https://github.com/RogueTensor/comingsoon",
+        "logo_url": "https://www.groundlayer.xyz/icon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "GroundLayer",
+        "subnet_url": "https://groundlayer.xyz"
+      },
       "mechanism_count": 1,
       "name": "GroundLayer",
       "native_name_quality": "chain",
@@ -305,7 +526,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Counterfactual impact prediction for advertising interventions",
+        "discord": null,
+        "github_repo": "https://github.com/ippcteam/SN21-adtao",
+        "logo_url": "https://www.ppcrebel.com/i/adtao.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "AdTAO",
+        "subnet_url": "https://adtao.io"
+      },
       "mechanism_count": 1,
       "name": "AdTAO",
       "native_name_quality": "chain",
@@ -319,7 +551,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized search engine",
+        "discord": "https://discord.gg/P44zrJmdFy",
+        "github_repo": "https://github.com/datura-ai/desearch",
+        "logo_url": "https://desearch.ai/assets/logo-icon-C18R0lAC.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Desearch",
+        "subnet_url": "https://desearch.ai"
+      },
       "mechanism_count": 1,
       "name": "Desearch",
       "native_name_quality": "chain",
@@ -333,7 +576,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Trishool is the AI alignment protocol built on Bittensor",
+        "discord": "https://discord.com/channels/799672011265015819/1437447445176127618",
+        "github_repo": "https://github.com/TrishoolAI/trishool-phase2",
+        "logo_url": "https://trishool.ai/_next/image?url=%2Ftrishool-logo-small.png&w=96&q=75",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Trishool",
+        "subnet_url": "https://trishool.ai"
+      },
       "mechanism_count": 1,
       "name": "Trishool",
       "native_name_quality": "chain",
@@ -347,7 +601,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "-",
+        "contact_present": true,
+        "description": "Bittensor subnet built to crush the long-context barrier.",
+        "discord": "https://discordapp.com/channels/799672011265015819/1214246819886931988",
+        "github_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET/",
+        "logo_url": "https://silxinc.com/_next/image?url=%2Flogo-white.png&w=640&q=75",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Quasar",
+        "subnet_url": "https://silxinc.com/"
+      },
       "mechanism_count": 1,
       "name": "Quasar",
       "native_name_quality": "chain",
@@ -361,7 +626,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Powering decentralized science on Bittensor",
+        "discord": "mccrinbc",
+        "github_repo": "https://github.com/macrocosm-os/mainframe",
+        "logo_url": "https://www.macrocosmos.ai/images/mc_logo_black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Mainframe",
+        "subnet_url": "https://macrocosmos.ai/sn25"
+      },
       "mechanism_count": 1,
       "name": "Mainframe",
       "native_name_quality": "chain",
@@ -375,7 +651,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized adversarial robustness network",
+        "discord": null,
+        "github_repo": "https://github.com/0xsigurd/Perturb",
+        "logo_url": "https://www.perturbai.io/logo/Perturb_Logo_Light.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Perturb",
+        "subnet_url": "https://www.perturbai.io/"
+      },
       "mechanism_count": 1,
       "name": "Perturb",
       "native_name_quality": "chain",
@@ -389,7 +676,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized AI compute platfrom",
+        "discord": "https://discord.com/invite/nodexo",
+        "github_repo": "https://github.com/neuralinternet/compute-subnet",
+        "logo_url": "https://console.nodexo.ai/assets/images/logo/logo-dark.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Nodexo",
+        "subnet_url": "nodexo.ai"
+      },
       "mechanism_count": 1,
       "name": "Nodexo",
       "native_name_quality": "chain",
@@ -403,7 +701,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "gm",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "gm",
       "native_name_quality": "chain",
@@ -417,7 +726,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/coldint/coldint_validator",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Coldint",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Coldint",
       "native_name_quality": "chain",
@@ -431,7 +751,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The risk intelligence network",
+        "discord": null,
+        "github_repo": null,
+        "logo_url": "https://docs.endure.network/img/favicon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Endure Network",
+        "subnet_url": "https://endure.network"
+      },
       "mechanism_count": 1,
       "name": "Endure Network",
       "native_name_quality": "chain",
@@ -445,7 +776,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Recall provides decentralized retrieval-augmented generation to Bittensor. Miners serve embedding models, vector search, and LLM inference. Validators independently evaluate retrieval accuracy and answer quality. The subnet discovers the best RAG pipeline through open competition and routes user queries to the top performers. Think of it as an always-improving, community-owned search engine with citations.",
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Recall",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Recall",
       "native_name_quality": "chain",
@@ -459,7 +801,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "ItsAI is a bittensor subnet focused on high-quality AI detection for texts. Recognised as the most accurate AI detector by MGTD benchmark.",
+        "contact_present": true,
+        "description": "ItsAI is a bittensor subnet focused on high-quality AI detection for texts. Recognised as the most accurate AI detector by MGTD benchmark.",
+        "discord": "https://discord.com/channels/799672011265015819/1215319932062011464",
+        "github_repo": "https://github.com/It-s-AI/llm-detection",
+        "logo_url": "https://github.com/It-s-AI/llm-detection/blob/main/full_logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ItsAI",
+        "subnet_url": "https://its-ai.org/en"
+      },
       "mechanism_count": 1,
       "name": "ItsAI",
       "native_name_quality": "chain",
@@ -473,7 +826,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ReadyAI",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "ReadyAI",
       "native_name_quality": "chain",
@@ -487,7 +851,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/BitMind-AI/bitmind-subnet",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "BitMind",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "BitMind",
       "native_name_quality": "chain",
@@ -501,7 +876,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "https://x.com/0x_Markets",
+        "contact_present": true,
+        "description": "Liquidity-as-a-Service subnet powering 0xMarkets - a permissionless perp DEX for FX, crypto, and commodities. Deposit USDC. Earn Spread + Fees + Alpha.",
+        "discord": "https://0xmarkets.io/discord",
+        "github_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
+        "logo_url": "https://storage.googleapis.com/cartha-assets/cartha_logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "OxMarkets",
+        "subnet_url": "https://www.0xmarkets.io/"
+      },
       "mechanism_count": 1,
       "name": "OxMarkets",
       "native_name_quality": "chain",
@@ -515,7 +901,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The execution layer for multimodal AI workflows",
+        "discord": null,
+        "github_repo": "https://github.com/RendixNetwork/eirel-ai",
+        "logo_url": "https://eirel.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Eirel",
+        "subnet_url": "https://eirel.ai/"
+      },
       "mechanism_count": 1,
       "name": "Eirel",
       "native_name_quality": "chain",
@@ -529,7 +926,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized Alignment of Artificial Intelligence",
+        "discord": null,
+        "github_repo": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+        "logo_url": "https://raw.githubusercontent.com/Aurelius-Protocol/aurelius-whitepaper/main/aurelius_logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Aurelius",
+        "subnet_url": "https://aureliusaligned.ai"
+      },
       "mechanism_count": 1,
       "name": "Aurelius",
       "native_name_quality": "chain",
@@ -543,7 +951,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Strategic games on bittensor",
+        "discord": "Yousefmbtc",
+        "github_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+        "logo_url": "https://www.taocolosseum.com/colosseum-logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "colosseum",
+        "subnet_url": "https://www.taocolosseum.com/"
+      },
       "mechanism_count": 1,
       "name": "colosseum",
       "native_name_quality": "chain",
@@ -557,7 +976,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "deprecated",
+        "discord": "deprecated",
+        "github_repo": "https://github.com/deprecated/deprecated",
+        "logo_url": "https://deprecated.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "deprecated",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "deprecated",
       "native_name_quality": "chain",
@@ -571,7 +1001,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/VectorChat/chunking_subnet",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Chunking",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Chunking",
       "native_name_quality": "chain",
@@ -585,7 +1026,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Incentivized market intelligence.",
+        "discord": null,
+        "github_repo": "https://github.com/sportstensor/sn41",
+        "logo_url": "https://beta.almanac.market/assets/favicons/favicon-32x32.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Almanac",
+        "subnet_url": "https://almanac.market"
+      },
       "mechanism_count": 1,
       "name": "Almanac",
       "native_name_quality": "chain",
@@ -599,7 +1051,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Unknown",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Unknown",
       "native_name_quality": "placeholder",
@@ -613,7 +1076,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/GraphiteAI/Graphite-Subnet",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Graphite",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Graphite",
       "native_name_quality": "chain",
@@ -627,7 +1101,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Making every camera intelligent",
+        "discord": null,
+        "github_repo": "https://github.com/score-technologies/turbovision",
+        "logo_url": "https://www.wearescore.com/android-chrome-512x512.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Score",
+        "subnet_url": "https://www.wearescore.com/"
+      },
       "mechanism_count": 2,
       "name": "Score",
       "native_name_quality": "chain",
@@ -641,7 +1126,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/Team-Rizzo/talisman-ai",
+        "logo_url": "https://styles.redditmedia.com/t5_53lwgb/styles/communityIcon_vb7hazik5aqf1.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Talisman AI",
+        "subnet_url": "https://ai.talisman.xyz"
+      },
       "mechanism_count": 1,
       "name": "Talisman AI",
       "native_name_quality": "chain",
@@ -655,7 +1151,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "P2P Real Estate Services and Settlement powered by zipcode ai.",
+        "contact_present": true,
+        "description": "The Real Estate Intelligence Network",
+        "discord": "https://discord.gg/9Hxmh7H6Pt",
+        "github_repo": "https://github.com/resi-labs-ai/RESI-models",
+        "logo_url": "https://zipcode-public.nyc3.cdn.digitaloceanspaces.com/logo_icon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Zipcode",
+        "subnet_url": "https://zipcode.ai"
+      },
       "mechanism_count": 1,
       "name": "Zipcode",
       "native_name_quality": "chain",
@@ -669,7 +1176,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "A subnet focused on the research, development, and evaluation of evolving AI systems",
+        "discord": null,
+        "github_repo": "https://github.com/openevolai/evolai.git",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "EvolAI",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "EvolAI",
       "native_name_quality": "chain",
@@ -683,7 +1201,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Quantum Computing",
+        "discord": "qbittensorlabs",
+        "github_repo": "https://github.com/qbittensor-labs/quantum-compute",
+        "logo_url": "https://qbittensorlabs.com/48.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Quantum Compute",
+        "subnet_url": "https://www.qbittensorlabs.com/"
+      },
       "mechanism_count": 1,
       "name": "Quantum Compute",
       "native_name_quality": "chain",
@@ -697,7 +1226,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "https://x.com/nepher_robotics",
+        "contact_present": true,
+        "description": "Pioneering Simulation-First Robotics Development",
+        "discord": "https://discord.gg/nepher",
+        "github_repo": "https://github.com/nepher-ai/nepher-subnet",
+        "logo_url": "https://tournaments.nepher.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Nepher Robotics",
+        "subnet_url": "https://www.nepher.ai/"
+      },
       "mechanism_count": 1,
       "name": "Nepher Robotics",
       "native_name_quality": "chain",
@@ -711,7 +1251,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Predictive intelligence for financial markets and beyond",
+        "discord": null,
+        "github_repo": "https://github.com/mode-network/synth-subnet",
+        "logo_url": "https://taostats.io/images/subnets/50.webp?w=96&q=75",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Synth",
+        "subnet_url": "https://synthdata.co"
+      },
       "mechanism_count": 1,
       "name": "Synth",
       "native_name_quality": "chain",
@@ -725,7 +1276,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "revolutionizing the democratization of compute",
+        "discord": "p383_54249",
+        "github_repo": "https://github.com/Datura-ai/lium-io",
+        "logo_url": "https://raw.githubusercontent.com/Datura-ai/lium-logos/refs/heads/main/Celium_Icon_FullColor.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "lium.io",
+        "subnet_url": "lium.io"
+      },
       "mechanism_count": 1,
       "name": "lium.io",
       "native_name_quality": "chain",
@@ -739,7 +1301,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/tensorplex-labs/dojo",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Dojo",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Dojo",
       "native_name_quality": "chain",
@@ -753,7 +1326,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "EfficientFrontier",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "EfficientFrontier",
       "native_name_quality": "chain",
@@ -767,7 +1351,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "This subnet powers Yanez Compliance, an AI-powered platform for detecting and correcting exposure, weaknesses, and configuration flaws in financial crime prevention systems. Effective financial crime prevention depends on how well these systems can detect fraudulent identities, prevent money laundering, and reduce regulatory risks. To properly test these systems, a diverse and controlled dataset of inorganic identities is essential. By leveraging Bittensor’s decentralized AI infrastructure, the Yanez subnet enables the generation of high-quality inorganic identities, which serve as the foundation for testing, tuning, and validating fraud detection, sanctions screening, and broader financial crime prevention measures. With a direct business use case and existing clients, the Yanez subnet brings practical, real-world adoption to the Bittensor ecosystem — demonstrating how decentralized AI can support financial institutions in strengthening their compliance and security frameworks.",
+        "contact_present": true,
+        "description": "Yanez MIID generates synthetic identities for testing financial crime prevention systems",
+        "discord": "https://discord.com/channels/799672011265015819/1351934165964296232",
+        "github_repo": "https://github.com/yanez-compliance/MIID-subnet",
+        "logo_url": "https://www.dropbox.com/scl/fi/qdp0wjseryfuul0uibh06/Yanez-AI-Logo-Icon-Outline-Glow.png?rlkey=kbtcpb5mhdpymcbjjbsd425kw&st=te8yxdou&raw=1",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Yanez MIID",
+        "subnet_url": "www.yanez.ai"
+      },
       "mechanism_count": 1,
       "name": "Yanez MIID",
       "native_name_quality": "chain",
@@ -781,7 +1376,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "NIOME is a decentralized AI subnet that enables privacy-safe genomic intelligence by replacing real human genomes with high-fidelity synthetic genomic profiles",
+        "discord": "https://discord.gg/7mJkaJZX",
+        "github_repo": "https://github.com/genomesio/subnet-niome",
+        "logo_url": "https://miro.medium.com/v2/resize:fit:1400/format:webp/1*pgi-9hji1nosR-l7taHQeA.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "NIOME",
+        "subnet_url": "https://niome.genomes.io"
+      },
       "mechanism_count": 1,
       "name": "NIOME",
       "native_name_quality": "chain",
@@ -795,7 +1401,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "None",
+        "contact_present": true,
+        "description": "Best AutoML plaftorm in the world",
+        "discord": "None",
+        "github_repo": "https://github.com/gradients-ai/G.O.D",
+        "logo_url": "https://gradients-public.s3.eu-central-003.backblazeb2.com/gradientslogo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Gradients",
+        "subnet_url": "https://www.gradients.io/"
+      },
       "mechanism_count": 1,
       "name": "Gradients",
       "native_name_quality": "chain",
@@ -809,7 +1426,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "gaia",
       "native_name_quality": "chain",
@@ -823,7 +1440,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Pending",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Pending",
       "native_name_quality": "chain",
@@ -837,7 +1465,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Babelbit: harnessing the predictive power of LLMs to deliver state-of-the-art translation services",
+        "discord": "https://discord.com/channels/799672011265015819/1407849009976053832",
+        "github_repo": "https://github.com/babelbit/babelbit_subnet",
+        "logo_url": "https://babelbit.ai/babelbit-tower-logo-rev-no-text.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Babelbit",
+        "subnet_url": "https://babelbit.ai"
+      },
       "mechanism_count": 1,
       "name": "Babelbit",
       "native_name_quality": "chain",
@@ -851,7 +1490,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "find and fix exploits in codebases",
+        "discord": "yubo",
+        "github_repo": "https://github.com/Bitsec-AI/sandbox",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Bitsec.ai",
+        "subnet_url": "https://bitsec.ai"
+      },
       "mechanism_count": 1,
       "name": "Bitsec.ai",
       "native_name_quality": "chain",
@@ -865,7 +1515,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "\"The RedTeam subnet by Innerworks is a decentralized platform designed to drive innovation in cybersecurity through competitive programming challenges. The subnet incentivizes miners to develop and submit code solutions to various technical challenges, with a focus on enhancing security. These solutions can be integrated into real-world products to improve their security features.\"",
+        "discord": "https://discord.com/channels/799672011265015819/1319313447435108413",
+        "github_repo": "https://github.com/RedTeamSubnet/RedTeam",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "RedTeam",
+        "subnet_url": "https://www.theredteam.io/"
+      },
       "mechanism_count": 1,
       "name": "RedTeam",
       "native_name_quality": "chain",
@@ -879,7 +1540,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Software Engineering Agents",
+        "discord": "https://discord.gg/WeDvTnYDad",
+        "github_repo": "https://github.com/ridgesai/ridges",
+        "logo_url": "https://www.ridges.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Ridges",
+        "subnet_url": "https://www.ridges.ai/"
+      },
       "mechanism_count": 1,
       "name": "Ridges",
       "native_name_quality": "chain",
@@ -893,7 +1565,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Breaking today to build tomorrow",
+        "discord": "qbittensorlabs",
+        "github_repo": "https://github.com/qbittensor-labs/enigma",
+        "logo_url": "https://www.qbittensorlabs.com/63.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Enigma",
+        "subnet_url": "https://www.qbittensorlabs.com/"
+      },
       "mechanism_count": 1,
       "name": "Enigma",
       "native_name_quality": "chain",
@@ -907,7 +1590,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Chutes is a subnet operated by Chutes Global Corp, an International Business Corporation registered in Nevis with registration number C 61974",
+        "contact_present": true,
+        "description": "Breakthrough Serverless Compute for AI, At Scale.",
+        "discord": "https://discord.gg/chutes",
+        "github_repo": "https://github.com/chutesai/chutes",
+        "logo_url": "https://storage.googleapis.com/chutes-random/logo-chutes.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Chutes",
+        "subnet_url": "https://chutes.ai"
+      },
       "mechanism_count": 1,
       "name": "Chutes",
       "native_name_quality": "chain",
@@ -921,7 +1615,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "-",
+        "contact_present": true,
+        "description": "Developer-friendly Decentralised VPN infrastructure.",
+        "discord": "https://discord.gg/GRVZyPYd6G",
+        "github_repo": "https://github.com/taofu-labs/tpn-subnet",
+        "logo_url": "https://tpn.taofu.xyz/img/logo.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "TAO Private Network",
+        "subnet_url": "https://tpn.taofu.xyz/"
+      },
       "mechanism_count": 1,
       "name": "TAO Private Network",
       "native_name_quality": "chain",
@@ -935,7 +1640,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Distilling software agents",
+        "discord": "arbos",
+        "github_repo": "https://github.com/unarbos/tau",
+        "logo_url": "https://ninja.arbos.life/favicon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ninja",
+        "subnet_url": "ninja.arbos.life"
+      },
       "mechanism_count": 1,
       "name": "ninja",
       "native_name_quality": "chain",
@@ -949,7 +1665,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Deep research as a commodity. Faster, cheaper, traceable research — produced by a competitive swarm of miners on Bittensor SN67.",
+        "discord": "https://discord.com/channels/799672011265015819/1457737666316472351",
+        "github_repo": "https://github.com/harnyx/harnyx",
+        "logo_url": "https://harnyx.ai/favicon.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Harnyx",
+        "subnet_url": "https://harnyx.ai/"
+      },
       "mechanism_count": 1,
       "name": "Harnyx",
       "native_name_quality": "chain",
@@ -963,7 +1690,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Accelerating drug discovery.",
+        "discord": null,
+        "github_repo": "https://github.com/metanova-labs/nova/",
+        "logo_url": "https://raw.githubusercontent.com/metanova-labs/nova/refs/heads/main/assets/subnet-logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "NOVA",
+        "subnet_url": "https://www.metanova-labs.ai"
+      },
       "mechanism_count": 2,
       "name": "NOVA",
       "native_name_quality": "chain",
@@ -977,7 +1715,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "ain",
       "native_name_quality": "chain",
@@ -991,12 +1729,23 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The dataset engine of decentralized AI",
+        "discord": null,
+        "github_repo": "https://github.com/RendixNetwork/nexisgen",
+        "logo_url": "https://www.nexisgen.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "NexisGen",
+        "subnet_url": "https://nexisgen.ai/"
+      },
       "mechanism_count": 1,
       "name": "NexisGen",
       "native_name_quality": "chain",
       "netuid": 70,
-      "participant_count": 236,
+      "participant_count": 238,
       "raw_name": "NexisGen",
       "registered_at_block": 7787562,
       "status": "active",
@@ -1005,7 +1754,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Intent-driven AI for modern sales teams.",
+        "discord": null,
+        "github_repo": "https://github.com/leadpoet/leadpoet",
+        "logo_url": "https://leadpoet.com/leadpoet-social-logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Leadpoet",
+        "subnet_url": "https://leadpoet.com"
+      },
       "mechanism_count": 1,
       "name": "Leadpoet",
       "native_name_quality": "chain",
@@ -1019,7 +1779,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Powered by NATIX’s Internet of Cameras, StreetVision is advancing autonomous driving, Physical AI, and map-making.",
+        "discord": "https://discord.com/channels/799672011265015819/1349122541754515538",
+        "github_repo": "https://github.com/natixnetwork/streetvision-subnet",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "StreetVision by NATIX",
+        "subnet_url": "https://www.natix.network/?utm_source=bittensor"
+      },
       "mechanism_count": 1,
       "name": "StreetVision by NATIX",
       "native_name_quality": "chain",
@@ -1033,7 +1804,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Parked",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Parked",
       "native_name_quality": "chain",
@@ -1047,7 +1829,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "autonomous software development",
+        "discord": null,
+        "github_repo": "https://github.com/entrius/gittensor/tree/main",
+        "logo_url": "https://gittensor.s3.us-east-2.amazonaws.com/gt-logo-white.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Gittensor",
+        "subnet_url": "https://gittensor.io"
+      },
       "mechanism_count": 1,
       "name": "Gittensor",
       "native_name_quality": "chain",
@@ -1061,7 +1854,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Blockchain-backed cloud: storage, VMs, and apps with unmatched transparency, trust, and power.",
+        "discord": null,
+        "github_repo": "https://github.com/thenervelab/thebrain",
+        "logo_url": "https://hippius.com/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Hippius",
+        "subnet_url": "https://hippius.com/"
+      },
       "mechanism_count": 1,
       "name": "Hippius",
       "native_name_quality": "chain",
@@ -1075,7 +1879,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Leverage marketing with AI Swarm",
+        "discord": "https://discord.com/channels/799672011265015819/1474042162877300776",
+        "github_repo": null,
+        "logo_url": "https://byzantiumai.net/logos/byzantium-mark-dark.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Byzantium",
+        "subnet_url": "https://www.byzantiumai.net"
+      },
       "mechanism_count": 1,
       "name": "Byzantium",
       "native_name_quality": "chain",
@@ -1089,7 +1904,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Supply liquidity on external chains via uniswap, incentivize any project",
+        "discord": "CreativeBuilds",
+        "github_repo": "https://github.com/creativebuilds/sn77",
+        "logo_url": "https://sn77.xyz/assets/Logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Liquidity",
+        "subnet_url": "https://sn77.xyz"
+      },
       "mechanism_count": 1,
       "name": "Liquidity",
       "native_name_quality": "chain",
@@ -1103,7 +1929,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The voice layer for decentralized intelligence",
+        "discord": "https://discord.gg/TWmfwJAtXG",
+        "github_repo": "https://github.com/vocence-78/vocence",
+        "logo_url": "https://www.vocence.ai/tab_logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Vocence",
+        "subnet_url": "https://www.vocence.ai"
+      },
       "mechanism_count": 1,
       "name": "Vocence",
       "native_name_quality": "chain",
@@ -1117,7 +1954,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Powered by TAOS Matrix of Simulations Sandbox",
+        "contact_present": true,
+        "description": "Building a SOTA Exchange for dTAO and Beyond",
+        "discord": null,
+        "github_repo": "https://github.com/taos-im/sn-79",
+        "logo_url": "https://assets.mvtrx.fi/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "MVTRX",
+        "subnet_url": "https://taos.im"
+      },
       "mechanism_count": 1,
       "name": "MVTRX",
       "native_name_quality": "chain",
@@ -1131,7 +1979,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "more information on website: dogelayer.ai",
+        "contact_present": true,
+        "description": "Dogelayer is the world's first mining pool enabling Scrypt miners to join Bittensor subnet. Our merged mining technology allows traditional miners to earn Alpha tokens through subnet validation while mining LTC/DOGE",
+        "discord": "dogelayer",
+        "github_repo": "https://github.com/dogelayer-ai/dogelayer",
+        "logo_url": "https://dogelayer.ai/images/design/dogemine-logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "dogelayer",
+        "subnet_url": "https://dogelayer.ai"
+      },
       "mechanism_count": 1,
       "name": "dogelayer",
       "native_name_quality": "chain",
@@ -1145,7 +2004,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "deprecated",
+        "discord": "deprecated",
+        "github_repo": "https://github.com/deprecated/deprecated",
+        "logo_url": "https://deprecated.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "deprecated",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "deprecated",
       "native_name_quality": "chain",
@@ -1159,7 +2029,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "AIs debate until they are AGI.",
+        "discord": null,
+        "github_repo": "https://github.com/compelle/compelle-validator",
+        "logo_url": "https://compelle.com/launch/logo-512.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Compelle",
+        "subnet_url": "https://compelle.com"
+      },
       "mechanism_count": 1,
       "name": "Compelle",
       "native_name_quality": "chain",
@@ -1173,7 +2054,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "CliqueAI - AI-Powered Maximum Clique Solver Network",
+        "discord": "https://discord.com/channels/799672011265015819/1355560253076410428",
+        "github_repo": "https://github.com/toptensor/CliqueAI",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "CliqueAI",
+        "subnet_url": "https://cliqueai.toptensor.ai/"
+      },
       "mechanism_count": 1,
       "name": "CliqueAI",
       "native_name_quality": "chain",
@@ -1187,7 +2079,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "ansuz",
       "native_name_quality": "chain",
@@ -1201,7 +2093,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Next-Generation Video Processing Powered By AI",
+        "discord": "https://discord.gg/xhn4jxJMEX",
+        "github_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
+        "logo_url": "https://raw.githubusercontent.com/vidAio-subnet/brand-assets/main/logos/320x320.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Vidaio",
+        "subnet_url": "https://vidaio.io/"
+      },
       "mechanism_count": 1,
       "name": "Vidaio",
       "native_name_quality": "chain",
@@ -1215,7 +2118,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Methodical. Strong foundation. And...Sr Data Scientist, 4th team member, onboard.",
+        "discord": null,
+        "github_repo": null,
+        "logo_url": "https://www.publicdomainpictures.net/pictures/390000/velka/image-1614231152FSV.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "⚒",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "⚒",
       "native_name_quality": "chain",
@@ -1229,7 +2143,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "unknown",
+        "subnet_url": null
+      },
       "mechanism_count": 2,
       "name": "unknown",
       "native_name_quality": "placeholder",
@@ -1243,7 +2168,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "https://x.com/Investing88ai",
+        "contact_present": false,
+        "description": "Decentralized AUM",
+        "discord": null,
+        "github_repo": "https://github.com/mobiusfund/investing",
+        "logo_url": "https://Investing88.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Investing",
+        "subnet_url": "https://Investing88.ai"
+      },
       "mechanism_count": 1,
       "name": "Investing",
       "native_name_quality": "chain",
@@ -1257,7 +2193,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "The Last Bitcoin Mining Pool, made by Bittensor",
+        "contact_present": true,
+        "description": "BTC Pool + Lightning Network",
+        "discord": null,
+        "github_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
+        "logo_url": "https://raw.githubusercontent.com/DeltaCompute24/RheftheChef/main/thechef.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "InfiniteHash",
+        "subnet_url": "https://infinitehash.xyz"
+      },
       "mechanism_count": 2,
       "name": "InfiniteHash",
       "native_name_quality": "chain",
@@ -1271,7 +2218,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "ogham",
       "native_name_quality": "chain",
@@ -1285,7 +2232,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "A new subnet launch on Bitstarter - coming soon!",
+        "discord": "officialneeve",
+        "github_repo": null,
+        "logo_url": "https://ibb.co/QjjRQ2KG",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Bitstarter #1",
+        "subnet_url": "https://bitstarter.ai/"
+      },
       "mechanism_count": 1,
       "name": "Bitstarter #1",
       "native_name_quality": "chain",
@@ -1299,12 +2257,12 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "luis",
       "native_name_quality": "chain",
       "netuid": 92,
-      "participant_count": 1,
+      "participant_count": 2,
       "raw_name": "luis",
       "registered_at_block": 8352006,
       "status": "active",
@@ -1313,7 +2271,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The Decentralized Creators Economy",
+        "discord": null,
+        "github_repo": "https://github.com/bitcast-network/bitcast",
+        "logo_url": "https://bitcast-logo.s3.us-west-2.amazonaws.com/Bitcast+logo+multi+white.webp",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Bitcast",
+        "subnet_url": "https://stats.bitcast.network/"
+      },
       "mechanism_count": 2,
       "name": "Bitcast",
       "native_name_quality": "chain",
@@ -1327,7 +2296,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "https://discord.gg/jkJWJtPuw7",
+        "contact_present": true,
+        "description": "Decentralized SoTA Research",
+        "discord": "dev.alveuslabs",
+        "github_repo": "https://github.com/AlveusLabs/SN94-BitSota",
+        "logo_url": "https://bitsota.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Bitsota",
+        "subnet_url": "bitsota.ai"
+      },
       "mechanism_count": 1,
       "name": "Bitsota",
       "native_name_quality": "chain",
@@ -1341,7 +2321,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Inference time from machines running Actual",
+        "contact_present": true,
+        "description": "Heterogeneous inference network by Actual Computer Inc.",
+        "discord": null,
+        "github_repo": "https://github.com/actual-computer/actual-subnet-95",
+        "logo_url": "https://public-assets.actual.inc/red-mask-512.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Actual",
+        "subnet_url": "https://actual.inc"
+      },
       "mechanism_count": 1,
       "name": "Actual",
       "native_name_quality": "chain",
@@ -1355,7 +2346,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Verified AI inference and training subnet.",
+        "discord": null,
+        "github_repo": "https://github.com/verathos-ai/verathos",
+        "logo_url": "https://raw.githubusercontent.com/verathos-ai/verathos/main/assets/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Verathos",
+        "subnet_url": "https://verathos.ai"
+      },
       "mechanism_count": 1,
       "name": "Verathos",
       "native_name_quality": "chain",
@@ -1369,7 +2371,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Alchemical intelligence",
+        "discord": "@arbos",
+        "github_repo": "https://github.com/unarbos/albedo",
+        "logo_url": "https://us-east-1.hippius.com/albedo/favicon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Albedo",
+        "subnet_url": "https://us-east-1.hippius.com/albedo/index.html"
+      },
       "mechanism_count": 1,
       "name": "Albedo",
       "native_name_quality": "chain",
@@ -1383,7 +2396,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "Making liquidity intelligent.",
+        "contact_present": true,
+        "description": "Decentralized intelligence for advanced liquidity management.  Alpha-gated TG https://t.me/+3MN77q0y9lwyMDVk",
+        "discord": "https://discord.gg/8XuGcpY2w4",
+        "github_repo": "https://github.com/SN98-ForeverMoney/forever-money",
+        "logo_url": "https://sn98.s3.eu-north-1.amazonaws.com/sn98.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ForeverMoney",
+        "subnet_url": "https://forevermoney.ai"
+      },
       "mechanism_count": 1,
       "name": "ForeverMoney",
       "native_name_quality": "chain",
@@ -1397,7 +2421,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Decentralized Video Generation Platform",
+        "discord": null,
+        "github_repo": "https://github.com/RendixNetwork/leoma",
+        "logo_url": "https://leoma.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Leoma",
+        "subnet_url": "https://leoma.ai/"
+      },
       "mechanism_count": 1,
       "name": "Leoma",
       "native_name_quality": "chain",
@@ -1411,7 +2446,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "An auto-research subnet where miners compete in multiple challenges to achieve top scores against a synthetic benchmark, driving continuous performance optimization.",
+        "discord": "https://discord.platform.network",
+        "github_repo": "https://github.com/PlatformNetwork/platform",
+        "logo_url": "https://www.platform.network/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Plaτform",
+        "subnet_url": "https://platform.network"
+      },
       "mechanism_count": 1,
       "name": "Plaτform",
       "native_name_quality": "chain",
@@ -1425,7 +2471,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "eni",
       "native_name_quality": "chain",
@@ -1439,7 +2485,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Contributors train specialized expert modules that are aggregated into powerful AI systems, without massive centralized compute.",
+        "discord": "isabella618033",
+        "github_repo": "https://github.com/Connito-AI/Connito",
+        "logo_url": "https://connito.ai/images/logo",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ConnitoAI",
+        "subnet_url": "https://connito.ai/"
+      },
       "mechanism_count": 1,
       "name": "ConnitoAI",
       "native_name_quality": "chain",
@@ -1453,7 +2510,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Information X Execution",
+        "discord": null,
+        "github_repo": "https://github.com/Djinn-Inc/djinn/",
+        "logo_url": "https://raw.githubusercontent.com/Djinn-Inc/djinn-assets/main/djinn-logo-black.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Djinn",
+        "subnet_url": "https://djinn.gg/"
+      },
       "mechanism_count": 1,
       "name": "Djinn",
       "native_name_quality": "chain",
@@ -1467,7 +2535,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "subnet for sale. in the meantime, burning to uid1 and experimentation stops to park subnet until sold.",
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "for sale (burn to uid1)",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "for sale (burn to uid1)",
       "native_name_quality": "chain",
@@ -1481,7 +2560,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized bandwidth. A global network. Powering the open internet.",
+        "discord": "https://discord.com/channels/799672011265015819/1437473346026475702",
+        "github_repo": "https://github.com/orgs/Beam-Network/repositories",
+        "logo_url": "https://pbs.twimg.com/profile_images/2029345851412185088/vd2bTk4L_400x400.jpg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Beam",
+        "subnet_url": "https://b1m.ai"
+      },
       "mechanism_count": 1,
       "name": "Beam",
       "native_name_quality": "chain",
@@ -1495,7 +2585,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Multi-chain liquidity protocol enabling interoperability for Bittensor by leveraging Chainlink CCIP",
+        "discord": "https://discord.gg/Qu8gGDJETB",
+        "github_repo": "https://github.com/v0idai/SN106",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "VoidAI",
+        "subnet_url": "voidai.com"
+      },
       "mechanism_count": 1,
       "name": "VoidAI",
       "native_name_quality": "chain",
@@ -1509,7 +2610,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "The Foundational Layer of Genomics",
+        "discord": "https://discord.com/channels/799672011265015819/1467949024769478793",
+        "github_repo": "https://github.com/minos-protocol/minos_subnet",
+        "logo_url": "https://theminos.ai/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Minos",
+        "subnet_url": "https://theminos.ai"
+      },
       "mechanism_count": 1,
       "name": "Minos",
       "native_name_quality": "chain",
@@ -1523,12 +2635,23 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Talking Head Generation",
+        "discord": null,
+        "github_repo": "https://github.com/talkheadai/talkhead-subnet",
+        "logo_url": "https://www.talkhead.ai/logo.svg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "TalkHead",
+        "subnet_url": "https://www.talkhead.ai"
+      },
       "mechanism_count": 1,
       "name": "TalkHead",
       "native_name_quality": "chain",
       "netuid": 108,
-      "participant_count": 150,
+      "participant_count": 151,
       "raw_name": "TalkHead",
       "registered_at_block": 7105263,
       "status": "active",
@@ -1537,7 +2660,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Academia: where builders become subnet owners.",
+        "discord": "https://discord.gg/R7aD3JA4DN",
+        "github_repo": "https://github.com/fx-integral/academia",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Academia",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Academia",
       "native_name_quality": "chain",
@@ -1551,7 +2685,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Enterprise Inference Hardware, 100% Green Energy",
+        "discord": null,
+        "github_repo": null,
+        "logo_url": "https://www.green-compute.com/green.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Green Compute",
+        "subnet_url": "https://www.green-compute.com/"
+      },
       "mechanism_count": 1,
       "name": "Green Compute",
       "native_name_quality": "chain",
@@ -1565,7 +2710,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/oneoneone-io/subnet-111",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "oneoneone",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "oneoneone",
       "native_name_quality": "chain",
@@ -1579,7 +2735,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "Distributed DEX aggregator and swap intent solver engine",
+        "discord": null,
+        "github_repo": "https://github.com/subnet112/minotaur_subnet",
+        "logo_url": "https://minotaursubnet.com/logos/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "minotaur",
+        "subnet_url": "https://minotaursubnet.com"
+      },
       "mechanism_count": 1,
       "name": "minotaur",
       "native_name_quality": "chain",
@@ -1593,7 +2760,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "A reserve-backed stablecoin designed to support 1:1 redeemability for US Dollar within the Bittensor ecosystem.",
+        "discord": "https://discord.com/invite/fAHB6N92Qd",
+        "github_repo": "https://github.com/TensorUSD/subnet",
+        "logo_url": "https://avatars.githubusercontent.com/u/228006888?s=200&v=4",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "TensorUSD",
+        "subnet_url": "https://tensorusd.com"
+      },
       "mechanism_count": 2,
       "name": "TensorUSD",
       "native_name_quality": "chain",
@@ -1607,7 +2785,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "AI solutions delivered through MCP infrastructure",
+        "discord": "https://discord.gg/durr4Sg6sM",
+        "github_repo": "https://github.com/DendriteHQ/SOMA",
+        "logo_url": "https://thesoma.ai/images/1200x1200.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "SOMA",
+        "subnet_url": "https://thesoma.ai"
+      },
       "mechanism_count": 1,
       "name": "SOMA",
       "native_name_quality": "chain",
@@ -1621,7 +2810,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "The First Public Blockchain Designed for AI Agents",
+        "contact_present": true,
+        "description": "The First Public Blockchain Designed for AI Agents",
+        "discord": null,
+        "github_repo": "https://github.com/hashi115/hashichain",
+        "logo_url": "https://raw.githubusercontent.com/hashi115/hashichain/refs/heads/main/assets/intro.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "HashiChain",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "HashiChain",
       "native_name_quality": "chain",
@@ -1635,7 +2835,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "hard_sign",
       "native_name_quality": "chain",
@@ -1649,7 +2849,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "~",
+        "discord": "~",
+        "github_repo": "https://github.com/helionlink/Chi",
+        "logo_url": "~",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Unknown",
+        "subnet_url": "~"
+      },
       "mechanism_count": 1,
       "name": "Unknown",
       "native_name_quality": "placeholder",
@@ -1663,7 +2874,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": "The Ditto Agent OS and Harness enable SOTA memory, healing, and speed for 1/100th of the frontier cost.",
+        "contact_present": true,
+        "description": "Open-Source Claude Cowork",
+        "discord": "https://discord.gg/qNKYZEMpkD",
+        "github_repo": "https://github.com/orgs/ditto-assistant/repositories",
+        "logo_url": "https://f005.backblazeb2.com/file/ditto-assets/ditto-logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Ditto",
+        "subnet_url": "https://heyditto.ai"
+      },
       "mechanism_count": 1,
       "name": "Ditto",
       "native_name_quality": "chain",
@@ -1677,7 +2899,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Satori constructs a persistent 'Second Life' in Japan. We merge deep AI companionship with authentic Digital Residency, creating a seamless bridge where virtual emotional connections unlock real-world value and physical experiences.",
+        "discord": null,
+        "github_repo": "https://github.com/Satori119/Satori",
+        "logo_url": "https://raw.githubusercontent.com/Satori119/Satori/refs/heads/main/assets/logo.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Satori",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "Satori",
       "native_name_quality": "chain",
@@ -1691,7 +2924,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Reason Mining",
+        "discord": "consttt",
+        "github_repo": "https://github.com/AffineFoundation/affine",
+        "logo_url": "https://raw.githubusercontent.com/AffineFoundation/affine/main/affine.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Affine",
+        "subnet_url": "www.affine.io"
+      },
       "mechanism_count": 1,
       "name": "Affine",
       "native_name_quality": "chain",
@@ -1705,7 +2949,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "A generalist AI agent designed to execute real business workflows end-to-end.",
+        "discord": null,
+        "github_repo": "https://github.com/sundae-bar/bittensor-subnet",
+        "logo_url": "https://www.sundaebar.ai/apple-icon.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "sundae_bar",
+        "subnet_url": "https://www.sundaebar.ai/"
+      },
       "mechanism_count": 1,
       "name": "sundae_bar",
       "native_name_quality": "chain",
@@ -1719,7 +2974,7 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
       "mechanism_count": 1,
       "name": "gamma_small",
       "native_name_quality": "chain",
@@ -1733,7 +2988,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/Barbariandev/MANTIS",
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "MANTIS",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "MANTIS",
       "native_name_quality": "chain",
@@ -1747,7 +3013,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": null,
+        "discord": null,
+        "github_repo": "https://github.com/swarm-subnet/swarm",
+        "logo_url": "https://raw.githubusercontent.com/swarm-subnet/swarm/refs/heads/main/swarm/assets/Swarm.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Swarm",
+        "subnet_url": "www.swarm124.com"
+      },
       "mechanism_count": 1,
       "name": "Swarm",
       "native_name_quality": "chain",
@@ -1761,7 +3038,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": null,
+        "discord": null,
+        "github_repo": null,
+        "logo_url": null,
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "8 Ball",
+        "subnet_url": null
+      },
       "mechanism_count": 1,
       "name": "8 Ball",
       "native_name_quality": "chain",
@@ -1775,7 +3063,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Decentralized Poker Platform with Bot Dection",
+        "discord": null,
+        "github_repo": "https://github.com/Poker44/Poker44-subnet",
+        "logo_url": "https://raw.githubusercontent.com/Poker44/Poker44-subnet/refs/heads/main/poker44/assets/logo.jpeg",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Poker44",
+        "subnet_url": "https://poker44.net"
+      },
       "mechanism_count": 1,
       "name": "Poker44",
       "native_name_quality": "chain",
@@ -1789,7 +3088,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": false,
+        "description": "The capital axis for Bittensor.",
+        "discord": null,
+        "github_repo": "https://github.com/astridintelligence/sn-127",
+        "logo_url": "https://cdn.prod.website-files.com/68b07769f32da8fcc36dc172/69f2325c06235848691480b7_Astrid%20Square.png",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "Astrid",
+        "subnet_url": "https://www.astrid.global/"
+      },
       "mechanism_count": 1,
       "name": "Astrid",
       "native_name_quality": "chain",
@@ -1803,7 +3113,18 @@
       "tempo": 360
     },
     {
-      "block": 8357554,
+      "block": 8364449,
+      "chain_identity": {
+        "additional": null,
+        "contact_present": true,
+        "description": "Pioneering the Future of Cloud & Blockchain",
+        "discord": "https://discord.com/channels/799672011265015819/1387438124132733110",
+        "github_repo": "https://github.com/byteleapai/byteleap-Miner",
+        "logo_url": "https://avatars.githubusercontent.com/u/217718200",
+        "source": "SubtensorModule.SubnetIdentitiesV3",
+        "subnet_name": "ByteLeap",
+        "subnet_url": "ByteLeap.ai"
+      },
       "mechanism_count": 1,
       "name": "ByteLeap",
       "native_name_quality": "chain",
