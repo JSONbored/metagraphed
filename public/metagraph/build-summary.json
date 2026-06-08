@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 23,
-  "artifact_size_bytes": 5696204,
+  "artifact_size_bytes": 5694522,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -17,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "cff4a04a905a98903d78298abebeddec6cf7b938c814b9cb239b01e999b6682f",
-      "size_bytes": 1346,
+      "sha256": "a78ed86b0c9d13a1e2948cea880d7cc78790f67545f6a4af5e0b684543664a53",
+      "size_bytes": 1211,
       "storage_tier": "dual"
     },
     {
@@ -95,8 +95,8 @@
     },
     {
       "path": "review/enrichment-targets.json",
-      "sha256": "184d2a88ef2367cda47b75085e811cd9f5b897319d7d28985eb9e796aa47e103",
-      "size_bytes": 763531,
+      "sha256": "8530127b0b3027c24906ab7343dfcd7f24414f47a7e8d67862316899a5f33ef5",
+      "size_bytes": 761984,
       "storage_tier": "git"
     },
     {
@@ -188,7 +188,7 @@
   },
   "endpoint_count": 1132,
   "full_artifact_count": 1257,
-  "full_artifact_size_bytes": 49858009,
+  "full_artifact_size_bytes": 49856327,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 89,
@@ -203,8 +203,8 @@
     "r2": 1234
   },
   "storage_tier_size_bytes": {
-    "dual": 4788643,
-    "git": 907561,
+    "dual": 4788508,
+    "git": 906014,
     "r2": 44161805
   },
   "subnet_count": 129,

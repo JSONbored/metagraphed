@@ -276,10 +276,10 @@
     "by_evidence_action": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 211,
-      "review-existing-evidence": 4,
-      "submit-new-evidence": 60,
-      "verify-existing-evidence": 3
+      "replace-stale-evidence": 123,
+      "review-existing-evidence": 26,
+      "submit-new-evidence": 127,
+      "verify-existing-evidence": 2
     },
     "by_kind": {
       "data-artifact": 75,
@@ -301,8 +301,8 @@
       "surface-candidate": 278
     },
     "manual_review_required_count": 18,
-    "new_evidence_count": 60,
-    "stale_replacement_count": 211,
+    "new_evidence_count": 127,
+    "stale_replacement_count": 123,
     "subnet_count": 129,
     "target_count": 296
   },
@@ -545,8 +545,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "kind": "website",
       "lane": "direct-submission",
@@ -587,7 +587,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-73-surface-candidate-website",
       "target_type": "surface-candidate"
     },
@@ -603,8 +603,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "kind": "website",
       "lane": "direct-submission",
@@ -645,7 +645,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-119-surface-candidate-website",
       "target_type": "surface-candidate"
     },
@@ -661,8 +661,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -711,7 +711,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-17-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -727,8 +727,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -778,7 +778,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-65-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -794,8 +794,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -845,7 +845,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-93-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -1155,8 +1155,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -1206,7 +1206,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-65-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -1227,8 +1227,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -1278,7 +1278,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-93-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -1294,8 +1294,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -1344,7 +1344,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-108-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -2573,8 +2573,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -2624,7 +2624,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-18-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -2640,8 +2640,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -2690,7 +2690,7 @@
         "https://backprop.finance/dtao/subnets/37-aurelius"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-37-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -2857,8 +2857,8 @@
         "stale_or_failed_count": 1,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -2908,7 +2908,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-18-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -2995,8 +2995,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3045,7 +3045,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-26-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -3061,8 +3061,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3111,7 +3111,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-36-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -3127,8 +3127,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3177,7 +3177,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-112-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -3773,8 +3773,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3823,7 +3823,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-55-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -3839,8 +3839,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3891,7 +3891,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-99-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -3907,8 +3907,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -3957,7 +3957,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-126-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -4268,8 +4268,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -4320,7 +4320,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-99-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -4458,8 +4458,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -4509,7 +4509,7 @@
         "https://bitsec.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-60-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -4525,8 +4525,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -4576,7 +4576,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-78-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -4592,8 +4592,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -4642,7 +4642,7 @@
         "https://bitsota.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-94-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -4934,8 +4934,8 @@
         "stale_or_failed_count": 1,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -4985,7 +4985,7 @@
         "https://bitsec.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-60-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -5006,8 +5006,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -5057,7 +5057,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-78-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -5144,8 +5144,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -5194,7 +5194,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-44-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -5210,8 +5210,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -5260,7 +5260,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-54-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -5276,8 +5276,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -5326,7 +5326,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-67-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -5342,8 +5342,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -5393,7 +5393,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-80-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -5409,8 +5409,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -5459,7 +5459,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-127-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6056,8 +6056,8 @@
         "stale_or_failed_count": 1,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -6107,7 +6107,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-80-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -6194,8 +6194,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6244,7 +6244,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-35-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6260,8 +6260,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6311,7 +6311,7 @@
         "https://backprop.finance/dtao/subnets/41-almanac"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-41-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6327,8 +6327,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6379,7 +6379,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-50-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6395,8 +6395,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6446,7 +6446,7 @@
         "https://backprop.finance/dtao/subnets/105-beam"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-105-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6462,8 +6462,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6513,7 +6513,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-124-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -6529,8 +6529,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -6580,7 +6580,7 @@
         "https://byteleap.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-128-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -7231,8 +7231,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -7282,7 +7282,7 @@
         "https://backprop.finance/dtao/subnets/41-almanac"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-41-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -7304,8 +7304,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -7356,7 +7356,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-50-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -7377,8 +7377,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -7428,7 +7428,7 @@
         "https://backprop.finance/dtao/subnets/105-beam"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-105-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -7449,8 +7449,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -7500,7 +7500,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-124-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -7521,8 +7521,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -7572,7 +7572,7 @@
         "https://byteleap.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-128-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -7588,8 +7588,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -7639,7 +7639,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-71-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -7655,8 +7655,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -7706,7 +7706,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-77-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -7722,8 +7722,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -7773,7 +7773,7 @@
         "https://cliqueai.toptensor.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-83-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -7789,8 +7789,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -7839,7 +7839,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-106-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -7855,8 +7855,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -7905,7 +7905,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-120-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -8290,8 +8290,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -8341,7 +8341,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-71-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -8362,8 +8362,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -8413,7 +8413,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-77-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -8434,8 +8434,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -8485,7 +8485,7 @@
         "https://cliqueai.toptensor.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-83-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -9296,8 +9296,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -9345,7 +9345,7 @@
         "https://docs.targon.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-4-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -9361,8 +9361,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -9412,7 +9412,7 @@
         "https://docs.hippius.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-75-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -9719,8 +9719,8 @@
         "stale_or_failed_count": 2,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -9770,7 +9770,7 @@
         "https://docs.hippius.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-75-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -9855,8 +9855,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -9904,7 +9904,7 @@
         "https://compelle.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-82-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -10061,8 +10061,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -10110,7 +10110,7 @@
         "https://datauniverse.macrocosmos.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-13-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -10268,8 +10268,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -10317,7 +10317,7 @@
         "https://github.com/macrocosm-os/iota"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-9-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -10333,8 +10333,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -10382,7 +10382,7 @@
         "https://blockmachine.io/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-19-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -10398,8 +10398,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -10447,7 +10447,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-25-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -10463,8 +10463,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -10512,7 +10512,7 @@
         "https://backprop.finance/dtao/subnets/45-talisman-ai"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-45-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11093,8 +11093,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11142,7 +11142,7 @@
         "https://backprop.finance/dtao/subnets/21-adtao"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-21-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11158,8 +11158,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11209,7 +11209,7 @@
         "https://github.com/It-s-AI/llm-detection"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-32-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11225,8 +11225,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11274,7 +11274,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-48-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11290,8 +11290,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11339,7 +11339,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-63-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11355,8 +11355,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11404,7 +11404,7 @@
         "https://djinn.gg/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-103-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -11420,8 +11420,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -11469,7 +11469,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_121/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-121-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -12063,8 +12063,8 @@
         "stale_or_failed_count": 2,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -12114,7 +12114,7 @@
         "https://github.com/It-s-AI/llm-detection"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-32-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -12348,8 +12348,8 @@
         "stale_or_failed_count": 1,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -12398,7 +12398,7 @@
         "https://github.com/DendriteHQ/SOMA"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-114-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -12524,8 +12524,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -12573,7 +12573,7 @@
         "https://github.com/ORO-AI/oro"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-15-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -12589,8 +12589,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -12638,7 +12638,7 @@
         "https://forevermoney.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-98-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -13333,8 +13333,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -13382,7 +13382,7 @@
         "https://backprop.finance/dtao/subnets/1-apex"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-1-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -13398,8 +13398,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -13448,7 +13448,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-85-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -13682,8 +13682,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -13732,7 +13732,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-85-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -13748,8 +13748,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -13799,7 +13799,7 @@
         "https://cacheon.ai/docs"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-14-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -14107,8 +14107,8 @@
         "stale_or_failed_count": 2,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -14158,7 +14158,7 @@
         "https://cacheon.ai/docs"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-14-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -14228,8 +14228,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -14277,7 +14277,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-100-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -14293,8 +14293,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -14342,7 +14342,7 @@
         "https://docs.tensorusd.com/components/subnet"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-113-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -14358,8 +14358,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -14398,7 +14398,7 @@
         "https://github.com/afterpartyai/bittensor-conversation-genome-project"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-33-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
@@ -14695,8 +14695,8 @@
         "stale_or_failed_count": 2,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -14745,7 +14745,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-88-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -14955,8 +14955,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -15004,7 +15004,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-11-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -15074,8 +15074,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -15123,7 +15123,7 @@
         "https://connito.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-102-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -15637,8 +15637,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -15686,7 +15686,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-5-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -15843,8 +15843,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -15892,7 +15892,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-8-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -16049,8 +16049,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -16099,7 +16099,7 @@
         "https://github.com/inference-labs-inc/subnet-2"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-2-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -16192,8 +16192,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -16242,7 +16242,7 @@
         "https://github.com/inference-labs-inc/subnet-2"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-2-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -16258,8 +16258,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -16307,7 +16307,7 @@
         "https://docs.theredteam.io/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-61-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -16464,8 +16464,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -16514,7 +16514,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-38-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -16607,8 +16607,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -16657,7 +16657,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-38-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -16673,8 +16673,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -16722,7 +16722,7 @@
         "https://docs.taofi.com/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-10-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -16738,8 +16738,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -16788,7 +16788,7 @@
         "https://bitads.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-16-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -17022,8 +17022,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
+      "contribution_prompt": "Confirm and submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "review-existing-evidence",
       "identity_level": "complete",
       "kind": "subnet-api",
       "lane": "direct-submission",
@@ -17072,7 +17072,7 @@
         "https://bitads.ai/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
+      "target_action": "review-existing-candidate",
       "target_id": "sn-16-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
@@ -17129,7 +17129,7 @@
         "unverified_count": 0
       },
       "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "verify-existing-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -17171,7 +17171,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "verify-existing-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-62-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -17763,8 +17763,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Confirm and submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "review-existing-evidence",
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "data-artifact",
       "lane": "direct-submission",
@@ -17804,7 +17804,7 @@
         "https://computehorde.io/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "review-existing-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-12-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
@@ -17820,8 +17820,8 @@
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Confirm and submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "review-existing-evidence",
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
       "kind": "openapi",
       "lane": "direct-submission",
@@ -17861,7 +17861,7 @@
         "https://computehorde.io/"
       ],
       "submission_route": "direct-candidate-pr",
-      "target_action": "review-existing-candidate",
+      "target_action": "submit-new-candidate",
       "target_id": "sn-12-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },

@@ -714,6 +714,45 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
+    enrichmentTargets.targets.every((target) => {
+      if (target.target_type !== "surface-candidate") {
+        return true;
+      }
+      if (!target.candidate_evidence?.candidate_count) {
+        return (
+          target.evidence_action === "submit-new-evidence" &&
+          target.target_action === "submit-new-candidate"
+        );
+      }
+      if (target.candidate_evidence.live_or_redirected_count > 0) {
+        return (
+          target.evidence_action === "review-existing-evidence" &&
+          target.target_action === "review-existing-candidate"
+        );
+      }
+      if (target.candidate_evidence.stale_or_failed_count > 0) {
+        return (
+          target.evidence_action === "replace-stale-evidence" &&
+          target.target_action === "replace-stale-candidate"
+        );
+      }
+      return (
+        target.evidence_action === "verify-existing-evidence" &&
+        target.target_action === "verify-existing-candidate"
+      );
+    }),
+    true,
+  );
+  assert.equal(
+    enrichmentTargets.targets.some(
+      (target) =>
+        target.target_type === "surface-candidate" &&
+        target.evidence_action === "submit-new-evidence" &&
+        target.candidate_evidence?.candidate_count === 0,
+    ),
+    true,
+  );
+  assert.equal(
     enrichmentQueue.queue.some((entry) => entry.lane === "direct-submission"),
     true,
   );

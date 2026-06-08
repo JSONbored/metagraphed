@@ -1,6 +1,6 @@
 {
   "artifact_count": 24,
-  "artifact_size_bytes": 5897217,
+  "artifact_size_bytes": 5895535,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "cff4a04a905a98903d78298abebeddec6cf7b938c814b9cb239b01e999b6682f",
-      "size_bytes": 1346,
+      "sha256": "a78ed86b0c9d13a1e2948cea880d7cc78790f67545f6a4af5e0b684543664a53",
+      "size_bytes": 1211,
       "storage_tier": "dual"
     },
     {
@@ -61,7 +61,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "5d1c62895f475adb8be343af361c5d1006d5896cf7e3127fbeb868bf43fb43a8",
+      "sha256": "2d24b21466638fa94c94892392dd35c65a497f4929e33a4f6071a4d8ededc15b",
       "size_bytes": 7108,
       "storage_tier": "dual"
     },
@@ -133,8 +133,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-targets.json",
       "latest_key": "latest/review/enrichment-targets.json",
       "path": "/metagraph/review/enrichment-targets.json",
-      "sha256": "184d2a88ef2367cda47b75085e811cd9f5b897319d7d28985eb9e796aa47e103",
-      "size_bytes": 763531,
+      "sha256": "8530127b0b3027c24906ab7343dfcd7f24414f47a7e8d67862316899a5f33ef5",
+      "size_bytes": 761984,
       "storage_tier": "git"
     },
     {
@@ -169,7 +169,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/schema-drift.json",
       "latest_key": "latest/schema-drift.json",
       "path": "/metagraph/schema-drift.json",
-      "sha256": "f91b477ee9edc2ab2e49ad421b98085682afb0cbf8ba5e0b5dd878a0ead889bb",
+      "sha256": "034497223d7c5e7760652c34462f7b009188a3a0f4575a97963a9c56a38141fb",
       "size_bytes": 6298,
       "storage_tier": "dual"
     },
@@ -178,7 +178,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/schemas/index.json",
       "latest_key": "latest/schemas/index.json",
       "path": "/metagraph/schemas/index.json",
-      "sha256": "0849f75c56dfc73cf033481724755e02c9666cf48c982106d4c86ffdb9ecbbcd",
+      "sha256": "2eb9e4432754fee1e467a0f4739a55bdef6041fb9f209e5adca63787562e254b",
       "size_bytes": 18325,
       "storage_tier": "dual"
     },
@@ -223,7 +223,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1270,
-  "full_artifact_size_bytes": 50068106,
+  "full_artifact_size_bytes": 50066424,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -246,8 +246,8 @@
     "r2": 1246
   },
   "storage_tier_size_bytes": {
-    "dual": 4989656,
-    "git": 907561,
+    "dual": 4989521,
+    "git": 906014,
     "r2": 44170889
   }
 }

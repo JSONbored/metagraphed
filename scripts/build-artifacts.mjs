@@ -1226,13 +1226,14 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     stale_or_failed_count: 0,
     unverified_count: 0,
   };
-  const action = surfaceTargetAction(entry.evidence_action);
+  const evidenceAction = surfaceEvidenceAction(candidateEvidence);
+  const action = surfaceTargetAction(evidenceAction);
   return {
     auto_review_candidate: !entry.manual_review_required,
     candidate_command: candidateCommandTemplate(entry.netuid, kind),
     candidate_evidence: candidateEvidence,
-    contribution_prompt: contributionPromptForKind(kind, entry.evidence_action),
-    evidence_action: entry.evidence_action,
+    contribution_prompt: contributionPromptForKind(kind, evidenceAction),
+    evidence_action: evidenceAction,
     identity_level: entry.identity_level,
     kind,
     lane: entry.lane,
@@ -1255,6 +1256,19 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     target_type: "surface-candidate",
     target_action: action,
   };
+}
+
+function surfaceEvidenceAction(candidateEvidence) {
+  if (!candidateEvidence || candidateEvidence.candidate_count === 0) {
+    return "submit-new-evidence";
+  }
+  if (candidateEvidence.live_or_redirected_count > 0) {
+    return "review-existing-evidence";
+  }
+  if (candidateEvidence.stale_or_failed_count > 0) {
+    return "replace-stale-evidence";
+  }
+  return "verify-existing-evidence";
 }
 
 function nonSurfaceEnrichmentTarget({ entry, targetType }) {
