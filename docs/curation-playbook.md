@@ -31,6 +31,29 @@ The enrichment queue is also available through
 registry truth; it only prioritizes public-safe work derived from current
 artifacts.
 
+Detailed candidate evidence behind the queue is available through
+`/api/v1/review/enrichment-evidence`. That route is R2-backed so full
+per-kind candidate classifications do not create noisy Git diffs.
+
+Queue entries include `evidence_action` so contributors and maintainers can
+avoid duplicate work:
+
+- `submit-new-evidence`: no useful candidate exists for the target gap yet;
+- `verify-existing-evidence`: candidate records exist, but recurring
+  verification has not produced a live classification yet;
+- `replace-stale-evidence`: candidates exist, but current verification did not
+  produce live registry truth;
+- `review-existing-evidence`: live or redirected candidates exist and need
+  source review before promotion;
+- `maintainer-review-existing-evidence`: the entry belongs in maintainer or
+  adapter review instead of a direct contributor PR;
+- `monitor`: no immediate enrichment action is available.
+
+Queue rows include a compact `candidate_evidence_summary`; the detailed
+`candidate_evidence_by_kind` map lives in the evidence artifact. This is
+guidance only; health, uptime, latency, and pool eligibility remain
+probe-derived.
+
 ## What Fully Curated Means
 
 For each subnet, aim to confirm the maximum public surface set the subnet

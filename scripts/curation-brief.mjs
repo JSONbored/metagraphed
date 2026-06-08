@@ -113,6 +113,7 @@ export function renderCurationBrief(snapshot) {
     "Submit one public-safe candidate at a time with `npm run candidate:new`. Official docs, websites, source repos, OpenAPI/schema URLs, public subnet APIs, dashboards, SDKs, examples, and data artifacts are the best auto-review candidates.",
     "",
     `- Enrichment queue lanes: ${formatCounts(enrichmentSummary.lane_counts)}`,
+    `- Evidence actions: ${formatCounts(enrichmentSummary.evidence_action_counts)}`,
     `- Direct-submission targets: ${enrichmentSummary.direct_submission_count ?? "unknown"}`,
     `- Maintainer-review targets: ${enrichmentSummary.maintainer_review_count ?? "unknown"}`,
     `- Manual-review-required targets: ${enrichmentSummary.manual_review_required_count ?? "unknown"}`,
@@ -120,7 +121,7 @@ export function renderCurationBrief(snapshot) {
     ...numberedRows(
       enrichmentQueue,
       (row) =>
-        `SN${row.netuid} ${row.name} - ${row.lane}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}`,
+        `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}`,
     ),
     "",
     "## Lowest Profile Completeness",
@@ -213,6 +214,7 @@ function enrichmentBriefRow(entry) {
     priority_score: entry.priority_score,
     completeness_score: entry.completeness_score,
     direct_submission_kinds: entry.direct_submission_kinds || [],
+    evidence_action: entry.evidence_action || null,
     manual_review_required: entry.manual_review_required,
     reason_codes: entry.reason_codes || [],
     recommended_action: entry.recommended_action,

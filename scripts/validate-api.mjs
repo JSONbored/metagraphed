@@ -170,6 +170,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/review/enrichment-evidence?evidence_action=replace-stale-evidence&limit=3",
+    (body) => {
+      assert.equal(body.data.entries.length <= 3, true);
+      assert.equal(
+        body.data.entries.every(
+          (entry) => entry.evidence_action === "replace-stale-evidence",
+        ),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/health",
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],

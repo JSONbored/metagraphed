@@ -125,6 +125,7 @@ function buildCompactManifest(fullManifest) {
       "/metagraph/candidates.json",
       "/metagraph/health/latest.json",
       "/metagraph/review-queue.json",
+      "/metagraph/review/enrichment-evidence.json",
       "/metagraph/source-snapshots.json",
       "/metagraph/types.d.ts",
       "/metagraph/verification/latest.json",

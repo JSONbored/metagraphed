@@ -298,6 +298,28 @@ export const API_QUERY_COLLECTIONS = {
       "verified_candidate_count",
     ],
   }),
+  "enrichment-evidence": queryCollection("entries", {
+    filters: {
+      evidence_action: enumSchema([
+        "submit-new-evidence",
+        "verify-existing-evidence",
+        "replace-stale-evidence",
+        "review-existing-evidence",
+        "maintainer-review-existing-evidence",
+        "monitor",
+      ]),
+      lane: enumSchema([
+        "direct-submission",
+        "maintainer-review",
+        "adapter-candidate",
+        "monitoring-followup",
+        "baseline-monitoring",
+      ]),
+      netuid: integerSchema,
+    },
+    search: ["name", "slug", "evidence_action"],
+    sort: ["evidence_action", "lane", "name", "netuid", "priority_score"],
+  }),
   "health-subnets": queryCollection("subnets", {
     filters: {
       netuid: integerSchema,
@@ -674,6 +696,12 @@ export const PUBLIC_ARTIFACTS = [
     "ReviewEnrichmentQueueArtifact",
   ),
   artifact(
+    "review-enrichment-evidence",
+    "/metagraph/review/enrichment-evidence.json",
+    "Detailed candidate evidence by missing or contributor-target surface kind for enrichment work.",
+    "ReviewEnrichmentEvidenceArtifact",
+  ),
+  artifact(
     "review-decisions",
     "/metagraph/review/maintainer-decisions.json",
     "Public-safe maintainer review decision ledger.",
@@ -902,6 +930,16 @@ export const API_ROUTES = [
     "standard",
     ["registry", "review", "profiles"],
     listQuery("enrichment-queue"),
+  ),
+  route(
+    "review-enrichment-evidence",
+    "GET",
+    "/api/v1/review/enrichment-evidence",
+    "/metagraph/review/enrichment-evidence.json",
+    "Fetch detailed candidate evidence behind the enrichment queue.",
+    "standard",
+    ["registry", "review", "profiles"],
+    listQuery("enrichment-evidence"),
   ),
   route(
     "health",

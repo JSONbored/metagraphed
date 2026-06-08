@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/enrichment-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch detailed candidate evidence behind the enrichment queue. */
+        get: operations["reviewEnrichmentEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review/enrichment-queue": {
         parameters: {
             query?: never;
@@ -1389,6 +1406,26 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        ReviewCandidateEvidence: {
+            candidate_count: number;
+            classifications: components["schemas"]["CountMap"];
+            live_or_redirected_count: number;
+            reviewable_count: number;
+            sample_candidate_ids: string[];
+            stale_or_failed_count: number;
+            unverified_count: number;
+        };
+        ReviewCandidateEvidenceSummary: {
+            candidate_count: number;
+            kinds_with_candidates: components["schemas"]["SurfaceKind"][];
+            live_kinds: components["schemas"]["SurfaceKind"][];
+            live_or_redirected_count: number;
+            reviewable_count: number;
+            stale_kinds: components["schemas"]["SurfaceKind"][];
+            stale_or_failed_count: number;
+            unverified_count: number;
+            unverified_kinds: components["schemas"]["SurfaceKind"][];
+        };
         ReviewCurationArtifact: components["schemas"]["ArtifactBase"] & ({
             adapter_candidates: components["schemas"]["ReviewAdapterCandidate"][];
             gap_priorities: components["schemas"]["ReviewGapPriority"][];
@@ -1419,6 +1456,35 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        ReviewEnrichmentEvidenceArtifact: components["schemas"]["ArtifactBase"] & ({
+            entries: components["schemas"]["ReviewEnrichmentEvidenceEntry"][];
+            notes: string;
+            summary: {
+                entry_count: number;
+                evidence_action_counts: components["schemas"]["CountMap"];
+                stale_candidate_count: number;
+                subnet_count: number;
+                unverified_candidate_count: number;
+            };
+        } & {
+            [key: string]: unknown;
+        });
+        ReviewEnrichmentEvidenceEntry: {
+            candidate_evidence_by_kind: {
+                [key: string]: components["schemas"]["ReviewCandidateEvidence"];
+            };
+            candidate_evidence_summary: components["schemas"]["ReviewCandidateEvidenceSummary"];
+            direct_submission_kinds: components["schemas"]["SurfaceKind"][];
+            evidence_action: components["schemas"]["ReviewEvidenceAction"];
+            lane: components["schemas"]["ReviewEnrichmentLane"];
+            missing_kinds: components["schemas"]["SurfaceKind"][];
+            name: string;
+            netuid: number;
+            priority_score: number;
+            slug: string;
+        };
+        /** @enum {unknown} */
+        ReviewEnrichmentLane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
         ReviewEnrichmentQueueArtifact: components["schemas"]["ArtifactBase"] & ({
             notes: string;
             queue: components["schemas"]["ReviewEnrichmentQueueEntry"][];
@@ -1426,6 +1492,7 @@ export interface components {
                 adapter_candidate_count: number;
                 baseline_monitoring_count: number;
                 direct_submission_count: number;
+                evidence_action_counts: components["schemas"]["CountMap"];
                 lane_counts: components["schemas"]["CountMap"];
                 maintainer_review_count: number;
                 manual_review_required_count: number;
@@ -1440,13 +1507,14 @@ export interface components {
         ReviewEnrichmentQueueEntry: {
             adapter_score: number;
             candidate_count: number;
+            candidate_evidence_summary: components["schemas"]["ReviewCandidateEvidenceSummary"];
             completeness_score: number;
             contribution_hint: string;
             curation_level: components["schemas"]["CurationLevel"];
             direct_submission_kinds: components["schemas"]["SurfaceKind"][];
             endpoint_count: number;
-            /** @enum {unknown} */
-            lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+            evidence_action: components["schemas"]["ReviewEvidenceAction"];
+            lane: components["schemas"]["ReviewEnrichmentLane"];
             manual_review_required: boolean;
             missing_kinds: components["schemas"]["SurfaceKind"][];
             name: string;
@@ -1461,9 +1529,12 @@ export interface components {
             sample_candidate_ids: string[];
             slug: string;
             source_urls: string[];
+            stale_candidate_count: number;
             surface_count: number;
             verified_candidate_count: number;
         };
+        /** @enum {unknown} */
+        ReviewEvidenceAction: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
         ReviewGapPrioritiesArtifact: components["schemas"]["ArtifactBase"] & ({
             priorities: components["schemas"]["ReviewGapPriority"][];
         } & {
@@ -3635,6 +3706,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewAdapterCandidatesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewEnrichmentEvidence: {
+        parameters: {
+            query?: {
+                evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                netuid?: number;
+                q?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewEnrichmentEvidenceArtifact"];
                     };
                 };
             };

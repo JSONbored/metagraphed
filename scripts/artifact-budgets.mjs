@@ -11,6 +11,8 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("search.json", 750_000, 2_000_000),
   budget("openapi.json", 500_000, 1_000_000),
   budget("profiles.json", 500_000, 1_000_000),
+  budget("review/enrichment-evidence.json", 500_000, 1_000_000),
+  budget("review/enrichment-queue.json", 500_000, 1_000_000),
 ];
 
 const DEFAULT_BUDGET = budget("*", 250_000, 1_000_000);

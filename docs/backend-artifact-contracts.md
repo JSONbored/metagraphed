@@ -69,6 +69,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/review/profile-completeness.json`: profile completeness and contributor targeting report.
 - `/metagraph/review/adapter-candidates.json`: subnets likely worth custom adapters.
 - `/metagraph/review/enrichment-queue.json`: prioritized all-subnet enrichment queue with direct-submission, maintainer-review, adapter, and monitoring lanes.
+- `/metagraph/review/enrichment-evidence.json`: detailed candidate evidence by missing or contributor-target surface kind. R2-backed.
 - `/metagraph/review/maintainer-decisions.json`: public-safe maintainer decision ledger.
 - `/metagraph/build-summary.json`: generated build summary.
 
@@ -95,6 +96,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/review/profile-completeness`: fetch profile completeness gaps for contributor targeting.
 - `/api/v1/review/adapter-candidates`: fetch subnets worth deeper adapter work.
 - `/api/v1/review/enrichment-queue`: fetch the prioritized all-subnet enrichment queue.
+- `/api/v1/review/enrichment-evidence`: fetch detailed candidate evidence behind the enrichment queue.
 - `/api/v1/health`: fetch global health summary.
 - `/api/v1/health/history/{date}`: fetch compact daily health history.
 - `/api/v1/subnets/{netuid}/health`: fetch health detail for one subnet.

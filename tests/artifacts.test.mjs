@@ -370,6 +370,7 @@ test("public artifacts are internally consistent", () => {
   const profileCompleteness = readArtifact("review/profile-completeness.json");
   const adapterCandidates = readArtifact("review/adapter-candidates.json");
   const enrichmentQueue = readArtifact("review/enrichment-queue.json");
+  const enrichmentEvidence = readArtifact("review/enrichment-evidence.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
   const generatedCandidateDiscovery = JSON.parse(
     readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
@@ -608,6 +609,8 @@ test("public artifacts are internally consistent", () => {
   assert.equal(enrichmentQueue.summary.subnet_count, native.subnets.length);
   assert.equal(enrichmentQueue.summary.queue_count, native.subnets.length);
   assert.equal(enrichmentQueue.queue.length, native.subnets.length);
+  assert.equal(enrichmentEvidence.summary.subnet_count, native.subnets.length);
+  assert.equal(enrichmentEvidence.entries.length, native.subnets.length);
   assert.equal(
     enrichmentQueue.queue.some((entry) => entry.lane === "direct-submission"),
     true,
@@ -621,6 +624,46 @@ test("public artifacts are internally consistent", () => {
       Array.isArray(entry.direct_submission_kinds),
     ),
     true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.every(
+      (entry) =>
+        entry.candidate_evidence_summary &&
+        typeof entry.candidate_evidence_summary === "object",
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.some(
+      (entry) => entry.evidence_action === "replace-stale-evidence",
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.every((entry) =>
+      Number.isInteger(entry.stale_candidate_count),
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentEvidence.entries.some(
+      (entry) => entry.candidate_evidence_by_kind["source-repo"],
+    ),
+    true,
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      enrichmentQueue.queue.map((entry) => [
+        entry.netuid,
+        entry.candidate_evidence_summary,
+      ]),
+    ),
+    Object.fromEntries(
+      enrichmentEvidence.entries.map((entry) => [
+        entry.netuid,
+        entry.candidate_evidence_summary,
+      ]),
+    ),
   );
   assert.deepEqual(
     profileCompleteness.summary.by_profile_level,

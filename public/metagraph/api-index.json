@@ -338,6 +338,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "review-enrichment-evidence",
+      "path": "/metagraph/review/enrichment-evidence.json",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
       "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
@@ -2042,6 +2049,100 @@
               "priority_score",
               "profile_level",
               "verified_candidate_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/review/enrichment-evidence.json",
+      "cache": "standard",
+      "description": "Fetch detailed candidate evidence behind the enrichment queue.",
+      "id": "review-enrichment-evidence",
+      "method": "GET",
+      "path": "/api/v1/review/enrichment-evidence",
+      "public": true,
+      "query_collection": "enrichment-evidence",
+      "query_filter_names": [
+        "evidence_action",
+        "lane",
+        "netuid"
+      ],
+      "query_parameters": [
+        {
+          "name": "evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "lane",
+          "schema": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "evidence_action",
+              "lane",
+              "name",
+              "netuid",
+              "priority_score"
             ],
             "type": "string"
           }

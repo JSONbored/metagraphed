@@ -1,11 +1,6 @@
 {
   "artifacts": {
-    "added": [
-      {
-        "hash": "7bab68b334f3a65b3ae961e12f44c224b53db186e18306ba4f9c35f024c62068",
-        "path": "review/enrichment-queue.json"
-      }
-    ],
+    "added": [],
     "modified": [],
     "removed": []
   },
@@ -23,7 +18,7 @@
     "renamed": []
   },
   "summary": {
-    "artifact_added_count": 1,
+    "artifact_added_count": 0,
     "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {

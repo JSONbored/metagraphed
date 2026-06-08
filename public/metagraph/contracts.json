@@ -435,6 +435,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Detailed candidate evidence by missing or contributor-target surface kind for enrichment work.",
+      "id": "review-enrichment-evidence",
+      "path": "/metagraph/review/enrichment-evidence.json",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Public-safe maintainer review decision ledger.",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",

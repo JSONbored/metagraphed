@@ -261,12 +261,14 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   subnets: mergedSubnets,
   surfaces,
 });
-const enrichmentQueue = buildEnrichmentQueueArtifact({
+const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
   candidates: candidateIndex,
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
+  verification,
 });
+const enrichmentQueue = enrichmentArtifacts.queueArtifact;
 
 const reviewQueue = candidateIndex.filter((candidate) =>
   ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
@@ -637,6 +639,10 @@ await writeJson(artifactFile("review/adapter-candidates.json"), {
   candidates: curationReview.adapter_candidates,
 });
 await writeJson(artifactFile("review/enrichment-queue.json"), enrichmentQueue);
+await writeJson(
+  artifactFile("review/enrichment-evidence.json"),
+  enrichmentArtifacts.evidenceArtifact,
+);
 await writeJson(artifactFile("review/maintainer-decisions.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -947,12 +953,16 @@ function buildSubnetProfileArtifacts({
   };
 }
 
-function buildEnrichmentQueueArtifact({
+function buildEnrichmentQueueArtifacts({
   candidates,
   curationReview,
   profiles,
   reviewProfiles,
+  verification,
 }) {
+  const verificationByCandidate = new Map(
+    (verification.results || []).map((result) => [result.candidate_id, result]),
+  );
   const reviewProfileByNetuid = new Map(
     reviewProfiles.map((profile) => [profile.netuid, profile]),
   );
@@ -970,7 +980,7 @@ function buildEnrichmentQueueArtifact({
   );
   const candidatesByNetuid = groupByNetuid(candidates);
 
-  const queue = profiles
+  const fullQueue = profiles
     .map((profile) =>
       enrichmentQueueEntry({
         adapterCandidate: adapterCandidateByNetuid.get(profile.netuid),
@@ -978,6 +988,7 @@ function buildEnrichmentQueueArtifact({
         profile,
         reviewProfile: reviewProfileByNetuid.get(profile.netuid),
         subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+        verificationByCandidate,
       }),
     )
     .sort(
@@ -986,8 +997,10 @@ function buildEnrichmentQueueArtifact({
         a.lane.localeCompare(b.lane) ||
         a.netuid - b.netuid,
     );
+  const queue = fullQueue.map(compactEnrichmentQueueEntry);
+  const evidenceEntries = fullQueue.map(enrichmentEvidenceEntry);
 
-  return {
+  const queueArtifact = {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -1015,10 +1028,100 @@ function buildEnrichmentQueueArtifact({
         (entry) => entry.manual_review_required,
       ).length,
       lane_counts: countBy(queue, "lane"),
+      evidence_action_counts: countBy(queue, "evidence_action"),
       top_direct_submission_kinds: countDirectSubmissionKinds(queue),
     },
     queue,
   };
+  const evidenceArtifact = {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    notes:
+      "Detailed candidate evidence by missing or contributor-target surface kind. This is contributor guidance and maintainer review context; it does not create registry truth or observed health.",
+    entries: evidenceEntries,
+    summary: {
+      subnet_count: evidenceEntries.length,
+      entry_count: evidenceEntries.length,
+      evidence_action_counts: countBy(evidenceEntries, "evidence_action"),
+      stale_candidate_count: evidenceEntries.reduce(
+        (sum, entry) =>
+          sum + entry.candidate_evidence_summary.stale_or_failed_count,
+        0,
+      ),
+      unverified_candidate_count: evidenceEntries.reduce(
+        (sum, entry) => sum + entry.candidate_evidence_summary.unverified_count,
+        0,
+      ),
+    },
+  };
+  return { evidenceArtifact, queueArtifact };
+}
+
+function compactEnrichmentQueueEntry(entry) {
+  const { candidate_evidence_by_kind: evidenceByKind, ...compact } = entry;
+  return {
+    ...compact,
+    candidate_evidence_summary: summarizeCandidateEvidence(evidenceByKind),
+  };
+}
+
+function enrichmentEvidenceEntry(entry) {
+  return {
+    candidate_evidence_by_kind: entry.candidate_evidence_by_kind,
+    candidate_evidence_summary: summarizeCandidateEvidence(
+      entry.candidate_evidence_by_kind,
+    ),
+    direct_submission_kinds: entry.direct_submission_kinds,
+    evidence_action: entry.evidence_action,
+    lane: entry.lane,
+    missing_kinds: entry.missing_kinds,
+    name: entry.name,
+    netuid: entry.netuid,
+    priority_score: entry.priority_score,
+    slug: entry.slug,
+  };
+}
+
+function summarizeCandidateEvidence(evidenceByKind) {
+  const entries = Object.entries(evidenceByKind || {});
+  const summary = {
+    candidate_count: 0,
+    kinds_with_candidates: [],
+    live_kinds: [],
+    live_or_redirected_count: 0,
+    reviewable_count: 0,
+    stale_kinds: [],
+    stale_or_failed_count: 0,
+    unverified_count: 0,
+    unverified_kinds: [],
+  };
+
+  for (const [kind, evidence] of entries) {
+    summary.candidate_count += evidence.candidate_count || 0;
+    summary.live_or_redirected_count += evidence.live_or_redirected_count || 0;
+    summary.reviewable_count += evidence.reviewable_count || 0;
+    summary.stale_or_failed_count += evidence.stale_or_failed_count || 0;
+    summary.unverified_count += evidence.unverified_count || 0;
+    if ((evidence.candidate_count || 0) > 0) {
+      summary.kinds_with_candidates.push(kind);
+    }
+    if ((evidence.live_or_redirected_count || 0) > 0) {
+      summary.live_kinds.push(kind);
+    }
+    if ((evidence.stale_or_failed_count || 0) > 0) {
+      summary.stale_kinds.push(kind);
+    }
+    if ((evidence.unverified_count || 0) > 0) {
+      summary.unverified_kinds.push(kind);
+    }
+  }
+
+  summary.kinds_with_candidates.sort();
+  summary.live_kinds.sort();
+  summary.stale_kinds.sort();
+  summary.unverified_kinds.sort();
+  return summary;
 }
 
 function enrichmentQueueEntry({
@@ -1027,6 +1130,7 @@ function enrichmentQueueEntry({
   profile,
   reviewProfile,
   subnetCandidates,
+  verificationByCandidate,
 }) {
   const missingRequired = profile.completeness.missing_required || [];
   const missingOperational = profile.completeness.missing_operational || [];
@@ -1038,10 +1142,21 @@ function enrichmentQueueEntry({
     ]),
   ].sort();
   const directSubmissionKinds = directSubmissionKindsForProfile(profile);
+  const candidateEvidenceByKind = candidateEvidenceByKindForQueue({
+    directSubmissionKinds,
+    missingKinds,
+    subnetCandidates,
+    verificationByCandidate,
+  });
   const lane = enrichmentLane({
     adapterCandidate,
     directSubmissionKinds,
     profile,
+  });
+  const evidenceAction = enrichmentEvidenceAction({
+    candidateEvidenceByKind,
+    directSubmissionKinds,
+    lane,
   });
   const manualReviewRequired = [
     "maintainer-review",
@@ -1055,12 +1170,14 @@ function enrichmentQueueEntry({
 
   return {
     adapter_score: adapterScore,
+    candidate_evidence_by_kind: candidateEvidenceByKind,
     candidate_count: profile.candidate_count,
     completeness_score: profile.completeness_score,
     contribution_hint: enrichmentContributionHint(lane, directSubmissionKinds),
     curation_level: profile.curation_level,
     direct_submission_kinds: directSubmissionKinds,
     endpoint_count: profile.endpoint_count,
+    evidence_action: evidenceAction,
     lane,
     manual_review_required: manualReviewRequired,
     missing_kinds: missingKinds,
@@ -1089,9 +1206,125 @@ function enrichmentQueueEntry({
       .slice(0, 5),
     slug: profile.slug,
     source_urls: (profile.provenance.source_urls || []).slice(0, 8),
+    stale_candidate_count: staleCandidateCount(candidateEvidenceByKind),
     surface_count: profile.surface_count,
     verified_candidate_count: gapPriority?.verified_candidate_count || 0,
   };
+}
+
+function candidateEvidenceByKindForQueue({
+  directSubmissionKinds,
+  missingKinds,
+  subnetCandidates,
+  verificationByCandidate,
+}) {
+  const relevantKinds = [
+    ...new Set([...missingKinds, ...directSubmissionKinds]),
+  ].sort();
+  const candidatesByKind = groupBy(
+    subnetCandidates.filter((candidate) =>
+      relevantKinds.includes(candidate.kind),
+    ),
+    "kind",
+  );
+
+  return Object.fromEntries(
+    relevantKinds.map((kind) => {
+      const kindCandidates = candidatesByKind.get(kind) || [];
+      const classifications = countBy(
+        kindCandidates.map((candidate) => ({
+          classification:
+            verificationByCandidate.get(candidate.id)?.classification ||
+            candidate.verification?.classification ||
+            candidate.state ||
+            "unknown",
+        })),
+        "classification",
+      );
+      const liveCount =
+        (classifications.live || 0) + (classifications.redirected || 0);
+      const unverifiedCount =
+        (classifications["schema-valid"] || 0) +
+        (classifications["maintainer-review"] || 0) +
+        (classifications.verified || 0) +
+        (classifications.unknown || 0);
+      const deadCount =
+        (classifications.dead || 0) +
+        (classifications.unsafe || 0) +
+        (classifications.unsupported || 0) +
+        (classifications["content-mismatch"] || 0);
+      const reviewableCount = kindCandidates.filter((candidate) =>
+        ["schema-valid", "maintainer-review", "verified"].includes(
+          candidate.state,
+        ),
+      ).length;
+      return [
+        kind,
+        {
+          candidate_count: kindCandidates.length,
+          classifications,
+          live_or_redirected_count: liveCount,
+          reviewable_count: reviewableCount,
+          stale_or_failed_count: deadCount,
+          unverified_count: unverifiedCount,
+          sample_candidate_ids: kindCandidates
+            .map((candidate) => candidate.id)
+            .filter(Boolean)
+            .sort()
+            .slice(0, 3),
+        },
+      ];
+    }),
+  );
+}
+
+function enrichmentEvidenceAction({
+  candidateEvidenceByKind,
+  directSubmissionKinds,
+  lane,
+}) {
+  if (["adapter-candidate", "maintainer-review"].includes(lane)) {
+    return "maintainer-review-existing-evidence";
+  }
+  if (lane !== "direct-submission") {
+    return "monitor";
+  }
+
+  const targetEvidence = directSubmissionKinds.map(
+    (kind) => candidateEvidenceByKind[kind],
+  );
+  if (
+    targetEvidence.some(
+      (evidence) =>
+        evidence &&
+        evidence.candidate_count > 0 &&
+        evidence.live_or_redirected_count === 0,
+    )
+  ) {
+    if (
+      targetEvidence.some(
+        (evidence) => evidence && evidence.stale_or_failed_count > 0,
+      )
+    ) {
+      return "replace-stale-evidence";
+    }
+    return "verify-existing-evidence";
+  }
+  if (
+    targetEvidence.some(
+      (evidence) => evidence && evidence.live_or_redirected_count > 0,
+    )
+  ) {
+    return "review-existing-evidence";
+  }
+  return "submit-new-evidence";
+}
+
+function staleCandidateCount(candidateEvidenceByKind) {
+  return Object.values(candidateEvidenceByKind).reduce(
+    (sum, evidence) => sum + (evidence.stale_or_failed_count || 0),
+    0,
+  );
 }
 
 function directSubmissionKindsForProfile(profile) {
@@ -1457,11 +1690,15 @@ function averageScore(profiles) {
 }
 
 function groupByNetuid(items) {
+  return groupBy(items, "netuid");
+}
+
+function groupBy(items, key) {
   const groups = new Map();
   for (const item of items) {
-    const group = groups.get(item.netuid) || [];
+    const group = groups.get(item[key]) || [];
     group.push(item);
-    groups.set(item.netuid, group);
+    groups.set(item[key], group);
   }
   return groups;
 }
