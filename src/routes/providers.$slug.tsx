@@ -2,17 +2,19 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { HealthDot } from "@/components/metagraphed/chips";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ProfileHero } from "@/components/metagraphed/profile-hero";
 import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
+import { EndpointList } from "@/components/metagraphed/endpoint-list";
+import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import { providerQuery, providerEndpointsQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
 type SearchParams = { tab?: string };
@@ -49,6 +51,13 @@ const TABS = [
   { id: "api", label: "API" },
 ] as const;
 
+const SECTION_TO_TAB: Record<string, string> = {
+  "endpoints-glance": "overview",
+  endpoints: "endpoints",
+  "subnets-served": "subnets",
+  api: "api",
+};
+
 function ProviderDetail() {
   const { slug } = Route.useParams();
   return (
@@ -63,9 +72,11 @@ function ProviderDetail() {
 }
 
 function ProviderShell({ slug }: { slug: string }) {
-  const { data: p } = useSuspenseQuery(providerQuery(slug)).data;
+  const { data: p, meta } = useSuspenseQuery(providerQuery(slug)).data;
   const summary = p?.endpoint_summary;
   const tab = useActiveTab("overview");
+  useHashScroll(tab, SECTION_TO_TAB);
+  const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
 
   return (
     <>
@@ -84,15 +95,10 @@ function ProviderShell({ slug }: { slug: string }) {
         stats={[
           { label: "Endpoints", value: formatNumber(summary?.endpoint_count) },
           { label: "Monitored", value: formatNumber(summary?.monitored_count) },
-          {
-            label: "OK",
-            value: formatNumber(summary?.by_status?.ok),
-          },
-          {
-            label: "Pool-eligible",
-            value: formatNumber(summary?.pool_eligible_count),
-          },
+          { label: "OK", value: formatNumber(summary?.by_status?.ok) },
+          { label: "Pool-eligible", value: formatNumber(summary?.pool_eligible_count) },
         ]}
+        banner={stale ? <StaleBanner generatedAt={meta?.generated_at} /> : null}
       />
 
       <ProfileTabs
@@ -102,11 +108,11 @@ function ProviderShell({ slug }: { slug: string }) {
         defaultTab="overview"
       />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-8">
           {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
-          {tab === "endpoints" ? <EndpointsTable slug={slug} /> : null}
-          {tab === "subnets" ? <SubnetsServed slug={slug} /> : null}
+          {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
+          {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
           {tab === "api" ? <ApiPanel slug={slug} /> : null}
         </div>
 
@@ -123,94 +129,97 @@ function ProviderShell({ slug }: { slug: string }) {
 function OverviewPanel({ slug }: { slug: string }) {
   return (
     <>
-      <section>
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-          Endpoints
-        </h2>
+      <SectionAnchor
+        id="endpoints-glance"
+        title="Endpoints at a glance"
+        subtitle="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
+        info="Compact operational summary across this provider's endpoints."
+      >
         <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <EndpointsTable slug={slug} compact />
+          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+            <EndpointsGlanceLoader slug={slug} />
           </Suspense>
         </QueryErrorBoundary>
-      </section>
-      <section>
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-          Subnets served
-        </h2>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="subnets-served"
+        title="Subnets served"
+        subtitle="Active netuids where this provider operates endpoints."
+        info="Grouped by netuid — click any to open the subnet profile."
+      >
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-            <SubnetsServed slug={slug} compact />
+            <SubnetsServedGrid slug={slug} compact />
           </Suspense>
         </QueryErrorBoundary>
-      </section>
+      </SectionAnchor>
     </>
   );
 }
 
-function EndpointsTable({ slug, compact }: { slug: string; compact?: boolean }) {
-  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
-  const rows = (data.data ?? []) as Endpoint[];
-  if (rows.length === 0) return <EmptyState title="No endpoints for this provider" />;
-  const visible = compact ? rows.slice(0, 8) : rows;
+function EndpointsPanel({ slug }: { slug: string }) {
   return (
-    <div className="rounded border border-border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-          <tr>
-            <th className="px-3 py-2 text-left">Netuid</th>
-            <th className="px-3 py-2 text-left">Kind</th>
-            <th className="px-3 py-2 text-left">URL</th>
-            <th className="px-3 py-2 text-center">Health</th>
-            <th className="px-3 py-2 text-right">Latency</th>
-            <th className="px-3 py-2 text-right hidden md:table-cell">Probed</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {visible.map((e) => (
-            <tr key={e.id}>
-              <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                {e.netuid != null ? (
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: String(e.netuid) }}
-                    className="hover:text-ink-strong"
-                  >
-                    {String(e.netuid).padStart(3, "0")}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
-              <td className="px-3 py-2 font-mono text-[11px] truncate max-w-[32ch]">
-                {e.url ?? "—"}
-              </td>
-              <td className="px-3 py-2 text-center">
-                <span className="inline-flex justify-center">
-                  <HealthDot state={e.health} />
-                </span>
-              </td>
-              <td className="px-3 py-2 text-right font-mono text-[11px]">
-                {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
-              </td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted hidden md:table-cell">
-                <TimeAgo at={e.last_probed_at} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {compact && rows.length > visible.length ? (
-        <div className="border-t border-border bg-surface/30 px-3 py-2 text-[11px] text-ink-muted">
-          + {rows.length - visible.length} more — open the Endpoints tab.
-        </div>
-      ) : null}
-    </div>
+    <SectionAnchor
+      id="endpoints"
+      title="Endpoints"
+      subtitle="Probe-derived health, latency, and freshness."
+      info="Each endpoint is probed periodically. Health reflects the most recent probe."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+          <EndpointsTableLoader slug={slug} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
   );
 }
 
-function SubnetsServed({ slug, compact }: { slug: string; compact?: boolean }) {
+function SubnetsServedPanel({ slug }: { slug: string }) {
+  return (
+    <SectionAnchor
+      id="subnets-served"
+      title="Subnets served"
+      subtitle="Active netuids where this provider operates endpoints."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <SubnetsServedGrid slug={slug} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function EndpointsGlanceLoader({ slug }: { slug: string }) {
   const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const rows = (data.data ?? []) as Endpoint[];
+  return (
+    <EndpointsGlance
+      endpoints={rows}
+      fullList={() => <EndpointList rows={rows} showNetuid showProvider={false} />}
+    />
+  );
+}
+
+function EndpointsTableLoader({ slug }: { slug: string }) {
+  const { data, meta } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const rows = (data.data ?? []) as Endpoint[];
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        title="No endpoints for this provider"
+        description="This provider has no tracked endpoints yet."
+        lastChecked={meta?.generated_at}
+        action={{ label: "Browse all providers", href: "/providers" }}
+      />
+    );
+  }
+  return <EndpointList rows={rows} showNetuid showProvider={false} />;
+}
+
+function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean }) {
+  const { data, meta } = useSuspenseQuery(providerEndpointsQuery(slug));
   const rows = (data.data ?? []) as Endpoint[];
   const grouped = useMemo(() => {
     const m = new Map<number, Endpoint[]>();
@@ -223,32 +232,45 @@ function SubnetsServed({ slug, compact }: { slug: string; compact?: boolean }) {
     return Array.from(m.entries()).sort((a, b) => a[0] - b[0]);
   }, [rows]);
   if (grouped.length === 0)
-    return <EmptyState title="No per-subnet endpoints recorded" />;
+    return (
+      <EmptyState
+        title="No per-subnet endpoints recorded"
+        description="This provider may serve root or unattributed endpoints only."
+        lastChecked={meta?.generated_at}
+      />
+    );
   const visible = compact ? grouped.slice(0, 8) : grouped;
   return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {visible.map(([netuid, items]) => (
-        <li key={netuid}>
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: String(netuid) }}
-            className="block rounded border border-border bg-card p-3 hover:border-ink/30"
-          >
-            <div className="flex items-baseline justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Netuid
-              </span>
-              <span className="font-display text-base font-semibold text-ink-strong tabular-nums">
-                {String(netuid).padStart(3, "0")}
-              </span>
-            </div>
-            <div className="mt-1 font-mono text-[10px] text-ink-muted">
-              {items.length} endpoint{items.length === 1 ? "" : "s"}
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map(([netuid, items]) => (
+          <li key={netuid}>
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: String(netuid) }}
+              className="block rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
+            >
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  Netuid
+                </span>
+                <span className="font-display text-base font-semibold text-ink-strong tabular-nums">
+                  {String(netuid).padStart(3, "0")}
+                </span>
+              </div>
+              <div className="mt-1 font-mono text-[10px] text-ink-muted">
+                {items.length} endpoint{items.length === 1 ? "" : "s"}
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {compact && grouped.length > visible.length ? (
+        <div className="mt-2 text-[11px] text-ink-muted">
+          + {grouped.length - visible.length} more — open the Subnets served tab.
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -263,20 +285,20 @@ function BreakdownCard({
   if (entries.length === 0) return null;
   const max = Math.max(...entries.map((e) => e[1]));
   return (
-    <section className="rounded border border-border bg-card p-3">
+    <section className="rounded-lg border border-border bg-card p-4">
       <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
         {title}
       </h3>
       <ul className="space-y-1.5">
-        {entries.map(([k, v]) => (
-          <li key={k}>
+        {entries.map(([kk, v]) => (
+          <li key={kk}>
             <div className="flex items-baseline justify-between gap-2 mb-0.5">
-              <span className="font-mono text-[11px] text-ink truncate">{k}</span>
+              <span className="font-mono text-[11px] text-ink truncate">{kk}</span>
               <span className="font-mono text-[11px] text-ink-muted tabular-nums">{v}</span>
             </div>
             <div className="h-1 w-full overflow-hidden rounded bg-surface">
               <div
-                className="h-full bg-ink-strong/70"
+                className="h-full bg-accent"
                 style={{ width: `${max > 0 ? (v / max) * 100 : 0}%` }}
               />
             </div>
@@ -294,10 +316,12 @@ function ApiPanel({ slug }: { slug: string }) {
     { label: "artifact", path: `/metagraph/providers/${slug}.json` },
   ];
   return (
-    <section>
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        API & artifacts
-      </h2>
+    <SectionAnchor
+      id="api"
+      title="API & artifacts"
+      subtitle="Canonical URLs powering this profile."
+      info="Copy any of these URLs to fetch the raw JSON directly."
+    >
       <div className="space-y-2">
         {rows.map((r) => (
           <CopyableCode
@@ -309,6 +333,6 @@ function ApiPanel({ slug }: { slug: string }) {
           />
         ))}
       </div>
-    </section>
+    </SectionAnchor>
   );
 }
