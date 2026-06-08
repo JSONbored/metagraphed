@@ -89,6 +89,9 @@ const previousArtifactDigests = await collectArtifactDigests({
 const previousSubnetsArtifact = await readOptionalJson(
   path.join(outputRoot, "subnets.json"),
 );
+const previousFreshnessArtifact = await readOptionalJson(
+  path.join(outputRoot, "freshness.json"),
+);
 const previousCoverageArtifact = await readOptionalJson(
   path.join(outputRoot, "coverage.json"),
 );
@@ -555,6 +558,7 @@ await writeJson(
     generatedAt,
     healthArtifacts,
     nativeSnapshot,
+    previousFreshness: previousFreshnessArtifact,
     schemaDrift: schemaDriftPlaceholder,
     verification,
   }),
@@ -2276,6 +2280,7 @@ function buildFreshnessArtifact({
   generatedAt: timestamp,
   healthArtifacts: health,
   nativeSnapshot: native,
+  previousFreshness,
   schemaDrift,
   verification: verificationArtifact,
 }) {
@@ -2302,6 +2307,10 @@ function buildFreshnessArtifact({
   const verificationAsOf =
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
+    previousFreshness?.sources?.find(
+      (source) => source.id === "candidate-verification",
+    )?.as_of ||
+    previousFreshness?.summary?.verification_as_of ||
     null;
   const healthProbeAsOf =
     health.latest.source === "live-smoke-probe"
