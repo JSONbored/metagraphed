@@ -168,38 +168,43 @@ async function verifyGithubRepo(base, repo) {
   const apiUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}`;
   const api = await fetchJson(apiUrl, githubHeaders());
   if (api.ok) {
-    const metadata = api.body;
-    const classification = metadata.archived ? "unsupported" : "live";
-    return {
-      ...base,
-      archived: Boolean(metadata.archived),
-      classification,
-      confidence_score: metadata.archived ? 20 : 80,
-      default_branch: metadata.default_branch || null,
-      description: metadata.description || null,
-      github_api_url: apiUrl,
-      homepage: normalizeNullableUrl(metadata.homepage),
-      html_url: metadata.html_url || base.url,
-      last_push_at: metadata.pushed_at || null,
-      quality_signals: {
-        archived: Boolean(metadata.archived),
-        has_default_branch: Boolean(metadata.default_branch),
-        has_recent_push_metadata: Boolean(metadata.pushed_at),
-        public_safe: true,
-        source_tier: base.source_tier || null,
-      },
-      status: metadata.archived ? "failed" : "ok",
-      topics: Array.isArray(metadata.topics)
-        ? metadata.topics.slice().sort()
-        : [],
-    };
+    return githubMetadataResult(base, apiUrl, api.body, {
+      classification: "live",
+    });
   }
 
-  const fallback = await probeUrl(
+  let fallback = await probeUrl(
     base.url,
     "HEAD",
     "text/html,application/xhtml+xml",
   );
+  if (!fallback.ok || [400, 403, 404, 405].includes(fallback.status_code)) {
+    const getFallback = await probeUrl(
+      base.url,
+      "GET",
+      "text/html,application/xhtml+xml",
+    );
+    if (getFallback.ok || !fallback.ok) {
+      fallback = getFallback;
+    }
+  }
+
+  const redirectedRepo = parseGithubRepo(fallback.redirect_target);
+  if (redirectedRepo) {
+    const redirectApiUrl = `https://api.github.com/repos/${redirectedRepo.owner}/${redirectedRepo.repo}`;
+    const redirectApi = await fetchJson(redirectApiUrl, githubHeaders());
+    if (redirectApi.ok) {
+      return githubMetadataResult(base, redirectApiUrl, redirectApi.body, {
+        api_error: api.error || null,
+        api_status: api.status_code || null,
+        classification: "redirected",
+        latency_ms: fallback.latency_ms,
+        method_tested: fallback.method_tested,
+        redirect_target: fallback.redirect_target,
+      });
+    }
+  }
+
   const classification = classifyHttpProbe(fallback);
   return {
     ...base,
@@ -222,6 +227,42 @@ async function verifyGithubRepo(base, repo) {
     status: fallback.ok ? "ok" : "failed",
     status_code: fallback.status_code || null,
   };
+}
+
+function githubMetadataResult(base, apiUrl, metadata, options = {}) {
+  const archived = Boolean(metadata.archived);
+  const classification = archived
+    ? "unsupported"
+    : options.classification || "live";
+  return stripNullish({
+    ...base,
+    archived,
+    classification,
+    confidence_score: archived ? 20 : 80,
+    default_branch: metadata.default_branch || null,
+    description: metadata.description || null,
+    error: options.api_error || null,
+    github_api_status: options.api_status || null,
+    github_api_url: apiUrl,
+    homepage: normalizeNullableUrl(metadata.homepage),
+    html_url: metadata.html_url || base.url,
+    last_push_at: metadata.pushed_at || null,
+    latency_ms: options.latency_ms,
+    method_tested: options.method_tested,
+    quality_signals: stripNullish({
+      archived,
+      has_default_branch: Boolean(metadata.default_branch),
+      has_recent_push_metadata: Boolean(metadata.pushed_at),
+      public_safe: true,
+      redirected: options.redirect_target ? true : undefined,
+      source_tier: base.source_tier || null,
+    }),
+    redirect_target: redactCredentialedUrl(options.redirect_target),
+    status: archived ? "failed" : "ok",
+    topics: Array.isArray(metadata.topics)
+      ? metadata.topics.slice().sort()
+      : [],
+  });
 }
 
 async function verifyHttpSurface(base, candidate) {

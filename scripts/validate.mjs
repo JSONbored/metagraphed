@@ -1070,9 +1070,12 @@ async function validateGeneratedArtifacts(
     freshnessArtifact.summary?.native_data_as_of === nativeSnapshot.captured_at,
     "freshness: native_data_as_of mismatch",
   );
+  const candidateVerificationFreshness = freshnessArtifact.sources.find(
+    (source) => source.id === "candidate-verification",
+  );
   assert(
     freshnessArtifact.summary?.verification_as_of ===
-      verificationArtifact.verification_finished_at,
+      candidateVerificationFreshness?.as_of,
     "freshness: verification_as_of mismatch",
   );
   assert(
