@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { CopyableCode } from "./copyable-code";
+import { ThemeToggle } from "./theme-toggle";
 import { classNames } from "@/lib/metagraphed/format";
 import { searchQuery } from "@/lib/metagraphed/queries";
 
