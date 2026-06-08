@@ -72,6 +72,22 @@ function ProvidersGrid() {
   const { data } = useSuspenseQuery(providersQuery());
   const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = (data.data ?? []) as Provider[];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ric =
+      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
+    const handle = ric(() => {
+      for (const p of rows) prefetchBrandIcon(p.website ?? p.homepage, 36);
+    });
+    return () => {
+      const cic =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void })
+          .cancelIdleCallback ?? window.clearTimeout;
+      cic(handle as number);
+    };
+  }, [rows]);
+
   if (rows.length === 0)
     return (
       <EmptyState
