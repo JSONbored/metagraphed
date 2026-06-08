@@ -580,7 +580,7 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
         title="No verified surfaces yet"
         description="Candidates may exist — check the Candidates tab."
         lastChecked={meta?.generated_at}
-        action={{ label: "Browse all surfaces", href: "/surfaces" }}
+        action={RECOVERY.surfaces}
       />
     );
 
