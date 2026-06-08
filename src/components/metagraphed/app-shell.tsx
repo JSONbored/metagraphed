@@ -402,6 +402,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="inline-flex items-center rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 Unofficial
               </span>
+              <ThemeToggle />
             </div>
           </div>
         </header>
