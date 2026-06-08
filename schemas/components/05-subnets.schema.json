@@ -342,6 +342,54 @@
         },
         "additionalProperties": false
       },
+      "SubnetProfileNativeIdentity": {
+        "type": ["object", "null"],
+        "required": [
+          "source",
+          "subnet_name",
+          "description",
+          "additional",
+          "website_url",
+          "github_url",
+          "discord_url",
+          "logo_url",
+          "contact_present"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "additional": {
+            "type": ["string", "null"]
+          },
+          "website_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "github_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "discord_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "logo_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "contact_present": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetProfileCompleteness": {
         "type": "object",
         "required": [
@@ -456,6 +504,7 @@
           "netuid",
           "slug",
           "name",
+          "native_identity",
           "subnet_type",
           "status",
           "project_name",
@@ -501,6 +550,9 @@
           },
           "native_name_quality": {
             "enum": ["chain", "placeholder", "empty"]
+          },
+          "native_identity": {
+            "$ref": "#/components/schemas/SubnetProfileNativeIdentity"
           },
           "subnet_type": {
             "$ref": "#/components/schemas/SubnetType"
@@ -659,6 +711,7 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "native_identity_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence"
@@ -672,6 +725,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "native_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
                   },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"

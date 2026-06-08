@@ -16,6 +16,7 @@ import {
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
+  normalizePublicUrl,
   readJson,
   redactCredentialedUrls,
   repoRoot,
@@ -298,6 +299,12 @@ const candidateIndex = candidates.map((candidate) => ({
 const profileArtifacts = buildSubnetProfileArtifacts({
   candidates: candidateIndex,
   endpoints: endpointResources.endpoints,
+  nativeIdentitiesByNetuid: new Map(
+    chainSubnets.map((subnet) => [
+      subnet.netuid,
+      subnet.chain_identity || null,
+    ]),
+  ),
   subnets: mergedSubnets,
   surfaces,
 });
@@ -926,6 +933,7 @@ function buildSubnetProfileArtifacts({
   surfaces,
   endpoints,
   candidates,
+  nativeIdentitiesByNetuid = new Map(),
 }) {
   const surfacesByNetuid = groupByNetuid(surfaces);
   const endpointsByNetuid = groupByNetuid(endpoints);
@@ -935,6 +943,7 @@ function buildSubnetProfileArtifacts({
       buildSubnetProfile({
         candidates: candidatesByNetuid.get(subnet.netuid) || [],
         endpoints: endpointsByNetuid.get(subnet.netuid) || [],
+        nativeIdentity: nativeIdentitiesByNetuid.get(subnet.netuid) || null,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
       }),
@@ -992,6 +1001,9 @@ function buildSubnetProfileArtifacts({
       by_profile_level: countBy(profiles, "profile_level"),
       by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
+      native_identity_count: profiles.filter(
+        (profile) => profile.native_identity,
+      ).length,
       critical_gap_counts: countGapReasons(reviewProfiles),
     },
     summary: {
@@ -1000,6 +1012,9 @@ function buildSubnetProfileArtifacts({
       by_profile_level: countBy(profiles, "profile_level"),
       by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
+      native_identity_count: profiles.filter(
+        (profile) => profile.native_identity,
+      ).length,
     },
   };
 }
@@ -1899,7 +1914,13 @@ function countGapReasons(profiles) {
   );
 }
 
-function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
+function buildSubnetProfile({
+  subnet,
+  surfaces,
+  endpoints,
+  candidates,
+  nativeIdentity,
+}) {
   const archiveSupported = surfaces.some(surfaceHasArchiveSupport);
   const supportedKinds = [
     ...new Set([
@@ -1932,6 +1953,7 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     name: subnet.name,
     native_name: subnet.native_name,
     native_name_quality: subnet.native_name_quality,
+    native_identity: nativeIdentitySummary(nativeIdentity),
     subnet_type: subnet.subnet_type,
     status: subnet.status,
     symbol: subnet.symbol,
@@ -1977,6 +1999,32 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     ...profile,
     suggested_submission_kinds: directSubmissionKindsForProfile(profile),
   };
+}
+
+function nativeIdentitySummary(identity) {
+  if (!identity || typeof identity !== "object") {
+    return null;
+  }
+
+  return {
+    source: identity.source || "SubtensorModule.SubnetIdentitiesV3",
+    subnet_name: cleanProfileText(identity.subnet_name),
+    description: cleanProfileText(identity.description),
+    additional: cleanProfileText(identity.additional),
+    website_url: normalizePublicUrl(identity.subnet_url),
+    github_url: normalizePublicUrl(identity.github_repo),
+    discord_url: normalizePublicUrl(identity.discord),
+    logo_url: normalizePublicUrl(identity.logo_url),
+    contact_present: Boolean(identity.contact_present),
+  };
+}
+
+function cleanProfileText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const clean = value.trim();
+  return clean || null;
 }
 
 function subnetProfileCompleteness({

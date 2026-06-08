@@ -4156,6 +4156,10 @@
                   "critical_gap_counts": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "native_identity_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "needs_identity_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -4174,6 +4178,7 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "native_identity_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
@@ -5701,6 +5706,9 @@
           "name": {
             "type": "string"
           },
+          "native_identity": {
+            "$ref": "#/components/schemas/SubnetProfileNativeIdentity"
+          },
           "native_name": {
             "type": [
               "string",
@@ -5794,6 +5802,7 @@
           "netuid",
           "slug",
           "name",
+          "native_identity",
           "subnet_type",
           "status",
           "project_name",
@@ -5953,6 +5962,78 @@
         ],
         "type": "object"
       },
+      "SubnetProfileNativeIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "additional": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contact_present": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "website_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "subnet_name",
+          "description",
+          "additional",
+          "website_url",
+          "github_url",
+          "discord_url",
+          "logo_url",
+          "contact_present"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "SubnetProfilePrimaryLinks": {
         "additionalProperties": false,
         "properties": {
@@ -6064,6 +6145,10 @@
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "native_identity_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "profile_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -6072,6 +6157,7 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "native_identity_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence"

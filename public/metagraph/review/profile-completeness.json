@@ -5140,6 +5140,7 @@
       "missing-subnet-api": 114,
       "missing-website": 14
     },
+    "native_identity_count": 120,
     "needs_identity_count": 27,
     "needs_operational_count": 100,
     "profile_count": 129

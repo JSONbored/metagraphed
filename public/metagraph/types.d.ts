@@ -1668,6 +1668,7 @@ export interface components {
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
                 critical_gap_counts: components["schemas"]["CountMap"];
+                native_identity_count: number;
                 needs_identity_count: number;
                 needs_operational_count: number;
                 profile_count: number;
@@ -2027,6 +2028,7 @@ export interface components {
             missing_required: components["schemas"]["SurfaceKind"][];
             monitored_endpoint_count: number;
             name: string;
+            native_identity: components["schemas"]["SubnetProfileNativeIdentity"];
             native_name?: string | null;
             /** @enum {unknown} */
             native_name_quality?: "chain" | "placeholder" | "empty";
@@ -2074,6 +2076,21 @@ export interface components {
             profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             score: number;
         };
+        SubnetProfileNativeIdentity: {
+            additional: string | null;
+            contact_present: boolean;
+            description: string | null;
+            /** Format: uri */
+            discord_url: string | null;
+            /** Format: uri */
+            github_url: string | null;
+            /** Format: uri */
+            logo_url: string | null;
+            source: string;
+            subnet_name: string | null;
+            /** Format: uri */
+            website_url: string | null;
+        } | null;
         SubnetProfilePrimaryLinks: {
             /** Format: uri */
             dashboard_url: string | null;
@@ -2099,6 +2116,7 @@ export interface components {
                 by_confidence: components["schemas"]["CountMap"];
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
+                native_identity_count: number;
                 profile_count: number;
             };
         } & {

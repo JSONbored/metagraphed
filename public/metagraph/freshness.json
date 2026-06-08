@@ -173,7 +173,7 @@
       "timestamp_field": "native_data_as_of"
     },
     {
-      "as_of": "2026-06-08T21:03:47.659Z",
+      "as_of": "2026-06-08T21:25:08.425Z",
       "id": "schema-drift",
       "lane": "schema-snapshot",
       "notes": "Schema drift snapshots are warning-only until more subnets publish machine-readable schemas.",
@@ -182,7 +182,7 @@
       "stale_after_hours": 168,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-08T21:03:47.659Z",
+      "timestamp": "2026-06-08T21:25:08.425Z",
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
@@ -211,7 +211,7 @@
     "native_snapshot_captured_at": "2026-06-08T20:51:35Z",
     "openapi_surface_count": 12,
     "publish_ready_without_age_check": false,
-    "schema_snapshot_as_of": "2026-06-08T21:03:47.659Z",
+    "schema_snapshot_as_of": "2026-06-08T21:25:08.425Z",
     "stale_window_warnings": [
       "candidate-discovery has no observed timestamp; production publish should block."
     ],

@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot, stableStringify } from "./lib.mjs";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
 
 const trackedPublicArtifacts = execFileSync(
@@ -93,6 +93,11 @@ async function loadSchemaSnapshotDetails() {
     );
     if (existsSync(filePath)) {
       details.set(relativePath, await readFile(filePath));
+    } else if (entry.snapshot && typeof entry.snapshot === "object") {
+      details.set(
+        relativePath,
+        Buffer.from(`${stableStringify(entry.snapshot)}\n`),
+      );
     }
   }
   return details;

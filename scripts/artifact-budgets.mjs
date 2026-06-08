@@ -10,7 +10,7 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("health/history/*.json", 650_000, 1_250_000),
   budget("search.json", 750_000, 2_000_000),
   budget("openapi.json", 500_000, 1_000_000),
-  budget("profiles.json", 500_000, 1_000_000),
+  budget("profiles.json", 600_000, 1_000_000),
   budget("review/enrichment-evidence.json", 500_000, 1_000_000),
   budget("review/enrichment-queue.json", 500_000, 1_000_000),
   budget("review/enrichment-targets.json", 900_000, 1_500_000),

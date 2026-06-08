@@ -1103,6 +1103,7 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "native_identity_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
@@ -1125,6 +1126,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "native_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
                   },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
