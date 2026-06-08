@@ -152,5 +152,64 @@ export function ResetLink({ to }: { to: string }) {
   );
 }
 
+/**
+ * Page-size (limit) control. Changing the limit resets the cursor so the
+ * next request starts a fresh page from the server.
+ */
+export function PageSizeSelect({
+  value,
+  onChange,
+  options = [10, 25, 50, 100, 200],
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  options?: number[];
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        per page
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label="Results per page"
+        className="bg-transparent text-ink-strong text-xs focus:outline-none min-h-7"
+      >
+        {options.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Reset-filters button. Hidden when nothing is set, so the bar stays quiet.
+ * Calls `onReset` to let the route decide which keys to clear (typically
+ * search, sort, filters, and cursor; preserves user's page-size choice).
+ */
+export function ResetFiltersButton({
+  active,
+  onReset,
+}: {
+  active: boolean;
+  onReset: () => void;
+}) {
+  if (!active) return null;
+  return (
+    <button
+      type="button"
+      onClick={onReset}
+      className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink hover:border-ink/30 min-h-7"
+      title="Clear search, filters, and pagination"
+    >
+      <X className="size-3" /> Reset filters
+    </button>
+  );
+}
+
 // Re-export for parity / convenience
 export { Link };
