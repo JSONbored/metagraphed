@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
+import { Suspense, useEffect, useState } from "react";
+import { RefreshCw, Pause, Play } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 import {
   healthQuery,
   freshnessQuery,
@@ -13,6 +15,8 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
+
+const AUTO_REFRESH_MS = 30_000;
 
 export const Route = createFileRoute("/health")({
   head: () => ({
@@ -25,20 +29,26 @@ export const Route = createFileRoute("/health")({
 });
 
 function HealthPage() {
+  const [autoRefresh, setAutoRefresh] = useState(true);
   return (
     <AppShell>
-      <PageHeading eyebrow="Operations" title="Health & freshness" description="Probe-derived health. User submissions cannot set uptime, latency, or incident state." />
+      <PageHeading
+        eyebrow="Operations"
+        title="Health & freshness"
+        description="Probe-derived health. User submissions cannot set uptime, latency, or incident state."
+        right={<AutoRefreshControl enabled={autoRefresh} onToggle={() => setAutoRefresh((v) => !v)} />}
+      />
       <div className="space-y-8">
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-            <GlobalHealth />
+            <GlobalHealth autoRefresh={autoRefresh} />
           </Suspense>
         </QueryErrorBoundary>
         <section>
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Source health</h2>
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <SourceHealth />
+              <SourceHealth autoRefresh={autoRefresh} />
             </Suspense>
           </QueryErrorBoundary>
         </section>
@@ -46,7 +56,7 @@ function HealthPage() {
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Incidents</h2>
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <Incidents />
+              <Incidents autoRefresh={autoRefresh} />
             </Suspense>
           </QueryErrorBoundary>
         </section>
@@ -55,9 +65,44 @@ function HealthPage() {
   );
 }
 
-function GlobalHealth() {
-  const { data: hRes } = useSuspenseQuery(healthQuery());
-  const { data: fRes } = useSuspenseQuery(freshnessQuery());
+function AutoRefreshControl({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  const fetching = useIsFetching({ queryKey: ["metagraphed"] });
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_REFRESH_MS / 1000);
+
+  useEffect(() => {
+    if (!enabled) return;
+    setSecondsLeft(AUTO_REFRESH_MS / 1000);
+    const i = window.setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? AUTO_REFRESH_MS / 1000 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(i);
+  }, [enabled]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onToggle}
+        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors"
+        title={enabled ? "Pause auto-refresh" : "Resume auto-refresh"}
+      >
+        {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
+        {enabled ? `Auto-refresh · ${secondsLeft}s` : "Paused"}
+      </button>
+      <span
+        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+        title={fetching ? "Refreshing…" : "Idle"}
+      >
+        <RefreshCw className={`size-3 ${fetching ? "animate-spin text-ink-strong" : "text-ink-muted"}`} />
+        {fetching ? "syncing" : "idle"}
+      </span>
+    </div>
+  );
+}
+
+function GlobalHealth({ autoRefresh }: { autoRefresh: boolean }) {
+  const interval = autoRefresh ? AUTO_REFRESH_MS : false;
+  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: interval });
+  const { data: fRes } = useSuspenseQuery({ ...freshnessQuery(), refetchInterval: interval });
   const h = hRes.data;
   const f = fRes.data;
   const stale = isStaleFreshness(hRes.meta?.generated_at);
@@ -76,6 +121,9 @@ function GlobalHealth() {
         <Cell label="Max age" value={f?.max_age_seconds != null ? `${Math.round(f.max_age_seconds)}s` : "—"} />
         <Cell label="Stale sources" value={formatNumber(f?.stale_count)} />
       </div>
+      <div className="text-[11px] font-mono text-ink-muted">
+        snapshot {formatRelative(hRes.meta?.generated_at)}
+      </div>
     </div>
   );
 }
@@ -89,8 +137,9 @@ function Cell({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-function SourceHealth() {
-  const { data } = useSuspenseQuery(sourceHealthQuery());
+function SourceHealth({ autoRefresh }: { autoRefresh: boolean }) {
+  const interval = autoRefresh ? AUTO_REFRESH_MS : false;
+  const { data } = useSuspenseQuery({ ...sourceHealthQuery(), refetchInterval: interval });
   const rows = data.data ?? [];
   if (rows.length === 0) return <EmptyState title="No source health" />;
   return (
@@ -100,6 +149,7 @@ function SourceHealth() {
           <tr>
             <th className="px-3 py-2 text-left">Source</th>
             <th className="px-3 py-2">Status</th>
+            <th className="px-3 py-2">Freshness</th>
             <th className="px-3 py-2 text-right">Last seen</th>
           </tr>
         </thead>
@@ -108,6 +158,7 @@ function SourceHealth() {
             <tr key={s.name}>
               <td className="px-3 py-2 font-medium">{s.name}</td>
               <td className="px-3 py-2"><HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} /></td>
+              <td className="px-3 py-2"><FreshnessIndicator at={s.last_seen} dotOnly /></td>
               <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(s.last_seen)}</td>
             </tr>
           ))}
@@ -117,8 +168,9 @@ function SourceHealth() {
   );
 }
 
-function Incidents() {
-  const { data } = useSuspenseQuery(endpointIncidentsQuery());
+function Incidents({ autoRefresh }: { autoRefresh: boolean }) {
+  const interval = autoRefresh ? AUTO_REFRESH_MS : false;
+  const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
   const rows = (data.data ?? []) as EndpointIncident[];
   if (rows.length === 0) return <EmptyState title="No recent incidents" />;
   return (
