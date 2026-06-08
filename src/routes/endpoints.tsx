@@ -12,7 +12,7 @@ import {
   endpointIncidentsQuery,
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatRelative } from "@/lib/metagraphed/format";
+
 import type { Endpoint, EndpointIncident, RpcPool } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/endpoints")({
