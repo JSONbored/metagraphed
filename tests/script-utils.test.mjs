@@ -59,6 +59,7 @@ import {
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
+import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -495,6 +496,141 @@ describe("script utility contracts", () => {
     } finally {
       await rm(stagedPath, { force: true });
     }
+  });
+
+  test("augments manual overlays with verified baseline surfaces", async () => {
+    const nativeSnapshot = {
+      schema_version: 1,
+      network: "finney",
+      captured_at: "2026-06-08T00:00:00.000Z",
+      source: { kind: "fixture", method: "test" },
+      subnets: [
+        {
+          netuid: 25,
+          name: "Mainframe",
+          raw_name: "Mainframe",
+          status: "active",
+          subnet_type: "application",
+        },
+      ],
+    };
+    const manualOverlays = [
+      {
+        schema_version: 1,
+        netuid: 25,
+        name: "Mainframe",
+        slug: "sn-25",
+        status: "active",
+        categories: ["identity-reviewed"],
+        curation: {
+          level: "maintainer-reviewed",
+          review_state: "maintainer-reviewed",
+          reviewed_at: "2026-06-08T00:00:00.000Z",
+          verified_at: "2026-06-08T00:00:00.000Z",
+          source_count: 1,
+          gap_notes: [],
+        },
+        source_repo: "https://github.com/macrocosm-os/mainframe",
+        baseline_excluded_surface_ids: ["sn-25-stale-docs"],
+        surfaces: [
+          {
+            id: "sn-25-mainframe-source",
+            name: "Mainframe source repository",
+            kind: "source-repo",
+            url: "https://github.com/macrocosm-os/mainframe",
+            provider: "macrocosmos",
+            auth_required: false,
+            authority: "official",
+            public_safe: true,
+            source_urls: ["https://github.com/macrocosm-os/mainframe"],
+            probe: { enabled: true, method: "HEAD", expect: "any" },
+          },
+        ],
+      },
+    ];
+    const candidates = [
+      {
+        id: "sn-25-taostats-metagraph",
+        netuid: 25,
+        name: "Mainframe Taostats metagraph",
+        kind: "dashboard",
+        url: "https://taostats.io/subnets/25/metagraph",
+        provider: "taostats",
+        source_type: "third-party-index",
+        source_tier: "third-party-index",
+        source_url: "https://taostats.io/subnets/25/metagraph",
+        source_urls: ["https://taostats.io/subnets/25/metagraph"],
+        review_notes:
+          "Universal Taostats subnet metagraph dashboard candidate.",
+      },
+      {
+        id: "sn-25-stale-docs",
+        netuid: 25,
+        name: "Mainframe stale docs",
+        kind: "docs",
+        url: "https://example.com/stale-docs",
+        provider: "taomarketcap",
+        source_type: "project-website-common-path",
+        source_tier: "provider-claimed",
+        source_url: "https://example.com/stale-docs",
+        source_urls: ["https://example.com/stale-docs"],
+        review_notes: "Known stale generated candidate.",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: [
+        {
+          candidate_id: "sn-25-taostats-metagraph",
+          classification: "live",
+          content_type: "text/html; charset=utf-8",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            rate_limited: false,
+            redirected: false,
+            source_tier: "third-party-index",
+            transient_failure: false,
+          },
+        },
+        {
+          candidate_id: "sn-25-stale-docs",
+          classification: "live",
+          content_type: "text/html; charset=utf-8",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            rate_limited: false,
+            redirected: false,
+            source_tier: "provider-claimed",
+            transient_failure: false,
+          },
+        },
+      ],
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays,
+      nativeSnapshot,
+      verification,
+    });
+
+    assert.equal(overlaySet.generatedOverlays.length, 0);
+    assert.deepEqual(
+      overlaySet.manualOverlays[0].surfaces.map((surface) => surface.id),
+      ["sn-25-mainframe-source", "sn-25-taostats-metagraph"],
+    );
+    assert.equal(
+      overlaySet.manualOverlays[0].categories.includes("baseline-augmented"),
+      true,
+    );
+    assert.equal(
+      overlaySet.manualOverlays[0].dashboard_url,
+      "https://taostats.io/subnets/25/metagraph",
+    );
+    assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 
   test("redacts credentialed object-storage URLs", () => {
@@ -959,7 +1095,7 @@ describe("script utility contracts", () => {
   test("evaluates artifact budgets with wildcard matching", () => {
     const results = evaluateArtifactBudgets([
       { path: "candidates.json", size_bytes: 100 },
-      { path: "health/history/2026-06-06.json", size_bytes: 500_000 },
+      { path: "health/history/2026-06-06.json", size_bytes: 700_000 },
       { path: "custom.json", size_bytes: 1_500_000 },
     ]);
 

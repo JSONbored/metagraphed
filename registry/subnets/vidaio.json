@@ -12,6 +12,10 @@
   "source_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
   "dashboard_url": "https://taomarketcap.com/subnets/85",
   "website_url": "https://vidaio.io/",
+  "baseline_excluded_surface_ids": [
+    "sn-85-website-common-docs",
+    "sn-85-website-common-swagger"
+  ],
   "notes": "Reviewed overlay for SN85 using the live Vidaio website and source repository. Generated common-path docs, dashboard, and OpenAPI-looking URLs currently redirect to sign-in or are not machine-readable, so they are intentionally not promoted.",
   "curation": {
     "level": "maintainer-reviewed",

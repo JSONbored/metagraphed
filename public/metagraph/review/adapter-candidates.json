@@ -10,9 +10,22 @@
         "sse",
         "subnet-api"
       ],
-      "operational_surface_count": 12,
-      "priority_score": 255,
+      "operational_surface_count": 14,
+      "priority_score": 303,
       "slug": "allways"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Desearch",
+      "netuid": 22,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 4,
+      "priority_score": 96,
+      "slug": "sn-22"
     },
     {
       "candidate_api_count": 1,
@@ -23,9 +36,99 @@
         "openapi",
         "subnet-api"
       ],
-      "operational_surface_count": 3,
-      "priority_score": 70,
+      "operational_surface_count": 4,
+      "priority_score": 93,
       "slug": "sn-58"
+    },
+    {
+      "candidate_api_count": 8,
+      "curation_level": "maintainer-reviewed",
+      "name": "Green Compute",
+      "netuid": 110,
+      "operational_kinds": [
+        "data-artifact",
+        "subnet-api"
+      ],
+      "operational_surface_count": 4,
+      "priority_score": 91,
+      "slug": "sn-110"
+    },
+    {
+      "candidate_api_count": 11,
+      "curation_level": "maintainer-reviewed",
+      "name": "Chutes",
+      "netuid": 64,
+      "operational_kinds": [
+        "data-artifact",
+        "subnet-api"
+      ],
+      "operational_surface_count": 3,
+      "priority_score": 77,
+      "slug": "sn-64"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "adapter-backed",
+      "name": "Gittensor",
+      "netuid": 74,
+      "operational_kinds": [
+        "data-artifact",
+        "openapi"
+      ],
+      "operational_surface_count": 3,
+      "priority_score": 77,
+      "slug": "gittensor"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Verathos",
+      "netuid": 96,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 3,
+      "priority_score": 73,
+      "slug": "sn-96"
+    },
+    {
+      "candidate_api_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "name": "Quasar",
+      "netuid": 24,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 3,
+      "priority_score": 71,
+      "slug": "sn-24"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "ninja",
+      "netuid": 66,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 53,
+      "slug": "sn-66"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Nepher Robotics",
+      "netuid": 49,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 51,
+      "slug": "sn-49"
     },
     {
       "candidate_api_count": 6,
@@ -41,70 +144,6 @@
       "slug": "sn-56"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Desearch",
-      "netuid": 22,
-      "operational_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 49,
-      "slug": "sn-22"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Nepher Robotics",
-      "netuid": 49,
-      "operational_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 49,
-      "slug": "sn-49"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Verathos",
-      "netuid": 96,
-      "operational_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 49,
-      "slug": "sn-96"
-    },
-    {
-      "candidate_api_count": 7,
-      "curation_level": "maintainer-reviewed",
-      "name": "Quasar",
-      "netuid": 24,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 48,
-      "slug": "sn-24"
-    },
-    {
-      "candidate_api_count": 8,
-      "curation_level": "maintainer-reviewed",
-      "name": "Green Compute",
-      "netuid": 110,
-      "operational_kinds": [
-        "data-artifact",
-        "subnet-api"
-      ],
-      "operational_surface_count": 2,
-      "priority_score": 47,
-      "slug": "sn-110"
-    },
-    {
       "candidate_api_count": 2,
       "curation_level": "maintainer-reviewed",
       "name": "ReadyAI",
@@ -113,8 +152,44 @@
         "data-artifact"
       ],
       "operational_surface_count": 2,
-      "priority_score": 45,
+      "priority_score": 50,
       "slug": "sn-33"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "StreetVision by NATIX",
+      "netuid": 72,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 32,
+      "slug": "sn-72"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Trishool",
+      "netuid": 23,
+      "operational_kinds": [
+        "subnet-api"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 31,
+      "slug": "sn-23"
+    },
+    {
+      "candidate_api_count": 0,
+      "curation_level": "maintainer-reviewed",
+      "name": "Coldint",
+      "netuid": 29,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 31,
+      "slug": "sn-29"
     },
     {
       "candidate_api_count": 7,
@@ -139,18 +214,6 @@
       "operational_surface_count": 1,
       "priority_score": 31,
       "slug": "sn-60"
-    },
-    {
-      "candidate_api_count": 11,
-      "curation_level": "maintainer-reviewed",
-      "name": "Chutes",
-      "netuid": 64,
-      "operational_kinds": [
-        "subnet-api"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 31,
-      "slug": "sn-64"
     },
     {
       "candidate_api_count": 5,
@@ -285,6 +348,18 @@
       "slug": "sn-41"
     },
     {
+      "candidate_api_count": 1,
+      "curation_level": "maintainer-reviewed",
+      "name": "EvolAI",
+      "netuid": 47,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-47"
+    },
+    {
       "candidate_api_count": 6,
       "curation_level": "machine-verified",
       "name": "Synth",
@@ -295,18 +370,6 @@
       "operational_surface_count": 1,
       "priority_score": 29,
       "slug": "sn-50"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "ninja",
-      "netuid": 66,
-      "operational_kinds": [
-        "subnet-api"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 29,
-      "slug": "sn-66"
     },
     {
       "candidate_api_count": 6,
@@ -355,6 +418,18 @@
       "operational_surface_count": 1,
       "priority_score": 29,
       "slug": "sn-77"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "MVTRX",
+      "netuid": 79,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-79"
     },
     {
       "candidate_api_count": 5,
@@ -441,6 +516,18 @@
       "slug": "sn-59"
     },
     {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Investing",
+      "netuid": 88,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 28,
+      "slug": "sn-88"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Actual",
@@ -454,87 +541,23 @@
     },
     {
       "candidate_api_count": 6,
-      "curation_level": "adapter-backed",
-      "name": "Gittensor",
-      "netuid": 74,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 27,
-      "slug": "gittensor"
-    },
-    {
-      "candidate_api_count": 0,
       "curation_level": "maintainer-reviewed",
-      "name": "Coldint",
-      "netuid": 29,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 26,
-      "slug": "sn-29"
+      "name": "Data Universe",
+      "netuid": 13,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 13,
+      "slug": "sn-13"
     },
     {
       "candidate_api_count": 6,
       "curation_level": "maintainer-reviewed",
-      "name": "StreetVision by NATIX",
-      "netuid": 72,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 26,
-      "slug": "sn-72"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Investing",
-      "netuid": 88,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 24,
-      "slug": "sn-88"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Trishool",
-      "netuid": 23,
-      "operational_kinds": [
-        "subnet-api"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 23,
-      "slug": "sn-23"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "MVTRX",
-      "netuid": 79,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 23,
-      "slug": "sn-79"
-    },
-    {
-      "candidate_api_count": 1,
-      "curation_level": "maintainer-reviewed",
-      "name": "EvolAI",
-      "netuid": 47,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 22,
-      "slug": "sn-47"
+      "name": "Hippius",
+      "netuid": 75,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 11,
+      "slug": "sn-75"
     },
     {
       "candidate_api_count": 6,
@@ -568,6 +591,116 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Apex",
+      "netuid": 1,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-1"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Targon",
+      "netuid": 4,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-4"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "iota",
+      "netuid": 9,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-9"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "ORO",
+      "netuid": 15,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-15"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "blockmachine",
+      "netuid": 19,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-19"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Mainframe",
+      "netuid": 25,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-25"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Talisman AI",
+      "netuid": 45,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-45"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "ForeverMoney",
+      "netuid": 98,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-98"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "ConnitoAI",
+      "netuid": 102,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-102"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Djinn",
+      "netuid": 103,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-103"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "TensorUSD",
+      "netuid": 113,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 9,
+      "slug": "sn-113"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "TrajectoryRL",
       "netuid": 11,
@@ -575,16 +708,6 @@
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-11"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Data Universe",
-      "netuid": 13,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 8,
-      "slug": "sn-13"
     },
     {
       "candidate_api_count": 5,
@@ -615,6 +738,16 @@
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-26"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "ItsAI",
+      "netuid": 32,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-32"
     },
     {
       "candidate_api_count": 5,
@@ -655,6 +788,26 @@
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-44"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "RedTeam",
+      "netuid": 61,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-61"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Compelle",
+      "netuid": 82,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-82"
     },
     {
       "candidate_api_count": 5,
@@ -717,6 +870,56 @@
       "slug": "sn-10"
     },
     {
+      "candidate_api_count": 1,
+      "curation_level": "maintainer-reviewed",
+      "name": "Compute Horde",
+      "netuid": 12,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-12"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-20"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "AdTAO",
+      "netuid": 21,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-21"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Endure Network",
+      "netuid": 30,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-30"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Quantum Compute",
+      "netuid": 48,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-48"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Yanez MIID",
@@ -738,6 +941,26 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Ridges",
+      "netuid": 62,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-62"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Enigma",
+      "netuid": 63,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-63"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Harnyx",
       "netuid": 67,
@@ -745,6 +968,26 @@
       "operational_surface_count": 0,
       "priority_score": 7,
       "slug": "sn-67"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Vidaio",
+      "netuid": 85,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-85"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-91"
     },
     {
       "candidate_api_count": 5,
@@ -778,6 +1021,16 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "sundae_bar",
+      "netuid": 121,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-121"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Poker44",
       "netuid": 126,
@@ -798,272 +1051,12 @@
     },
     {
       "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Nodexo",
-      "netuid": 27,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 5,
-      "slug": "sn-27"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Hippius",
-      "netuid": 75,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 5,
-      "slug": "sn-75"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "RedTeam",
-      "netuid": 61,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-61"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Apex",
-      "netuid": 1,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-1"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "iota",
-      "netuid": 9,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-9"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "ORO",
-      "netuid": 15,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-15"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "blockmachine",
-      "netuid": 19,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-19"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "TensorUSD",
-      "netuid": 113,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-113"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Targon",
-      "netuid": 4,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-4"
-    },
-    {
-      "candidate_api_count": 1,
-      "curation_level": "maintainer-reviewed",
-      "name": "Compute Horde",
-      "netuid": 12,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-12"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "AdTAO",
-      "netuid": 21,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-21"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Endure Network",
-      "netuid": 30,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-30"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "ItsAI",
-      "netuid": 32,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-32"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Talisman AI",
-      "netuid": 45,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-45"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Quantum Compute",
-      "netuid": 48,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-48"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Enigma",
-      "netuid": 63,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-63"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Compelle",
-      "netuid": 82,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-82"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Vidaio",
-      "netuid": 85,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-85"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-91"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "ForeverMoney",
-      "netuid": 98,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-98"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "ConnitoAI",
-      "netuid": 102,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-102"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Djinn",
-      "netuid": 103,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-103"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "sundae_bar",
-      "netuid": 121,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 2,
-      "slug": "sn-121"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 1,
-      "slug": "sn-20"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "name": "Mainframe",
-      "netuid": 25,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 1,
-      "slug": "sn-25"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Ridges",
-      "netuid": 62,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 1,
-      "slug": "sn-62"
-    },
-    {
-      "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
       "name": "Byzantium",
       "netuid": 76,
       "operational_kinds": [],
       "operational_surface_count": 0,
-      "priority_score": 1,
+      "priority_score": 6,
       "slug": "sn-76"
     },
     {
@@ -1073,8 +1066,18 @@
       "netuid": 89,
       "operational_kinds": [],
       "operational_surface_count": 0,
-      "priority_score": 1,
+      "priority_score": 6,
       "slug": "sn-89"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Nodexo",
+      "netuid": 27,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 5,
+      "slug": "sn-27"
     }
   ],
   "contract_version": "2026-06-06.1",

@@ -64,24 +64,29 @@ export async function generateBaselineOverlaySet(options = {}) {
   );
   const candidatesByNetuid = groupByNetuid(candidates);
   const generatedOverlays = [];
+  const manualBaselineOverlays = [];
 
   for (const nativeSubnet of nativeSnapshot.subnets || []) {
+    const baselineOverlay = buildGeneratedOverlay({
+      candidatesByNetuid,
+      existingGeneratedByNetuid,
+      nativeSubnet,
+      verificationByCandidate,
+    });
     if (manualNetuids.has(nativeSubnet.netuid)) {
+      manualBaselineOverlays.push(baselineOverlay);
       continue;
     }
-    generatedOverlays.push(
-      buildGeneratedOverlay({
-        candidatesByNetuid,
-        existingGeneratedByNetuid,
-        nativeSubnet,
-        verificationByCandidate,
-      }),
-    );
+    generatedOverlays.push(baselineOverlay);
   }
+  const augmentedManualOverlays = augmentManualOverlaysWithBaseline(
+    manualOverlays,
+    manualBaselineOverlays,
+  );
 
   const summary = buildGeneratedOverlaySummary({
     generatedOverlays,
-    manualOverlays,
+    manualOverlays: augmentedManualOverlays,
     nativeSnapshot,
     verification,
   });
@@ -89,11 +94,82 @@ export async function generateBaselineOverlaySet(options = {}) {
   return {
     candidates,
     generatedOverlays,
-    manualOverlays,
+    manualBaselineOverlays,
+    manualOverlays: augmentedManualOverlays,
     nativeSnapshot,
     summary,
     verification,
   };
+}
+
+export function augmentManualOverlaysWithBaseline(
+  manualOverlays,
+  baselineOverlays,
+) {
+  const baselineByNetuid = new Map(
+    baselineOverlays.map((overlay) => [overlay.netuid, overlay]),
+  );
+
+  return sortOverlays(
+    manualOverlays.map((manualOverlay) => {
+      const baselineOverlay = baselineByNetuid.get(manualOverlay.netuid);
+      const baselineSurfaces = baselineOverlay?.surfaces || [];
+      if (baselineSurfaces.length === 0) {
+        return manualOverlay;
+      }
+
+      const excludedSurfaceIds = new Set(
+        manualOverlay.baseline_excluded_surface_ids || [],
+      );
+      const existingKeys = new Set(
+        (manualOverlay.surfaces || []).map(registrySurfaceKey),
+      );
+      const additions = baselineSurfaces.filter((surface) => {
+        if (excludedSurfaceIds.has(surface.id)) {
+          return false;
+        }
+        const key = registrySurfaceKey(surface);
+        if (existingKeys.has(key)) {
+          return false;
+        }
+        existingKeys.add(key);
+        return true;
+      });
+
+      if (additions.length === 0) {
+        return manualOverlay;
+      }
+
+      const surfaces = [...(manualOverlay.surfaces || []), ...additions].sort(
+        (a, b) =>
+          surfaceRank(a.kind) - surfaceRank(b.kind) || a.id.localeCompare(b.id),
+      );
+      const sourceUrls = new Set(
+        surfaces.flatMap((surface) => surface.source_urls || [surface.url]),
+      );
+      const categories = new Set(manualOverlay.categories || []);
+      categories.add("baseline-augmented");
+
+      return {
+        ...manualOverlay,
+        categories: [...categories].sort(),
+        dashboard_url:
+          manualOverlay.dashboard_url || firstUrl(surfaces, "dashboard"),
+        docs_url: manualOverlay.docs_url || firstUrl(surfaces, "docs"),
+        source_repo:
+          manualOverlay.source_repo || firstUrl(surfaces, "source-repo"),
+        website_url: manualOverlay.website_url || firstUrl(surfaces, "website"),
+        curation: {
+          ...(manualOverlay.curation || {}),
+          source_count: Math.max(
+            manualOverlay.curation?.source_count || 0,
+            sourceUrls.size,
+          ),
+        },
+        surfaces,
+      };
+    }),
+  );
 }
 
 export function buildGeneratedOverlaySummary({

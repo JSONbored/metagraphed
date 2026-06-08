@@ -213,6 +213,6 @@ describe("public contract registry", () => {
     ]);
 
     assert.equal(result.status, "ok");
-    assert.equal(result.warn_bytes, 400_000);
+    assert.equal(result.warn_bytes, 650_000);
   });
 });

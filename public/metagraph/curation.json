@@ -11,7 +11,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-06T00:00:00.000Z",
-        "source_count": 6,
+        "source_count": 12,
         "verified_at": null
       },
       "gap_count": 4,
@@ -38,7 +38,7 @@
       "name": "root",
       "netuid": 0,
       "slug": "root",
-      "surface_count": 12
+      "surface_count": 14
     },
     {
       "candidate_count": 20,
@@ -54,7 +54,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 4,
@@ -82,7 +82,7 @@
       "name": "Apex",
       "netuid": 1,
       "slug": "sn-1",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 16,
@@ -138,7 +138,7 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:05:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T11:05:00.000Z"
       },
       "gap_count": 4,
@@ -166,7 +166,7 @@
       "name": "Templar",
       "netuid": 3,
       "slug": "sn-3",
-      "surface_count": 5
+      "surface_count": 11
     },
     {
       "candidate_count": 24,
@@ -182,10 +182,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -195,7 +195,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -203,6 +202,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -210,7 +210,7 @@
       "name": "Targon",
       "netuid": 4,
       "slug": "sn-4",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 17,
@@ -307,20 +307,20 @@
         "level": "adapter-backed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-06T00:00:00.000Z",
-        "source_count": 3,
+        "source_count": 20,
         "verified_at": null
       },
-      "gap_count": 2,
+      "gap_count": 1,
       "gaps": {
         "gap_notes": [
           "No verified dashboard surface yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "data-artifact"
         ],
         "supported_kinds": [
+          "dashboard",
           "docs",
           "openapi",
           "source-repo",
@@ -332,7 +332,7 @@
       "name": "Allways",
       "netuid": 7,
       "slug": "allways",
-      "surface_count": 15
+      "surface_count": 23
     },
     {
       "candidate_count": 16,
@@ -390,10 +390,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Previously discovered IOTA docs URL currently returns 404.",
@@ -403,7 +403,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -411,6 +410,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -418,7 +418,7 @@
       "name": "iota",
       "netuid": 9,
       "slug": "sn-9",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 13,
@@ -518,10 +518,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -531,7 +531,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -539,6 +538,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -546,7 +546,7 @@
       "name": "Compute Horde",
       "netuid": 12,
       "slug": "sn-12",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 22,
@@ -561,7 +561,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 8,
+        "source_count": 11,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
       "gap_count": 4,
@@ -588,7 +588,7 @@
       "name": "Data Universe",
       "netuid": 13,
       "slug": "sn-13",
-      "surface_count": 8
+      "surface_count": 13
     },
     {
       "candidate_count": 19,
@@ -645,7 +645,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 4,
@@ -672,7 +672,7 @@
       "name": "ORO",
       "netuid": 15,
       "slug": "sn-15",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 13,
@@ -811,7 +811,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 4,
@@ -838,7 +838,7 @@
       "name": "blockmachine",
       "netuid": 19,
       "slug": "sn-19",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 15,
@@ -855,10 +855,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T11:15:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified live source repository yet.",
@@ -869,7 +869,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -878,13 +877,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
       "name": "GroundLayer",
       "netuid": 20,
       "slug": "sn-20",
-      "surface_count": 1
+      "surface_count": 7
     },
     {
       "candidate_count": 23,
@@ -900,10 +900,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -913,7 +913,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -921,6 +920,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -928,7 +928,7 @@
       "name": "AdTAO",
       "netuid": 21,
       "slug": "sn-21",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 13,
@@ -941,7 +941,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:45:00.000Z",
-        "source_count": 8,
+        "source_count": 12,
         "verified_at": "2026-06-08T07:45:00.000Z"
       },
       "gap_count": 2,
@@ -966,7 +966,7 @@
       "name": "Desearch",
       "netuid": 22,
       "slug": "sn-22",
-      "surface_count": 9
+      "surface_count": 16
     },
     {
       "candidate_count": 18,
@@ -981,10 +981,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "Trishool API root is public, but `/openapi.json` and `/docs` currently return 401 and `/swagger.json` returns 404.",
@@ -993,13 +993,13 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "subnet-api",
           "website"
@@ -1008,7 +1008,7 @@
       "name": "Trishool",
       "netuid": 23,
       "slug": "sn-23",
-      "surface_count": 3
+      "surface_count": 11
     },
     {
       "candidate_count": 17,
@@ -1048,7 +1048,7 @@
       "name": "Quasar",
       "netuid": 24,
       "slug": "sn-24",
-      "surface_count": 8
+      "surface_count": 11
     },
     {
       "candidate_count": 23,
@@ -1066,10 +1066,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Previously discovered Mainframe docs URL currently returns 404.",
@@ -1081,8 +1081,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1090,13 +1088,15 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "source-repo"
+          "docs",
+          "source-repo",
+          "website"
         ]
       },
       "name": "Mainframe",
       "netuid": 25,
       "slug": "sn-25",
-      "surface_count": 1
+      "surface_count": 9
     },
     {
       "candidate_count": 17,
@@ -1244,7 +1244,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 9,
+        "source_count": 10,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
       "gap_count": 3,
@@ -1270,7 +1270,7 @@
       "name": "Coldint",
       "netuid": 29,
       "slug": "sn-29",
-      "surface_count": 6
+      "surface_count": 11
     },
     {
       "candidate_count": 14,
@@ -1286,7 +1286,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:45:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:45:00.000Z"
       },
       "gap_count": 5,
@@ -1314,7 +1314,7 @@
       "name": "Endure Network",
       "netuid": 30,
       "slug": "sn-30",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 5,
@@ -1376,10 +1376,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -1389,7 +1389,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1397,6 +1396,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1404,7 +1404,7 @@
       "name": "ItsAI",
       "netuid": 32,
       "slug": "sn-32",
-      "surface_count": 2
+      "surface_count": 8
     },
     {
       "candidate_count": 8,
@@ -1418,10 +1418,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 8,
+        "source_count": 9,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -1429,12 +1429,12 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
           "source-repo",
@@ -1444,7 +1444,7 @@
       "name": "ReadyAI",
       "netuid": 33,
       "slug": "sn-33",
-      "surface_count": 5
+      "surface_count": 10
     },
     {
       "candidate_count": 6,
@@ -1459,7 +1459,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:35:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:35:00.000Z"
       },
       "gap_count": 4,
@@ -1486,7 +1486,7 @@
       "name": "BitMind",
       "netuid": 34,
       "slug": "sn-34",
-      "surface_count": 4
+      "surface_count": 9
     },
     {
       "candidate_count": 14,
@@ -1671,10 +1671,10 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:05:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T11:05:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
@@ -1685,7 +1685,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1693,6 +1692,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1700,7 +1700,7 @@
       "name": "Basilica",
       "netuid": 39,
       "slug": "sn-39",
-      "surface_count": 2
+      "surface_count": 8
     },
     {
       "candidate_count": 6,
@@ -1803,7 +1803,7 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:20:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T11:20:00.000Z"
       },
       "gap_count": 5,
@@ -1832,7 +1832,7 @@
       "name": "Gopher",
       "netuid": 42,
       "slug": "sn-42",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 6,
@@ -1848,10 +1848,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:35:00.000Z",
-        "source_count": 4,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:35:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -1861,7 +1861,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1869,6 +1868,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1876,7 +1876,7 @@
       "name": "Graphite",
       "netuid": 43,
       "slug": "sn-43",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 15,
@@ -1934,10 +1934,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -1947,7 +1947,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1955,6 +1954,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1962,7 +1962,7 @@
       "name": "Talisman AI",
       "netuid": 45,
       "slug": "sn-45",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 23,
@@ -2018,10 +2018,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official website yet.",
@@ -2031,7 +2031,6 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -2040,13 +2039,14 @@
         "supported_kinds": [
           "dashboard",
           "data-artifact",
+          "docs",
           "source-repo"
         ]
       },
       "name": "EvolAI",
       "netuid": 47,
       "slug": "sn-47",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 23,
@@ -2062,10 +2062,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -2075,7 +2075,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2083,6 +2082,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2090,7 +2090,7 @@
       "name": "Quantum Compute",
       "netuid": 48,
       "slug": "sn-48",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 15,
@@ -2103,7 +2103,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:12:52.000Z",
-        "source_count": 8,
+        "source_count": 10,
         "verified_at": "2026-06-08T07:12:52.000Z"
       },
       "gap_count": 2,
@@ -2128,7 +2128,7 @@
       "name": "Nepher Robotics",
       "netuid": 49,
       "slug": "sn-49",
-      "surface_count": 9
+      "surface_count": 11
     },
     {
       "candidate_count": 14,
@@ -2223,7 +2223,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 8,
+        "source_count": 10,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -2250,7 +2250,7 @@
       "name": "Dojo",
       "netuid": 52,
       "slug": "sn-52",
-      "surface_count": 5
+      "surface_count": 10
     },
     {
       "candidate_count": 6,
@@ -2434,10 +2434,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:35:00.000Z",
-        "source_count": 4,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:35:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -2447,7 +2447,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2455,6 +2454,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2462,7 +2462,7 @@
       "name": "Sparket",
       "netuid": 57,
       "slug": "sn-57",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 8,
@@ -2475,7 +2475,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:12:52.000Z",
-        "source_count": 9,
+        "source_count": 11,
         "verified_at": "2026-06-08T07:12:52.000Z"
       },
       "gap_count": 2,
@@ -2500,7 +2500,7 @@
       "name": "Handshake58",
       "netuid": 58,
       "slug": "sn-58",
-      "surface_count": 10
+      "surface_count": 13
     },
     {
       "candidate_count": 18,
@@ -2622,7 +2622,7 @@
       "name": "RedTeam",
       "netuid": 61,
       "slug": "sn-61",
-      "surface_count": 4
+      "surface_count": 8
     },
     {
       "candidate_count": 14,
@@ -2639,10 +2639,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Website exists but currently rate-limits simple probes.",
@@ -2653,7 +2653,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2661,6 +2660,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2668,7 +2668,7 @@
       "name": "Ridges",
       "netuid": 62,
       "slug": "sn-62",
-      "surface_count": 1
+      "surface_count": 7
     },
     {
       "candidate_count": 23,
@@ -2684,10 +2684,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -2697,7 +2697,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2705,6 +2704,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2712,7 +2712,7 @@
       "name": "Enigma",
       "netuid": 63,
       "slug": "sn-63",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 28,
@@ -2725,10 +2725,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:45:00.000Z",
-        "source_count": 9,
+        "source_count": 11,
         "verified_at": "2026-06-08T07:45:00.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -2736,11 +2736,11 @@
         ],
         "missing_kinds": [
           "openapi",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "subnet-api",
@@ -2750,7 +2750,7 @@
       "name": "Chutes",
       "netuid": 64,
       "slug": "sn-64",
-      "surface_count": 11
+      "surface_count": 17
     },
     {
       "candidate_count": 19,
@@ -2804,10 +2804,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:45:00.000Z",
-        "source_count": 7,
+        "source_count": 11,
         "verified_at": "2026-06-08T07:45:00.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
           "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
@@ -2815,13 +2815,13 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "subnet-api",
           "website"
@@ -2830,7 +2830,7 @@
       "name": "ninja",
       "netuid": 66,
       "slug": "sn-66",
-      "surface_count": 9
+      "surface_count": 13
     },
     {
       "candidate_count": 16,
@@ -3052,10 +3052,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
-        "source_count": 8,
+        "source_count": 10,
         "verified_at": "2026-06-08T08:35:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -3063,12 +3063,12 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
           "source-repo",
@@ -3078,7 +3078,7 @@
       "name": "StreetVision by NATIX",
       "netuid": 72,
       "slug": "sn-72",
-      "surface_count": 6
+      "surface_count": 12
     },
     {
       "candidate_count": 6,
@@ -3139,10 +3139,10 @@
         "level": "adapter-backed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-06T00:00:00.000Z",
-        "source_count": 5,
+        "source_count": 12,
         "verified_at": null
       },
-      "gap_count": 4,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
           "No verified dashboard surface yet.",
@@ -3151,14 +3151,14 @@
           "Bounty state is documented through public CLI flows, but no unauthenticated public API has been verified yet."
         ],
         "missing_kinds": [
-          "dashboard",
-          "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
+          "openapi",
           "repo-registry",
           "source-repo",
           "website"
@@ -3167,7 +3167,7 @@
       "name": "Gittensor",
       "netuid": 74,
       "slug": "gittensor",
-      "surface_count": 7
+      "surface_count": 17
     },
     {
       "candidate_count": 25,
@@ -3182,7 +3182,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 8,
+        "source_count": 10,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -3209,7 +3209,7 @@
       "name": "Hippius",
       "netuid": 75,
       "slug": "sn-75",
-      "surface_count": 5
+      "surface_count": 11
     },
     {
       "candidate_count": 13,
@@ -3226,10 +3226,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 3,
+        "source_count": 6,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified docs site yet.",
@@ -3240,7 +3240,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -3249,13 +3248,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
       "name": "Byzantium",
       "netuid": 76,
       "slug": "sn-76",
-      "surface_count": 1
+      "surface_count": 6
     },
     {
       "candidate_count": 13,
@@ -3350,7 +3350,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 3,
@@ -3377,7 +3377,7 @@
       "name": "MVTRX",
       "netuid": 79,
       "slug": "sn-79",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 15,
@@ -3435,10 +3435,10 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:05:00.000Z",
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": "2026-06-08T11:05:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
@@ -3450,7 +3450,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -3459,13 +3458,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
       "name": "Grail",
       "netuid": 81,
       "slug": "sn-81",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 25,
@@ -3481,10 +3481,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -3494,7 +3494,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3502,6 +3501,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3509,7 +3509,7 @@
       "name": "Compelle",
       "netuid": 82,
       "slug": "sn-82",
-      "surface_count": 2
+      "surface_count": 8
     },
     {
       "candidate_count": 13,
@@ -3564,7 +3564,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:45:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:45:00.000Z"
       },
       "gap_count": 4,
@@ -3591,7 +3591,7 @@
       "name": "ansuz",
       "netuid": 84,
       "slug": "sn-84",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 21,
@@ -3607,10 +3607,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T11:15:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Website docs and dashboard paths currently redirect to sign-in.",
@@ -3620,7 +3620,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3628,6 +3627,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3635,7 +3635,7 @@
       "name": "Vidaio",
       "netuid": 85,
       "slug": "sn-85",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 5,
@@ -3697,7 +3697,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-07T00:00:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T06:48:46.000Z"
       },
       "gap_count": 5,
@@ -3725,7 +3725,7 @@
       "name": "Luminar Network",
       "netuid": 87,
       "slug": "sn-87",
-      "surface_count": 6
+      "surface_count": 8
     },
     {
       "candidate_count": 18,
@@ -3742,7 +3742,7 @@
         "source_count": 6,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "Public asset-list surface is HTML/table content, not a schema-backed API.",
@@ -3750,7 +3750,6 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse"
@@ -3758,6 +3757,7 @@
         "supported_kinds": [
           "dashboard",
           "data-artifact",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3765,7 +3765,7 @@
       "name": "Investing",
       "netuid": 88,
       "slug": "sn-88",
-      "surface_count": 4
+      "surface_count": 8
     },
     {
       "candidate_count": 13,
@@ -3782,10 +3782,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "Project homepage currently returns HTTP 402.",
@@ -3796,7 +3796,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -3805,45 +3804,47 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
       "name": "InfiniteHash",
       "netuid": 89,
       "slug": "sn-89",
-      "surface_count": 1
+      "surface_count": 6
     },
     {
       "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "Native chain name currently reports as ogham while the project website identifies SN90 as DegenBrain/Brain.",
+          "The GitHub repository linked from the project website currently returns 404 and is not promoted.",
           "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T13:45:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T13:45:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
+          "Native chain name currently reports as ogham while the project website identifies SN90 as DegenBrain/Brain.",
+          "The GitHub repository linked from the project website currently returns 404 and is not promoted.",
           "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -3851,13 +3852,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
-      "name": "ogham",
+      "name": "DegenBrain",
       "netuid": 90,
       "slug": "sn-90",
-      "surface_count": 5
+      "surface_count": 7
     },
     {
       "candidate_count": 17,
@@ -3874,10 +3876,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
@@ -3888,7 +3890,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -3897,13 +3898,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
       "name": "Bitstarter #1",
       "netuid": 91,
       "slug": "sn-91",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 6,
@@ -3922,7 +3924,7 @@
         "level": "machine-verified",
         "review_state": "stale",
         "reviewed_at": "2026-06-08T11:15:00.000Z",
-        "source_count": 3,
+        "source_count": 5,
         "verified_at": "2026-06-08T11:15:00.000Z"
       },
       "gap_count": 6,
@@ -3953,7 +3955,7 @@
       "name": "luis",
       "netuid": 92,
       "slug": "sn-92",
-      "surface_count": 2
+      "surface_count": 5
     },
     {
       "candidate_count": 19,
@@ -4090,7 +4092,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T07:45:00.000Z",
-        "source_count": 8,
+        "source_count": 10,
         "verified_at": "2026-06-08T07:45:00.000Z"
       },
       "gap_count": 2,
@@ -4115,7 +4117,7 @@
       "name": "Verathos",
       "netuid": 96,
       "slug": "sn-96",
-      "surface_count": 9
+      "surface_count": 13
     },
     {
       "candidate_count": 17,
@@ -4171,10 +4173,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -4184,7 +4186,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4192,6 +4193,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -4199,7 +4201,7 @@
       "name": "ForeverMoney",
       "netuid": 98,
       "slug": "sn-98",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 16,
@@ -4343,10 +4345,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Previously discovered Connito miner docs URL currently returns 404.",
@@ -4356,7 +4358,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4364,6 +4365,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -4371,7 +4373,7 @@
       "name": "ConnitoAI",
       "netuid": 102,
       "slug": "sn-102",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 23,
@@ -4387,10 +4389,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -4400,7 +4402,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4408,6 +4409,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -4415,7 +4417,7 @@
       "name": "Djinn",
       "netuid": 103,
       "slug": "sn-103",
-      "surface_count": 2
+      "surface_count": 9
     },
     {
       "candidate_count": 5,
@@ -4642,10 +4644,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:50:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified standalone website yet.",
@@ -4656,7 +4658,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -4665,13 +4666,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
       "name": "Academia",
       "netuid": 109,
       "slug": "sn-109",
-      "surface_count": 1
+      "surface_count": 6
     },
     {
       "candidate_count": 23,
@@ -4711,7 +4713,7 @@
       "name": "Green Compute",
       "netuid": 110,
       "slug": "sn-110",
-      "surface_count": 7
+      "surface_count": 11
     },
     {
       "candidate_count": 6,
@@ -4727,10 +4729,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:35:00.000Z",
-        "source_count": 4,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:35:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -4740,7 +4742,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4748,6 +4749,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -4755,7 +4757,7 @@
       "name": "oneoneone",
       "netuid": 111,
       "slug": "sn-111",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 14,
@@ -4812,7 +4814,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 4,
@@ -4839,7 +4841,7 @@
       "name": "TensorUSD",
       "netuid": 113,
       "slug": "sn-113",
-      "surface_count": 3
+      "surface_count": 9
     },
     {
       "candidate_count": 21,
@@ -4896,10 +4898,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:50:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified standalone website yet.",
@@ -4910,7 +4912,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -4919,13 +4920,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
       "name": "HashiChain",
       "netuid": 115,
       "slug": "sn-115",
-      "surface_count": 1
+      "surface_count": 6
     },
     {
       "candidate_count": 6,
@@ -4989,10 +4991,10 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
-        "source_count": 5,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:50:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Native chain name is a placeholder.",
@@ -5004,7 +5006,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -5012,6 +5013,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -5019,7 +5021,7 @@
       "name": "BrainPlay",
       "netuid": 117,
       "slug": "sn-117",
-      "surface_count": 2
+      "surface_count": 8
     },
     {
       "candidate_count": 24,
@@ -5165,10 +5167,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified official docs URL yet.",
@@ -5178,7 +5180,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -5186,6 +5187,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -5193,7 +5195,7 @@
       "name": "sundae_bar",
       "netuid": 121,
       "slug": "sn-121",
-      "surface_count": 2
+      "surface_count": 7
     },
     {
       "candidate_count": 6,
@@ -5208,7 +5210,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:35:00.000Z",
-        "source_count": 5,
+        "source_count": 8,
         "verified_at": "2026-06-08T10:35:00.000Z"
       },
       "gap_count": 4,
@@ -5235,7 +5237,7 @@
       "name": "Bitrecs",
       "netuid": 122,
       "slug": "sn-122",
-      "surface_count": 3
+      "surface_count": 8
     },
     {
       "candidate_count": 6,
@@ -5252,10 +5254,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
-        "source_count": 4,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:50:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified standalone website yet.",
@@ -5266,7 +5268,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -5275,13 +5276,14 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
       "name": "MANTIS",
       "netuid": 123,
       "slug": "sn-123",
-      "surface_count": 1
+      "surface_count": 6
     },
     {
       "candidate_count": 14,

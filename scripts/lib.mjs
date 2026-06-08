@@ -205,10 +205,13 @@ export async function loadSubnets() {
   const { generateBaselineOverlaySet, loadManualSubnetOverlays } =
     await import("./generated-overlays.mjs");
   const manualOverlays = await loadManualSubnetOverlays();
-  const { generatedOverlays } = await generateBaselineOverlaySet({
+  const overlaySet = await generateBaselineOverlaySet({
     manualOverlays,
   });
-  const subnets = [...manualOverlays, ...generatedOverlays];
+  const subnets = [
+    ...overlaySet.manualOverlays,
+    ...overlaySet.generatedOverlays,
+  ];
   return subnets.sort(
     (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
   );

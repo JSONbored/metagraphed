@@ -154,6 +154,15 @@
       "website_url": "https://connito.ai/"
     },
     {
+      "authority": "provider-claimed",
+      "id": "degenbrain",
+      "kind": "subnet-team",
+      "name": "DegenBrain",
+      "notes": "Provider entry for the SN90 DegenBrain website and public app surfaces. The project website identifies Subnet 90 as DegenBrain/Brain, while native chain identity currently remains ogham.",
+      "schema_version": 1,
+      "website_url": "https://subnet90.com/"
+    },
+    {
       "authority": "official",
       "docs_url": "https://www.desearch.ai/docs",
       "github_url": "https://github.com/Desearch-ai/subnet-22",

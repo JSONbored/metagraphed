@@ -121,7 +121,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -129,6 +128,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -200,10 +200,10 @@
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "data-artifact"
         ],
         "supported_kinds": [
+          "dashboard",
           "docs",
           "openapi",
           "source-repo",
@@ -255,7 +255,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -263,6 +262,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -337,7 +337,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -345,6 +344,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -554,7 +554,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -563,6 +562,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
@@ -582,7 +582,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -590,6 +589,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -634,13 +634,13 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "subnet-api",
           "website"
@@ -690,8 +690,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -699,7 +697,9 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "source-repo"
+          "docs",
+          "source-repo",
+          "website"
         ]
       },
       "name": "Mainframe",
@@ -886,7 +886,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -894,6 +893,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -912,12 +912,12 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
           "source-repo",
@@ -1076,7 +1076,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1084,6 +1083,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1188,7 +1188,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1196,6 +1195,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1243,7 +1243,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1251,6 +1250,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1297,7 +1297,6 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -1306,6 +1305,7 @@
         "supported_kinds": [
           "dashboard",
           "data-artifact",
+          "docs",
           "source-repo"
         ]
       },
@@ -1325,7 +1325,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1333,6 +1332,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1565,7 +1565,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1573,6 +1572,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1698,7 +1698,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1706,6 +1705,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1726,7 +1726,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1734,6 +1733,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -1752,11 +1752,11 @@
         ],
         "missing_kinds": [
           "openapi",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "subnet-api",
@@ -1803,13 +1803,13 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "subnet-api",
           "website"
@@ -1963,12 +1963,12 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "dashboard",
           "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
           "source-repo",
@@ -2019,14 +2019,14 @@
           "Bounty state is documented through public CLI flows, but no unauthenticated public API has been verified yet."
         ],
         "missing_kinds": [
-          "dashboard",
-          "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
+          "dashboard",
           "data-artifact",
           "docs",
+          "openapi",
           "repo-registry",
           "source-repo",
           "website"
@@ -2076,7 +2076,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -2085,6 +2084,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
@@ -2211,7 +2211,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -2220,6 +2219,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
@@ -2239,7 +2239,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2247,6 +2246,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2320,7 +2320,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2328,6 +2327,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2403,7 +2403,6 @@
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse"
@@ -2411,6 +2410,7 @@
         "supported_kinds": [
           "dashboard",
           "data-artifact",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2432,7 +2432,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -2441,6 +2440,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
@@ -2450,19 +2450,19 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Native chain name currently reports as ogham while the project website identifies SN90 as DegenBrain/Brain.",
+          "The GitHub repository linked from the project website currently returns 404 and is not promoted.",
           "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2470,10 +2470,11 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
-      "name": "ogham",
+      "name": "DegenBrain",
       "netuid": 90,
       "slug": "sn-90"
     },
@@ -2490,7 +2491,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -2499,6 +2499,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "website"
         ]
       },
@@ -2680,7 +2681,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2688,6 +2688,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2790,7 +2791,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2798,6 +2798,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2818,7 +2819,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2826,6 +2826,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -2982,7 +2983,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -2991,6 +2991,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
@@ -3036,7 +3037,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3044,6 +3044,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3145,7 +3146,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -3154,6 +3154,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },
@@ -3204,7 +3205,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3212,6 +3212,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3315,7 +3316,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3323,6 +3323,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo",
           "website"
         ]
@@ -3371,7 +3372,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -3380,6 +3380,7 @@
         ],
         "supported_kinds": [
           "dashboard",
+          "docs",
           "source-repo"
         ]
       },

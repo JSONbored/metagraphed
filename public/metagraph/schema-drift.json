@@ -2,8 +2,8 @@
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "notes": "Run npm run schemas:snapshot to fetch machine-readable OpenAPI/Swagger JSON and update drift status.",
-  "openapi_surface_count": 26,
-  "schema_backed_surface_count": 3,
+  "openapi_surface_count": 33,
+  "schema_backed_surface_count": 4,
   "schema_version": 1,
   "source": "artifact-build",
   "status": "not-snapshotted",
@@ -36,6 +36,18 @@
       "drift_status": "not-captured",
       "error": null,
       "hash": null,
+      "netuid": 7,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "allways",
+      "surface_id": "sn-7-website-common-swagger",
+      "url": "https://all-ways.io/swagger"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
       "netuid": 16,
       "previous_hash": null,
       "schema_url": null,
@@ -55,6 +67,30 @@
       "subnet_slug": "sn-22",
       "surface_id": "sn-22-desearch-openapi",
       "url": "https://www.desearch.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 22,
+      "previous_hash": null,
+      "schema_url": "https://desearch.ai/openapi.json",
+      "status": "pending-snapshot",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-website-common-openapi-json",
+      "url": "https://desearch.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 22,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-website-common-swagger",
+      "url": "https://desearch.ai/swagger"
     },
     {
       "drift_status": "not-captured",
@@ -168,6 +204,18 @@
       "drift_status": "not-captured",
       "error": null,
       "hash": null,
+      "netuid": 66,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "sn-66",
+      "surface_id": "sn-66-website-common-swagger",
+      "url": "https://ninja.arbos.life/swagger"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
       "netuid": 71,
       "previous_hash": null,
       "schema_url": null,
@@ -175,6 +223,30 @@
       "subnet_slug": "sn-71",
       "surface_id": "sn-71-website-common-swagger",
       "url": "https://leadpoet.com/swagger"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 74,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "gittensor",
+      "surface_id": "community-sn-74-openapi-api-gittensor-io",
+      "url": "https://api.gittensor.io/swagger-json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 74,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-website-common-swagger",
+      "url": "https://gittensor.io/swagger"
     },
     {
       "drift_status": "not-captured",
@@ -259,6 +331,18 @@
       "subnet_slug": "sn-96",
       "surface_id": "sn-96-verathos-openapi",
       "url": "https://verathos.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 96,
+      "previous_hash": null,
+      "schema_url": null,
+      "status": "ui-only-or-undiscovered",
+      "subnet_slug": "sn-96",
+      "surface_id": "sn-96-website-common-swagger",
+      "url": "https://verathos.ai/swagger"
     },
     {
       "drift_status": "not-captured",
