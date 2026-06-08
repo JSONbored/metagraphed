@@ -183,39 +183,95 @@ export const surfacesQuery = (params?: QueryParams) =>
     staleTime: STALE_MED,
   });
 
-/** Cursor pagination helper — extracts a next-cursor token from API meta. */
-function extractNextCursor(meta: ApiResult<unknown>["meta"]): string | undefined {
-  const p = (meta?.pagination ?? {}) as { next_cursor?: string | number | null };
-  const nc = p.next_cursor ?? (meta?.next_cursor as string | null | undefined);
-  if (nc == null || nc === "") return undefined;
-  return String(nc);
+/**
+ * Strict next-cursor extractor. The API has historically returned cursors as
+ * strings or numbers; defend against bad shapes (objects, booleans, NaN,
+ * empty strings) and against echoes of the cursor we just sent (a common
+ * server bug that would cause an infinite "load more" loop).
+ *
+ * Returns:
+ *   { cursor: string } — valid, fetch can continue
+ *   { cursor: null }   — explicit end of list
+ *   { invalid: true }  — API returned something but we can't trust it
+ */
+function validateNextCursor(
+  meta: ApiResult<unknown>["meta"],
+  sentCursor: string | undefined,
+): { cursor: string | null; invalid?: boolean } {
+  const p = (meta?.pagination ?? {}) as { next_cursor?: unknown };
+  const raw = p.next_cursor ?? (meta as Record<string, unknown> | undefined)?.next_cursor;
+  if (raw === undefined || raw === null) return { cursor: null };
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return { cursor: null };
+    if (sentCursor && trimmed === sentCursor) {
+      if (import.meta.env?.DEV)
+        console.warn("[metagraphed] next_cursor echoes sent cursor; stopping pagination");
+      return { cursor: null, invalid: true };
+    }
+    return { cursor: trimmed };
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const s = String(raw);
+    if (sentCursor && s === sentCursor) return { cursor: null, invalid: true };
+    return { cursor: s };
+  }
+  if (import.meta.env?.DEV)
+    console.warn("[metagraphed] next_cursor has unexpected shape:", raw);
+  return { cursor: null, invalid: true };
+}
+
+/** Pages on the infinite query carry the validation flag for the UI. */
+type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
+
+async function fetchInfinitePage<T>(
+  path: string,
+  key: string,
+  baseParams: QueryParams,
+  pageParam: string,
+  signal?: AbortSignal,
+): Promise<InfinitePage<T>> {
+  const params: QueryParams = { ...baseParams };
+  if (pageParam) params.cursor = pageParam;
+  const res = await fetchList<T>(path, key, params, signal);
+  const v = validateNextCursor(res.meta, pageParam || undefined);
+  // Stash the validated cursor in meta so getNextPageParam can read it
+  // without re-running validation.
+  const meta = { ...(res.meta ?? {}), _next_cursor: v.cursor };
+  return { ...res, meta, cursorInvalid: v.invalid };
 }
 
 /** Server-driven cursor-paginated subnets. */
-export const subnetsInfiniteQuery = (baseParams: QueryParams = {}) =>
+export const subnetsInfiniteQuery = (
+  baseParams: QueryParams = {},
+  initialCursor = "",
+) =>
   infiniteQueryOptions({
-    queryKey: k("subnets-infinite", baseParams),
-    initialPageParam: "" as string,
-    queryFn: ({ pageParam, signal }) => {
-      const params: QueryParams = { ...baseParams };
-      if (pageParam) params.cursor = pageParam;
-      return fetchList<Subnet>("/api/v1/subnets", "subnets", params, signal);
+    queryKey: k("subnets-infinite", baseParams, initialCursor),
+    initialPageParam: initialCursor,
+    queryFn: ({ pageParam, signal }) =>
+      fetchInfinitePage<Subnet>("/api/v1/subnets", "subnets", baseParams, pageParam as string, signal),
+    getNextPageParam: (last) => {
+      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
+      return nc ?? undefined;
     },
-    getNextPageParam: (last) => extractNextCursor(last.meta),
     staleTime: STALE_MED,
   });
 
 /** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (baseParams: QueryParams = {}) =>
+export const surfacesInfiniteQuery = (
+  baseParams: QueryParams = {},
+  initialCursor = "",
+) =>
   infiniteQueryOptions({
-    queryKey: k("surfaces-infinite", baseParams),
-    initialPageParam: "" as string,
-    queryFn: ({ pageParam, signal }) => {
-      const params: QueryParams = { ...baseParams };
-      if (pageParam) params.cursor = pageParam;
-      return fetchList<Surface>("/api/v1/surfaces", "surfaces", params, signal);
+    queryKey: k("surfaces-infinite", baseParams, initialCursor),
+    initialPageParam: initialCursor,
+    queryFn: ({ pageParam, signal }) =>
+      fetchInfinitePage<Surface>("/api/v1/surfaces", "surfaces", baseParams, pageParam as string, signal),
+    getNextPageParam: (last) => {
+      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
+      return nc ?? undefined;
     },
-    getNextPageParam: (last) => extractNextCursor(last.meta),
     staleTime: STALE_MED,
   });
 
