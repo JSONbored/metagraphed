@@ -1,83 +1,135 @@
+# Rebuild profile pages (subnet + provider)
 
-# Plan: Density, Health Color Presets, and Per-Route UX Pass
+## Why the current pages look empty
 
-## 1. Settings popover in the header
+The API returns the profile envelope nested:
 
-New `src/components/metagraphed/settings-popover.tsx`. Replace the standalone `ThemeToggle` slot in `app-shell.tsx` with a single gear button that opens a `Popover` containing three sections:
-
-- **Theme** — Light / Dark / System (reuses existing `theme.ts`).
-- **Density** — Comfortable (default) / Compact. Persists to `localStorage` under `mg:density` and toggles `data-density="compact"` on `<html>`.
-- **Health colors** — three presets (see §3).
-
-State lives in two tiny stores beside `theme.ts`:
-- `src/lib/density.ts` (`getDensity`, `setDensity`, `subscribe`, SSR-safe).
-- `src/lib/health-palette.ts` (`getPalette`, `setPalette`, presets array).
-
-Both hydrate on `__root.tsx` mount via the same script-injection pattern as theme (no flash).
-
-## 2. Density system
-
-Add CSS in `src/styles.css`:
-
-```css
-:root { --mg-row-y: 0.75rem; --mg-cell-x: 1rem; --mg-kpi-pad: 1.25rem; --mg-kpi-num: 1.875rem; }
-html[data-density="compact"] {
-  --mg-row-y: 0.4rem; --mg-cell-x: 0.625rem; --mg-kpi-pad: 0.75rem; --mg-kpi-num: 1.375rem;
-}
+```
+GET /api/v1/subnets/7/profile → { data: { profile: {...}, subnet: {...},
+                                          surfaces, endpoints,
+                                          candidate_surfaces, gaps } }
 ```
 
-Then sweep:
-- `list-shell.tsx` table rows/cells → use `py-[var(--mg-row-y)] px-[var(--mg-cell-x)]`.
-- `health.tsx` KPI tiles → `p-[var(--mg-kpi-pad)]` and KPI number `text-[length:var(--mg-kpi-num)]`.
-- Card variants in `chips.tsx`/`evidence-panel.tsx` get a compact spacing tweak.
+`subnetProfileQuery` returns `data` as-is, but `SubnetDetailPage` reads
+`profile.name`, `profile.symbol`, `profile.participants`, `profile.docs`,
+`profile.repo`, `profile.homepage`, `profile.completeness` directly from
+that top-level wrapper. None of those keys exist there — they live under
+`data.subnet.*` (chain identity) and `data.profile.*` (curation/completeness)
+and `data.profile.primary_links.*` (website/docs/repo/dashboard). Result:
+hero shows "—" everywhere, Quick Access is empty, completeness is wrong,
+description is missing.
 
-No layout shift in comfortable mode (values match current).
+The same bug exists on `/providers/$slug` — API returns
+`data: { provider: {...}, endpoint_summary }`, the page reads
+`data.name`, `data.homepage`, `data.docs` directly, so the provider header
+shows just the slug.
 
-## 3. Health color presets (presets only, AA verified)
+## What I'll do
 
-`src/lib/health-palette.ts` ships three presets, each with light + dark OKLCH values for ok / warn / down / unknown:
+### 1. Fix data normalization (`src/lib/metagraphed/queries.ts`)
 
-1. **Traffic light** (current default, retuned for AA).
-2. **Colorblind-safe** (deuteranopia/protanopia friendly — blue/orange/magenta/grey based on Okabe-Ito).
-3. **Muted** (desaturated for dense dashboards).
+- Add `normalizeSubnetProfile()` that flattens the envelope into one object
+  the UI can consume:
+  - identity: `name`, `native_name`, `slug`, `symbol`, `description/notes`,
+    `subnet_type`, `categories`, `block`, `registered_at_block`, `tempo`,
+    `participants` (← `subnet.participant_count`), `mechanism_count`.
+  - curation: `curation_level`, `coverage_level`, `review_state`,
+    `reviewed_at`, `confidence`, `completeness` (0-1 from
+    `profile.completeness.score / 100` or `completeness_score / 100`).
+  - primary links: `website`, `docs`, `repo`, `dashboard` from
+    `profile.primary_links` with fallback to `subnet.{website_url,
+    docs_url, source_repo, dashboard_url}`.
+  - counts: `surface_count`, `endpoint_count`, `candidate_count`,
+    `monitored_endpoint_count`, `operational_interface_kinds`,
+    `supported_interface_kinds`, `missing_kinds`, `gap_notes`,
+    `primary_app_surface`.
+  - embedded `surfaces`, `endpoints`, `candidate_surfaces` so the
+    detail page can render them without extra fetches.
+- Add `normalizeProvider()` to flatten `data.provider` + `endpoint_summary`.
+- Update `SubnetProfile` and `Provider` types in
+  `src/lib/metagraphed/types.ts` to match.
 
-Selected preset writes `--health-ok|warn|down|unknown` CSS vars on `<html>` overriding the defaults in `styles.css`. All preset values pre-checked ≥4.5:1 against both `--paper` and `--card` in light and dark. No live picker, so no runtime contrast UI needed; we ship a comment in the file with the measured ratios.
+### 2. Rebuild `/subnets/$netuid` as a clean profile page
 
-## 4. Per-route UX pass
+Layout (taostats/cosmos-directory inspired):
 
-Scoped to layout/composition; no data-model or query changes.
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ Eyebrow: NETUID 007 · subnet-type · categories              │
+│ H1: Allways  ·  symbol  ·  CurationChip · HealthPill        │
+│ One-line description / notes                                 │
+│ Primary-link rail: [Website] [Docs] [Repo] [Dashboard]      │
+├──────────────────────────────────────────────────────────────┤
+│ Stat strip: Participants · Tempo · Block · Surfaces ·       │
+│             Endpoints · Completeness · Uptime 24h           │
+├──────────────────────────────────────────────────────────────┤
+│ Sticky tabs:  Overview · Surfaces · Endpoints · Schemas ·   │
+│               Candidates · Gaps · Evidence · API            │
+├──────────────────────────────────────────────────────────────┤
+│ Two-column: main content (tab panel) + right rail           │
+│ Right rail: Live health card · Provider card · Coverage     │
+│             card (curation level, completeness bar, missing │
+│             kinds chips) · Provenance/last reviewed         │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### `/` — taostats-style overview (`src/routes/index.tsx`)
-- Top strip: 4 big KPI tiles using `AnimatedNumber` (Active subnets, Verified surfaces, Healthy endpoints %, Last sync). Replaces current text-heavy hero.
-- Global search bar moved up, made primary (`max-w-2xl`, large input).
-- Two-column below the fold: **Featured adapter-backed pilots** (Allways SN7, Gittensor SN74 cards with live metrics) + **Registry freshness/coverage** strip.
-- Remove redundant "what is metagraphed" prose into a thin one-liner with a link to `/about`.
+Details:
+- Replace anchor `SectionNav` with real tabs that swap panels (URL search
+  param `?tab=` so it's deep-linkable and shareable). Overview keeps a
+  condensed view of every section.
+- New `PrimaryLinksRail` component: pill buttons with brand icon, host,
+  and external-link affordance. Hidden when a link is missing — never
+  shows "—".
+- New `CoverageCard`: completeness bar, curation chip, review state,
+  reviewed-at, missing-kinds chips, gap notes.
+- New `ProviderCard` in right rail: name, authority, link to
+  `/providers/{slug}` for the primary surface's provider.
+- `SurfacesList`: group by `kind`, show authority, auth_required,
+  public_safe, probe enabled, copyable URL, evidence link.
+- `EndpointsList`: keep table but add score, classification, monitoring
+  status; collapse low-priority columns under "more" on narrow widths.
+- `SchemasPanel`: surfaces with `kind=openapi` get a "View schema"
+  link plus copyable `schema_url`; link to `/schemas` filtered by netuid.
+- `CandidatesList`: explicit "Unverified — community lead" banner at top,
+  group by confidence, show source_tier and review_notes.
+- `GapsPanel` (new): renders `missing_kinds` and `gap_notes` with a
+  CTA linking to `/gaps` and the GitHub contribution path.
+- Empty states everywhere stop saying "—"; they show a one-line reason
+  ("This subnet has no verified dashboard yet — see candidates.").
 
-### `/subnets/:netuid` — cosmos-directory-style profile (`src/routes/subnets.$netuid.tsx`)
-- Identity header: netuid badge + native name + symbol + curation chip + health dot, right-aligned share + open-in-API icons.
-- **Quick-copy strip**: primary surface URLs (API base, docs, repo) as one-line `code` blocks with copy buttons. Cosmos-directory pattern.
-- Tabbed body (`Tabs`): Overview · Surfaces · Endpoints · Health · Evidence · Candidates. Each tab loads its own slice; current single-scroll page becomes the Overview tab summary.
-- Profile completeness moves into a slim progress bar in the header.
+### 3. Rebuild `/providers/$slug` with the same profile pattern
 
-### `/surfaces` and `/endpoints`
-- Tighten columns; inline copy button on URL cells.
-- Group-by-provider toggle (segmented control next to search) — when on, renders provider as a sticky sub-header.
-- Health column becomes a dot + last-checked relative time, no text label.
-- Compact density (when enabled) lets ~2x rows fit on viewport.
+- Header with name, authority, kind, homepage/docs link rail.
+- Stat strip: endpoint count, monitored count, pool-eligible count,
+  by-status (ok/warn/down) using `endpoint_summary`.
+- Tabs: Overview · Endpoints · Subnets served (derived by grouping
+  `endpoints[].netuid`).
+- Right rail: notes, authority chip, links to filtered
+  `/endpoints?provider={slug}` and `/surfaces?provider={slug}`.
 
-### `/health` — status-page feel
-- Per-source incidents become cards with start/duration/affected count instead of table rows.
-- Add a 24h sparkline per probe source (pure SVG, no chart lib) using cached history endpoint `/api/v1/health/history/{date}`.
-- KPI strip stays but reflows in compact mode.
+### 4. Consistent "profile page" primitives
+
+Extract three small shared components used by both routes (and reusable
+for any future entity profile page):
+- `src/components/metagraphed/profile-hero.tsx` — eyebrow, title, chips,
+  link rail, stat strip.
+- `src/components/metagraphed/profile-tabs.tsx` — URL-driven tabs.
+- `src/components/metagraphed/coverage-card.tsx` — completeness bar +
+  curation/review chips + missing-kinds.
 
 ## Out of scope
-- No new API routes or backend changes.
-- No custom health-color picker (presets only per chosen option).
-- No changes to `/providers`, `/gaps`, `/schemas`, `/about` in this pass.
-- No chart library; sparkline is hand-rolled SVG.
 
-## Verification
-- `bunx tsc --noEmit`.
-- Visual pass across all touched routes in both light/dark and comfortable/compact.
-- Verify health dots remain visible on every preset against `--paper` and `--card`.
-- Confirm density toggle does not cause CLS in comfortable mode.
+- No backend changes; this is pure frontend normalization + layout.
+- No new routes; tabs use search params on existing routes.
+- Other list pages (`/subnets`, `/surfaces`, `/endpoints`, `/providers`,
+  `/schemas`, `/gaps`, `/about`, `/health`) keep their current layout —
+  the user's complaint is specifically about *individual profile pages*.
+
+## Files touched
+
+- `src/lib/metagraphed/queries.ts` — add normalizers, rewire `subnetProfileQuery` and `providerQuery`.
+- `src/lib/metagraphed/types.ts` — extend `SubnetProfile`, `Provider`.
+- `src/routes/subnets.$netuid.tsx` — rewrite to new layout.
+- `src/routes/providers.$slug.tsx` — rewrite to new layout.
+- New: `src/components/metagraphed/profile-hero.tsx`,
+  `profile-tabs.tsx`, `coverage-card.tsx`, `primary-links-rail.tsx`.
