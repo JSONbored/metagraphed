@@ -1,18 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import {
-  AlertTriangle,
-  BookOpen,
-  Code2,
-  Database,
-  FileCode,
-  Github,
-  Globe,
-  LayoutDashboard,
-  Radio,
-  Wrench,
-} from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, HealthDot, HealthPill } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
