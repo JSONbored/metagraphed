@@ -1,64 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "d84b8b8740f287b854d99e302d4135edf473b033445623841dcf32ae286ead21",
-        "path": "coverage.json"
-      },
-      {
-        "hash": "154baafd6af433b882a265787c0bf7f22de33ef953b07c65168383a122651277",
-        "path": "curation.json"
-      },
-      {
-        "hash": "325a4cce85af22cf13dd21b60dda2ed1d9886e8b38cc704058de7198ed78eb30",
-        "path": "evidence-ledger.json"
-      },
-      {
-        "hash": "2e693413427394924199c40e715b977ba3ace4366cc462f6732e75760805292a",
-        "path": "freshness.json"
-      },
-      {
-        "hash": "616ae948a895ee98b902197424a64e0e2068f49590170e45e0c18cdcf1971be2",
-        "path": "gaps.json"
-      },
-      {
-        "hash": "75c705f95f58d7e094014c9febc614b1e81a056c562c3b42abdfc1b23e3845aa",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "e13924527d64e1392df183363420edacd1018797c915d7b12c62773bb834668f",
-        "path": "providers.json"
-      },
-      {
-        "hash": "79356a91bbad9d6763beb6c37fc56ca88d0f41548916d90fa2f1d7e9ab4130ed",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "cbe6aa26ac2d2bf27ce1a0b882dfc65179a5dc7215abff2751f9467b4f4f1aed",
-        "path": "review/enrichment-queue.json"
-      },
-      {
-        "hash": "73a8cf2badd43ca6f96f1bfb42bf2fd6a4d75ecb15319959ff5f353ca4c3dfb9",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "7cddb6f00a4d81cc68dc2309e884f09c8bb9c071268ecc4ed4f79ac01073d96a",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "89f4b6b2af271b16e49d5cb558cd17bbae80d9f360938094a677115ae0e11060",
-        "path": "search.json"
-      },
-      {
-        "hash": "7e0c98442995b98cdf123c8b7427b2bc2f75e17b499c62b99423a93d2cda1912",
-        "path": "subnets.json"
-      },
-      {
-        "hash": "2ba2fea9b9226d5aefdc172a9eca7431540b3841671a3c8087087d061bd4155b",
-        "path": "surfaces.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -72,27 +15,11 @@
   "subnets": {
     "added": [],
     "removed": [],
-    "renamed": [
-      {
-        "after": "Templar",
-        "before": "deprecated",
-        "netuid": 3
-      },
-      {
-        "after": "Basilica",
-        "before": "deprecated",
-        "netuid": 39
-      },
-      {
-        "after": "Grail",
-        "before": "deprecated",
-        "netuid": 81
-      }
-    ]
+    "renamed": []
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 14,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -112,13 +39,13 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 675,
-        "before": 677,
-        "delta": -2
+        "after": 663,
+        "before": 663,
+        "delta": 0
       }
     },
     "netuid_added_count": 0,
     "netuid_removed_count": 0,
-    "netuid_renamed_count": 3
+    "netuid_renamed_count": 0
   }
 }

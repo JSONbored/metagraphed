@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "groundlayer",
+  "name": "GroundLayer",
+  "kind": "subnet-team",
+  "website_url": "https://www.groundlayer.xyz/",
+  "authority": "official",
+  "notes": "Provider entry for GroundLayer SN20 public website. No live source repository, docs site, or machine-readable API schema has been verified yet."
+}

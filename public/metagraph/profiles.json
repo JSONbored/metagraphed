@@ -1667,12 +1667,15 @@
     {
       "candidate_count": 13,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "capital-markets",
+        "identity-reviewed"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
+          "missing-docs",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
@@ -1689,15 +1692,15 @@
           "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 35
+        "score": 25
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 4,
-      "interface_count": 3,
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 1,
+      "interface_count": 2,
       "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
+      "monitored_endpoint_count": 1,
       "name": "GroundLayer",
       "native_name": "GroundLayer",
       "native_name_quality": "chain",
@@ -1705,44 +1708,41 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-20-taomarketcap-website",
+        "id": "sn-20-groundlayer-website",
         "kind": "website",
         "name": "GroundLayer website",
-        "provider": "taomarketcap",
-        "url": "https://groundlayer.xyz/"
+        "provider": "groundlayer",
+        "url": "https://www.groundlayer.xyz/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/20",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx",
+        "docs_url": null,
         "source_repo": null,
-        "website_url": "https://groundlayer.xyz/"
+        "website_url": "https://www.groundlayer.xyz/"
       },
       "profile_level": "directory-only",
       "project_name": "GroundLayer",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 3,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/20",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/20/subnet.json",
-          "https://groundlayer.xyz/",
-          "https://taomarketcap.com/subnets/20"
+          "https://taomarketcap.com/subnets/20",
+          "https://www.groundlayer.xyz/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-20",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
         "website"
       ],
-      "surface_count": 4,
+      "surface_count": 1,
       "symbol": "υ",
       "team": null
     },
@@ -7106,82 +7106,81 @@
     {
       "candidate_count": 18,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
+          "missing-docs",
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 40
       },
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
+      "interface_count": 3,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 2,
       "name": "Vidaio",
       "native_name": "Vidaio",
       "native_name_quality": "chain",
       "netuid": 85,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-85-website-common-swagger",
-        "kind": "openapi",
-        "name": "Vidaio Swagger UI",
-        "provider": "taomarketcap",
-        "url": "https://vidaio.io/swagger"
+        "id": "sn-85-vidaio-website",
+        "kind": "website",
+        "name": "Vidaio website",
+        "provider": "vidaio",
+        "url": "https://vidaio.io/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/85",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx",
+        "docs_url": null,
         "source_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
         "website_url": "https://vidaio.io/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Vidaio",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 6,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 4,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/85",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json",
           "https://github.com/vidaio-subnet/vidaio-subnet",
           "https://taomarketcap.com/subnets/85",
           "https://vidaio.io/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-85",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 2,
       "symbol": "ᚱ",
       "team": null
     },
@@ -7690,18 +7689,20 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "stale-source-cleanup"
       ],
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-source-repo",
           "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 6,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7709,18 +7710,19 @@
           "data-artifact"
         ],
         "missing_required": [
+          "source-repo",
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 35
+        "score": 20
       },
-      "completeness_score": 35,
+      "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 4,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
+      "endpoint_count": 2,
+      "interface_count": 2,
+      "missing_critical_count": 6,
+      "monitored_endpoint_count": 2,
       "name": "luis",
       "native_name": "luis",
       "native_name_quality": "chain",
@@ -7728,16 +7730,16 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-92-taopedia-article",
+        "id": "sn-92-tensorplex-docs",
         "kind": "docs",
-        "name": "luis Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
+        "name": "SN92 Tensorplex metadata",
+        "provider": "tensorplex-subnet-docs",
+        "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/92",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
-        "source_repo": "https://github.com/tensorclaw/tensorclaw",
+        "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
+        "source_repo": null,
         "website_url": null
       },
       "profile_level": "directory-only",
@@ -7745,27 +7747,25 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 4,
+        "review_state": "stale",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/92",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
-          "https://github.com/tensorclaw/tensorclaw",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
+          "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
           "https://taomarketcap.com/subnets/92"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "stale",
       "slug": "sn-92",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
-        "source-repo"
+        "docs"
       ],
-      "surface_count": 4,
+      "surface_count": 2,
       "symbol": "ᚂ",
       "team": null
     },
@@ -10742,15 +10742,15 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 55,
+      "high": 57,
       "low": 4,
-      "medium": 70
+      "medium": 68
     },
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 27,
-      "identity-complete": 57,
-      "operational": 43
+      "identity-complete": 58,
+      "operational": 42
     },
     "profile_count": 129
   }

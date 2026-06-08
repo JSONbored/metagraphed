@@ -255,6 +255,15 @@
     },
     {
       "authority": "official",
+      "id": "groundlayer",
+      "kind": "subnet-team",
+      "name": "GroundLayer",
+      "notes": "Provider entry for GroundLayer SN20 public website. No live source repository, docs site, or machine-readable API schema has been verified yet.",
+      "schema_version": 1,
+      "website_url": "https://www.groundlayer.xyz/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://handshake58.com/skill.md",
       "github_url": "https://github.com/Handshake58/HS58",
       "id": "handshake58",
@@ -645,6 +654,16 @@
       "notes": "Provider entry for Verathos SN96 website, docs, source repository, public OpenAPI schema, chat app, and safe model-list API.",
       "schema_version": 1,
       "website_url": "https://verathos.ai/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/vidaio-subnet/vidaio-subnet",
+      "id": "vidaio",
+      "kind": "subnet-team",
+      "name": "Vidaio",
+      "notes": "Provider entry for Vidaio SN85 public website and source repository. Website dashboard/docs/OpenAPI-looking paths currently redirect to sign-in and are not promoted as public operational surfaces.",
+      "schema_version": 1,
+      "website_url": "https://vidaio.io/"
     }
   ],
   "schema_version": 1

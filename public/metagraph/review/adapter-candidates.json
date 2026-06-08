@@ -191,18 +191,6 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Vidaio",
-      "netuid": 85,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 29,
-      "slug": "sn-85"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Bitcast",
       "netuid": 93,
       "operational_kinds": [
@@ -820,16 +808,6 @@
     },
     {
       "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-20"
-    },
-    {
-      "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
       "name": "RedTeam",
       "netuid": 61,
@@ -991,6 +969,16 @@
     {
       "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
+      "name": "Vidaio",
+      "netuid": 85,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 2,
+      "slug": "sn-85"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
       "name": "Bitstarter #1",
       "netuid": 91,
       "operational_kinds": [],
@@ -1037,6 +1025,16 @@
       "operational_surface_count": 0,
       "priority_score": 2,
       "slug": "sn-121"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-20"
     },
     {
       "candidate_api_count": 6,

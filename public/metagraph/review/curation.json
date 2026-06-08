@@ -191,18 +191,6 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Vidaio",
-      "netuid": 85,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 29,
-      "slug": "sn-85"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Bitcast",
       "netuid": 93,
       "operational_kinds": [
@@ -820,16 +808,6 @@
     },
     {
       "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-20"
-    },
-    {
-      "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
       "name": "RedTeam",
       "netuid": 61,
@@ -991,6 +969,16 @@
     {
       "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
+      "name": "Vidaio",
+      "netuid": 85,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 2,
+      "slug": "sn-85"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
       "name": "Bitstarter #1",
       "netuid": 91,
       "operational_kinds": [],
@@ -1037,6 +1025,16 @@
       "operational_surface_count": 0,
       "priority_score": 2,
       "slug": "sn-121"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-20"
     },
     {
       "candidate_api_count": 6,
@@ -1196,6 +1194,26 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 3,
       "verified_candidate_count": 3
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "luis",
+      "netuid": 92,
+      "priority_score": 72,
+      "review_state": "stale",
+      "slug": "sn-92",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 2,
+      "verified_candidate_count": 4
     },
     {
       "candidate_count": 4,
@@ -1449,25 +1467,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
       "verified_candidate_count": 20
-    },
-    {
-      "candidate_count": 13,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "GroundLayer",
-      "netuid": 20,
-      "priority_score": 69,
-      "review_state": "machine-generated",
-      "slug": "sn-20",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 6
     },
     {
       "candidate_count": 16,
@@ -1738,25 +1737,6 @@
       "verified_candidate_count": 10
     },
     {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "luis",
-      "netuid": 92,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-92",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
       "candidate_count": 15,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -1845,23 +1825,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 6,
       "verified_candidate_count": 9
-    },
-    {
-      "candidate_count": 18,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Vidaio",
-      "netuid": 85,
-      "priority_score": 58,
-      "review_state": "machine-generated",
-      "slug": "sn-85",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
-      "verified_candidate_count": 16
     },
     {
       "candidate_count": 18,
@@ -2497,6 +2460,26 @@
       "verified_candidate_count": 6
     },
     {
+      "candidate_count": 13,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "GroundLayer",
+      "netuid": 20,
+      "priority_score": 36,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-20",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 1,
+      "verified_candidate_count": 6
+    },
+    {
       "candidate_count": 16,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -2813,6 +2796,25 @@
       "slug": "sn-79",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 3,
+      "verified_candidate_count": 16
+    },
+    {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Vidaio",
+      "netuid": 85,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-85",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 2,
       "verified_candidate_count": 16
     },
     {
@@ -3478,15 +3480,15 @@
     "gap_kind_counts": {
       "dashboard": 4,
       "data-artifact": 116,
-      "docs": 30,
-      "openapi": 102,
-      "source-repo": 21,
+      "docs": 32,
+      "openapi": 103,
+      "source-repo": 22,
       "sse": 128,
       "subnet-api": 117,
       "website": 23
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 74,
+    "needs_maintainer_review_count": 72,
     "subnet_count": 129
   }
 }

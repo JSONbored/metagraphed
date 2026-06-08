@@ -543,16 +543,18 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -561,7 +563,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "website"
         ]
       },
@@ -2308,22 +2309,24 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Website docs and dashboard paths currently redirect to sign-in.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "openapi",
           "source-repo",
           "website"
         ]
@@ -2507,13 +2510,17 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Tensorclaw source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet beyond directory pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "website",
           "openapi",
           "subnet-api",
@@ -2522,8 +2529,7 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "source-repo"
+          "docs"
         ]
       },
       "name": "luis",

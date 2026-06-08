@@ -135,6 +135,26 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "name": "luis",
+      "netuid": 92,
+      "priority_score": 114,
+      "profile_level": "directory-only",
+      "slug": "sn-92",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 20,
+      "confidence": "medium",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 6,
       "name": "hard_sign",
       "netuid": 116,
       "priority_score": 114,
@@ -343,6 +363,26 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
+      "candidate_count": 13,
+      "completeness_score": 25,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "GroundLayer",
+      "netuid": 20,
+      "priority_score": 113,
+      "profile_level": "directory-only",
+      "slug": "sn-20",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
       "candidate_count": 11,
       "completeness_score": 25,
       "confidence": "high",
@@ -460,25 +500,6 @@
       "priority_score": 104,
       "profile_level": "directory-only",
       "slug": "sn-123",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 13,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "GroundLayer",
-      "netuid": 20,
-      "priority_score": 103,
-      "profile_level": "directory-only",
-      "slug": "sn-20",
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
@@ -691,6 +712,25 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
+      "candidate_count": 18,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Vidaio",
+      "netuid": 85,
+      "priority_score": 98,
+      "profile_level": "identity-complete",
+      "slug": "sn-85",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
       "candidate_count": 12,
       "completeness_score": 40,
       "confidence": "high",
@@ -727,25 +767,6 @@
       "profile_level": "identity-complete",
       "slug": "sn-102",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "luis",
-      "netuid": 92,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-92",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
       "candidate_count": 6,
@@ -1779,23 +1800,6 @@
       "completeness_score": 65,
       "confidence": "medium",
       "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "name": "Vidaio",
-      "netuid": 85,
-      "priority_score": 68,
-      "profile_level": "operational",
-      "slug": "sn-85",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
-      "candidate_count": 18,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
@@ -2350,27 +2354,27 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 55,
+      "high": 57,
       "low": 4,
-      "medium": 70
+      "medium": 68
     },
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 27,
-      "identity-complete": 57,
-      "operational": 43
+      "identity-complete": 58,
+      "operational": 42
     },
     "critical_gap_counts": {
       "missing-data-artifact": 116,
-      "missing-docs": 30,
-      "missing-openapi": 102,
-      "missing-source-repo": 21,
+      "missing-docs": 32,
+      "missing-openapi": 103,
+      "missing-source-repo": 22,
       "missing-sse": 128,
       "missing-subnet-api": 117,
       "missing-website": 23
     },
     "needs_identity_count": 29,
-    "needs_operational_count": 84,
+    "needs_operational_count": 85,
     "profile_count": 129
   }
 }

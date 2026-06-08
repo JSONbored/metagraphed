@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "netuid": 20,
+  "name": "GroundLayer",
+  "slug": "sn-20",
+  "status": "active",
+  "categories": ["baseline-curated", "capital-markets", "identity-reviewed"],
+  "source_repo": null,
+  "dashboard_url": "https://taomarketcap.com/subnets/20",
+  "website_url": "https://www.groundlayer.xyz/",
+  "notes": "Reviewed overlay for SN20 using the live GroundLayer website. Previously discovered source repository candidates are not live and no public docs/API/OpenAPI/SSE/data artifact has been verified yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T11:15:00.000Z",
+    "verified_at": "2026-06-08T11:15:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified live source repository yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-20-groundlayer-website",
+      "name": "GroundLayer website",
+      "kind": "website",
+      "url": "https://www.groundlayer.xyz/",
+      "provider": "groundlayer",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.groundlayer.xyz/",
+        "https://api.taomarketcap.com/public/v1/subnets/20"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official GroundLayer website."
+    }
+  ]
+}

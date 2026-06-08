@@ -6744,46 +6744,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "GroundLayer TaoMarketCap dashboard is a public dashboard surface for SN20.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/20",
-      "subject": "surface:sn-20-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-20.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "GroundLayer website is a public website surface for SN20.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/20",
-      "subject": "surface:sn-20-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-20.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "GroundLayer Taopedia article is a public docs surface for SN20.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx",
-      "subject": "surface:sn-20-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-20.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "GroundLayer Tensorplex subnet docs is a public docs surface for SN20.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/20/subnet.json",
-      "subject": "surface:sn-20-tensorplex-docs",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.groundlayer.xyz/",
+      "subject": "surface:sn-20-groundlayer-website",
       "support_summary": "Listed in curated overlay for sn-20.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10660,101 +10627,24 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Vidaio TaoMarketCap dashboard is a public dashboard surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
-      "subject": "surface:sn-85-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Vidaio source repository is a public source-repo surface for SN85.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
-      "subject": "surface:sn-85-taomarketcap-source-repo",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/vidaio-subnet/vidaio-subnet",
+      "subject": "surface:sn-85-vidaio-source",
       "support_summary": "Listed in curated overlay for sn-85.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
       "claim": "Vidaio website is a public website surface for SN85.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
-      "subject": "surface:sn-85-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio Taopedia article is a public docs surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx",
-      "subject": "surface:sn-85-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio Tensorplex subnet docs is a public docs surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json",
-      "subject": "surface:sn-85-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio docs is a public docs surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://vidaio.io/",
-      "subject": "surface:sn-85-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio Swagger UI is a public openapi surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://vidaio.io/",
-      "subject": "surface:sn-85-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio dashboard is a public dashboard surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://vidaio.io/",
-      "subject": "surface:sn-85-website-link-vidaio-io-dashboard-3",
-      "support_summary": "Listed in curated overlay for sn-85.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio dashboard is a public dashboard surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://vidaio.io/",
-      "subject": "surface:sn-85-website-link-vidaio-io-dashboard-4",
+      "subject": "surface:sn-85-vidaio-website",
       "support_summary": "Listed in curated overlay for sn-85.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11001,7 +10891,7 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "luis TaoMarketCap dashboard is a public dashboard surface for SN92.",
+      "claim": "SN92 TaoMarketCap dashboard is a public dashboard surface for SN92.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
@@ -11012,35 +10902,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "luis Taopedia article is a public docs surface for SN92.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
-      "subject": "surface:sn-92-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-92.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "luis Tensorplex subnet docs is a public docs surface for SN92.",
+      "claim": "SN92 Tensorplex metadata is a public docs surface for SN92.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
       "subject": "surface:sn-92-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-92.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "luis source repository is a public source-repo surface for SN92.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
-      "subject": "surface:sn-92-tensorplex-source-repo-1",
       "support_summary": "Listed in curated overlay for sn-92.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11601,8 +11469,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1054,
+    "claim_count": 1042,
     "subnet_claim_count": 129,
-    "surface_claim_count": 675
+    "surface_claim_count": 663
   }
 }

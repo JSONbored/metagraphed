@@ -845,28 +845,31 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T11:15:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "source-repo",
           "openapi",
           "subnet-api",
@@ -875,14 +878,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "website"
         ]
       },
       "name": "GroundLayer",
       "netuid": 20,
       "slug": "sn-20",
-      "surface_count": 4
+      "surface_count": 1
     },
     {
       "candidate_count": 21,
@@ -3594,32 +3596,36 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Website docs and dashboard paths currently redirect to sign-in.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_count": 4,
-        "verified_at": null
+        "verified_at": "2026-06-08T11:15:00.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Website docs and dashboard paths currently redirect to sign-in.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "openapi",
           "source-repo",
           "website"
         ]
@@ -3627,7 +3633,7 @@
       "name": "Vidaio",
       "netuid": 85,
       "slug": "sn-85",
-      "surface_count": 9
+      "surface_count": 2
     },
     {
       "candidate_count": 3,
@@ -3902,28 +3908,35 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Tensorclaw source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet beyond directory pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "stale",
+        "reviewed_at": "2026-06-08T11:15:00.000Z",
         "source_count": 3,
-        "verified_at": null
+        "verified_at": "2026-06-08T11:15:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Tensorclaw source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified docs site yet beyond directory pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "website",
           "openapi",
           "subnet-api",
@@ -3932,14 +3945,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "source-repo"
+          "docs"
         ]
       },
       "name": "luis",
       "netuid": 92,
       "slug": "sn-92",
-      "surface_count": 4
+      "surface_count": 2
     },
     {
       "candidate_count": 17,
