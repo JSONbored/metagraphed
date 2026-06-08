@@ -85,11 +85,73 @@ export const freshnessQuery = () =>
       const res = await apiFetch<Record<string, unknown>>("/api/v1/freshness", { signal });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const summary = (d.summary as Record<string, unknown> | undefined) ?? {};
-      const merged = { ...summary, ...d } as Freshness;
+      const sourcesRaw = (d.sources as Array<Record<string, unknown>> | undefined) ?? [];
+      const now = Date.now();
+      const ages: number[] = [];
+      let stale = 0;
+      const sources = sourcesRaw.map((s) => {
+        const ts = (s.as_of as string) || (s.timestamp as string) || null;
+        const ageSec = ts ? Math.max(0, Math.round((now - new Date(ts).getTime()) / 1000)) : null;
+        if (ageSec != null) ages.push(ageSec);
+        const staleAfterH = Number(s.stale_after_hours);
+        const isStale =
+          (typeof s.stale === "boolean" ? (s.stale as boolean) : false) ||
+          (ageSec != null && Number.isFinite(staleAfterH) && ageSec > staleAfterH * 3600) ||
+          s.status === "stale" ||
+          s.status === "expired";
+        if (isStale) stale += 1;
+        return {
+          name: (s.id as string) || (s.name as string) || "source",
+          last_seen: ts ?? undefined,
+          stale: isStale,
+        };
+      });
+      const merged: Freshness = {
+        avg_age_seconds: ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : undefined,
+        max_age_seconds: ages.length ? Math.max(...ages) : undefined,
+        stale_count: stale,
+        sources,
+        ...summary,
+      };
       return { data: merged, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
   });
+
+function normalizeHealthBlock(d: Record<string, unknown>): HealthSummary {
+  const sc = (d.status_counts as Record<string, number> | undefined) ?? undefined;
+  const cc = (d.classification_counts as Record<string, number> | undefined) ?? undefined;
+  const ok = (d.ok_count as number | undefined) ?? sc?.ok ?? (d.ok as number | undefined);
+  const warn =
+    (d.degraded_count as number | undefined) ?? sc?.degraded ?? (d.warn as number | undefined);
+  const down =
+    (d.failed_count as number | undefined) ?? sc?.failed ?? (d.down as number | undefined);
+  const unknown =
+    (d.unknown_count as number | undefined) ??
+    sc?.unknown ??
+    cc?.unsupported ??
+    (d.unknown as number | undefined);
+  const total =
+    (d.surface_count as number | undefined) ??
+    (d.total as number | undefined) ??
+    [ok, warn, down, unknown].reduce<number | undefined>(
+      (acc, v) => (typeof v === "number" ? (acc ?? 0) + v : acc),
+      undefined,
+    );
+  const uptime =
+    (d.uptime_24h as number | undefined) ??
+    (typeof ok === "number" && typeof total === "number" && total > 0 ? ok / total : undefined);
+  return {
+    ok,
+    warn,
+    down,
+    unknown,
+    total,
+    uptime_24h: uptime,
+    generated_at: d.generated_at as string | undefined,
+    ...d,
+  } as HealthSummary;
+}
 
 export const healthQuery = () =>
   queryOptions({
@@ -98,7 +160,7 @@ export const healthQuery = () =>
       const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const global = (d.global as Record<string, unknown> | undefined) ?? {};
-      const merged = { ...global, ...d } as HealthSummary;
+      const merged = normalizeHealthBlock({ ...d, ...global });
       return { data: merged, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
@@ -107,13 +169,31 @@ export const healthQuery = () =>
 export const sourceHealthQuery = () =>
   queryOptions({
     queryKey: k("source-health"),
-    queryFn: ({ signal }) =>
-      fetchList<{ name: string; ok?: boolean; last_seen?: string }>(
-        "/api/v1/source-health",
-        "sources",
-        undefined,
-        signal,
-      ),
+    queryFn: async ({ signal }) => {
+      // Use freshness.sources — the real per-source health/freshness signal.
+      // (/api/v1/source-health returns providers, surfaced on /providers.)
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/freshness", { signal });
+      const d = (res.data ?? {}) as Record<string, unknown>;
+      const sourcesRaw = (d.sources as Array<Record<string, unknown>> | undefined) ?? [];
+      const now = Date.now();
+      const rows = sourcesRaw.map((s) => {
+        const ts = (s.as_of as string) || (s.timestamp as string) || null;
+        const ageSec = ts ? Math.max(0, Math.round((now - new Date(ts).getTime()) / 1000)) : null;
+        const staleAfterH = Number(s.stale_after_hours);
+        const isStale =
+          (typeof s.stale === "boolean" ? (s.stale as boolean) : false) ||
+          (ageSec != null && Number.isFinite(staleAfterH) && ageSec > staleAfterH * 3600) ||
+          s.status === "stale" ||
+          s.status === "expired";
+        const captured = s.status === "captured" || s.status === "ok";
+        return {
+          name: (s.id as string) || (s.name as string) || "source",
+          ok: captured ? true : isStale ? false : undefined,
+          last_seen: ts ?? undefined,
+        } as { name: string; ok?: boolean; last_seen?: string };
+      });
+      return { data: rows, meta: res.meta, url: res.url };
+    },
     staleTime: STALE_MED,
   });
 
