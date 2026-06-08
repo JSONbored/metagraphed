@@ -68,13 +68,61 @@ export interface Subnet {
   [key: string]: unknown;
 }
 
-export interface SubnetProfile extends Subnet {
-  description?: string;
-  homepage?: string;
-  repo?: string;
+export interface PrimaryLinks {
+  website?: string;
   docs?: string;
-  completeness?: number;
+  repo?: string;
+  dashboard?: string;
+}
+
+export interface PrimaryAppSurface {
+  id?: string;
+  kind?: string;
+  name?: string;
+  provider?: string;
+  url?: string;
+}
+
+export interface SubnetProfile extends Subnet {
+  // identity
+  slug?: string;
+  native_name?: string;
+  description?: string;
+  subnet_type?: string;
+  categories?: string[];
+  block?: number;
+  registered_at_block?: number;
+  // links (flattened)
+  website?: string;
+  homepage?: string;
+  docs?: string;
+  repo?: string;
+  dashboard?: string;
+  primary_links?: PrimaryLinks;
+  // curation
+  curation_level?: CurationLevel;
+  coverage_level?: CoverageLevel;
+  review_state?: string;
+  reviewed_at?: string;
+  confidence?: string;
+  completeness?: number; // 0..1
+  completeness_score?: number; // 0..100
+  // counts
+  surface_count?: number;
+  endpoint_count?: number;
+  candidate_count?: number;
+  monitored_endpoint_count?: number;
+  operational_interface_kinds?: string[];
+  supported_interface_kinds?: string[];
+  missing_kinds?: string[];
+  gap_notes?: string[];
+  primary_app_surface?: PrimaryAppSurface;
+  // embedded
+  surfaces?: Surface[];
+  endpoints?: Endpoint[];
+  candidate_surfaces?: Candidate[];
   providers?: Provider[];
+  notes?: string;
   [key: string]: unknown;
 }
 
@@ -133,15 +181,29 @@ export interface EndpointIncident {
   [key: string]: unknown;
 }
 
+export interface ProviderEndpointSummary {
+  endpoint_count?: number;
+  monitored_count?: number;
+  pool_eligible_count?: number;
+  by_kind?: Record<string, number>;
+  by_status?: Record<string, number>;
+  by_layer?: Record<string, number>;
+  by_publication_state?: Record<string, number>;
+}
+
 export interface Provider {
   slug: string;
   name?: string;
   kind?: string; // team | infra | docs | registry | community
   homepage?: string;
+  website?: string;
   docs?: string;
-  authority?: "official" | "community" | "third-party";
+  notes?: string;
+  authority?: "official" | "community" | "third-party" | string;
   endpoints_count?: number;
   surfaces_count?: number;
+  endpoint_summary?: ProviderEndpointSummary;
+  generated_at?: string;
   [key: string]: unknown;
 }
 
