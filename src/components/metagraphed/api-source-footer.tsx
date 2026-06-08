@@ -22,7 +22,7 @@ export function ApiSourceFooter({
             <ExternalLink href={`${API_BASE}${p}`} className="hover:text-ink-strong">
               {p}
             </ExternalLink>
-            <CopyableCode value={`${API_BASE}${p}`} label="copy URL" compact />
+            <CopyableCode value={`${API_BASE}${p}`} label="copy" className="px-1.5 py-0.5" />
           </div>
         ))}
       </div>
