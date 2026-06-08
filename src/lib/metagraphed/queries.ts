@@ -657,19 +657,24 @@ export const providerCountsQuery = () =>
   queryOptions({
     queryKey: k("provider-counts"),
     queryFn: async ({ signal }) => {
+      const fetchAll = async (path: string, key: string) => {
+        const rows: Record<string, unknown>[] = [];
+        let cursor: string | undefined = undefined;
+        // Hard cap: 10 pages × 1000 = 10k rows, plenty for aggregation.
+        for (let i = 0; i < 10; i++) {
+          const params: QueryParams = { limit: 1000 };
+          if (cursor) params.cursor = cursor;
+          const res = await fetchList<Record<string, unknown>>(path, key, params, signal);
+          rows.push(...res.data);
+          const v = validateNextCursor(res.meta, cursor);
+          if (!v.cursor) break;
+          cursor = v.cursor;
+        }
+        return rows;
+      };
       const [surfaces, endpoints] = await Promise.all([
-        fetchList<Record<string, unknown>>(
-          "/api/v1/surfaces",
-          "surfaces",
-          { limit: 2000 },
-          signal,
-        ),
-        fetchList<Record<string, unknown>>(
-          "/api/v1/endpoints",
-          "endpoints",
-          { limit: 2000 },
-          signal,
-        ),
+        fetchAll("/api/v1/surfaces", "surfaces"),
+        fetchAll("/api/v1/endpoints", "endpoints"),
       ]);
       const map = new Map<string, { surfaces: number; endpoints: number; subnets: Set<number> }>();
       const bump = (slug: unknown, kind: "surfaces" | "endpoints", netuid: unknown) => {
@@ -679,8 +684,8 @@ export const providerCountsQuery = () =>
         if (typeof netuid === "number") entry.subnets.add(netuid);
         map.set(slug, entry);
       };
-      for (const s of surfaces.data) bump(s.provider, "surfaces", s.netuid);
-      for (const e of endpoints.data) bump(e.provider, "endpoints", e.netuid);
+      for (const s of surfaces) bump(s.provider, "surfaces", s.netuid);
+      for (const e of endpoints) bump(e.provider, "endpoints", e.netuid);
       const out: Record<string, ProviderCounts> = {};
       for (const [slug, v] of map) {
         out[slug] = { surfaces: v.surfaces, endpoints: v.endpoints, subnets: v.subnets.size };
@@ -689,6 +694,7 @@ export const providerCountsQuery = () =>
     },
     staleTime: STALE_MED,
   });
+
 
 function normalizeProvider(raw: unknown, slug: string): Provider {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
