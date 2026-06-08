@@ -1,0 +1,99 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-08T16:07:26.153Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-08T16:07:26.153Z",
+          "content_type": "application/json",
+          "hash": "adbe238958cc0ff5c5b690ac008240c04fa0bd8e67f2864ca872d4dc93a8e8a9",
+          "latency_ms": 460,
+          "name": "Numinous OpenAPI schema",
+          "provider": "numinous",
+          "schema_url": "https://api.numinouslabs.io/api/openapi.json",
+          "shape": {
+            "component_schema_count": 42,
+            "has_global_security": false,
+            "method_counts": {
+              "get": 18,
+              "post": 2
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 20,
+            "path_count": 20,
+            "sample_paths": [
+              "/api/health",
+              "/api/v1/agents/{version_id}/code",
+              "/api/v1/aggregated-scores",
+              "/api/v1/benchmarks/baseline",
+              "/api/v1/causal-drivers/",
+              "/api/v1/deep-research/",
+              "/api/v1/forecasters/prediction-jobs",
+              "/api/v1/forecasters/prediction-jobs/{prediction_id}",
+              "/api/v1/forecasters/predictions",
+              "/api/v1/internal/forecasters/prediction-jobs",
+              "/api/v1/internal/liveuamap/events",
+              "/api/v1/internal/liveuamap/regions",
+              "/api/v1/leaderboard",
+              "/api/v1/miner-reasonings"
+            ],
+            "security_scheme_count": 1,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "Numinous API",
+            "version": "0.1.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-6-numinous-openapi-schema",
+          "url": "https://api.numinouslabs.io/api/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 20,
+      "total_path_count": 20
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-08T16:07:26.153Z",
+      "status": "captured",
+      "surface_count": 2,
+      "surfaces": [
+        {
+          "auth_required": false,
+          "id": "sn-6-numinous-api-health",
+          "kind": "subnet-api",
+          "name": "Numinous API health",
+          "probe_enabled": true,
+          "provider": "numinous",
+          "schema_url": null,
+          "url": "https://api.numinouslabs.io/api/health"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-6-numinous-leaderboard",
+          "kind": "subnet-api",
+          "name": "Numinous leaderboard API",
+          "probe_enabled": true,
+          "provider": "numinous",
+          "schema_url": null,
+          "url": "https://api.numinouslabs.io/api/v1/leaderboard"
+        }
+      ]
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 6,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "numinous",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

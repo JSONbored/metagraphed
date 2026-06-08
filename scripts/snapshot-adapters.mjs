@@ -4,6 +4,7 @@ import {
   hashJson,
   isJsonContentType,
   isUnsafeResolvedUrl,
+  loadSubnets,
   repoRoot,
   stableStringify,
   writeJson,
@@ -15,12 +16,27 @@ const dryRun = args.has("--dry-run") || !shouldWrite;
 const generatedAt = buildTimestamp();
 const contractVersion = "2026-06-06.1";
 const outputRoot = path.join(repoRoot, "registry/adapters/latest");
+const OPENAPI_METHODS = new Set([
+  "delete",
+  "get",
+  "head",
+  "options",
+  "patch",
+  "post",
+  "put",
+  "trace",
+]);
 
 const [allways, gittensor] = await Promise.all([
   snapshotAllways(),
   snapshotGittensor(),
 ]);
-const snapshots = [allways, gittensor];
+const genericSnapshots = await snapshotGenericOpenApiAdapters(
+  new Set([allways.slug, gittensor.slug]),
+);
+const snapshots = [allways, gittensor, ...genericSnapshots].sort(
+  (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
+);
 
 if (!dryRun) {
   for (const snapshot of snapshots) {
@@ -131,6 +147,238 @@ async function snapshotGittensor() {
       "No PATs, wallet paths, local validator state, private scoring inputs, or credentialed GitHub data are collected.",
     ],
   };
+}
+
+async function snapshotGenericOpenApiAdapters(excludedSlugs) {
+  const overlays = await loadSubnets();
+  const snapshots = [];
+  await mapLimit(
+    overlays.filter((overlay) => !excludedSlugs.has(overlay.slug)),
+    4,
+    async (overlay) => {
+      const schemaSurfaces = machineReadableOpenApiSurfaces(overlay);
+      if (schemaSurfaces.length === 0) {
+        return;
+      }
+      snapshots.push(
+        await snapshotGenericOpenApiAdapter(overlay, schemaSurfaces),
+      );
+    },
+  );
+  return snapshots;
+}
+
+function machineReadableOpenApiSurfaces(overlay) {
+  const surfaces = overlay.surfaces || [];
+  const seen = new Set();
+  return surfaces
+    .filter(
+      (surface) =>
+        surface.kind === "openapi" &&
+        surface.public_safe !== false &&
+        surface.schema_status === "machine-readable",
+    )
+    .map((surface) => ({
+      ...surface,
+      schema_url: surface.schema_url || surface.url,
+    }))
+    .filter((surface) => {
+      if (!surface.schema_url) {
+        return false;
+      }
+      const key = surface.schema_url;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.schema_url.localeCompare(b.schema_url));
+}
+
+async function snapshotGenericOpenApiAdapter(overlay, schemaSurfaces) {
+  const schemas = [];
+  await mapLimit(schemaSurfaces, 4, async (surface) => {
+    schemas.push(await fetchOpenApiSchemaSummary(surface));
+  });
+  schemas.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+
+  const apiSurfaces = (overlay.surfaces || [])
+    .filter((surface) =>
+      ["subnet-api", "data-artifact", "sse"].includes(surface.kind),
+    )
+    .map(publicSurfaceSummary)
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  const dimensions = {
+    openapi_schemas: summarizeOpenApiSchemas(schemas),
+    public_api_surfaces: {
+      status: "captured",
+      captured_at: latestTimestamp(schemas.map((schema) => schema.captured_at)),
+      surface_count: apiSurfaces.length,
+      surfaces: apiSurfaces,
+    },
+  };
+
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    source: "adapter-snapshot",
+    adapter_kind: "generic-openapi",
+    netuid: overlay.netuid,
+    slug: overlay.slug,
+    status: adapterStatus(Object.values(dimensions)),
+    dimensions,
+    notes: [
+      "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+      "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted.",
+    ],
+  };
+}
+
+async function fetchOpenApiSchemaSummary(surface) {
+  const schemaUrl = surface.schema_url || surface.url;
+  const fetched = await fetchJson(schemaUrl);
+  const base = {
+    surface_id: surface.id,
+    name: surface.name,
+    schema_url: schemaUrl,
+    url: surface.url,
+    provider: surface.provider || null,
+    auth_required: Boolean(surface.auth_required),
+    captured_at: fetched.captured_at,
+  };
+  if (!fetched.ok || !fetched.body || typeof fetched.body !== "object") {
+    return {
+      ...base,
+      status: fetched.status || "failed",
+      error: fetched.error || null,
+      status_code: fetched.status_code || null,
+      content_type: fetched.content_type || null,
+      latency_ms: fetched.latency_ms ?? null,
+    };
+  }
+
+  return {
+    ...base,
+    status: "captured",
+    status_code: fetched.status_code,
+    content_type: fetched.content_type,
+    latency_ms: fetched.latency_ms,
+    hash: hashJson(fetched.body),
+    shape: summarizeOpenApiShape(fetched.body),
+  };
+}
+
+function summarizeOpenApiSchemas(schemas) {
+  const captured = schemas.filter((schema) => schema.status === "captured");
+  return {
+    status:
+      captured.length === schemas.length
+        ? "captured"
+        : captured.length > 0
+          ? "degraded"
+          : "failed",
+    schema_count: schemas.length,
+    captured_count: captured.length,
+    captured_at: latestTimestamp(schemas.map((schema) => schema.captured_at)),
+    total_path_count: captured.reduce(
+      (sum, schema) => sum + (schema.shape?.path_count || 0),
+      0,
+    ),
+    total_operation_count: captured.reduce(
+      (sum, schema) => sum + (schema.shape?.operation_count || 0),
+      0,
+    ),
+    schemas,
+  };
+}
+
+function summarizeOpenApiShape(schema) {
+  const paths =
+    schema.paths && typeof schema.paths === "object" ? schema.paths : {};
+  const pathEntries = Object.entries(paths);
+  const methodCounts = {};
+  let operationCount = 0;
+  for (const [, pathDefinition] of pathEntries) {
+    if (!pathDefinition || typeof pathDefinition !== "object") {
+      continue;
+    }
+    for (const method of Object.keys(pathDefinition)) {
+      const normalized = method.toLowerCase();
+      if (!OPENAPI_METHODS.has(normalized)) {
+        continue;
+      }
+      methodCounts[normalized] = (methodCounts[normalized] || 0) + 1;
+      operationCount += 1;
+    }
+  }
+  const components =
+    schema.components && typeof schema.components === "object"
+      ? schema.components
+      : {};
+  const securitySchemes =
+    components.securitySchemes && typeof components.securitySchemes === "object"
+      ? components.securitySchemes
+      : {};
+  const componentSchemas =
+    components.schemas && typeof components.schemas === "object"
+      ? components.schemas
+      : {};
+
+  return {
+    title: schema.info?.title || null,
+    version: schema.info?.version || null,
+    openapi_version: schema.openapi || schema.swagger || null,
+    path_count: pathEntries.length,
+    operation_count: operationCount,
+    method_counts: Object.fromEntries(
+      Object.entries(methodCounts).sort(([a], [b]) => a.localeCompare(b)),
+    ),
+    server_count: Array.isArray(schema.servers) ? schema.servers.length : 0,
+    tag_count: Array.isArray(schema.tags) ? schema.tags.length : 0,
+    component_schema_count: Object.keys(componentSchemas).length,
+    security_scheme_count: Object.keys(securitySchemes).length,
+    has_global_security:
+      Array.isArray(schema.security) && schema.security.length > 0,
+    sample_paths: pathEntries
+      .map(([apiPath]) => apiPath)
+      .filter(isPublicSafeOpenApiPath)
+      .sort()
+      .slice(0, 20),
+  };
+}
+
+function publicSurfaceSummary(surface) {
+  return {
+    id: surface.id,
+    kind: surface.kind,
+    name: surface.name,
+    url: surface.url,
+    provider: surface.provider || null,
+    auth_required: Boolean(surface.auth_required),
+    schema_url: surface.schema_url || null,
+    probe_enabled: Boolean(surface.probe?.enabled),
+  };
+}
+
+function latestTimestamp(values) {
+  return (
+    values
+      .filter(Boolean)
+      .map((value) => new Date(value))
+      .filter((value) => !Number.isNaN(value.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime())
+      .at(-1)
+      ?.toISOString() || null
+  );
+}
+
+function isPublicSafeOpenApiPath(apiPath) {
+  return !/(address|coldkey|hotkey|keypair|private|secret|seed|token|wallet)/i.test(
+    String(apiPath),
+  );
 }
 
 async function fetchJsonSummary(url) {

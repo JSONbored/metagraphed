@@ -4,7 +4,7 @@
   "schema_version": 1,
   "sources": [
     {
-      "as_of": "2026-06-07T21:52:49.513Z",
+      "as_of": "2026-06-08T16:07:27.131Z",
       "id": "adapter-snapshots",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -13,11 +13,11 @@
       "stale_after_hours": 12,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T21:52:49.513Z",
+      "timestamp": "2026-06-08T16:07:27.131Z",
       "timestamp_field": "adapter_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-07T21:52:48.909Z",
+      "as_of": "2026-06-08T16:07:24.922Z",
       "id": "adapter:allways",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -26,11 +26,11 @@
       "stale_after_hours": 12,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-07T21:52:48.909Z",
+      "timestamp": "2026-06-08T16:07:24.922Z",
       "timestamp_field": null
     },
     {
-      "as_of": "2026-06-07T21:52:49.513Z",
+      "as_of": "2026-06-08T16:07:25.053Z",
       "id": "adapter:gittensor",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -39,7 +39,98 @@
       "stale_after_hours": 12,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-07T21:52:49.513Z",
+      "timestamp": "2026-06-08T16:07:25.053Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:26.153Z",
+      "id": "adapter:numinous",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/numinous.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:26.153Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:25.992Z",
+      "id": "adapter:sn-22",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-22.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:25.992Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:25.886Z",
+      "id": "adapter:sn-46",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-46.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:25.886Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:27.131Z",
+      "id": "adapter:sn-49",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-49.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:27.131Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:26.062Z",
+      "id": "adapter:sn-58",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-58.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:26.062Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:26.746Z",
+      "id": "adapter:sn-96",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-96.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:26.746Z",
+      "timestamp_field": null
+    },
+    {
+      "as_of": "2026-06-08T16:07:26.740Z",
+      "id": "adapter:sn-97",
+      "lane": "adapter-snapshot",
+      "notes": "",
+      "path": "registry/adapters/latest/sn-97.json",
+      "required_for_publish": false,
+      "stale_after_hours": 12,
+      "stale_behavior": "warn",
+      "status": "captured",
+      "timestamp": "2026-06-08T16:07:26.740Z",
       "timestamp_field": null
     },
     {
@@ -109,8 +200,8 @@
     }
   ],
   "summary": {
-    "adapter_count": 2,
-    "adapter_snapshot_as_of": "2026-06-07T21:52:49.513Z",
+    "adapter_count": 9,
+    "adapter_snapshot_as_of": "2026-06-08T16:07:27.131Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T14:11:05.342Z",
     "health_probe_as_of": "2026-06-08T15:43:17.492Z",
@@ -126,6 +217,6 @@
     ],
     "verification_as_of": "2026-06-08T15:38:22.213Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
-    "warning_source_count": 3
+    "warning_source_count": 10
   }
 }

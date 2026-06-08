@@ -185,21 +185,47 @@ const schemaDriftPlaceholder = buildSchemaDriftPlaceholder(surfaces);
 const contracts = buildContractsArtifact(generatedAt);
 const openApi = await buildCanonicalOpenApiArtifact(generatedAt);
 
-const adapterArtifacts = Object.fromEntries(
-  activeOverlays
+const overlayBySlug = new Map(
+  activeOverlays.map((subnet) => [subnet.slug, subnet]),
+);
+const adapterSlugs = new Set([
+  ...activeOverlays
     .filter((subnet) => subnet.extensions)
-    .map((subnet) => [
-      subnet.slug,
-      {
-        schema_version: 1,
-        generated_at: generatedAt,
-        netuid: subnet.netuid,
-        subnet: subnet.name,
-        slug: subnet.slug,
-        extensions: subnet.extensions,
-        snapshot: adapterSnapshots.get(subnet.slug) || null,
-      },
-    ]),
+    .map((subnet) => subnet.slug),
+  ...adapterSnapshots.keys(),
+]);
+const adapterArtifacts = Object.fromEntries(
+  [...adapterSlugs]
+    .sort()
+    .map((slug) => {
+      const subnet = overlayBySlug.get(slug);
+      if (!subnet) {
+        return null;
+      }
+      const snapshot = adapterSnapshots.get(slug) || null;
+      return [
+        slug,
+        {
+          schema_version: 1,
+          generated_at: generatedAt,
+          netuid: subnet.netuid,
+          subnet: subnet.name,
+          slug: subnet.slug,
+          extensions:
+            subnet.extensions ||
+            (snapshot?.adapter_kind
+              ? {
+                  generic_adapter: {
+                    enabled: true,
+                    kind: snapshot.adapter_kind,
+                  },
+                }
+              : {}),
+          snapshot,
+        },
+      ];
+    })
+    .filter(Boolean),
 );
 
 const coverage = {

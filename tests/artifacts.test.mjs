@@ -369,6 +369,8 @@ test("public artifacts are internally consistent", () => {
   const gapPriorities = readArtifact("review/gap-priorities.json");
   const profileCompleteness = readArtifact("review/profile-completeness.json");
   const adapterCandidates = readArtifact("review/adapter-candidates.json");
+  const genericAdapter = readArtifact("adapters/numinous.json");
+  const schemaOnlyGenericAdapter = readArtifact("adapters/sn-46.json");
   const enrichmentQueue = readArtifact("review/enrichment-queue.json");
   const enrichmentEvidence = readArtifact("review/enrichment-evidence.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
@@ -713,6 +715,26 @@ test("public artifacts are internally consistent", () => {
   assert.equal(
     profileCompleteness.summary.by_profile_level["adapter-backed"] >= 2,
     true,
+  );
+  assert.equal(genericAdapter.snapshot.adapter_kind, "generic-openapi");
+  assert.equal(
+    genericAdapter.extensions.generic_adapter.kind,
+    "generic-openapi",
+  );
+  assert.equal(
+    genericAdapter.snapshot.dimensions.openapi_schemas.captured_count > 0,
+    true,
+  );
+  assert.equal(
+    genericAdapter.snapshot.dimensions.openapi_schemas.total_operation_count >
+      0,
+    true,
+  );
+  assert.equal(schemaOnlyGenericAdapter.snapshot.status, "captured");
+  assert.equal(
+    schemaOnlyGenericAdapter.snapshot.dimensions.public_api_surfaces
+      .surface_count,
+    0,
   );
   assert.equal(
     profileCompleteness.summary.by_profile_level["directory-only"] > 0,

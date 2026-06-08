@@ -1,0 +1,78 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-08T16:07:26.740Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-08T16:07:26.740Z",
+          "content_type": "application/json",
+          "hash": "61b026a793721514ba0a4a018c746c575858b0058cc671ecd9aaeca638dc10ba",
+          "latency_ms": 676,
+          "name": "Albedo OpenAPI JSON",
+          "provider": "taomarketcap",
+          "schema_url": "https://us-east-1.hippius.com/openapi.json",
+          "shape": {
+            "component_schema_count": 7,
+            "has_global_security": true,
+            "method_counts": {
+              "delete": 3,
+              "get": 10,
+              "head": 3,
+              "post": 4,
+              "put": 3
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 23,
+            "path_count": 12,
+            "sample_paths": [
+              "/",
+              "/public/{bucket_name}/{object_key}",
+              "/user/credits",
+              "/user/get_bucket_location",
+              "/user/list_buckets",
+              "/user/list_objects",
+              "/user/recent_uploads",
+              "/user/unban",
+              "/{bucket_name}",
+              "/{bucket_name}/{object_key}",
+              "/{bucket_name}/{object_key}/"
+            ],
+            "security_scheme_count": 1,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "Hippius S3",
+            "version": "1.0.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-97-website-common-openapi-json",
+          "url": "https://us-east-1.hippius.com/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 23,
+      "total_path_count": 12
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-08T16:07:26.740Z",
+      "status": "captured",
+      "surface_count": 0,
+      "surfaces": []
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 97,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-97",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

@@ -1,0 +1,98 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-08T16:07:26.062Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-08T16:07:26.062Z",
+          "content_type": "application/json; charset=UTF-8",
+          "hash": "fe0b7027c64483c36518429c5e56d5fc219e2b75780696b1d3d0ea141992e7ca",
+          "latency_ms": 124,
+          "name": "Handshake58 OpenAPI schema",
+          "provider": "handshake58",
+          "schema_url": "https://handshake58.com/openapi.json",
+          "shape": {
+            "component_schema_count": 5,
+            "has_global_security": false,
+            "method_counts": {
+              "get": 4
+            },
+            "openapi_version": "3.0.3",
+            "operation_count": 4,
+            "path_count": 4,
+            "sample_paths": [
+              "/api/agent",
+              "/api/directory/providers",
+              "/api/mcp/providers",
+              "/api/validator/registry"
+            ],
+            "security_scheme_count": 0,
+            "server_count": 1,
+            "tag_count": 0,
+            "title": "Handshake58 DRAIN Protocol API",
+            "version": "1.0.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-58-handshake58-openapi",
+          "url": "https://handshake58.com/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 4,
+      "total_path_count": 4
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-08T16:07:26.062Z",
+      "status": "captured",
+      "surface_count": 3,
+      "surfaces": [
+        {
+          "auth_required": false,
+          "id": "sn-58-github-readme-handshake58-hs58-subnet-api-2",
+          "kind": "subnet-api",
+          "name": "Pending API surface",
+          "probe_enabled": true,
+          "provider": "tensorplex-subnet-docs",
+          "schema_url": null,
+          "url": "https://handshake58.com/api/drain/signing"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-58-handshake58-provider-directory-api",
+          "kind": "subnet-api",
+          "name": "Handshake58 provider directory API",
+          "probe_enabled": true,
+          "provider": "handshake58",
+          "schema_url": "https://handshake58.com/openapi.json",
+          "url": "https://handshake58.com/api/mcp/providers"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-58-handshake58-skills-api",
+          "kind": "subnet-api",
+          "name": "Handshake58 skills API",
+          "probe_enabled": true,
+          "provider": "handshake58",
+          "schema_url": null,
+          "url": "https://handshake58.com/api/skills?status=published"
+        }
+      ]
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 58,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-58",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

@@ -1,0 +1,97 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-08T16:07:26.746Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-08T16:07:26.746Z",
+          "content_type": "application/json",
+          "hash": "8a520fd1ee1037929b75f68f4a627610e58eede285d044bfaae20ea7a0860ae0",
+          "latency_ms": 750,
+          "name": "Verathos OpenAPI schema",
+          "provider": "verathos",
+          "schema_url": "https://verathos.ai/openapi.json",
+          "shape": {
+            "component_schema_count": 20,
+            "has_global_security": false,
+            "method_counts": {
+              "delete": 1,
+              "get": 15,
+              "patch": 1,
+              "post": 10
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 27,
+            "path_count": 24,
+            "sample_paths": [
+              "/api/auth/create-key",
+              "/api/auth/login",
+              "/api/auth/me",
+              "/api/auth/register",
+              "/api/chat/{conversation_id}",
+              "/api/conversations/",
+              "/api/conversations/claim",
+              "/api/conversations/{conversation_id}",
+              "/api/dashboard",
+              "/api/dashboard/timeseries",
+              "/api/deposits/balance",
+              "/api/deposits/withdraw",
+              "/api/docs/list",
+              "/api/docs/{slug}",
+              "/api/health",
+              "/api/models/chain-info",
+              "/api/models/load",
+              "/api/models/presets",
+              "/api/models/refresh",
+              "/api/models/status"
+            ],
+            "security_scheme_count": 0,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "Verathos",
+            "version": "0.1.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-96-verathos-openapi",
+          "url": "https://verathos.ai/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 27,
+      "total_path_count": 24
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-08T16:07:26.746Z",
+      "status": "captured",
+      "surface_count": 1,
+      "surfaces": [
+        {
+          "auth_required": false,
+          "id": "sn-96-verathos-models-api",
+          "kind": "subnet-api",
+          "name": "Verathos models API",
+          "probe_enabled": true,
+          "provider": "verathos",
+          "schema_url": "https://verathos.ai/openapi.json",
+          "url": "https://api.verathos.ai/v1/models"
+        }
+      ]
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 96,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-96",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

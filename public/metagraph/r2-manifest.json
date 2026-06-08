@@ -1,6 +1,6 @@
 {
   "artifact_count": 23,
-  "artifact_size_bytes": 4630261,
+  "artifact_size_bytes": 4633040,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -16,7 +16,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "b13297ddf6b56496372190bb582692c4fc6baf5dd9fafeba4139ebf1b6378ec1",
+      "sha256": "6be120d66265bedf2c12b54e995a34277bbad88c4f1d736f395b8baab9c3e39d",
       "size_bytes": 1349,
       "storage_tier": "dual"
     },
@@ -61,8 +61,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "45dc70badc1745ef7e0f0c8159e7ea136c9aa182d8ea7b7355746976e7768cd5",
-      "size_bytes": 4324,
+      "sha256": "df6abe7e1c2ab9778ab2b0b4cb70c2d7239501d9be2b686920c74be8a1d57da4",
+      "size_bytes": 7103,
       "storage_tier": "dual"
     },
     {
@@ -213,8 +213,8 @@
   "bucket_binding": "METAGRAPH_ARCHIVE",
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
-  "full_artifact_count": 1226,
-  "full_artifact_size_bytes": 47800433,
+  "full_artifact_count": 1233,
+  "full_artifact_size_bytes": 47833128,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -234,11 +234,11 @@
   "storage_tier_counts": {
     "dual": 22,
     "git": 1,
-    "r2": 1203
+    "r2": 1210
   },
   "storage_tier_size_bytes": {
-    "dual": 4500110,
+    "dual": 4502889,
     "git": 130151,
-    "r2": 43170172
+    "r2": 43200088
   }
 }
