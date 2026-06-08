@@ -193,10 +193,12 @@ function SubnetsServedPanel({ slug }: { slug: string }) {
 
 function EndpointsGlanceLoader({ slug }: { slug: string }) {
   const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   return (
     <EndpointsGlance
       endpoints={rows}
+      lastChecked={meta?.generated_at}
       fullList={() => <EndpointList rows={rows} showNetuid showProvider={false} />}
     />
   );
@@ -212,7 +214,7 @@ function EndpointsTableLoader({ slug }: { slug: string }) {
         title="No endpoints for this provider"
         description="This provider has no tracked endpoints yet."
         lastChecked={meta?.generated_at}
-        action={{ label: "Browse all providers", href: "/providers" }}
+        action={RECOVERY.endpoints}
       />
     );
   }
