@@ -1,10 +1,13 @@
 // Metagraphed API client
 // Live calls only; default base https://metagraph.sh, configurable via env.
 
+const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+
 export const API_BASE =
-  (import.meta.env?.VITE_METAGRAPHED_API_BASE as string | undefined)?.replace(/\/$/, "") ||
-  "https://metagraph.sh";
+  (env?.VITE_METAGRAPH_API_BASE ||
+    env?.VITE_METAGRAPHED_API_BASE ||
+    "https://metagraph.sh"
+  ).replace(/\/$/, "");
 
 export const GITHUB_REPO =
-  (import.meta.env?.VITE_METAGRAPHED_REPO as string | undefined) ||
-  "https://github.com/metagraphed/metagraphed";
+  env?.VITE_METAGRAPHED_REPO || "https://github.com/metagraphed/metagraphed";
