@@ -123,7 +123,7 @@ function FilterPill({ value, current, label }: { value: string; current: string;
   return (
     <Link
       to="/schemas"
-      search={(prev) => ({ ...prev, drift: value }) as never}
+      search={(prev: Record<string, unknown>) => ({ ...prev, drift: value }) as never}
       className={`rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${active ? "bg-ink-strong text-paper border-ink-strong" : "border-border bg-card text-ink-muted hover:border-ink/30"}`}
     >
       {label}

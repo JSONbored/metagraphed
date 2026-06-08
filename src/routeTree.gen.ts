@@ -9,38 +9,226 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SurfacesRouteImport } from './routes/surfaces'
+import { Route as SubnetsRouteImport } from './routes/subnets'
+import { Route as SchemasRouteImport } from './routes/schemas'
+import { Route as ProvidersRouteImport } from './routes/providers'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as GapsRouteImport } from './routes/gaps'
+import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
+import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 
+const SurfacesRoute = SurfacesRouteImport.update({
+  id: '/surfaces',
+  path: '/surfaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubnetsRoute = SubnetsRouteImport.update({
+  id: '/subnets',
+  path: '/subnets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchemasRoute = SchemasRouteImport.update({
+  id: '/schemas',
+  path: '/schemas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersRoute = ProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GapsRoute = GapsRouteImport.update({
+  id: '/gaps',
+  path: '/gaps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndpointsRoute = EndpointsRouteImport.update({
+  id: '/endpoints',
+  path: '/endpoints',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
+  id: '/$netuid',
+  path: '/$netuid',
+  getParentRoute: () => SubnetsRoute,
+} as any)
+const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ProvidersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/endpoints': typeof EndpointsRoute
+  '/gaps': typeof GapsRoute
+  '/health': typeof HealthRoute
+  '/providers': typeof ProvidersRouteWithChildren
+  '/schemas': typeof SchemasRoute
+  '/subnets': typeof SubnetsRouteWithChildren
+  '/surfaces': typeof SurfacesRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
+  '/subnets/$netuid': typeof SubnetsNetuidRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/endpoints': typeof EndpointsRoute
+  '/gaps': typeof GapsRoute
+  '/health': typeof HealthRoute
+  '/providers': typeof ProvidersRouteWithChildren
+  '/schemas': typeof SchemasRoute
+  '/subnets': typeof SubnetsRouteWithChildren
+  '/surfaces': typeof SurfacesRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
+  '/subnets/$netuid': typeof SubnetsNetuidRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/endpoints': typeof EndpointsRoute
+  '/gaps': typeof GapsRoute
+  '/health': typeof HealthRoute
+  '/providers': typeof ProvidersRouteWithChildren
+  '/schemas': typeof SchemasRoute
+  '/subnets': typeof SubnetsRouteWithChildren
+  '/surfaces': typeof SurfacesRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
+  '/subnets/$netuid': typeof SubnetsNetuidRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/endpoints'
+    | '/gaps'
+    | '/health'
+    | '/providers'
+    | '/schemas'
+    | '/subnets'
+    | '/surfaces'
+    | '/providers/$slug'
+    | '/subnets/$netuid'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/endpoints'
+    | '/gaps'
+    | '/health'
+    | '/providers'
+    | '/schemas'
+    | '/subnets'
+    | '/surfaces'
+    | '/providers/$slug'
+    | '/subnets/$netuid'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/endpoints'
+    | '/gaps'
+    | '/health'
+    | '/providers'
+    | '/schemas'
+    | '/subnets'
+    | '/surfaces'
+    | '/providers/$slug'
+    | '/subnets/$netuid'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  EndpointsRoute: typeof EndpointsRoute
+  GapsRoute: typeof GapsRoute
+  HealthRoute: typeof HealthRoute
+  ProvidersRoute: typeof ProvidersRouteWithChildren
+  SchemasRoute: typeof SchemasRoute
+  SubnetsRoute: typeof SubnetsRouteWithChildren
+  SurfacesRoute: typeof SurfacesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/surfaces': {
+      id: '/surfaces'
+      path: '/surfaces'
+      fullPath: '/surfaces'
+      preLoaderRoute: typeof SurfacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subnets': {
+      id: '/subnets'
+      path: '/subnets'
+      fullPath: '/subnets'
+      preLoaderRoute: typeof SubnetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schemas': {
+      id: '/schemas'
+      path: '/schemas'
+      fullPath: '/schemas'
+      preLoaderRoute: typeof SchemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers': {
+      id: '/providers'
+      path: '/providers'
+      fullPath: '/providers'
+      preLoaderRoute: typeof ProvidersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gaps': {
+      id: '/gaps'
+      path: '/gaps'
+      fullPath: '/gaps'
+      preLoaderRoute: typeof GapsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/endpoints': {
+      id: '/endpoints'
+      path: '/endpoints'
+      fullPath: '/endpoints'
+      preLoaderRoute: typeof EndpointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +236,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subnets/$netuid': {
+      id: '/subnets/$netuid'
+      path: '/$netuid'
+      fullPath: '/subnets/$netuid'
+      preLoaderRoute: typeof SubnetsNetuidRouteImport
+      parentRoute: typeof SubnetsRoute
+    }
+    '/providers/$slug': {
+      id: '/providers/$slug'
+      path: '/$slug'
+      fullPath: '/providers/$slug'
+      preLoaderRoute: typeof ProvidersSlugRouteImport
+      parentRoute: typeof ProvidersRoute
+    }
   }
 }
 
+interface ProvidersRouteChildren {
+  ProvidersSlugRoute: typeof ProvidersSlugRoute
+}
+
+const ProvidersRouteChildren: ProvidersRouteChildren = {
+  ProvidersSlugRoute: ProvidersSlugRoute,
+}
+
+const ProvidersRouteWithChildren = ProvidersRoute._addFileChildren(
+  ProvidersRouteChildren,
+)
+
+interface SubnetsRouteChildren {
+  SubnetsNetuidRoute: typeof SubnetsNetuidRoute
+}
+
+const SubnetsRouteChildren: SubnetsRouteChildren = {
+  SubnetsNetuidRoute: SubnetsNetuidRoute,
+}
+
+const SubnetsRouteWithChildren =
+  SubnetsRoute._addFileChildren(SubnetsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  EndpointsRoute: EndpointsRoute,
+  GapsRoute: GapsRoute,
+  HealthRoute: HealthRoute,
+  ProvidersRoute: ProvidersRouteWithChildren,
+  SchemasRoute: SchemasRoute,
+  SubnetsRoute: SubnetsRouteWithChildren,
+  SurfacesRoute: SurfacesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

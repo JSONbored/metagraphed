@@ -71,7 +71,7 @@ function SurfacesTable() {
   }, [all]);
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch, page: 1 }) as never });
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, page: 1 }) as never });
 
   const onSort = (field: string) =>
     navigate({
@@ -139,7 +139,7 @@ function SurfacesTable() {
               </tbody>
             </table>
           </div>
-          <Pagination page={search.page} pageSize={search.pageSize} total={sorted.length} onPage={(p) => navigate({ search: (prev) => ({ ...prev, page: p }) as never })} />
+          <Pagination page={search.page} pageSize={search.pageSize} total={sorted.length} onPage={(p) => navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, page: p }) as never })} />
         </div>
       )}
     </div>
