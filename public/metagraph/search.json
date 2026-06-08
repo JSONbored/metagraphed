@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1345,
+  "document_count": 1347,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -439,9 +439,8 @@
       "title": "Gopher AI",
       "tokens": [
         "ai",
-        "claimed",
         "gopher",
-        "provider",
+        "official",
         "subnet",
         "team"
       ],
@@ -2544,7 +2543,8 @@
         "reviewed",
         "sn",
         "source",
-        "tee"
+        "tee",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/42"
@@ -2964,32 +2964,6 @@
       ],
       "type": "subnet",
       "url": "/subnets/51"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/92.json",
-      "id": "subnet:92",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "SN92 ᚂ",
-      "title": "luis",
-      "tokens": [
-        "92",
-        "augmented",
-        "baseline",
-        "cleanup",
-        "curated",
-        "identity",
-        "inference",
-        "luis",
-        "official",
-        "reviewed",
-        "sn",
-        "source",
-        "stale",
-        "website"
-      ],
-      "type": "subnet",
-      "url": "/subnets/92"
     },
     {
       "artifact_path": "/metagraph/subnets/87.json",
@@ -3962,6 +3936,33 @@
       ],
       "type": "subnet",
       "url": "/subnets/3"
+    },
+    {
+      "artifact_path": "/metagraph/subnets/92.json",
+      "id": "subnet:92",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "SN92 ᚂ",
+      "title": "Tensorclaw",
+      "tokens": [
+        "92",
+        "augmented",
+        "baseline",
+        "cleanup",
+        "curated",
+        "drift",
+        "identity",
+        "inference",
+        "official",
+        "reviewed",
+        "sn",
+        "source",
+        "stale",
+        "tensorclaw",
+        "website"
+      ],
+      "type": "subnet",
+      "url": "/subnets/92"
     },
     {
       "artifact_path": "/metagraph/subnets/113.json",
@@ -12896,6 +12897,44 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-gopher-developer-portal",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "website / gopher-ai",
+      "title": "Gopher developer portal",
+      "tokens": [
+        "42",
+        "ai",
+        "developer",
+        "gopher",
+        "portal",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://developers.gopher-ai.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-gopher-miner-docs",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "docs / gopher-ai",
+      "title": "Gopher miner documentation",
+      "tokens": [
+        "42",
+        "ai",
+        "docs",
+        "documentation",
+        "gopher",
+        "miner",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://developers.gopher-ai.com/docs/subnet/miners"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-42-gopher-docs",
       "netuid": 42,
       "slug": "sn-42",
@@ -15883,7 +15922,8 @@
         "dashboard",
         "finance",
         "luis",
-        "sn"
+        "sn",
+        "tensorclaw"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/92-luis"
@@ -15900,7 +15940,8 @@
         "dashboard",
         "luis",
         "sn",
-        "subnetradar"
+        "subnetradar",
+        "tensorclaw"
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/92"
@@ -15919,7 +15960,8 @@
         "docs",
         "luis",
         "sn",
-        "taopedia"
+        "taopedia",
+        "tensorclaw"
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
@@ -20471,10 +20513,10 @@
       "tokens": [
         "92",
         "dashboard",
-        "luis",
         "sn",
         "sn92",
-        "taomarketcap"
+        "taomarketcap",
+        "tensorclaw"
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/92"
@@ -20489,11 +20531,11 @@
       "tokens": [
         "92",
         "docs",
-        "luis",
         "metadata",
         "sn",
         "sn92",
         "subnet",
+        "tensorclaw",
         "tensorplex"
       ],
       "type": "surface",
@@ -22350,7 +22392,6 @@
         "dashboard",
         "demo",
         "live",
-        "luis",
         "sn",
         "tensorclaw"
       ],
@@ -22366,7 +22407,6 @@
       "title": "Tensorclaw website",
       "tokens": [
         "92",
-        "luis",
         "sn",
         "tensorclaw",
         "website"

@@ -70,10 +70,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 73,
+      "auto_review_candidate_count": 74,
       "kind": "data-artifact",
       "manual_review_required_count": 0,
-      "target_count": 73,
+      "target_count": 74,
       "target_ids": [
         "sn-17-surface-candidate-data-artifact",
         "sn-65-surface-candidate-data-artifact",
@@ -111,10 +111,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 82,
+      "auto_review_candidate_count": 83,
       "kind": "openapi",
       "manual_review_required_count": 0,
-      "target_count": 82,
+      "target_count": 83,
       "target_ids": [
         "sn-17-surface-candidate-openapi",
         "sn-65-surface-candidate-openapi",
@@ -193,10 +193,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 82,
+      "auto_review_candidate_count": 83,
       "kind": "subnet-api",
       "manual_review_required_count": 0,
-      "target_count": 82,
+      "target_count": 83,
       "target_ids": [
         "sn-17-surface-candidate-subnet-api",
         "sn-65-surface-candidate-subnet-api",
@@ -234,10 +234,10 @@
       ]
     },
     {
-      "auto_review_candidate_count": 16,
+      "auto_review_candidate_count": 15,
       "kind": "website",
       "manual_review_required_count": 0,
-      "target_count": 16,
+      "target_count": 15,
       "target_ids": [
         "sn-73-surface-candidate-website",
         "sn-119-surface-candidate-website",
@@ -248,7 +248,6 @@
         "sn-86-surface-candidate-website",
         "sn-101-surface-candidate-website",
         "sn-104-surface-candidate-website",
-        "sn-42-surface-candidate-website",
         "sn-38-surface-candidate-website",
         "sn-89-surface-candidate-website",
         "sn-47-surface-candidate-website",
@@ -267,46 +266,46 @@
         86,
         101,
         104,
-        42
+        38
       ]
     }
   ],
   "notes": "Contributor-oriented enrichment target pack derived from the queue and evidence artifacts. It provides public-safe submission guidance only; observed health and registry truth remain probe/generated artifacts.",
   "schema_version": 1,
   "summary": {
-    "auto_review_candidate_count": 274,
+    "auto_review_candidate_count": 276,
     "by_evidence_action": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
       "replace-stale-evidence": 208,
       "review-existing-evidence": 5,
-      "submit-new-evidence": 58,
+      "submit-new-evidence": 60,
       "verify-existing-evidence": 3
     },
     "by_kind": {
-      "data-artifact": 73,
-      "openapi": 82,
+      "data-artifact": 74,
+      "openapi": 83,
       "source-repo": 21,
-      "subnet-api": 82,
-      "website": 16
+      "subnet-api": 83,
+      "website": 15
     },
     "by_lane": {
       "adapter-candidate": 12,
       "baseline-monitoring": 1,
-      "direct-submission": 274,
+      "direct-submission": 276,
       "maintainer-review": 5
     },
     "by_target_type": {
       "adapter-review": 12,
       "maintainer-review": 5,
       "monitoring-followup": 1,
-      "surface-candidate": 274
+      "surface-candidate": 276
     },
     "manual_review_required_count": 18,
-    "new_evidence_count": 58,
+    "new_evidence_count": 60,
     "stale_replacement_count": 208,
     "subnet_count": 129,
-    "target_count": 292
+    "target_count": 294
   },
   "targets": [
     {
@@ -4203,60 +4202,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-126-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 42 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Submit official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "kind": "website",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Gopher",
-      "netuid": 42,
-      "priority_score": 122,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-42",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/42",
-        "https://backprop.finance/dtao/subnets/42-gopher",
-        "https://developers.gopher-ai.com/docs/subnet/intro"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "submit-new-candidate",
-      "target_id": "sn-42-surface-candidate-website",
       "target_type": "surface-candidate"
     },
     {
@@ -13075,7 +13020,7 @@
         "sse",
         "subnet-api"
       ],
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "priority_score": 101,
       "profile_level": "directory-only",
@@ -18822,6 +18767,59 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 42 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-42",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/42",
+        "https://backprop.finance/dtao/subnets/42-gopher",
+        "https://developers.gopher-ai.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-42-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 125 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -18875,6 +18873,59 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 42 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-42",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/42",
+        "https://backprop.finance/dtao/subnets/42-gopher",
+        "https://developers.gopher-ai.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-42-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 125 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -18924,6 +18975,59 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
       "target_id": "sn-125-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 42 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Submit official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-42",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/42",
+        "https://backprop.finance/dtao/subnets/42-gopher",
+        "https://developers.gopher-ai.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "submit-new-candidate",
+      "target_id": "sn-42-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {

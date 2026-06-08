@@ -11202,7 +11202,31 @@
     },
     {
       "auth_required": false,
-      "authority": "provider-claimed",
+      "authority": "official",
+      "id": "sn-42-gopher-developer-portal",
+      "kind": "website",
+      "name": "Gopher developer portal",
+      "netuid": 42,
+      "notes": "Official Gopher developer portal.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/",
+        "https://developers.gopher-ai.com/docs/subnet/intro"
+      ],
+      "subnet_name": "Gopher",
+      "subnet_slug": "sn-42",
+      "url": "https://developers.gopher-ai.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-42-gopher-docs",
       "kind": "docs",
       "name": "Gopher subnet documentation",
@@ -11227,7 +11251,31 @@
     },
     {
       "auth_required": false,
-      "authority": "provider-claimed",
+      "authority": "official",
+      "id": "sn-42-gopher-miner-docs",
+      "kind": "docs",
+      "name": "Gopher miner documentation",
+      "netuid": 42,
+      "notes": "Official Gopher miner documentation for Subnet 42.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42"
+      ],
+      "subnet_name": "Gopher",
+      "subnet_slug": "sn-42",
+      "url": "https://developers.gopher-ai.com/docs/subnet/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-42-gopher-source",
       "kind": "source-repo",
       "name": "Gopher subnet source repository",
@@ -24157,7 +24205,7 @@
       "source_urls": [
         "https://backprop.finance/dtao/subnets/92-luis"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://backprop.finance/dtao/subnets/92-luis"
     },
@@ -24189,7 +24237,7 @@
       "source_urls": [
         "https://subnetradar.com/subnet/92"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://subnetradar.com/subnet/92"
     },
@@ -24212,7 +24260,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://taomarketcap.com/subnets/92"
     },
@@ -24244,7 +24292,7 @@
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
     },
@@ -24267,7 +24315,7 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/dashboard"
     },
@@ -24290,7 +24338,7 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/"
     },
@@ -24313,7 +24361,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
-      "subnet_name": "luis",
+      "subnet_name": "Tensorclaw",
       "subnet_slug": "sn-92",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
     },

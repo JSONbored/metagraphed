@@ -1866,30 +1866,29 @@
       "curation": {
         "gap_notes": [
           "Native chain name currently reports as a placeholder.",
-          "No verified official website yet.",
+          "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
           "No verified standalone static data artifact yet."
         ],
         "level": "maintainer-reviewed",
-        "review_state": "needs-review",
-        "reviewed_at": "2026-06-08T11:20:00.000Z",
-        "source_count": 8,
-        "verified_at": "2026-06-08T11:20:00.000Z"
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:15:00.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T20:15:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as a placeholder.",
-          "No verified official website yet.",
+          "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1898,13 +1897,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "Gopher",
       "netuid": 42,
       "slug": "sn-42",
-      "surface_count": 7
+      "surface_count": 9
     },
     {
       "candidate_count": 7,
@@ -4028,6 +4028,8 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
+          "Official website and dashboard are verified live.",
           "Previously discovered Tensorclaw source repository currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet beyond directory pages.",
@@ -4038,13 +4040,15 @@
         ],
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T18:05:00.000Z",
+        "reviewed_at": "2026-06-08T20:15:00.000Z",
         "source_count": 6,
-        "verified_at": "2026-06-08T18:05:00.000Z"
+        "verified_at": "2026-06-08T20:15:00.000Z"
       },
       "gap_count": 5,
       "gaps": {
         "gap_notes": [
+          "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
+          "Official website and dashboard are verified live.",
           "Previously discovered Tensorclaw source repository currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet beyond directory pages.",
@@ -4066,7 +4070,7 @@
           "website"
         ]
       },
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "slug": "sn-92",
       "surface_count": 7

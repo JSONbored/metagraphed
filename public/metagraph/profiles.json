@@ -4726,63 +4726,54 @@
         "identity-reviewed",
         "official-docs",
         "official-source-repo",
+        "official-website",
         "tee"
       ],
       "completeness": {
         "confidence": "high",
         "gap_reasons": [
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "identity_level": "partial",
-        "identity_surface_count": 2,
-        "missing_critical_count": 5,
-        "missing_identity": [
-          "website"
-        ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
+        "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 40
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 40,
-      "confidence": "low",
+      "completeness_score": 55,
+      "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 9,
       "gap_reasons": [
-        "missing-website",
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "website"
-      ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
       ],
-      "missing_required": [
-        "website"
-      ],
-      "monitored_endpoint_count": 7,
+      "missing_required": [],
+      "monitored_endpoint_count": 9,
       "name": "Gopher",
       "native_name": "Unknown",
       "native_name_quality": "placeholder",
@@ -4790,29 +4781,30 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-42-gopher-docs",
-        "kind": "docs",
-        "name": "Gopher subnet documentation",
+        "id": "sn-42-gopher-developer-portal",
+        "kind": "website",
+        "name": "Gopher developer portal",
         "provider": "gopher-ai",
-        "url": "https://developers.gopher-ai.com/docs/subnet/intro"
+        "url": "https://developers.gopher-ai.com/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/42",
         "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
         "source_repo": "https://github.com/gopher-lab/subnet-42",
-        "website_url": null
+        "website_url": "https://developers.gopher-ai.com/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "Gopher",
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 9,
-        "review_state": "needs-review",
-        "reviewed_at": "2026-06-08T11:20:00.000Z",
+        "interface_source_count": 10,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/42",
           "https://backprop.finance/dtao/subnets/42-gopher",
+          "https://developers.gopher-ai.com/",
           "https://developers.gopher-ai.com/docs/subnet/intro",
           "https://developers.gopher-ai.com/docs/subnet/miners",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
@@ -4822,19 +4814,22 @@
           "https://taomarketcap.com/subnets/42"
         ]
       },
-      "review_state": "needs-review",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-42",
       "status": "active",
       "subnet_type": "application",
       "suggested_submission_kinds": [
-        "website"
+        "openapi",
+        "subnet-api",
+        "data-artifact"
       ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 7,
+      "surface_count": 9,
       "symbol": "ס",
       "team": null
     },
@@ -10301,6 +10296,7 @@
       "categories": [
         "baseline-augmented",
         "baseline-curated",
+        "identity-drift",
         "identity-reviewed",
         "inference",
         "official-website",
@@ -10361,7 +10357,7 @@
         "source-repo"
       ],
       "monitored_endpoint_count": 7,
-      "name": "luis",
+      "name": "Tensorclaw",
       "native_name": "luis",
       "native_name_quality": "chain",
       "netuid": 92,
@@ -10375,27 +10371,27 @@
         "url": "https://www.tensorclaw.ai/"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/92",
+        "dashboard_url": "https://www.tensorclaw.ai/dashboard",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
         "source_repo": null,
         "website_url": "https://www.tensorclaw.ai/"
       },
       "profile_level": "directory-only",
-      "project_name": "luis",
+      "project_name": "Tensorclaw",
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 7,
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T18:05:00.000Z",
+        "reviewed_at": "2026-06-08T20:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/92",
           "https://backprop.finance/dtao/subnets/92-luis",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
           "https://subnetradar.com/subnet/92",
-          "https://taomarketcap.com/subnets/92",
-          "https://www.tensorclaw.ai/"
+          "https://www.tensorclaw.ai/",
+          "https://www.tensorclaw.ai/dashboard"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -14421,20 +14417,20 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 53,
+    "average_completeness_score": 54,
     "by_confidence": {
-      "high": 86,
-      "low": 5,
+      "high": 87,
+      "low": 4,
       "medium": 38
     },
     "by_identity_level": {
-      "complete": 100,
-      "partial": 29
+      "complete": 101,
+      "partial": 28
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 27,
-      "identity-complete": 73,
+      "directory-only": 26,
+      "identity-complete": 74,
       "operational": 27
     },
     "profile_count": 129

@@ -310,13 +310,14 @@
       "website_url": "https://gittensor.io"
     },
     {
-      "authority": "provider-claimed",
+      "authority": "official",
       "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
       "github_url": "https://github.com/gopher-lab/subnet-42",
       "id": "gopher-ai",
       "kind": "subnet-team",
       "name": "Gopher AI",
-      "notes": "Provider entry for the Gopher SN42 documentation and subnet source repository. The project website and API hosts were not promoted because they did not return safe public probe responses during review.",
+      "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
+      "public_notes": "Provider profile for Gopher AI / SN42. Public surfaces include the developer portal, subnet docs, miner docs, and source repository.",
       "schema_version": 1,
       "website_url": "https://developers.gopher-ai.com/"
     },

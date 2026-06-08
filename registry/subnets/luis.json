@@ -1,27 +1,34 @@
 {
   "schema_version": 1,
   "netuid": 92,
-  "name": "luis",
+  "name": "Tensorclaw",
   "slug": "sn-92",
   "status": "active",
   "categories": [
     "baseline-curated",
     "inference",
+    "identity-drift",
     "identity-reviewed",
     "official-website",
     "stale-source-cleanup"
   ],
   "source_repo": null,
-  "dashboard_url": "https://taomarketcap.com/subnets/92",
+  "dashboard_url": "https://www.tensorclaw.ai/dashboard",
   "website_url": "https://www.tensorclaw.ai/",
-  "notes": "Cleanup overlay for SN92. The live Tensorclaw website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92. Tensorplex and the website currently list https://github.com/tensorclaw/tensorclaw, but that repository returns 404, so it is intentionally not promoted as a curated source surface.",
+  "baseline_excluded_surface_ids": [
+    "sn-92-taomarketcap-website",
+    "sn-92-tensorplex-source-repo-1"
+  ],
+  "notes": "Reviewed overlay for SN92 using the live Tensorclaw Network website and dashboard. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. Tensorplex and the website currently list https://github.com/tensorclaw/tensorclaw, but that repository returns 404, so it is intentionally not promoted as a curated source surface.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T18:05:00.000Z",
-    "verified_at": "2026-06-08T18:05:00.000Z",
+    "reviewed_at": "2026-06-08T20:15:00.000Z",
+    "verified_at": "2026-06-08T20:15:00.000Z",
     "source_count": 5,
     "gap_notes": [
+      "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
+      "Official website and dashboard are verified live.",
       "Previously discovered Tensorclaw source repository currently returns 404.",
       "No verified live source repository yet.",
       "No verified docs site yet beyond directory pages.",

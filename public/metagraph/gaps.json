@@ -1189,14 +1189,13 @@
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as a placeholder.",
-          "No verified official website yet.",
+          "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1205,7 +1204,8 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "Gopher",
@@ -2570,6 +2570,8 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
+          "Official website and dashboard are verified live.",
           "Previously discovered Tensorclaw source repository currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet beyond directory pages.",
@@ -2591,7 +2593,7 @@
           "website"
         ]
       },
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "slug": "sn-92"
     },

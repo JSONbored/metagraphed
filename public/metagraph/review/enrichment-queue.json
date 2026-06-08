@@ -1894,79 +1894,6 @@
       "verified_candidate_count": 18
     },
     {
-      "adapter_score": 0,
-      "candidate_count": 6,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 40,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [
-        "website"
-      ],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Gopher",
-      "netuid": 42,
-      "operational_interface_count": 0,
-      "priority_score": 122,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "needs-review",
-      "sample_candidate_ids": [
-        "sn-42-backprop-dashboard",
-        "sn-42-subnetradar-dashboard",
-        "sn-42-taomarketcap-dashboard",
-        "sn-42-taopedia-article",
-        "sn-42-taostats-metagraph"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-42",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/42",
-        "https://backprop.finance/dtao/subnets/42-gopher",
-        "https://developers.gopher-ai.com/docs/subnet/intro",
-        "https://developers.gopher-ai.com/docs/subnet/miners",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
-        "https://github.com/gopher-lab/subnet-42",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json",
-        "https://subnetradar.com/subnet/42"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 7,
-      "verified_candidate_count": 6
-    },
-    {
       "adapter_score": 7,
       "candidate_count": 18,
       "candidate_evidence_summary": {
@@ -7215,7 +7142,7 @@
         "sse",
         "subnet-api"
       ],
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "operational_interface_count": 0,
       "priority_score": 101,
@@ -7247,8 +7174,8 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
         "https://subnetradar.com/subnet/92",
-        "https://taomarketcap.com/subnets/92",
-        "https://www.tensorclaw.ai/"
+        "https://www.tensorclaw.ai/",
+        "https://www.tensorclaw.ai/dashboard"
       ],
       "stale_candidate_count": 1,
       "surface_count": 7,
@@ -10459,6 +10386,78 @@
         "subnet-api",
         "data-artifact"
       ],
+      "endpoint_count": 9,
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [],
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "operational_interface_count": 0,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-42-backprop-dashboard",
+        "sn-42-subnetradar-dashboard",
+        "sn-42-taomarketcap-dashboard",
+        "sn-42-taopedia-article",
+        "sn-42-taostats-metagraph"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-42",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/42",
+        "https://backprop.finance/dtao/subnets/42-gopher",
+        "https://developers.gopher-ai.com/",
+        "https://developers.gopher-ai.com/docs/subnet/intro",
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
+        "https://github.com/gopher-lab/subnet-42",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 9,
+      "verified_candidate_count": 6
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 6,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "endpoint_count": 8,
       "evidence_action": "submit-new-evidence",
       "identity_level": "complete",
@@ -10716,8 +10715,8 @@
       "verify-existing-evidence": 1
     },
     "identity_level_counts": {
-      "complete": 100,
-      "partial": 29
+      "complete": 101,
+      "partial": 28
     },
     "lane_counts": {
       "adapter-candidate": 12,
@@ -10731,11 +10730,11 @@
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 73,
-      "openapi": 82,
+      "data-artifact": 74,
+      "openapi": 83,
       "source-repo": 21,
-      "subnet-api": 82,
-      "website": 16
+      "subnet-api": 83,
+      "website": 15
     }
   }
 }

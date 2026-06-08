@@ -10561,22 +10561,44 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Gopher subnet documentation is a public docs surface for SN42.",
-      "confidence": "medium",
+      "claim": "Gopher developer portal is a public website surface for SN42.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "provider-claimed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://developers.gopher-ai.com/",
+      "subject": "surface:sn-42-gopher-developer-portal",
+      "support_summary": "Listed in curated overlay for sn-42.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gopher subnet documentation is a public docs surface for SN42.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://developers.gopher-ai.com/docs/subnet/intro",
       "subject": "surface:sn-42-gopher-docs",
       "support_summary": "Listed in curated overlay for sn-42.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Gopher subnet source repository is a public source-repo surface for SN42.",
-      "confidence": "medium",
+      "claim": "Gopher miner documentation is a public docs surface for SN42.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "provider-claimed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://developers.gopher-ai.com/docs/subnet/miners",
+      "subject": "surface:sn-42-gopher-miner-docs",
+      "support_summary": "Listed in curated overlay for sn-42.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gopher subnet source repository is a public source-repo surface for SN42.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://github.com/gopher-lab/subnet-42",
       "subject": "surface:sn-42-gopher-source",
       "support_summary": "Listed in curated overlay for sn-42.",
@@ -16573,8 +16595,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1506,
+    "claim_count": 1508,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1127
+    "surface_claim_count": 1129
   }
 }

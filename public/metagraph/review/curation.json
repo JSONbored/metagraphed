@@ -3161,25 +3161,6 @@
       "verified_candidate_count": 12
     },
     {
-      "candidate_count": 6,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Gopher",
-      "netuid": 42,
-      "priority_score": 62,
-      "review_state": "needs-review",
-      "slug": "sn-42",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 6
-    },
-    {
       "candidate_count": 21,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -4635,7 +4616,7 @@
         "sse",
         "data-artifact"
       ],
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "priority_score": 18,
       "review_state": "maintainer-reviewed",
@@ -5170,6 +5151,24 @@
         "sse",
         "data-artifact"
       ],
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 5,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-42",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 9,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
       "name": "8 Ball",
       "netuid": 125,
       "priority_score": 5,
@@ -5250,10 +5249,10 @@
       "source-repo": 21,
       "sse": 128,
       "subnet-api": 115,
-      "website": 16
+      "website": 15
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 43,
+    "needs_maintainer_review_count": 42,
     "subnet_count": 129
   }
 }

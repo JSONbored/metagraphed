@@ -11,22 +11,23 @@
     "identity-reviewed",
     "official-docs",
     "official-source-repo",
+    "official-website",
     "tee"
   ],
   "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
   "source_repo": "https://github.com/gopher-lab/subnet-42",
   "dashboard_url": "https://taomarketcap.com/subnets/42",
-  "website_url": null,
-  "notes": "Reviewed overlay for SN42 using the live Gopher subnet documentation and source repository. Native chain identity currently reports a placeholder name, so this remains an explicit identity-drift entry rather than a silent rename. The project website/API/app hosts were not promoted because they did not return safe public probe responses during review.",
+  "website_url": "https://developers.gopher-ai.com/",
+  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name, so this remains an explicit identity-drift entry rather than a silent rename.",
   "curation": {
     "level": "maintainer-reviewed",
-    "review_state": "needs-review",
-    "reviewed_at": "2026-06-08T11:20:00.000Z",
-    "verified_at": "2026-06-08T11:20:00.000Z",
-    "source_count": 5,
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:15:00.000Z",
+    "verified_at": "2026-06-08T20:15:00.000Z",
+    "source_count": 7,
     "gap_notes": [
       "Native chain name currently reports as a placeholder.",
-      "No verified official website yet.",
+      "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
@@ -35,13 +36,34 @@
   },
   "surfaces": [
     {
+      "id": "sn-42-gopher-developer-portal",
+      "name": "Gopher developer portal",
+      "kind": "website",
+      "url": "https://developers.gopher-ai.com/",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/",
+        "https://developers.gopher-ai.com/docs/subnet/intro"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Gopher developer portal."
+    },
+    {
       "id": "sn-42-gopher-docs",
       "name": "Gopher subnet documentation",
       "kind": "docs",
       "url": "https://developers.gopher-ai.com/docs/subnet/intro",
       "provider": "gopher-ai",
       "auth_required": false,
-      "authority": "provider-claimed",
+      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://developers.gopher-ai.com/docs/subnet/intro",
@@ -57,13 +79,34 @@
       "notes": "Public Gopher subnet documentation. The docs identify the subnet as mainnet netuid 42 and link miner setup to the subnet source repository."
     },
     {
+      "id": "sn-42-gopher-miner-docs",
+      "name": "Gopher miner documentation",
+      "kind": "docs",
+      "url": "https://developers.gopher-ai.com/docs/subnet/miners",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Gopher miner documentation for Subnet 42."
+    },
+    {
       "id": "sn-42-gopher-source",
       "name": "Gopher subnet source repository",
       "kind": "source-repo",
       "url": "https://github.com/gopher-lab/subnet-42",
       "provider": "gopher-ai",
       "auth_required": false,
-      "authority": "provider-claimed",
+      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://github.com/gopher-lab/subnet-42",
