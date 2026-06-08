@@ -206,6 +206,26 @@
 /* Stale/refreshing wrapper: softly dim the contents during background refetch. */
 .mg-refreshing { transition: opacity 200ms ease; opacity: 0.72; }
 
+/* ============ Density ============
+   Toggled by SettingsPopover via `html[data-density="compact"]`.
+   Compact mode tightens KPI tiles and any table cells inside `.bg-card`
+   wrappers — covers every data table without per-table className changes. */
+html[data-density="compact"] .mg-kpi {
+  padding: 0.5rem 0.75rem;
+}
+html[data-density="compact"] .mg-kpi .mg-kpi-num {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+html[data-density="compact"] .bg-card > .overflow-x-auto table th,
+html[data-density="compact"] .bg-card > .overflow-x-auto table td,
+html[data-density="compact"] .bg-card > table th,
+html[data-density="compact"] .bg-card > table td {
+  padding-block: 0.3rem;
+  padding-inline: 0.5rem;
+  font-size: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mg-pulse, .mg-flash-up, .mg-flash-down { animation: none; }
   .mg-row-hover, .mg-refreshing { transition: none; }

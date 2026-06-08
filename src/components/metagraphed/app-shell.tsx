@@ -395,11 +395,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex-1 flex justify-end md:justify-center">
               <GlobalSearch />
             </div>
-            <div className="hidden lg:flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <div className="flex items-center gap-2">
+              <span className="hidden lg:inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 <Database className="size-3" /> Finney
               </span>
-              <span className="inline-flex items-center rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <span className="hidden lg:inline-flex items-center rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 Unofficial
               </span>
               <SettingsPopover />
