@@ -3,6 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -67,6 +68,7 @@ function SurfacesPage() {
         </h2>
         <EvidencePanel />
       </section>
+      <ApiSourceFooter paths={["/api/v1/surfaces"]} artifacts={["/metagraph/surfaces.json"]} />
     </AppShell>
   );
 }

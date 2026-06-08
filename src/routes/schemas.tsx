@@ -6,6 +6,7 @@ import { z } from "zod";
 import { fallback } from "@tanstack/zod-adapter";
 import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, ErrorState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -60,6 +61,7 @@ function SchemasPage() {
           </QueryErrorBoundary>
         </section>
       </div>
+      <ApiSourceFooter paths={["/api/v1/schemas", "/api/v1/contracts"]} artifacts={["/metagraph/openapi.json"]} />
     </AppShell>
   );
 }
