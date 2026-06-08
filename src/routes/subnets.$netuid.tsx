@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CandidateChip, CurationChip, HealthDot, HealthPill } from "@/components/metagraphed/chips";
+import { CandidateChip, CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -16,6 +16,10 @@ import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { CoverageCard } from "@/components/metagraphed/coverage-card";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
+import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
+import { EndpointList } from "@/components/metagraphed/endpoint-list";
+import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
@@ -72,6 +76,19 @@ const TABS = [
   { id: "api", label: "API" },
 ] as const;
 
+// Which tab does each section anchor live under? Drives cross-tab deep links.
+const SECTION_TO_TAB: Record<string, string> = {
+  "endpoints-glance": "overview",
+  endpoints: "endpoints",
+  surfaces: "surfaces",
+  "schema-drift": "schemas",
+  candidates: "candidates",
+  gaps: "gaps",
+  evidence: "evidence",
+  api: "api",
+  notes: "overview",
+};
+
 function SubnetDetailPage() {
   const { netuid } = Route.useParams();
   return (
@@ -89,6 +106,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
   const { data: profile, meta } = useSuspenseQuery(subnetProfileQuery(netuid)).data;
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
   const tab = useActiveTab("overview");
+  useHashScroll(tab, SECTION_TO_TAB);
 
   // Counts shown next to tab labels
   const tabsWithCounts = TABS.map((t) => {
@@ -103,7 +121,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
     return { ...t };
   });
 
-  const categoryChips = (profile?.categories ?? []).slice(0, 4);
+  const categoryChips = (profile?.categories ?? []).slice(0, 3);
 
   return (
     <>
@@ -137,8 +155,6 @@ function ProfileShell({ netuid }: { netuid: number }) {
         stats={[
           { label: "Participants", value: formatNumber(profile?.participants) },
           { label: "Tempo", value: profile?.tempo != null ? String(profile.tempo) : "" },
-          { label: "Block", value: formatNumber(profile?.block) },
-          { label: "Surfaces", value: formatNumber(profile?.surface_count) },
           { label: "Endpoints", value: formatNumber(profile?.endpoint_count) },
           {
             label: "Completeness",
@@ -153,8 +169,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
 
       <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-8">
           {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
@@ -162,9 +178,14 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {tab === "candidates" ? <CandidatesPanel netuid={netuid} /> : null}
           {tab === "gaps" ? <GapsPanel profile={profile} /> : null}
           {tab === "evidence" ? (
-            <Section title="Evidence & sources" subtitle="Every claim should be traceable.">
+            <SectionAnchor
+              id="evidence"
+              title="Evidence & sources"
+              subtitle="Every claim should be traceable."
+              info="Source URLs and timestamps for verified registry entries."
+            >
               <EvidencePanel netuid={netuid} />
-            </Section>
+            </SectionAnchor>
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
@@ -188,40 +209,9 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {profile?.primary_app_surface ? (
             <PrimaryAppSurfaceCard surface={profile.primary_app_surface} />
           ) : null}
-          {(profile?.operational_interface_kinds?.length ?? 0) > 0 ||
-          (profile?.supported_interface_kinds?.length ?? 0) > 0 ? (
-            <KindsCard
-              operational={profile?.operational_interface_kinds ?? []}
-              supported={profile?.supported_interface_kinds ?? []}
-            />
-          ) : null}
         </aside>
       </div>
     </>
-  );
-}
-
-function Section({
-  id,
-  title,
-  subtitle,
-  children,
-}: {
-  id?: string;
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section id={id} className="scroll-mt-32">
-      <div className="mb-2">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-          {title}
-        </h2>
-        {subtitle ? <p className="mt-0.5 text-[11px] text-ink-muted">{subtitle}</p> : null}
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -238,54 +228,46 @@ function DetailSkeleton() {
 /* ----------------------------- overview ----------------------------- */
 
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
-  // The hero already shows description + primary links + stats, so the
-  // Overview goes straight to the operational data developers need first:
-  // endpoints, surfaces, drift, then gaps. No duplicated "About" or
-  // "At a glance" rail.
-  const hasDescription = !!profile?.description;
-  const hasExtraNotes = !!profile?.notes && profile.notes !== profile.description;
   return (
     <>
-      <Section
-        title="Endpoints"
-        subtitle="Probe-derived health and latency for every tracked resource."
+      <SectionAnchor
+        id="endpoints-glance"
+        title="Endpoints at a glance"
+        subtitle="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
+        info="Compact operational summary. Click 'Show all endpoints' to reveal the full table inline."
       >
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <EndpointsList netuid={netuid} compact />
+            <EndpointsGlanceLoader netuid={netuid} />
           </Suspense>
         </QueryErrorBoundary>
-      </Section>
+      </SectionAnchor>
 
-      <Section
+      <SectionAnchor
+        id="surfaces"
         title="Surfaces"
         subtitle="Curated public interfaces, grouped by kind."
+        info="APIs, docs, dashboards, repos, SSE streams, data artifacts, SDKs, and examples that have been verified."
       >
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-32 w-full" />}>
             <SurfacesList netuid={netuid} compact />
           </Suspense>
         </QueryErrorBoundary>
-      </Section>
+      </SectionAnchor>
 
-      <Section
+      <SectionAnchor
+        id="schema-drift"
         title="Schema drift"
         subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas."
+        info="Compares the latest schema hash against the previous snapshot to flag breaking changes."
       >
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-20 w-full" />}>
             <SchemaDriftSummary netuid={netuid} compact />
           </Suspense>
         </QueryErrorBoundary>
-      </Section>
-
-      {hasExtraNotes && !hasDescription ? (
-        <Section title="Notes">
-          <div className="rounded border border-border bg-card p-3 text-sm leading-relaxed text-ink">
-            {profile?.notes}
-          </div>
-        </Section>
-      ) : null}
+      </SectionAnchor>
 
       {(profile?.missing_kinds?.length ?? 0) > 0 ||
       (profile?.gap_notes?.length ?? 0) > 0 ? (
@@ -295,6 +277,16 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
   );
 }
 
+function EndpointsGlanceLoader({ netuid }: { netuid: number }) {
+  const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const rows = (data.data ?? []) as Endpoint[];
+  return (
+    <EndpointsGlance
+      endpoints={rows}
+      fullList={() => <EndpointList rows={rows} showProvider />}
+    />
+  );
+}
 
 /* ----------------------------- right rail ----------------------------- */
 
@@ -303,11 +295,11 @@ function LiveHealthCard({ netuid }: { netuid: number }) {
   const h = data;
   const total = (h?.ok ?? 0) + (h?.warn ?? 0) + (h?.down ?? 0) + (h?.unknown ?? 0);
   return (
-    <section className="rounded border border-border bg-card p-3">
-      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
+    <section className="rounded-lg border border-border bg-card p-4">
+      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-3">
         Live health
       </h3>
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <HCell color="bg-health-ok" label="OK" value={formatNumber(h?.ok)} />
         <HCell color="bg-health-warn" label="Warn" value={formatNumber(h?.warn)} pulse />
         <HCell color="bg-health-down" label="Down" value={formatNumber(h?.down)} pulse />
@@ -323,9 +315,7 @@ function LiveHealthCard({ netuid }: { netuid: number }) {
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
         <FreshnessIndicator at={meta?.generated_at ?? h?.generated_at} />
-        <span className="font-mono text-ink-muted">
-          {total} tracked
-        </span>
+        <span className="font-mono text-ink-muted">{total} tracked</span>
       </div>
     </section>
   );
@@ -361,7 +351,7 @@ function PrimaryAppSurfaceCard({
   surface: NonNullable<SubnetProfile["primary_app_surface"]>;
 }) {
   return (
-    <section className="rounded border border-border bg-card p-3">
+    <section className="rounded-lg border border-border bg-card p-4">
       <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
         Primary app surface
       </h3>
@@ -389,75 +379,66 @@ function PrimaryAppSurfaceCard({
   );
 }
 
-function KindsCard({
-  operational,
-  supported,
-}: {
-  operational: string[];
-  supported: string[];
-}) {
-  const opSet = new Set(operational);
-  const all = Array.from(new Set([...operational, ...supported]));
-  if (all.length === 0) return null;
-  return (
-    <section className="rounded border border-border bg-card p-3">
-      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        Interface kinds
-      </h3>
-      <div className="flex flex-wrap gap-1">
-        {all.map((k) => {
-          const isOp = opSet.has(k);
-          return (
-            <span
-              key={k}
-              className={classNames(
-                "rounded border px-1.5 py-0.5 font-mono text-[10px]",
-                isOp
-                  ? "border-curation-verified/30 bg-curation-verified/10 text-curation-verified"
-                  : "border-ink-subtle border-dashed bg-paper text-ink-muted",
-              )}
-              title={isOp ? "Operational (verified)" : "Supported (claimed)"}
-            >
-              {k}
-            </span>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 /* ----------------------------- panels ----------------------------- */
 
 function SurfacesPanel({ netuid }: { netuid: number }) {
   return (
-    <Section title="Verified surfaces" subtitle="Curated public interfaces with provenance.">
+    <SectionAnchor
+      id="surfaces"
+      title="Verified surfaces"
+      subtitle="Curated public interfaces with provenance."
+      info="Only surfaces that have been verified appear here. Unverified leads live in the Candidates tab."
+    >
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
           <SurfacesList netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
-    </Section>
+    </SectionAnchor>
   );
 }
 
 function EndpointsPanel({ netuid }: { netuid: number }) {
   return (
-    <Section title="Endpoints" subtitle="Probe-derived health, latency, and score.">
+    <SectionAnchor
+      id="endpoints"
+      title="Endpoints"
+      subtitle="Probe-derived health, latency, and freshness."
+      info="Each endpoint is probed periodically. Health and latency reflect the most recent probe."
+    >
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <EndpointsList netuid={netuid} />
+          <EndpointsTableLoader netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
-    </Section>
+    </SectionAnchor>
   );
+}
+
+function EndpointsTableLoader({ netuid }: { netuid: number }) {
+  const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const meta = data.meta;
+  const rows = (data.data ?? []) as Endpoint[];
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        title="No endpoints recorded"
+        description="This subnet has no tracked endpoints yet."
+        lastChecked={meta?.generated_at}
+        action={{ label: "Browse all endpoints", href: "/endpoints" }}
+      />
+    );
+  }
+  return <EndpointList rows={rows} showProvider />;
 }
 
 function CandidatesPanel({ netuid }: { netuid: number }) {
   return (
-    <Section
+    <SectionAnchor
+      id="candidates"
       title="Candidates"
       subtitle="Unverified leads from public sources. Always labeled."
+      info="Discovered automatically and not yet reviewed by a maintainer. Submit corrections via GitHub."
     >
       <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 text-[11px] text-ink-muted flex items-start gap-2">
         <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
@@ -471,7 +452,7 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
           <CandidatesList netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
-    </Section>
+    </SectionAnchor>
   );
 }
 
@@ -486,17 +467,23 @@ function GapsPanel({
   const notes = profile?.gap_notes ?? [];
   if (missing.length === 0 && notes.length === 0) {
     return (
-      <Section title="Gaps">
-        <EmptyState title="No outstanding gaps" description="Profile looks complete." />
-      </Section>
+      <SectionAnchor id="gaps" title="Gaps">
+        <EmptyState
+          title="No outstanding gaps"
+          description="Profile looks complete."
+          action={{ label: "Browse registry gaps", href: "/gaps" }}
+        />
+      </SectionAnchor>
     );
   }
   return (
-    <Section
+    <SectionAnchor
+      id="gaps"
       title={compact ? "Known gaps" : "Gaps"}
       subtitle="Missing resources, profile incompleteness, and curation notes."
+      info="Submit a PR against the public registry to help close any of these gaps."
     >
-      <div className="rounded border border-border bg-card p-3 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
         {missing.length > 0 ? (
           <div>
             <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
@@ -525,7 +512,7 @@ function GapsPanel({
           Help close these gaps by opening a PR against the public registry repo.
         </div>
       </div>
-    </Section>
+    </SectionAnchor>
   );
 }
 
@@ -539,7 +526,12 @@ function ApiPanel({ netuid }: { netuid: number }) {
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },
   ];
   return (
-    <Section title="API & artifacts" subtitle="Canonical URLs powering this profile.">
+    <SectionAnchor
+      id="api"
+      title="API & artifacts"
+      subtitle="Canonical URLs powering this profile."
+      info="Copy any of these URLs to fetch the raw JSON directly. /api/v1 endpoints return enveloped responses; /metagraph/*.json returns artifacts."
+    >
       <div className="space-y-2">
         {rows.map((r) => (
           <CopyableCode
@@ -551,7 +543,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
           />
         ))}
       </div>
-    </Section>
+    </SectionAnchor>
   );
 }
 
@@ -559,40 +551,43 @@ function ApiPanel({ netuid }: { netuid: number }) {
 
 function SchemasPanel({ netuid }: { netuid: number }) {
   return (
-    <Section
+    <SectionAnchor
+      id="schema-drift"
       title="Schemas & drift"
       subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas, with hash diffs."
+      info="Drift means the latest schema hash differs from the previous one — review for breaking changes."
     >
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-24 w-full" />}>
           <SchemaDriftSummary netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
-    </Section>
+    </SectionAnchor>
   );
 }
-
 
 /* ----------------------------- surfaces list ----------------------------- */
 
 function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }) {
   const { data } = useSuspenseQuery(subnetSurfacesQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Surface[];
   if (rows.length === 0)
     return (
       <EmptyState
         title="No verified surfaces yet"
         description="Candidates may exist — check the Candidates tab."
+        lastChecked={meta?.generated_at}
+        action={{ label: "Browse all surfaces", href: "/surfaces" }}
       />
     );
 
-  // Group surfaces by kind for clearer scanning
   const groups = new Map<string, Surface[]>();
   for (const s of rows) {
-    const k = s.kind ?? "other";
-    const arr = groups.get(k) ?? [];
+    const kk = s.kind ?? "other";
+    const arr = groups.get(kk) ?? [];
     arr.push(s);
-    groups.set(k, arr);
+    groups.set(kk, arr);
   }
   const ordered = Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
   const visible = compact ? ordered.slice(0, 3) : ordered;
@@ -609,7 +604,7 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
           </div>
           <ul className="space-y-2">
             {(compact ? items.slice(0, 3) : items).map((s) => (
-              <li key={s.id} className="rounded border border-border bg-card p-3">
+              <li key={s.id} className="rounded-lg border border-border bg-card p-3 mg-row-hover">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -655,83 +650,24 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
   );
 }
 
-/* ----------------------------- endpoints list ----------------------------- */
-
-function EndpointsList({ netuid, compact }: { netuid: number; compact?: boolean }) {
-  const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
-  const rows = (data.data ?? []) as Endpoint[];
-  if (rows.length === 0) return <EmptyState title="No endpoints" />;
-  const visible = compact ? rows.slice(0, 6) : rows;
-  return (
-    <div className="rounded border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-            <tr>
-              <th className="px-3 py-2 text-left">Kind</th>
-              <th className="px-3 py-2 text-left">URL</th>
-              <th className="px-3 py-2 text-left">Provider</th>
-              <th className="px-3 py-2 text-center">Health</th>
-              <th className="px-3 py-2 text-right">Latency</th>
-              <th className="px-3 py-2 text-right hidden md:table-cell">Probed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {visible.map((e) => (
-              <tr key={e.id}>
-                <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">{e.kind ?? "—"}</td>
-                <td className="px-3 py-2 font-mono text-[11px] truncate max-w-[28ch]">
-                  {e.url ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-[12px]">
-                  {e.provider ? (
-                    <Link
-                      to="/providers/$slug"
-                      params={{ slug: e.provider_slug ?? e.provider }}
-                      className="hover:text-ink-strong"
-                    >
-                      {e.provider}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <span className="inline-flex justify-center">
-                    <HealthDot state={e.health} />
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
-                  {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted hidden md:table-cell">
-                  <TimeAgo at={e.last_probed_at} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {compact && rows.length > visible.length ? (
-        <div className="border-t border-border bg-surface/30 px-3 py-2 text-[11px] text-ink-muted">
-          + {rows.length - visible.length} more — open the Endpoints tab.
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /* ----------------------------- candidates list ----------------------------- */
 
 function CandidatesList({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetCandidatesQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Candidate[];
   if (rows.length === 0)
-    return <EmptyState title="No candidate leads" description="Submit corrections via the public repo." />;
+    return (
+      <EmptyState
+        title="No candidate leads"
+        description="Submit corrections via the public repo."
+        lastChecked={meta?.generated_at}
+      />
+    );
   return (
     <ul className="space-y-2">
       {rows.map((c) => (
-        <li key={c.id} className="rounded border border-dashed border-ink-subtle bg-paper p-3">
+        <li key={c.id} className="rounded-lg border border-dashed border-ink-subtle bg-paper p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
