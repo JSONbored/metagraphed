@@ -73,6 +73,7 @@ export interface PrimaryLinks {
   docs?: string;
   repo?: string;
   dashboard?: string;
+  icon_url?: string;
 }
 
 export interface PrimaryAppSurface {
