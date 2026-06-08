@@ -3,6 +3,7 @@ import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { Suspense, useEffect, useState } from "react";
 import { RefreshCw, Pause, Play, EyeOff } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -100,6 +101,7 @@ function HealthPage() {
           </QueryErrorBoundary>
         </section>
       </div>
+      <ApiSourceFooter paths={["/api/v1/health", "/api/v1/freshness", "/api/v1/endpoint-incidents"]} />
     </AppShell>
   );
 }

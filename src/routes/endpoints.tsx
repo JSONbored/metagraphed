@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -57,6 +58,7 @@ function EndpointsPage() {
           </QueryErrorBoundary>
         </section>
       </div>
+      <ApiSourceFooter paths={["/api/v1/endpoints", "/api/v1/rpc/endpoints", "/api/v1/endpoint-pools", "/api/v1/endpoint-incidents"]} />
     </AppShell>
   );
 }

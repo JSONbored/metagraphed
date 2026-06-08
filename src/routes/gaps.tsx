@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -69,6 +70,7 @@ function GapsPage() {
           </QueryErrorBoundary>
         </section>
       </div>
+      <ApiSourceFooter paths={["/api/v1/gaps", "/api/v1/review/profile-completeness", "/api/v1/review/adapter-candidates", "/api/v1/review/enrichment-queue"]} />
     </AppShell>
   );
 }

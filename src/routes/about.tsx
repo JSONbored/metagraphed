@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { PageHeading } from "@/components/metagraphed/states";
@@ -69,6 +70,7 @@ function AboutPage() {
           </div>
         </section>
       </div>
+      <ApiSourceFooter paths={["/api/v1", "/api/v1/openapi.json", "/api/v1/build"]} />
     </AppShell>
   );
 }
