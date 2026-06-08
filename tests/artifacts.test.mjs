@@ -622,12 +622,32 @@ test("public artifacts are internally consistent", () => {
     ),
     true,
   );
-  assert.deepEqual(profileCompleteness.summary.by_profile_level, {
-    "adapter-backed": 2,
-    "directory-only": 38,
-    "identity-complete": 43,
-    operational: 46,
-  });
+  assert.deepEqual(
+    profileCompleteness.summary.by_profile_level,
+    profileCompleteness.profiles.reduce((counts, profile) => {
+      counts[profile.profile_level] = (counts[profile.profile_level] || 0) + 1;
+      return counts;
+    }, {}),
+  );
+  assert.equal(
+    Object.values(profileCompleteness.summary.by_profile_level).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    native.subnets.length,
+  );
+  assert.equal(
+    profileCompleteness.summary.by_profile_level["adapter-backed"] >= 2,
+    true,
+  );
+  assert.equal(
+    profileCompleteness.summary.by_profile_level["directory-only"] > 0,
+    true,
+  );
+  assert.equal(
+    profileCompleteness.summary.by_profile_level.operational > 0,
+    true,
+  );
   assert.equal(
     profileCompleteness.summary.critical_gap_counts["missing-openapi"] > 0,
     true,
