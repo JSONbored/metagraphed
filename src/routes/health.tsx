@@ -1,23 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { Suspense, useEffect, useState } from "react";
-import { RefreshCw, Pause, Play, EyeOff } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   healthQuery,
   freshnessQuery,
   sourceHealthQuery,
   endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
+import { humaniseSeconds, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
-import type { EndpointIncident } from "@/lib/metagraphed/types";
+import type { EndpointIncident, HealthState } from "@/lib/metagraphed/types";
 
 const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
   { label: "10s", value: 10_000 },
@@ -25,6 +25,8 @@ const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
   { label: "1m", value: 60_000 },
   { label: "5m", value: 5 * 60_000 },
 ];
+
+const INCIDENT_INITIAL_VISIBLE = 12;
 
 export const Route = createFileRoute("/health")({
   head: () => ({
@@ -107,6 +109,12 @@ function HealthPage() {
   );
 }
 
+/**
+ * Consolidated auto-refresh control. One pill-shaped control group:
+ * interval select · pause/play with live countdown · sync indicator. The
+ * "tab hidden" state is folded into the pause button's label so we don't
+ * stack a third chip on top.
+ */
 function AutoRefreshControl({
   enabled,
   visible,
@@ -124,7 +132,6 @@ function AutoRefreshControl({
   const active = enabled && visible;
   const [secondsLeft, setSecondsLeft] = useState(Math.round(intervalMs / 1000));
 
-  // Restart the countdown whenever the interval, the enabled state, or visibility flips.
   useEffect(() => {
     setSecondsLeft(Math.round(intervalMs / 1000));
     if (!active) return;
@@ -135,11 +142,7 @@ function AutoRefreshControl({
     return () => window.clearInterval(i);
   }, [active, intervalMs]);
 
-  // Throttled aria-live: announce only on meaningful, settled state changes.
-  // We debounce 900ms (longer than a screen-reader rate-limit window) and
-  // skip writes when the next message matches the previous announcement, so
-  // toggling controls quickly never spams a screen reader with intermediate
-  // states. The per-second countdown is intentionally never narrated.
+  // Throttled, deduped aria-live so the countdown never spams a screen reader.
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
     const next = !enabled
@@ -153,9 +156,10 @@ function AutoRefreshControl({
     return () => window.clearTimeout(t);
   }, [enabled, visible, intervalMs]);
 
+  const pauseLabel = !enabled ? "Paused" : !visible ? "Tab hidden" : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="inline-flex items-center rounded-md border border-border bg-card overflow-hidden text-[11px]">
       <label className="sr-only" htmlFor="health-interval">
         Auto-refresh interval
       </label>
@@ -164,7 +168,7 @@ function AutoRefreshControl({
         value={intervalMs}
         onChange={(e) => onIntervalChange(Number(e.target.value))}
         disabled={!enabled}
-        className="rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink disabled:opacity-60"
+        className="bg-card px-2 py-1 text-ink focus:outline-none disabled:opacity-60 border-r border-border"
       >
         {INTERVAL_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -175,38 +179,37 @@ function AutoRefreshControl({
 
       <button
         onClick={onToggle}
-        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-ink hover:bg-surface/60 transition-colors border-r border-border"
         title={enabled ? "Pause auto-refresh" : "Resume auto-refresh"}
         aria-pressed={enabled}
       >
         {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
-        {!enabled
-          ? "Paused"
-          : !visible
-            ? "Tab hidden"
-            : <><span aria-hidden="true">Next sync · <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s</span><span className="sr-only">Auto-refresh on</span></>}
+        {pauseLabel ? (
+          <span className="font-mono uppercase tracking-widest text-[10px] text-ink-muted">
+            {pauseLabel}
+          </span>
+        ) : (
+          <span aria-hidden="true" className="font-mono text-ink-muted">
+            in <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s
+          </span>
+        )}
       </button>
 
-      {enabled && !visible ? (
-        <span
-          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-          title="Auto-refresh pauses while this tab is in the background."
-        >
-          <EyeOff className="size-3" /> auto-paused
-        </span>
-      ) : null}
-
       <span
-        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+        className="inline-flex items-center gap-1 px-2 py-1 font-mono uppercase tracking-widest text-[10px] text-ink-muted"
         title={fetching ? "Refreshing…" : "Idle"}
       >
-        <RefreshCw className={`size-3 ${fetching ? "animate-spin text-ink-strong" : "text-ink-muted"}`} />
-        {fetching ? "syncing" : "idle"}
+        <RefreshCw
+          className={classNames(
+            "size-3",
+            fetching ? "animate-spin text-ink-strong" : "text-ink-muted",
+          )}
+        />
+        {fetching ? "sync" : "idle"}
       </span>
       <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </span>
-
     </div>
   );
 }
@@ -231,9 +234,17 @@ function GlobalHealth({ interval }: { interval: number | false }) {
           format={(n) => `${n.toFixed(2)}%`}
         />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-border border border-border rounded overflow-hidden">
-        <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => `${Math.round(n)}s`} />
-        <Cell label="Max age" num={f?.max_age_seconds} format={(n) => `${Math.round(n)}s`} />
+      <div className="grid grid-cols-3 gap-px bg-border border border-border rounded overflow-hidden">
+        <Cell
+          label="Avg age"
+          num={f?.avg_age_seconds}
+          format={(n) => humaniseSeconds(n)}
+        />
+        <Cell
+          label="Max age"
+          num={f?.max_age_seconds}
+          format={(n) => humaniseSeconds(n)}
+        />
         <Cell label="Stale sources" num={f?.stale_count} />
       </div>
       <div className="text-[11px] font-mono text-ink-muted">
@@ -273,19 +284,21 @@ function SourceHealth({ interval }: { interval: number | false }) {
       <table className="w-full text-sm">
         <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
           <tr>
-            <th className="px-3 py-2 text-left">Source</th>
-            <th className="px-3 py-2">Status</th>
-            <th className="px-3 py-2">Freshness</th>
-            <th className="px-3 py-2 text-right">Last seen</th>
+            <th className="px-4 py-2.5 text-left">Source</th>
+            <th className="px-4 py-2.5">Status</th>
+            <th className="px-4 py-2.5 text-right">Last seen</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((s) => (
             <tr key={s.name}>
-              <td className="px-3 py-2 font-medium">{s.name}</td>
-              <td className="px-3 py-2"><HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} /></td>
-              <td className="px-3 py-2"><FreshnessIndicator at={s.last_seen} dotOnly /></td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.last_seen} /></td>
+              <td className="px-4 py-2.5 font-medium">{s.name}</td>
+              <td className="px-4 py-2.5">
+                <HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} />
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                <TimeAgo at={s.last_seen} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -294,53 +307,183 @@ function SourceHealth({ interval }: { interval: number | false }) {
   );
 }
 
-function durationLabel(start?: string | null, end?: string | null): string {
-  if (!start) return "—";
-  const s = new Date(start).getTime();
-  const e = end ? new Date(end).getTime() : Date.now();
-  const sec = Math.max(0, Math.round((e - s) / 1000));
-  if (sec < 60) return `${sec}s`;
-  if (sec < 3600) return `${Math.round(sec / 60)}m`;
-  if (sec < 86400) return `${(sec / 3600).toFixed(1)}h`;
-  return `${(sec / 86400).toFixed(1)}d`;
+/**
+ * Extract a stable "host" key from an incident's endpoint_id. Examples:
+ *   "endpoint-sn-1-subnetradar-dashboard" → "subnetradar-dashboard"
+ *   "endpoint-sn-40-chunking-website"      → "chunking-website"
+ *   "endpoint-sn7-allways"                 → "allways"
+ *   anything else                          → the raw id
+ */
+function hostKeyFromEndpointId(id: string | null | undefined): string {
+  if (!id) return "—";
+  const m = id.match(/^endpoint-sn-?\d+-(.+)$/i);
+  return m ? m[1]! : id;
 }
+
+type SeverityRank = 0 | 1 | 2 | 3;
+function severityRank(state: HealthState | undefined): SeverityRank {
+  if (state === "down") return 3;
+  if (state === "warn") return 2;
+  if (state === "unknown") return 1;
+  return 0;
+}
+
+type StateFilter = "all" | "down" | "warn" | "resolved";
 
 function Incidents({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
   const rows = (data.data ?? []) as EndpointIncident[];
+  const [filter, setFilter] = useState<StateFilter>("all");
+  const [showAll, setShowAll] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const filtered = useMemo(() => {
+    return rows.filter((i) => {
+      const ongoing = !i.ended_at;
+      if (filter === "all") return true;
+      if (filter === "down") return ongoing && i.state === "down";
+      if (filter === "warn") return ongoing && i.state === "warn";
+      if (filter === "resolved") return !ongoing;
+      return true;
+    });
+  }, [rows, filter]);
+
+  const groups = useMemo(() => {
+    const byHost = new Map<string, EndpointIncident[]>();
+    for (const i of filtered) {
+      const key = hostKeyFromEndpointId(i.endpoint_id);
+      const list = byHost.get(key) ?? [];
+      list.push(i);
+      byHost.set(key, list);
+    }
+    const out = Array.from(byHost.entries()).map(([host, items]) => {
+      const ongoing = items.filter((i) => !i.ended_at).length;
+      const top = items.reduce<EndpointIncident>((acc, cur) => {
+        return severityRank(cur.state) > severityRank(acc.state) ? cur : acc;
+      }, items[0]!);
+      return { host, items, ongoing, dominantState: top.state };
+    });
+    out.sort((a, b) => {
+      const sev = severityRank(b.dominantState) - severityRank(a.dominantState);
+      if (sev !== 0) return sev;
+      return b.items.length - a.items.length;
+    });
+    return out;
+  }, [filtered]);
+
   if (rows.length === 0) return <EmptyState title="No recent incidents" />;
+
+  const visibleGroups = showAll ? groups : groups.slice(0, INCIDENT_INITIAL_VISIBLE);
+
+  const FILTER_OPTIONS: Array<{ value: StateFilter; label: string; count: number }> = [
+    { value: "all", label: "All", count: rows.length },
+    {
+      value: "down",
+      label: "Down",
+      count: rows.filter((i) => !i.ended_at && i.state === "down").length,
+    },
+    {
+      value: "warn",
+      label: "Degraded",
+      count: rows.filter((i) => !i.ended_at && i.state === "warn").length,
+    },
+    {
+      value: "resolved",
+      label: "Resolved",
+      count: rows.filter((i) => i.ended_at).length,
+    },
+  ];
+
   return (
-    <ul className="grid gap-2 md:grid-cols-2">
-      {rows.map((i) => {
-        const ongoing = !i.ended_at;
-        return (
-          <li
-            key={i.id}
-            className="rounded border border-border bg-card p-3 flex flex-col gap-1.5"
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+        {FILTER_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => {
+              setFilter(opt.value);
+              setShowAll(false);
+            }}
+            className={classNames(
+              "inline-flex items-center gap-1 rounded border px-2 py-1 font-mono uppercase tracking-widest transition-colors",
+              filter === opt.value
+                ? "border-ink/40 bg-surface text-ink-strong"
+                : "border-border bg-card text-ink-muted hover:text-ink",
+            )}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <HealthPill state={i.state} />
-                <span className="font-mono text-[11px] text-ink-strong truncate">
-                  {i.endpoint_id ?? "—"}
-                </span>
-              </div>
-              <span
-                className={`font-mono text-[10px] uppercase tracking-widest ${ongoing ? "text-health-down" : "text-ink-muted"}`}
-              >
-                {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
-              </span>
-            </div>
-            {i.message ? (
-              <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p>
-            ) : null}
-            <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
-              <span>started <TimeAgo at={i.started_at} /></span>
-              <span>{i.ended_at ? `ended $<TimeAgo at={i.ended_at} />` : "—"}</span>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+            {opt.label}
+            <span className="text-[10px] tabular-nums opacity-80">{opt.count}</span>
+          </button>
+        ))}
+        <span className="ml-auto font-mono text-[10px] text-ink-muted">
+          {groups.length} {groups.length === 1 ? "host" : "hosts"} · {filtered.length} incidents
+        </span>
+      </div>
+
+      {groups.length === 0 ? (
+        <EmptyState title="No incidents match this filter" />
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {visibleGroups.map((g) => {
+              const open = !!openGroups[g.host];
+              const singleton = g.items.length === 1;
+              if (singleton) {
+                return <IncidentCard key={g.host} incident={g.items[0]!} />;
+              }
+              return (
+                <li
+                  key={g.host}
+                  className="rounded border border-border bg-card overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroups((s) => ({ ...s, [g.host]: !open }))}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-surface/40 transition-colors min-h-11"
+                    aria-expanded={open}
+                  >
+                    {open ? (
+                      <ChevronDown className="size-3.5 text-ink-muted shrink-0" />
+                    ) : (
+                      <ChevronRight className="size-3.5 text-ink-muted shrink-0" />
+                    )}
+                    <HealthPill state={g.dominantState} />
+                    <span className="font-mono text-[12px] text-ink-strong truncate">
+                      {g.host}
+                    </span>
+                    <span className="ml-auto inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+                      {g.ongoing > 0 ? (
+                        <span className="text-health-down">{g.ongoing} ongoing</span>
+                      ) : null}
+                      <span>{g.items.length} total</span>
+                    </span>
+                  </button>
+                  {open ? (
+                    <ul className="grid gap-2 p-2 md:grid-cols-2 border-t border-border bg-paper/40">
+                      {g.items.map((i) => (
+                        <IncidentCard key={i.id} incident={i} />
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+
+          {groups.length > INCIDENT_INITIAL_VISIBLE ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="block w-full rounded border border-border bg-card px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 min-h-9"
+            >
+              {showAll
+                ? "Show fewer"
+                : `Show all ${groups.length} grouped incidents`}
+            </button>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }
