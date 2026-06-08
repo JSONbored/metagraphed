@@ -1,0 +1,11 @@
+{
+  "authority": "official",
+  "docs_url": "https://www.platform.network/docs",
+  "github_url": "https://github.com/PlatformNetwork/platform",
+  "id": "platform-network",
+  "kind": "subnet-team",
+  "name": "Platform Network",
+  "notes": "Provider entry for Plaτform SN100. Public surfaces include the Platform website, docs, and source repository; common API/OpenAPI probe paths currently return 404 and are not promoted.",
+  "schema_version": 1,
+  "website_url": "https://www.platform.network/"
+}

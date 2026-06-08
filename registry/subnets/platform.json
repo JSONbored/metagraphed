@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "netuid": 100,
+  "name": "Plaτform",
+  "slug": "sn-100",
+  "status": "active",
+  "categories": [
+    "ai-research",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://www.platform.network/",
+  "docs_url": "https://www.platform.network/docs",
+  "source_repo": "https://github.com/PlatformNetwork/platform",
+  "dashboard_url": "https://taomarketcap.com/subnets/100",
+  "baseline_excluded_surface_ids": [
+    "sn-100-taomarketcap-source-repo",
+    "sn-100-taomarketcap-website",
+    "sn-100-tensorplex-source-repo-1",
+    "sn-100-tensorplex-source-repo-2",
+    "sn-100-website-common-docs"
+  ],
+  "notes": "Reviewed overlay for SN100 Plaτform using the official Platform Network website, docs, and source repository. Common API, health, OpenAPI, and Swagger probe paths currently return 404 and are not promoted as public operational API surfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "verified_at": "2026-06-08T19:30:00.000Z",
+    "source_count": 7,
+    "gap_notes": [
+      "Official website, docs, and source repository are verified.",
+      "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+      "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
+      "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-100-platform-website",
+      "name": "Platform Network website",
+      "kind": "website",
+      "url": "https://www.platform.network/",
+      "provider": "platform-network",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.platform.network/",
+        "https://github.com/PlatformNetwork/platform"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Platform Network website for SN100 Plaτform."
+    },
+    {
+      "id": "sn-100-platform-docs",
+      "name": "Platform Network docs",
+      "kind": "docs",
+      "url": "https://www.platform.network/docs",
+      "provider": "platform-network",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.platform.network/docs",
+        "https://github.com/PlatformNetwork/platform"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Platform Network documentation."
+    },
+    {
+      "id": "sn-100-platform-source",
+      "name": "Platform Network source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/PlatformNetwork/platform",
+      "provider": "platform-network",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/PlatformNetwork/platform"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research."
+    }
+  ]
+}

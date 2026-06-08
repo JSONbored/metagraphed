@@ -197,6 +197,17 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://heyditto.ai/docs/",
+      "github_url": "https://github.com/orgs/ditto-assistant/repositories",
+      "id": "ditto-assistant",
+      "kind": "subnet-team",
+      "name": "Ditto",
+      "notes": "Provider entry for Ditto SN118. Public surfaces include the Ditto website, docs, assistant app, and GitHub organization repository listing; no specific live source repository has been confirmed yet.",
+      "schema_version": 1,
+      "website_url": "https://heyditto.ai/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/Djinn-Inc/djinn",
       "id": "djinn",
       "kind": "subnet-team",
@@ -560,6 +571,17 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://www.platform.network/docs",
+      "github_url": "https://github.com/PlatformNetwork/platform",
+      "id": "platform-network",
+      "kind": "subnet-team",
+      "name": "Platform Network",
+      "notes": "Provider entry for Plaτform SN100. Public surfaces include the Platform website, docs, and source repository; common API/OpenAPI probe paths currently return 404 and are not promoted.",
+      "schema_version": 1,
+      "website_url": "https://www.platform.network/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/qbittensor-labs/quantum-compute",
       "id": "qbittensor-labs",
       "kind": "subnet-team",
@@ -630,6 +652,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/DendriteHQ/SOMA",
+      "id": "soma",
+      "kind": "subnet-team",
+      "name": "SOMA",
+      "notes": "Provider entry for SOMA SN114. Public surfaces include the SOMA website, dashboard, MCP/access pages, and source repository; common API/OpenAPI probe paths currently return 404 or fail and are not promoted.",
+      "schema_version": 1,
+      "website_url": "https://thesoma.ai/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/sparket-ai/sparket-ai",
       "id": "sparket",
       "kind": "subnet-team",
@@ -667,6 +699,16 @@
       "notes": "Provider entry for Talisman AI SN45 website and source repository.",
       "schema_version": 1,
       "website_url": "https://ai.talisman.xyz/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+      "id": "tao-colosseum",
+      "kind": "subnet-team",
+      "name": "TAO Colosseum",
+      "notes": "Provider entry for TAO Colosseum SN38. The source repository is live, while the previously discovered website currently redirects to a parked-domain sale page and is not promoted.",
+      "schema_version": 1,
+      "website_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
       "authority": "provider-claimed",

@@ -1052,9 +1052,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "TAO Colosseum source repository is live and promoted.",
           "Previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page.",
           "No verified official website yet.",
-          "No verified live source repository yet.",
           "No verified official docs site yet beyond public directory/community pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -1062,7 +1062,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "website",
           "openapi",
           "subnet-api",
@@ -1071,7 +1070,8 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "source-repo"
         ]
       },
       "name": "colosseum",
@@ -2764,13 +2764,17 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
+          "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -3152,11 +3156,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, dashboard, MCP/access pages, and DendriteHQ source repository are verified.",
+          "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
+          "Common docs, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "The /api path currently fails simple safe fetch probes and is not promoted.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
@@ -3268,15 +3276,21 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, assistant app, and GitHub organization repository listing are verified.",
+          "The GitHub organization repositories page is tracked as a repo registry, not a specific source repository.",
+          "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "No verified canonical source repository yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -3285,7 +3299,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
+          "repo-registry",
           "website"
         ]
       },

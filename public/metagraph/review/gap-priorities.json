@@ -18,43 +18,6 @@
       "verified_candidate_count": 11
     },
     {
-      "candidate_count": 14,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "colosseum",
-      "netuid": 38,
-      "priority_score": 82,
-      "review_state": "stale",
-      "slug": "colosseum",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 10
-    },
-    {
-      "candidate_count": 22,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "name": "SOMA",
-      "netuid": 114,
-      "priority_score": 74,
-      "review_state": "machine-generated",
-      "slug": "sn-114",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
-      "verified_candidate_count": 17
-    },
-    {
       "candidate_count": 19,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -87,24 +50,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
       "verified_candidate_count": 14
-    },
-    {
-      "candidate_count": 25,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Ditto",
-      "netuid": 118,
-      "priority_score": 69,
-      "review_state": "machine-generated",
-      "slug": "sn-118",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 10,
-      "verified_candidate_count": 19
     },
     {
       "candidate_count": 25,
@@ -193,24 +138,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
       "verified_candidate_count": 16
-    },
-    {
-      "candidate_count": 20,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Plaτform",
-      "netuid": 100,
-      "priority_score": 64,
-      "review_state": "machine-generated",
-      "slug": "sn-100",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 10,
-      "verified_candidate_count": 15
     },
     {
       "candidate_count": 20,
@@ -1014,6 +941,25 @@
       "verified_candidate_count": 22
     },
     {
+      "candidate_count": 25,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Ditto",
+      "netuid": 118,
+      "priority_score": 36,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-118",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 12,
+      "verified_candidate_count": 19
+    },
+    {
       "candidate_count": 16,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -1104,6 +1050,23 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 5,
       "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 22,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "name": "SOMA",
+      "netuid": 114,
+      "priority_score": 29,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-114",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 11,
+      "verified_candidate_count": 17
     },
     {
       "candidate_count": 18,
@@ -1387,6 +1350,25 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 8,
       "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 14,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 25,
+      "review_state": "maintainer-reviewed",
+      "slug": "colosseum",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 6,
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 14,
@@ -1763,6 +1745,24 @@
       "slug": "cacheon",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 11,
+      "verified_candidate_count": 15
+    },
+    {
+      "candidate_count": 20,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Plaτform",
+      "netuid": 100,
+      "priority_score": 19,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-100",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
       "verified_candidate_count": 15
     },
     {

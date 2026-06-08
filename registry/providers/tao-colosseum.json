@@ -1,0 +1,10 @@
+{
+  "authority": "official",
+  "github_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+  "id": "tao-colosseum",
+  "kind": "subnet-team",
+  "name": "TAO Colosseum",
+  "notes": "Provider entry for TAO Colosseum SN38. The source repository is live, while the previously discovered website currently redirects to a parked-domain sale page and is not promoted.",
+  "schema_version": 1,
+  "website_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+}

@@ -10236,6 +10236,29 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-38-tao-colosseum-source",
+      "kind": "source-repo",
+      "name": "TAO Colosseum source repository",
+      "netuid": 38,
+      "notes": "Public TAO Colosseum subnet source repository. The associated website is currently parked and remains excluded.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+      ],
+      "subnet_name": "colosseum",
+      "subnet_slug": "colosseum",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-38-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -26111,6 +26134,77 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-100-platform-docs",
+      "kind": "docs",
+      "name": "Platform Network docs",
+      "netuid": 100,
+      "notes": "Official Platform Network documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.platform.network/docs",
+        "https://github.com/PlatformNetwork/platform"
+      ],
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "url": "https://www.platform.network/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-100-platform-source",
+      "kind": "source-repo",
+      "name": "Platform Network source repository",
+      "netuid": 100,
+      "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/PlatformNetwork/platform"
+      ],
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "url": "https://github.com/PlatformNetwork/platform"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-100-platform-website",
+      "kind": "website",
+      "name": "Platform Network website",
+      "netuid": 100,
+      "notes": "Official Platform Network website for SN100 Plaτform.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.platform.network/",
+        "https://github.com/PlatformNetwork/platform"
+      ],
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "url": "https://www.platform.network/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-100-subnetradar-dashboard",
       "kind": "dashboard",
@@ -26176,69 +26270,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-100-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Plaτform source repository",
-      "netuid": 100,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/100"
-      ],
-      "subnet_name": "Plaτform",
-      "subnet_slug": "sn-100",
-      "url": "https://github.com/PlatformNetwork/platform"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-100-taomarketcap-website",
-      "kind": "website",
-      "name": "Plaτform website",
-      "netuid": 100,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/100"
-      ],
-      "subnet_name": "Plaτform",
-      "subnet_slug": "sn-100",
-      "url": "https://platform.network/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-100-taopedia-article",
       "kind": "docs",
       "name": "Plaτform Taopedia article",
@@ -26299,101 +26330,6 @@
       "subnet_name": "Plaτform",
       "subnet_slug": "sn-100",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/100"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-100-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Plaτform source repository",
-      "netuid": 100,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "community-docs"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json"
-      ],
-      "subnet_name": "Plaτform",
-      "subnet_slug": "sn-100",
-      "url": "https://github.com/CortexLM/platform"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-100-tensorplex-source-repo-2",
-      "kind": "source-repo",
-      "name": "Plaτform source repository",
-      "netuid": 100,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json"
-      ],
-      "subnet_name": "Plaτform",
-      "subnet_slug": "sn-100",
-      "url": "https://github.com/PlatformNetwork"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-100-website-common-docs",
-      "kind": "docs",
-      "name": "Plaτform docs",
-      "netuid": 100,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://platform.network/"
-      ],
-      "subnet_name": "Plaτform",
-      "subnet_slug": "sn-100",
-      "url": "https://platform.network/docs"
     },
     {
       "auth_required": false,
@@ -29566,6 +29502,150 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "id": "sn-114-level114-source",
+      "kind": "source-repo",
+      "name": "Level114 subnet source repository",
+      "netuid": 114,
+      "notes": "Live alternate repository discovered through Tensorplex subnet docs. Kept as secondary evidence; DendriteHQ/SOMA remains the primary source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Level114/level114-subnet",
+        "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://github.com/Level114/level114-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-114-soma-access",
+      "kind": "dashboard",
+      "name": "SOMA access surface",
+      "netuid": 114,
+      "notes": "Public SOMA access/app surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://thesoma.ai/soma-access",
+        "https://thesoma.ai/"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://thesoma.ai/soma-access"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-114-soma-dashboard",
+      "kind": "dashboard",
+      "name": "SOMA dashboard",
+      "netuid": 114,
+      "notes": "Public SOMA dashboard surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://thesoma.ai/dashboard",
+        "https://thesoma.ai/"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://thesoma.ai/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-114-soma-mcp",
+      "kind": "data-artifact",
+      "name": "SOMA MCP surface",
+      "netuid": 114,
+      "notes": "Public SOMA MCP information surface for SN114.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://thesoma.ai/mcp",
+        "https://thesoma.ai/"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://thesoma.ai/mcp"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-114-soma-source",
+      "kind": "source-repo",
+      "name": "SOMA source repository",
+      "netuid": 114,
+      "notes": "Public SOMA source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/DendriteHQ/SOMA",
+        "https://thesoma.ai/"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://github.com/DendriteHQ/SOMA"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-114-soma-website",
+      "kind": "website",
+      "name": "SOMA website",
+      "netuid": 114,
+      "notes": "Official SOMA website for SN114.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "source_urls": [
+        "https://thesoma.ai/",
+        "https://github.com/DendriteHQ/SOMA"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://thesoma.ai/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-114-subnetradar-dashboard",
       "kind": "dashboard",
@@ -29631,69 +29711,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-114-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "SOMA source repository",
-      "netuid": 114,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/114"
-      ],
-      "subnet_name": "SOMA",
-      "subnet_slug": "sn-114",
-      "url": "https://github.com/DendriteHQ/SOMA"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-114-taomarketcap-website",
-      "kind": "website",
-      "name": "SOMA website",
-      "netuid": 114,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/114"
-      ],
-      "subnet_name": "SOMA",
-      "subnet_slug": "sn-114",
-      "url": "https://thesoma.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-114-taopedia-article",
       "kind": "docs",
       "name": "SOMA Taopedia article",
@@ -29754,69 +29771,6 @@
       "subnet_name": "SOMA",
       "subnet_slug": "sn-114",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-114-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "SOMA source repository",
-      "netuid": 114,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "community-docs"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json"
-      ],
-      "subnet_name": "SOMA",
-      "subnet_slug": "sn-114",
-      "url": "https://github.com/Level114/level114-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-114-website-link-thesoma-ai-data-artifact-4",
-      "kind": "data-artifact",
-      "name": "SOMA data artifact",
-      "netuid": 114,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://thesoma.ai/"
-      ],
-      "subnet_name": "SOMA",
-      "subnet_slug": "sn-114",
-      "url": "https://thesoma.ai/mcp"
     },
     {
       "auth_required": false,
@@ -30458,6 +30412,173 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-assistant",
+      "kind": "dashboard",
+      "name": "Ditto assistant app",
+      "netuid": 118,
+      "notes": "Public Ditto assistant app surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://assistant.heyditto.ai/",
+        "https://heyditto.ai/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://assistant.heyditto.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-docs",
+      "kind": "docs",
+      "name": "Ditto docs",
+      "netuid": 118,
+      "notes": "Official Ditto documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/",
+        "https://heyditto.ai/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://heyditto.ai/docs/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-hermes-docs",
+      "kind": "docs",
+      "name": "Ditto Hermes Agent docs",
+      "netuid": 118,
+      "notes": "Ditto documentation for Hermes Agent integration.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/hermes-agent/",
+        "https://heyditto.ai/docs/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://heyditto.ai/docs/hermes-agent/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-mcp-docs",
+      "kind": "docs",
+      "name": "Ditto MCP server docs",
+      "netuid": 118,
+      "notes": "Ditto documentation for MCP server setup.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/mcp-server/",
+        "https://heyditto.ai/docs/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://heyditto.ai/docs/mcp-server/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-openclaw-docs",
+      "kind": "docs",
+      "name": "Ditto OpenClaw docs",
+      "netuid": 118,
+      "notes": "Ditto documentation for OpenClaw integration.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/openclaw/",
+        "https://heyditto.ai/docs/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://heyditto.ai/docs/openclaw/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-repo-registry",
+      "kind": "repo-registry",
+      "name": "Ditto GitHub repositories",
+      "netuid": 118,
+      "notes": "Public Ditto GitHub organization repository listing. Tracked separately from source-repo until a canonical repository is verified.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/orgs/ditto-assistant/repositories",
+        "https://heyditto.ai/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://github.com/orgs/ditto-assistant/repositories"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-website",
+      "kind": "website",
+      "name": "Ditto website",
+      "netuid": 118,
+      "notes": "Official Ditto website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://heyditto.ai/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-118-subnetradar-dashboard",
       "kind": "dashboard",
@@ -30523,70 +30644,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-118-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Ditto source repository",
-      "netuid": 118,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/118"
-      ],
-      "subnet_name": "Ditto",
-      "subnet_slug": "sn-118",
-      "url": "https://github.com/orgs/ditto-assistant/repositories"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-118-taomarketcap-website",
-      "kind": "website",
-      "name": "Ditto website",
-      "netuid": 118,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/118"
-      ],
-      "subnet_name": "Ditto",
-      "subnet_slug": "sn-118",
-      "url": "https://heyditto.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-118-taopedia-article",
       "kind": "docs",
       "name": "Ditto Taopedia article",
@@ -30647,101 +30704,6 @@
       "subnet_name": "Ditto",
       "subnet_slug": "sn-118",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/118"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-118-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Ditto source repository",
-      "netuid": 118,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "community-docs"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json"
-      ],
-      "subnet_name": "Ditto",
-      "subnet_slug": "sn-118",
-      "url": "https://github.com/mobiusfund/etf"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-118-website-common-docs",
-      "kind": "docs",
-      "name": "Ditto docs",
-      "netuid": 118,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
-      "subnet_name": "Ditto",
-      "subnet_slug": "sn-118",
-      "url": "https://heyditto.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-118-website-link-heyditto-ai-docs-5",
-      "kind": "docs",
-      "name": "Ditto docs",
-      "netuid": 118,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
-      "subnet_name": "Ditto",
-      "subnet_slug": "sn-118",
-      "url": "https://heyditto.ai/docs/openclaw"
     },
     {
       "auth_required": false,

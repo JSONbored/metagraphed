@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1320,
+  "document_count": 1327,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -289,6 +289,21 @@
       ],
       "type": "provider",
       "url": "https://www.desearch.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:ditto-assistant",
+      "subtitle": "subnet-team",
+      "title": "Ditto",
+      "tokens": [
+        "assistant",
+        "ditto",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://heyditto.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -783,6 +798,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:platform-network",
+      "subtitle": "subnet-team",
+      "title": "Platform Network",
+      "tokens": [
+        "network",
+        "official",
+        "platform",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.platform.network/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:qbittensor-labs",
       "subtitle": "subnet-team",
       "title": "qBittensor Labs",
@@ -885,6 +915,20 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:soma",
+      "subtitle": "subnet-team",
+      "title": "SOMA",
+      "tokens": [
+        "official",
+        "soma",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://thesoma.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:sparket",
       "subtitle": "subnet-team",
       "title": "Sparket",
@@ -940,6 +984,21 @@
       ],
       "type": "provider",
       "url": "https://ai.talisman.xyz/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:tao-colosseum",
+      "subtitle": "subnet-team",
+      "title": "TAO Colosseum",
+      "tokens": [
+        "colosseum",
+        "official",
+        "subnet",
+        "tao",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -2048,10 +2107,18 @@
       "title": "Ditto",
       "tokens": [
         "118",
+        "agent",
+        "augmented",
         "baseline",
         "curated",
         "ditto",
-        "sn"
+        "docs",
+        "identity",
+        "memory",
+        "official",
+        "reviewed",
+        "sn",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/118"
@@ -3244,11 +3311,21 @@
       "title": "Plaτform",
       "tokens": [
         "100",
+        "ai",
+        "augmented",
         "baseline",
         "curated",
+        "docs",
         "form",
+        "identity",
+        "official",
         "pla",
-        "sn"
+        "repo",
+        "research",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/100"
@@ -3487,10 +3564,18 @@
       "title": "SOMA",
       "tokens": [
         "114",
+        "augmented",
         "baseline",
         "curated",
+        "identity",
+        "mcp",
+        "official",
+        "repo",
+        "reviewed",
         "sn",
-        "soma"
+        "soma",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/114"
@@ -10289,6 +10374,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-ditto-assistant",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "dashboard / ditto-assistant",
+      "title": "Ditto assistant app",
+      "tokens": [
+        "118",
+        "app",
+        "assistant",
+        "dashboard",
+        "ditto",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://assistant.heyditto.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-118-backprop-dashboard",
       "netuid": 118,
       "slug": "sn-118",
@@ -10307,77 +10410,96 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-website-common-docs",
+      "id": "surface:sn-118-ditto-docs",
       "netuid": 118,
       "slug": "sn-118",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / ditto-assistant",
       "title": "Ditto docs",
       "tokens": [
         "118",
+        "assistant",
         "ditto",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
-      "url": "https://heyditto.ai/docs"
+      "url": "https://heyditto.ai/docs/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-website-link-heyditto-ai-docs-5",
+      "id": "surface:sn-118-ditto-repo-registry",
       "netuid": 118,
       "slug": "sn-118",
-      "subtitle": "docs / taomarketcap",
-      "title": "Ditto docs",
+      "subtitle": "repo-registry / ditto-assistant",
+      "title": "Ditto GitHub repositories",
       "tokens": [
         "118",
+        "assistant",
         "ditto",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://heyditto.ai/docs/openclaw"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-taomarketcap-source-repo",
-      "netuid": 118,
-      "slug": "sn-118",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Ditto source repository",
-      "tokens": [
-        "118",
-        "ditto",
+        "github",
+        "registry",
         "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
+        "repositories",
+        "sn"
       ],
       "type": "surface",
       "url": "https://github.com/orgs/ditto-assistant/repositories"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-tensorplex-source-repo-1",
+      "id": "surface:sn-118-ditto-hermes-docs",
       "netuid": 118,
       "slug": "sn-118",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Ditto source repository",
+      "subtitle": "docs / ditto-assistant",
+      "title": "Ditto Hermes Agent docs",
       "tokens": [
         "118",
+        "agent",
+        "assistant",
         "ditto",
         "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
+        "hermes",
+        "sn"
       ],
       "type": "surface",
-      "url": "https://github.com/mobiusfund/etf"
+      "url": "https://heyditto.ai/docs/hermes-agent/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-ditto-mcp-docs",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "docs / ditto-assistant",
+      "title": "Ditto MCP server docs",
+      "tokens": [
+        "118",
+        "assistant",
+        "ditto",
+        "docs",
+        "mcp",
+        "server",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://heyditto.ai/docs/mcp-server/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-ditto-openclaw-docs",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "docs / ditto-assistant",
+      "title": "Ditto OpenClaw docs",
+      "tokens": [
+        "118",
+        "assistant",
+        "ditto",
+        "docs",
+        "openclaw",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://heyditto.ai/docs/openclaw/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10452,16 +10574,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-taomarketcap-website",
+      "id": "surface:sn-118-ditto-website",
       "netuid": 118,
       "slug": "sn-118",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / ditto-assistant",
       "title": "Ditto website",
       "tokens": [
         "118",
+        "assistant",
         "ditto",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -15189,6 +15311,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-level114-source",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "source-repo / soma",
+      "title": "Level114 subnet source repository",
+      "tokens": [
+        "114",
+        "level114",
+        "repo",
+        "repository",
+        "sn",
+        "soma",
+        "source",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Level114/level114-subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-77-backprop-dashboard",
       "netuid": 77,
       "slug": "sn-77",
@@ -18665,6 +18807,65 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-platform-docs",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "docs / platform-network",
+      "title": "Platform Network docs",
+      "tokens": [
+        "100",
+        "docs",
+        "form",
+        "network",
+        "pla",
+        "platform",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://www.platform.network/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-platform-source",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "source-repo / platform-network",
+      "title": "Platform Network source repository",
+      "tokens": [
+        "100",
+        "form",
+        "network",
+        "pla",
+        "platform",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/PlatformNetwork/platform"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-platform-website",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "website / platform-network",
+      "title": "Platform Network website",
+      "tokens": [
+        "100",
+        "form",
+        "network",
+        "pla",
+        "platform",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.platform.network/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-100-backprop-dashboard",
       "netuid": 100,
       "slug": "sn-100",
@@ -18681,88 +18882,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/100-pla-form"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-website-common-docs",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "docs / taomarketcap",
-      "title": "Plaτform docs",
-      "tokens": [
-        "100",
-        "docs",
-        "form",
-        "pla",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://platform.network/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-taomarketcap-source-repo",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Plaτform source repository",
-      "tokens": [
-        "100",
-        "form",
-        "pla",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/PlatformNetwork/platform"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-tensorplex-source-repo-1",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Plaτform source repository",
-      "tokens": [
-        "100",
-        "docs",
-        "form",
-        "pla",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/CortexLM/platform"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-tensorplex-source-repo-2",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Plaτform source repository",
-      "tokens": [
-        "100",
-        "docs",
-        "form",
-        "pla",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/PlatformNetwork"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18838,24 +18957,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/100"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-taomarketcap-website",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "website / taomarketcap",
-      "title": "Plaτform website",
-      "tokens": [
-        "100",
-        "form",
-        "pla",
-        "sn",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://platform.network/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20188,6 +20289,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-soma-access",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "dashboard / soma",
+      "title": "SOMA access surface",
+      "tokens": [
+        "114",
+        "access",
+        "dashboard",
+        "sn",
+        "soma",
+        "surface"
+      ],
+      "type": "surface",
+      "url": "https://thesoma.ai/soma-access"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-114-backprop-dashboard",
       "netuid": 114,
       "slug": "sn-114",
@@ -20206,28 +20325,45 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-website-link-thesoma-ai-data-artifact-4",
+      "id": "surface:sn-114-soma-dashboard",
       "netuid": 114,
       "slug": "sn-114",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "SOMA data artifact",
+      "subtitle": "dashboard / soma",
+      "title": "SOMA dashboard",
+      "tokens": [
+        "114",
+        "dashboard",
+        "sn",
+        "soma"
+      ],
+      "type": "surface",
+      "url": "https://thesoma.ai/dashboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-soma-mcp",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "data-artifact / soma",
+      "title": "SOMA MCP surface",
       "tokens": [
         "114",
         "artifact",
         "data",
+        "mcp",
         "sn",
         "soma",
-        "taomarketcap"
+        "surface"
       ],
       "type": "surface",
       "url": "https://thesoma.ai/mcp"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-taomarketcap-source-repo",
+      "id": "surface:sn-114-soma-source",
       "netuid": 114,
       "slug": "sn-114",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / soma",
       "title": "SOMA source repository",
       "tokens": [
         "114",
@@ -20235,32 +20371,10 @@
         "repository",
         "sn",
         "soma",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/DendriteHQ/SOMA"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-tensorplex-source-repo-1",
-      "netuid": 114,
-      "slug": "sn-114",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "SOMA source repository",
-      "tokens": [
-        "114",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "soma",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/Level114/level114-subnet"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20335,16 +20449,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-taomarketcap-website",
+      "id": "surface:sn-114-soma-website",
       "netuid": 114,
       "slug": "sn-114",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / soma",
       "title": "SOMA website",
       "tokens": [
         "114",
         "sn",
         "soma",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21494,6 +21607,23 @@
       ],
       "type": "surface",
       "url": "https://www.talkhead.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-tao-colosseum-source",
+      "netuid": 38,
+      "slug": "colosseum",
+      "subtitle": "source-repo / tao-colosseum",
+      "title": "TAO Colosseum source repository",
+      "tokens": [
+        "colosseum",
+        "repo",
+        "repository",
+        "source",
+        "tao"
+      ],
+      "type": "surface",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

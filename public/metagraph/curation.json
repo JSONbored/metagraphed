@@ -1641,9 +1641,9 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "TAO Colosseum source repository is live and promoted.",
           "Previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page.",
           "No verified official website yet.",
-          "No verified live source repository yet.",
           "No verified official docs site yet beyond public directory/community pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -1651,17 +1651,17 @@
           "No verified standalone static data artifact yet."
         ],
         "level": "maintainer-reviewed",
-        "review_state": "stale",
-        "reviewed_at": "2026-06-08T18:08:00.000Z",
-        "source_count": 5,
-        "verified_at": "2026-06-08T18:08:00.000Z"
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T19:30:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T19:30:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
+          "TAO Colosseum source repository is live and promoted.",
           "Previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page.",
           "No verified official website yet.",
-          "No verified live source repository yet.",
           "No verified official docs site yet beyond public directory/community pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -1669,7 +1669,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "website",
           "openapi",
           "subnet-api",
@@ -1678,13 +1677,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "source-repo"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
       "slug": "colosseum",
-      "surface_count": 5
+      "surface_count": 6
     },
     {
       "candidate_count": 8,
@@ -4326,24 +4326,32 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
+          "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 6,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T19:30:00.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T19:30:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
+          "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -4361,7 +4369,7 @@
       "name": "Plaτform",
       "netuid": 100,
       "slug": "sn-100",
-      "surface_count": 10
+      "surface_count": 8
     },
     {
       "candidate_count": 6,
@@ -4934,21 +4942,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, dashboard, MCP/access pages, and DendriteHQ source repository are verified.",
+          "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
+          "Common docs, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "The /api path currently fails simple safe fetch probes and is not promoted.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 6,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T19:30:00.000Z",
+        "source_count": 12,
+        "verified_at": "2026-06-08T19:30:00.000Z"
       },
       "gap_count": 3,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, dashboard, MCP/access pages, and DendriteHQ source repository are verified.",
+          "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
+          "Common docs, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "The /api path currently fails simple safe fetch probes and is not promoted.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
@@ -4967,7 +4983,7 @@
       "name": "SOMA",
       "netuid": 114,
       "slug": "sn-114",
-      "surface_count": 9
+      "surface_count": 11
     },
     {
       "candidate_count": 7,
@@ -5118,26 +5134,37 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, assistant app, and GitHub organization repository listing are verified.",
+          "The GitHub organization repositories page is tracked as a repo registry, not a specific source repository.",
+          "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "No verified canonical source repository yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 6,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T19:30:00.000Z",
+        "source_count": 12,
+        "verified_at": "2026-06-08T19:30:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, assistant app, and GitHub organization repository listing are verified.",
+          "The GitHub organization repositories page is tracked as a repo registry, not a specific source repository.",
+          "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+          "No verified canonical source repository yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -5146,14 +5173,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
+          "repo-registry",
           "website"
         ]
       },
       "name": "Ditto",
       "netuid": 118,
       "slug": "sn-118",
-      "surface_count": 10
+      "surface_count": 12
     },
     {
       "candidate_count": 7,

@@ -4786,6 +4786,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Platform Network docs is a public docs surface for SN100.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.platform.network/docs",
+      "subject": "surface:sn-100-platform-docs",
+      "support_summary": "Listed in curated overlay for sn-100.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Platform Network source repository is a public source-repo surface for SN100.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/PlatformNetwork/platform",
+      "subject": "surface:sn-100-platform-source",
+      "support_summary": "Listed in curated overlay for sn-100.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Platform Network website is a public website surface for SN100.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.platform.network/",
+      "subject": "surface:sn-100-platform-website",
+      "support_summary": "Listed in curated overlay for sn-100.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Plaτform SubnetRadar dashboard is a public dashboard surface for SN100.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4808,28 +4841,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Plaτform source repository is a public source-repo surface for SN100.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/100",
-      "subject": "surface:sn-100-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-100.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Plaτform website is a public website surface for SN100.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/100",
-      "subject": "surface:sn-100-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-100.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Plaτform Taopedia article is a public docs surface for SN100.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4848,39 +4859,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json",
       "subject": "surface:sn-100-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-100.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Plaτform source repository is a public source-repo surface for SN100.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json",
-      "subject": "surface:sn-100-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-100.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Plaτform source repository is a public source-repo surface for SN100.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json",
-      "subject": "surface:sn-100-tensorplex-source-repo-2",
-      "support_summary": "Listed in curated overlay for sn-100.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Plaτform docs is a public docs surface for SN100.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://platform.network/",
-      "subject": "surface:sn-100-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-100.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6117,6 +6095,72 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Level114 subnet source repository is a public source-repo surface for SN114.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "community",
+      "source_url": "https://github.com/Level114/level114-subnet",
+      "subject": "surface:sn-114-level114-source",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA access surface is a public dashboard surface for SN114.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://thesoma.ai/soma-access",
+      "subject": "surface:sn-114-soma-access",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA dashboard is a public dashboard surface for SN114.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://thesoma.ai/dashboard",
+      "subject": "surface:sn-114-soma-dashboard",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA MCP surface is a public data-artifact surface for SN114.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://thesoma.ai/mcp",
+      "subject": "surface:sn-114-soma-mcp",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA source repository is a public source-repo surface for SN114.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/DendriteHQ/SOMA",
+      "subject": "surface:sn-114-soma-source",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA website is a public website surface for SN114.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://thesoma.ai/",
+      "subject": "surface:sn-114-soma-website",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "SOMA SubnetRadar dashboard is a public dashboard surface for SN114.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6139,28 +6183,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "SOMA source repository is a public source-repo surface for SN114.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/114",
-      "subject": "surface:sn-114-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-114.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "SOMA website is a public website surface for SN114.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/114",
-      "subject": "surface:sn-114-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-114.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "SOMA Taopedia article is a public docs surface for SN114.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6179,28 +6201,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json",
       "subject": "surface:sn-114-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-114.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "SOMA source repository is a public source-repo surface for SN114.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json",
-      "subject": "surface:sn-114-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-114.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "SOMA data artifact is a public data-artifact surface for SN114.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://thesoma.ai/",
-      "subject": "surface:sn-114-website-link-thesoma-ai-data-artifact-4",
       "support_summary": "Listed in curated overlay for sn-114.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6436,6 +6436,83 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Ditto assistant app is a public dashboard surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://assistant.heyditto.ai/",
+      "subject": "surface:sn-118-ditto-assistant",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto docs is a public docs surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://heyditto.ai/docs/",
+      "subject": "surface:sn-118-ditto-docs",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto Hermes Agent docs is a public docs surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://heyditto.ai/docs/hermes-agent/",
+      "subject": "surface:sn-118-ditto-hermes-docs",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto MCP server docs is a public docs surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://heyditto.ai/docs/mcp-server/",
+      "subject": "surface:sn-118-ditto-mcp-docs",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto OpenClaw docs is a public docs surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://heyditto.ai/docs/openclaw/",
+      "subject": "surface:sn-118-ditto-openclaw-docs",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto GitHub repositories is a public repo-registry surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/orgs/ditto-assistant/repositories",
+      "subject": "surface:sn-118-ditto-repo-registry",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto website is a public website surface for SN118.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://heyditto.ai/",
+      "subject": "surface:sn-118-ditto-website",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Ditto SubnetRadar dashboard is a public dashboard surface for SN118.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6458,28 +6535,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Ditto source repository is a public source-repo surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/118",
-      "subject": "surface:sn-118-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Ditto website is a public website surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/118",
-      "subject": "surface:sn-118-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Ditto Taopedia article is a public docs surface for SN118.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6498,39 +6553,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json",
       "subject": "surface:sn-118-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Ditto source repository is a public source-repo surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json",
-      "subject": "surface:sn-118-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Ditto docs is a public docs surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://heyditto.ai/",
-      "subject": "surface:sn-118-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Ditto docs is a public docs surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://heyditto.ai/",
-      "subject": "surface:sn-118-website-link-heyditto-ai-docs-5",
       "support_summary": "Listed in curated overlay for sn-118.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10073,6 +10095,17 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/38",
       "subject": "surface:sn-38-subnetradar-dashboard",
+      "support_summary": "Listed in curated overlay for colosseum.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TAO Colosseum source repository is a public source-repo surface for SN38.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+      "subject": "surface:sn-38-tao-colosseum-source",
       "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -16397,8 +16430,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1490,
+    "claim_count": 1493,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1111
+    "surface_claim_count": 1114
   }
 }
