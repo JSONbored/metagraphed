@@ -73,6 +73,14 @@ Start with subnets that are still profile-light: directory-only entries,
 subnets missing websites or source repos, and subnets with public APIs that do
 not yet have OpenAPI/schema metadata in Metagraphed.
 
+Generate the current queue with:
+
+```bash
+npm run curation:brief
+```
+
+The curation playbook is in `docs/curation-playbook.md`.
+
 Good direct candidate PRs are small: exactly one public URL, one public source
 URL proving the claim, one active netuid, and no generated artifacts.
 

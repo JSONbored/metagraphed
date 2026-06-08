@@ -236,6 +236,10 @@ npm run probes:smoke
 
 Metagraphed supports PR-first and issue-first UGC for public subnet interface corrections. Direct UGC PRs must change exactly one `registry/candidates/community/*.json` file and no generated artifacts. Public preflight returns broad states (`submit_pr`, `fix_required`, `route_away`, `manual_review`); private gate scoring and merge heuristics are intentionally not committed.
 
+Use `npm run curation:brief` to generate a current Markdown curation queue from
+the existing profile completeness, gap priority, adapter candidate, and coverage
+artifacts. The curation playbook lives in `docs/curation-playbook.md`.
+
 See `docs/submission-gate.md` and `CONTRIBUTING.md` for the submission contract.
 
 ## Repository Layout

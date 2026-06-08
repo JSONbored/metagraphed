@@ -54,6 +54,7 @@ import {
   isR2OnlyArtifactPath,
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
+import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -156,6 +157,59 @@ describe("script utility contracts", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  test("renders a contributor curation brief from review artifacts", () => {
+    const brief = renderCurationBrief({
+      coverage: {
+        active_netuids: 129,
+        application_subnets: 128,
+        curated_overlays: 129,
+        native_only: 0,
+        surfaces: 853,
+        probed_surfaces: 852,
+        candidates: 1772,
+      },
+      profile_summary: {
+        average_completeness_score: 49,
+      },
+      lowest_completeness: [
+        {
+          netuid: 27,
+          name: "Nodexo",
+          completeness_score: 20,
+          suggested_next_action:
+            "submit official docs, website, or source repository evidence",
+          gaps: ["missing-source-repo", "missing-website"],
+        },
+      ],
+      highest_gap_priority: [
+        {
+          netuid: 33,
+          name: "ReadyAI",
+          priority_score: 93,
+          suggested_next_action:
+            "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+          missing_kinds: ["website", "openapi"],
+        },
+      ],
+      adapter_candidates: [
+        {
+          netuid: 64,
+          name: "Chutes",
+          adapter_score: 72,
+          surface_kinds: ["data-artifact", "subnet-api"],
+        },
+      ],
+      manual_review_kinds: ["provider profile", "archive endpoint"],
+    });
+
+    assert.match(brief, /Metagraphed Curation Brief/);
+    assert.match(brief, /Active Finney netuids: 129/);
+    assert.match(brief, /SN27 Nodexo - score 20/);
+    assert.match(brief, /SN33 ReadyAI - priority 93/);
+    assert.match(brief, /SN64 Chutes - score 72/);
+    assert.match(brief, /Health, uptime, latency, incidents/);
   });
 
   test("refresh pipeline persists candidate discovery timestamps", async () => {
