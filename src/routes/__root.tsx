@@ -108,6 +108,9 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Pre-hydration: set .dark on <html> from localStorage/system so the
+            first paint matches the user's chosen theme — no flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
