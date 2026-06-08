@@ -279,10 +279,12 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
 
 function EndpointsGlanceLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   return (
     <EndpointsGlance
       endpoints={rows}
+      lastChecked={meta?.generated_at}
       fullList={() => <EndpointList rows={rows} showProvider />}
     />
   );
