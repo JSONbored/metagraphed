@@ -1,79 +1,83 @@
-# Charcoal & Ember redesign + taostats-style microinteractions
 
-## 1. Color system overhaul (`src/styles.css`)
+# Plan: Density, Health Color Presets, and Per-Route UX Pass
 
-Replace the current slate/cyan tokens with a Charcoal & Ember palette, tuned to accent intensity 3 (moderate — present but not neon). Light + dark both first-class, follow-system default already wired via `src/lib/theme.ts` (no logic changes needed there).
+## 1. Settings popover in the header
 
-**Dark mode (the primary, taostats-like surface)**
-- `--paper`        near-black charcoal — `oklch(0.16 0.004 40)`
-- `--surface`      panel               — `oklch(0.20 0.004 40)`
-- `--card`         raised card         — `oklch(0.235 0.005 40)`
-- `--border`       hairline            — `color-mix(in oklab, var(--ink-strong) 12%, transparent)`
-- `--ink-strong`   `oklch(0.985 0.003 40)`
-- `--ink`          `oklch(0.90 0.004 40)`
-- `--ink-muted`    `oklch(0.66 0.006 40)`
-- `--ink-subtle`   `oklch(0.45 0.006 40)`
-- `--accent`       muted ember         — `oklch(0.68 0.13 38)` (intensity 3: warm orange, not neon)
-- `--accent-foreground` `oklch(0.14 0.01 40)`
-- `--ring`         `color-mix(in oklab, var(--accent) 45%, transparent)`
+New `src/components/metagraphed/settings-popover.tsx`. Replace the standalone `ThemeToggle` slot in `app-shell.tsx` with a single gear button that opens a `Popover` containing three sections:
 
-**Light mode**
-- `--paper`        warm off-white — `oklch(0.985 0.004 60)`
-- `--surface`      `oklch(0.965 0.005 60)`
-- `--card`         `oklch(1 0 0)`
-- `--ink-strong`   `oklch(0.16 0.008 40)`
-- `--ink`          `oklch(0.28 0.008 40)`
-- `--ink-muted`    `oklch(0.50 0.008 40)`
-- `--ink-subtle`   `oklch(0.70 0.006 40)`
-- `--accent`       `oklch(0.58 0.16 38)` (ember holds up on light)
+- **Theme** — Light / Dark / System (reuses existing `theme.ts`).
+- **Density** — Comfortable (default) / Compact. Persists to `localStorage` under `mg:density` and toggles `data-density="compact"` on `<html>`.
+- **Health colors** — three presets (see §3).
 
-**Health (traffic-light preserved per user)** — re-tuned slightly warmer to live next to ember without clashing:
-- ok: `oklch(0.72 0.16 150)` dark / `oklch(0.55 0.18 150)` light
-- warn: `oklch(0.80 0.14 75)` dark / `oklch(0.65 0.16 65)` light
-- down: `oklch(0.70 0.20 28)` dark / `oklch(0.55 0.22 28)` light
-- unknown: neutral charcoal
+State lives in two tiny stores beside `theme.ts`:
+- `src/lib/density.ts` (`getDensity`, `setDensity`, `subscribe`, SSR-safe).
+- `src/lib/health-palette.ts` (`getPalette`, `setPalette`, presets array).
 
-**Curation tokens** re-mapped onto the charcoal/ember family so chips no longer read as cyan/slate.
+Both hydrate on `__root.tsx` mount via the same script-injection pattern as theme (no flash).
 
-## 2. Taostats-style microinteractions
+## 2. Density system
 
-Two reusable primitives, both motion-safe (`prefers-reduced-motion` falls back to instant swap).
+Add CSS in `src/styles.css`:
 
-**a. `<AnimatedNumber />`** — `src/components/metagraphed/animated-number.tsx`
-- Tween between previous and next numeric value over ~600ms with `requestAnimationFrame` and ease-out.
-- Formats via existing `format.ts` helpers (compact, percent, latency ms).
-- Brief flash of `--accent` on increase, `--health-down` on decrease (subtle, 250ms fade), opt-in via `flashOnChange`.
-- Used in: `/health` summary tiles, `/subnets` row latency/participant counts, `/` overview KPIs, freshness countdowns.
+```css
+:root { --mg-row-y: 0.75rem; --mg-cell-x: 1rem; --mg-kpi-pad: 1.25rem; --mg-kpi-num: 1.875rem; }
+html[data-density="compact"] {
+  --mg-row-y: 0.4rem; --mg-cell-x: 0.625rem; --mg-kpi-pad: 0.75rem; --mg-kpi-num: 1.375rem;
+}
+```
 
-**b. `<LiveDot />` + smooth refresh** — replace abrupt list refreshes with crossfade.
-- Wrap the auto-refreshing tables/cards in a `data-refreshing` container; existing rows fade to 70% then back instead of unmount/remount flash.
-- The countdown timer on `/health` already exists — swap its raw text for `<AnimatedNumber />` so the seconds tick smoothly.
+Then sweep:
+- `list-shell.tsx` table rows/cells → use `py-[var(--mg-row-y)] px-[var(--mg-cell-x)]`.
+- `health.tsx` KPI tiles → `p-[var(--mg-kpi-pad)]` and KPI number `text-[length:var(--mg-kpi-num)]`.
+- Card variants in `chips.tsx`/`evidence-panel.tsx` get a compact spacing tweak.
 
-**c. Hairline interactions**
-- Row hover: 120ms `background-color` to `color-mix(var(--ink-strong) 4%, transparent)` — taostats-style quiet hover.
-- Sort header active state: tiny ember underline (1px) instead of color swap.
-- Chips: 100ms scale 0.98→1 on first render via existing `animate-fade-in`.
+No layout shift in comfortable mode (values match current).
 
-## 3. Component audit pass
+## 3. Health color presets (presets only, AA verified)
 
-Walk the components that currently lean cyan/slate and confirm they read correctly under ember:
-- `chips.tsx` — health dot, curation chips, freshness chip
-- `app-shell.tsx` — sidebar active state uses `--accent` (now ember, looks right)
-- `theme-toggle.tsx` — already token-driven, no change
-- `list-shell.tsx` — skeleton tint, stale tint, retry strip
-- `evidence-panel.tsx`, `share-button.tsx`, `freshness.tsx` — verify no hardcoded colors
+`src/lib/health-palette.ts` ships three presets, each with light + dark OKLCH values for ok / warn / down / unknown:
 
-No structural changes to routes, queries, pagination, or URL state — this pass is purely visual + microinteraction.
+1. **Traffic light** (current default, retuned for AA).
+2. **Colorblind-safe** (deuteranopia/protanopia friendly — blue/orange/magenta/grey based on Okabe-Ito).
+3. **Muted** (desaturated for dense dashboards).
 
-## 4. Verification
+Selected preset writes `--health-ok|warn|down|unknown` CSS vars on `<html>` overriding the defaults in `styles.css`. All preset values pre-checked ≥4.5:1 against both `--paper` and `--card` in light and dark. No live picker, so no runtime contrast UI needed; we ship a comment in the file with the measured ratios.
 
-- `bunx tsc --noEmit`
-- Preview pass: toggle light/dark/system, confirm contrast on `/`, `/subnets`, `/subnets/:netuid`, `/health`, `/surfaces`, `/endpoints`.
-- Trigger `/health` auto-refresh, confirm countdown ticks smoothly and KPI tiles tween rather than snap.
-- Reduced-motion: enable OS setting, confirm animations no-op and numbers swap instantly.
+## 4. Per-route UX pass
+
+Scoped to layout/composition; no data-model or query changes.
+
+### `/` — taostats-style overview (`src/routes/index.tsx`)
+- Top strip: 4 big KPI tiles using `AnimatedNumber` (Active subnets, Verified surfaces, Healthy endpoints %, Last sync). Replaces current text-heavy hero.
+- Global search bar moved up, made primary (`max-w-2xl`, large input).
+- Two-column below the fold: **Featured adapter-backed pilots** (Allways SN7, Gittensor SN74 cards with live metrics) + **Registry freshness/coverage** strip.
+- Remove redundant "what is metagraphed" prose into a thin one-liner with a link to `/about`.
+
+### `/subnets/:netuid` — cosmos-directory-style profile (`src/routes/subnets.$netuid.tsx`)
+- Identity header: netuid badge + native name + symbol + curation chip + health dot, right-aligned share + open-in-API icons.
+- **Quick-copy strip**: primary surface URLs (API base, docs, repo) as one-line `code` blocks with copy buttons. Cosmos-directory pattern.
+- Tabbed body (`Tabs`): Overview · Surfaces · Endpoints · Health · Evidence · Candidates. Each tab loads its own slice; current single-scroll page becomes the Overview tab summary.
+- Profile completeness moves into a slim progress bar in the header.
+
+### `/surfaces` and `/endpoints`
+- Tighten columns; inline copy button on URL cells.
+- Group-by-provider toggle (segmented control next to search) — when on, renders provider as a sticky sub-header.
+- Health column becomes a dot + last-checked relative time, no text label.
+- Compact density (when enabled) lets ~2x rows fit on viewport.
+
+### `/health` — status-page feel
+- Per-source incidents become cards with start/duration/affected count instead of table rows.
+- Add a 24h sparkline per probe source (pure SVG, no chart lib) using cached history endpoint `/api/v1/health/history/{date}`.
+- KPI strip stays but reflows in compact mode.
 
 ## Out of scope
+- No new API routes or backend changes.
+- No custom health-color picker (presets only per chosen option).
+- No changes to `/providers`, `/gaps`, `/schemas`, `/about` in this pass.
+- No chart library; sparkline is hand-rolled SVG.
 
-- Replacing TanStack Query's refetch lifecycle (the crossfade is a visual wrapper, not a data-fetch rewrite).
-- Sparkline/chart animations (would need a chart lib pass — separate ticket).
-- Sidebar/route hierarchy changes — already shipped in earlier passes.
+## Verification
+- `bunx tsc --noEmit`.
+- Visual pass across all touched routes in both light/dark and comfortable/compact.
+- Verify health dots remain visible on every preset against `--paper` and `--card`.
+- Confirm density toggle does not cause CLS in comfortable mode.
