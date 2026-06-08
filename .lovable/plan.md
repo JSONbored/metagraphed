@@ -1,94 +1,109 @@
+# Metagraphed UX Audit & Fixes
 
-# Metagraphed UX/Design Overhaul
+## 1. Provider routing & list bugs (root cause)
 
-## 1. Design system swap — "Soft Lime on Graphite"
+The `/api/v1/providers` payload uses `id`, `website_url`, `github_url` — it does **not** include `slug`, `homepage`, `endpoints_count`, or `surfaces_count`. Today:
 
-Rewrite `src/styles.css` tokens (keep variable names so nothing else changes):
+- `providersQuery` returns raw items unchanged, so `p.slug` is `undefined` on cards → clicking sends you to `/providers/undefined`.
+- The list cards render hardcoded "endpoints / surfaces" tiles that always read `—` because those fields aren't in the list response.
 
-- Light (default, paper-white + citron)
-  - `--paper #FFFFFF`, `--surface #F4F5F7`, `--ink-strong #0B0F14`, `--ink-muted` ~ slate-500, `--ink-subtle` ~ slate-400
-  - `--accent #B8E000` (muted citron), `--accent-foreground #0B0F14`
-  - `--border` = 8% ink, `--ring` = 40% accent
-- Dark (graphite + soft lime)
-  - `--paper #0F1115`, `--surface #1A1D23`, `--card #161A20`, `--ink-strong #E7E9EC`
-  - `--accent #C8F26C`, `--accent-foreground #0F1115`
-- Health stays traffic-light (green / amber / red / slate-unknown), tuned for both modes
-- Curation: native = ink, verified = accent (lime), pilot = green, machine = soft violet, candidate = muted
-- Typography unchanged (Space Grotesk display + DM Sans body + JetBrains Mono)
-- Default density bumped to **Spacious**: increase base card padding, table row height, KPI tile size. Compact mode in Settings still works via existing `data-density="compact"` hook.
+**Fixes**
+- Add a `normalizeProviderListItem` in `queries.ts` and map every row in `providersQuery` (mirroring `normalizeProvider`): `slug = id ?? slug`, hoist `website_url → website/homepage`, `github_url → repo`, preserve `kind`, `authority`, `name`, `notes`.
+- In `src/routes/providers.index.tsx`: use the normalized `slug` everywhere; replace the empty endpoint/surface count tiles with fields the list actually provides (authority + kind chips, website host, github host). Add accent-tinted hover ring + a small lime "verified/official" dot when `authority === "official"`.
 
-## 2. Decongestion + modern-minimal pass (global)
+## 2. Accent (Soft Lime) is invisible
 
-Component-level refinements (no business-logic changes):
+Today only one progress bar uses `bg-accent`. Add tasteful accent moments without going neon:
 
-- `ProfileHero`: drop redundant subline chips that repeat KPI strip values; merge chips into a single line; move "Last checked" + share button to a quiet meta row.
-- `KPI strip`: max 4 tiles per row, larger numerals, smaller labels, hairline dividers only.
-- Cards: remove double borders, switch to single 1px hairline + subtle elevation only on hover.
-- Replace inline definitions with `Tooltip` icons (info `i` next to titles for: Curation, Completeness, Drift, Freshness, Surfaces, Candidates, Pool eligibility).
-- Add `MetricChip` micro-component with hover tooltip for numeric badges.
-- Add subtle row hover + focus rings using accent at 25% alpha.
-- Empty/stale/error states reuse `EmptyState` / `ErrorState` / `StaleBanner` with consistent "Last checked <TimeAgo/>" + "Open API URL" + back-link recovery.
+- Active profile tab: underline + label tint in `--accent`.
+- KPI tiles: 2px accent top-rule on the hero stat strip.
+- Section anchors: copy-link icon hover → accent.
+- Curation chips: `native` and `verified` chips use accent-tinted background (`color-mix(in oklab, var(--accent) 14%, transparent)`).
+- `HealthDot` `ok` state: switch to accent in dark mode (keep emerald in light for contrast).
+- Primary CTA links (`ExternalLink`, "Browse all …" recovery buttons): accent underline on hover.
+- Brand wordmark: accent dot after "Metagraphed".
 
-## 3. Provider profile (`/providers/$slug`) cleanup
+All driven by tokens already in `src/styles.css` — no new colors.
 
-- Audit every tab section (Overview, Endpoints, Surfaces, Schemas, Evidence, API). Each section MUST render exactly one of: data, `EmptyState`, `StaleBanner`, `ErrorState` — no placeholder blocks.
-- Add "Last checked" line to Overview, Endpoints, Schemas, Evidence cards.
-- Recovery links: EmptyState → `/providers`, ErrorState → API URL + retry; Schemas drift empty → `/schemas`.
-- Remove the duplicated provider description appearing in both hero and overview card.
+## 3. Provider profile audit (every section)
 
-## 4. "Endpoints at a glance" compact card
+Walk `src/routes/providers.$slug.tsx` + every loader/panel:
 
-New `EndpointsGlance` component used on `/subnets/$netuid` (top of Overview, above current Endpoints table) and `/providers/$slug` Overview:
+- Overview → `EndpointsGlance`, `SubnetsServedGrid (compact)`
+- Endpoints tab → `EndpointList`
+- Subnets served tab → `SubnetsServedGrid`
+- API tab → canonical URLs
+- Sidebar → `BreakdownCard` (by kind / status / layer)
 
-- 3 mini-rows: Root RPC/WSS, SSE/Data streams, Incidents (24h)
-- Each shows: count, top 1 example endpoint (host masked), health dot
-- Right-side "Expand" toggle → smoothly reveals the full endpoint table inline (no nav). Closed by default on mobile.
-- Honors current endpoint source (`subnetEndpointsQuery` / `providerEndpointsQuery`); no new API calls.
+For each: confirm the render returns exactly one of *data*, `EmptyState`, `StaleBanner`, or `ErrorState`. Every empty/error state passes `lastChecked={meta?.generated_at}` and a recovery `action`. Remove any "—" / skeleton-as-permanent block. Sidebar breakdowns: when undefined, show one consolidated `EmptyState` instead of three blank cards.
 
-## 5. Mobile-friendly tables (stacked cards)
+## 4. Standardized recovery links
 
-New shared `ResponsiveTable` wrapper (or `useBreakpoint('md')` switch) in `src/components/metagraphed/`:
+Centralize in `src/components/metagraphed/states.tsx`:
 
-- ≥ md: existing table layout (kept).
-- < md: each row becomes a card with label : value pairs, primary cell as card title, secondary chips below, action row at bottom.
-- Filters / sort controls move into a sticky `TableControls` bar that wraps and stacks: search input full-width, then chip-style filter dropdowns, then a sort `Select`. No horizontal scroll required.
-- Applied to: subnets index, providers index, endpoints, surfaces, schemas, gaps, plus inline tables on subnet/provider profile pages.
+```ts
+export const RECOVERY = {
+  schemas:   { label: "Browse all schemas",   href: "/schemas" },
+  endpoints: { label: "Browse all endpoints", href: "/endpoints" },
+  providers: { label: "Browse all providers", href: "/providers" },
+  subnets:   { label: "Browse all subnets",   href: "/subnets" },
+  surfaces:  { label: "Browse all surfaces",  href: "/surfaces" },
+  openapi:   { label: "Open API reference",   href: "/schemas#openapi" },
+};
+```
 
-## 6. Deep-linkable section anchors on profile pages
+Replace ad-hoc `action={{ label, href }}` literals across subnet + provider profiles with these constants so labels are identical everywhere. Schema-drift / API-related empty states default to `RECOVERY.openapi` + `RECOVERY.schemas`; endpoint-related ones to `RECOVERY.endpoints`.
 
-- Each major section inside the active profile tab gets a stable `id` (`endpoints`, `surfaces`, `schema-drift`, `gaps`, `evidence`, `candidates`, `api`).
-- Section headers render an "anchor" copy-icon button that:
-  - sets `location.hash` (`#endpoints`)
-  - copies the absolute URL to clipboard with a toast
-- On mount + on hash change, smooth-scroll to the matching `id`. Plays nicely with existing `?tab=` deep links (`/subnets/7?tab=overview#endpoints`).
-- If the hash references a section that lives under a different tab, the page auto-switches tabs before scrolling.
+## 5. Endpoints-at-a-glance polish (mobile-first)
 
-## 7. Files to add / edit
+In `endpoints-glance.tsx`:
 
-Add:
-- `src/components/metagraphed/endpoints-glance.tsx`
-- `src/components/metagraphed/responsive-table.tsx`
-- `src/components/metagraphed/section-anchor.tsx`
-- `src/components/metagraphed/metric-chip.tsx`
-- `src/components/metagraphed/info-tooltip.tsx`
+- Tap targets ≥44px on each bucket row.
+- Replace pure `display:none` with a `max-height` + `opacity` transition (160ms) for "feels fast" expansion.
+- On expand, `scrollIntoView({ behavior: "smooth", block: "nearest" })` on the inline list wrapper so the first row is in view on small screens.
+- Sticky "Hide full list" button at the bottom of the expanded panel on `< md`.
+- Default `defaultOpen` to `true` on `≥ md`, `false` on `< md` (read once via `useIsMobile`).
+- Add `aria-controls` + a unique `id` on the expanded panel.
 
-Edit:
-- `src/styles.css` — full token rewrite (Soft Lime on Graphite + paper-white)
-- `src/components/metagraphed/profile-hero.tsx`, `profile-tabs.tsx`, `coverage-card.tsx`, `primary-links-rail.tsx`, `states.tsx`, `table-controls.tsx`, `freshness.tsx`
-- `src/routes/subnets.$netuid.tsx`, `providers.$slug.tsx`, `providers.index.tsx`, `subnets.index.tsx`, `endpoints.tsx`, `surfaces.tsx`, `schemas.tsx`, `gaps.tsx`, `health.tsx`, `index.tsx`, `about.tsx`
+## 6. Full route audit (one-by-one)
 
-## 8. Out of scope (intentionally)
+For each route, verify: data loads, no placeholder blocks, empty/error/stale states use the standard components + `RECOVERY` link, deep-links work, mobile layout is clean.
 
-- No changes to `src/lib/metagraphed/queries.ts` or API contracts.
-- No new data sources; "Endpoints at a glance" reuses existing endpoint payloads.
-- No in-app contribution forms; gap recovery links continue pointing to GitHub.
-- Routing topology (`subnets.index.tsx`, `subnets.$netuid.tsx`, etc.) stays as-is.
+| Route | Checks |
+|---|---|
+| `/` | Coverage + freshness tiles populated; featured pilots visible; search works. |
+| `/subnets` | List, search, filter, sort all wired; rows link via `params`. |
+| `/subnets/:netuid` | Hero, EndpointsGlance, Surfaces, Schema Drift, Endpoints, Candidates, Evidence, API tabs; deep-link hashes. |
+| `/providers` | **Fix #1 above** + accent treatment. |
+| `/providers/:slug` | **Section audit #3 + #4.** |
+| `/surfaces` | Filters by kind / provider / netuid / public_safe; results render. |
+| `/endpoints` | Root RPC pool table + incidents; no hydration mismatch. |
+| `/health` | Global + per-subnet health + source health. |
+| `/schemas` | OpenAPI link, schema index, drift, copyable URLs; add `#openapi` anchor for RECOVERY. |
+| `/gaps` | Profile completeness, adapter candidates, enrichment queue. |
+| `/about` | Static copy; verify external links. |
+
+Bugs surfaced during audit get fixed in the same pass (e.g. the `IncidentsTable` TimeAgo hydration mismatch on `/endpoints` — already have the `TimeAgo` mount-gate, but the `IncidentsTable` row uses `formatRelative` directly; swap to `<TimeAgo />`).
+
+## Files touched
+
+- `src/lib/metagraphed/queries.ts` — add list-item normalizer, use in `providersQuery`.
+- `src/routes/providers.index.tsx` — use normalized slug, drop dead count tiles, accent polish.
+- `src/components/metagraphed/states.tsx` — export `RECOVERY` map.
+- `src/routes/providers.$slug.tsx`, `src/routes/subnets.$netuid.tsx` — adopt `RECOVERY`, audit sections.
+- `src/components/metagraphed/endpoints-glance.tsx` — mobile polish + smooth expand.
+- `src/styles.css` + `src/components/metagraphed/{profile-tabs,profile-hero,chips,section-anchor,app-shell}.tsx` — accent moments.
+- `src/routes/endpoints.tsx` (and any other routes found during audit) — replace direct `formatRelative` with `<TimeAgo />` where it caused hydration mismatch.
+
+## Out of scope
+
+No API changes, no new data sources, no in-app contribution flows, no routing topology changes.
 
 ## Verification
 
-After build:
-- Toggle light/dark — confirm accent renders as citron/soft-lime, contrast passes on text.
-- Visit `/subnets/5`, `/subnets/1`, `/providers/<slug>` — every section shows data or a proper state; no empty rectangles.
-- Resize to mobile — tables collapse to cards, filters/sort remain reachable without horizontal scroll.
-- Hit `/subnets/7?tab=overview#endpoints` directly — scrolls to Endpoints section.
-- Click section anchor icon — clipboard receives the deep link, toast fires.
+- Click any provider card → lands on `/providers/<real-slug>`, no `undefined`.
+- `/providers` list shows kind + authority + host info, no "—" placeholder tiles.
+- Toggle light/dark — accent is visibly present on tabs, KPIs, brand dot, chips.
+- Every empty/error state on subnet & provider profiles shows the same labeled recovery buttons.
+- Mobile: expand "Endpoints at a glance" — animation is smooth and the full list scrolls into view.
+- Walk all 11 routes in preview — no blank sections, no console hydration warnings.
