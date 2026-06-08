@@ -42,9 +42,8 @@ function OverviewPage() {
         right={<CopyableCode label="API" value={`${API_BASE}/api/v1`} truncate={false} />}
       />
 
-      <Suspense fallback={<StatStripSkeleton />}>
-        <StatStrip />
-      </Suspense>
+      <StatStrip />
+
 
       <section className="mt-8">
         <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-3">
