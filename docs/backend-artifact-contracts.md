@@ -121,7 +121,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run build`: regenerate deterministic public artifacts from current registry inputs.
 - `npm run validate`: validate native snapshot, overlays, candidates, review decisions, generated artifacts, and required schemas.
 - `npm run sync:subnets`: update the native Finney snapshot.
-- `npm run discover:candidates`: refresh public-source candidate discovery.
+- `npm run discover:candidates`: refresh public-source candidate discovery. GitHub README-derived links are capped, de-duplicated by kind/domain, and limited to project-affiliated provenance before they enter the generated candidate bundle.
 - `npm run verify:candidates`: safely verify public candidates.
 - `npm run curate:baseline`: derive generated overlays from verified candidates, commit only compact checksum metadata, and stage expanded generated overlays outside Git for R2.
 - `npm run review:promote`: apply public-safe maintainer review decisions to overlays.
@@ -147,6 +147,11 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run validate:workflows`: validate workflow hardening rules.
 - `npm run worker:deploy:dry-run`: validate Worker/Wrangler deployment shape without contacting Cloudflare.
 - `npm run sync:summary`: generate a registry-refresh PR summary from actual artifact diffs.
+
+Local generated artifacts default to the deterministic review timestamp. Use
+`METAGRAPH_BUILD_TIMESTAMP=<iso-8601>` only when a refresh needs an explicit
+shared `generated_at` across discovery, build, schema, and R2 manifest
+artifacts.
 
 Production publish validation can enforce operational freshness with:
 

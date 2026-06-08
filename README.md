@@ -213,7 +213,7 @@ npm run probes:smoke
 
 `sync:subnets` uses the Bittensor Python SDK through `uvx` to fetch decoded native Finney subnet metadata without committing Python dependencies to this repo.
 
-`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`.
+`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`. GitHub README-derived links are intentionally capped, de-duplicated by kind/domain, and limited to project-affiliated provenance so broad reference docs do not flood refresh PRs.
 
 `verify:candidates` safely checks candidate URLs, writes a compact promotion snapshot to `registry/verification/promotions.json`, and stages the full volatile verification run outside Git for R2.
 
@@ -226,6 +226,8 @@ npm run probes:smoke
 `endpoint:brief` summarizes monitored endpoint resources, root RPC/WSS/archive advisory pools, provider scores, active incidents, and the disabled proxy contract. It is an operator aid over existing artifacts, not a separate API or health authority.
 
 `schemas:snapshot` captures machine-readable OpenAPI/Swagger schema summaries and drift state.
+
+Local generated artifacts use a deterministic timestamp by default. Set `METAGRAPH_BUILD_TIMESTAMP=<iso-8601>` only when a refresh needs an explicit shared timestamp across discovery, build, schema, and R2 manifest steps.
 
 `schemas:bundle` bundles canonical modular JSON Schema components into `schemas/api-components.schema.json`.
 

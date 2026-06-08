@@ -6,7 +6,10 @@ import {
   loadSubnets,
   nativeDisplayName,
   readJson,
+  README_KIND_LIMITS,
+  README_LINK_LIMIT,
   repoRoot,
+  selectReviewableReadmeLinks,
   slugify,
   stableStringify,
   writeJson,
@@ -66,6 +69,12 @@ const summary = {
   ).size,
   by_provider: countBy(candidates, "provider"),
   by_kind: countBy(candidates, "kind"),
+  github_readme_policy: {
+    kind_limits_per_repository: README_KIND_LIMITS,
+    link_limit_per_repository: README_LINK_LIMIT,
+    provenance:
+      "README-derived links must be project-affiliated and are de-duplicated by kind/domain before entering the candidate bundle.",
+  },
   warnings,
 };
 
@@ -377,17 +386,19 @@ async function discoverFromGithubReadmes() {
 
     for (const candidate of candidates) {
       const repoSlug = slugify(`${repo.owner}-${repo.repo}`);
-      const links = extractMarkdownLinks(readme.text, readme.url)
-        .map((link) => ({
-          ...link,
-          classification: classifyDiscoveredLink(
-            link.url,
-            link.label,
-            candidate.url,
-          ),
-        }))
-        .filter((link) => link.classification)
-        .slice(0, 10);
+      const links = selectReviewableReadmeLinks(
+        extractMarkdownLinks(readme.text, readme.url)
+          .map((link) => ({
+            ...link,
+            classification: classifyDiscoveredLink(
+              link.url,
+              link.label,
+              candidate.url,
+            ),
+          }))
+          .filter((link) => link.classification),
+        { netuid: candidate.netuid, repo },
+      );
 
       for (const [index, link] of links.entries()) {
         addCandidate({
@@ -402,7 +413,7 @@ async function discoverFromGithubReadmes() {
           confidence: "low",
           provider: candidate.provider,
           review_notes:
-            "Discovered from a public GitHub README link. Requires verification before promotion.",
+            "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
         });
       }
     }

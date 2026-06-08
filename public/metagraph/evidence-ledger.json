@@ -41,84 +41,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
       "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-5",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-6",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-7",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a candidate docs surface for SN1.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "candidate:sn-1-github-readme-macrocosm-os-apex-docs-8",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -595,17 +518,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Compute Horde dashboard is a candidate dashboard surface for SN12.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/README.md",
-      "subject": "candidate:sn-12-github-readme-backend-developers-ltd-computehorde-dashboard-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Compute Horde API surface is a candidate subnet-api surface for SN12.",
       "confidence": "low",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -613,7 +525,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/README.md",
       "subject": "candidate:sn-12-github-readme-backend-developers-ltd-computehorde-subnet-api-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -661,6 +573,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Data Universe dashboard is a candidate dashboard surface for SN13.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
+      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-dashboard-3",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Data Universe docs is a candidate docs surface for SN13.",
       "confidence": "low",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -668,95 +591,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
       "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-10",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-5",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-6",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-8",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Data Universe docs is a candidate docs surface for SN13.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-docs-9",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -766,8 +601,8 @@
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-subnet-api-7",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "subject": "candidate:sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -965,95 +800,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
       "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-10",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-6",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-7",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-8",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-docs-9",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1063,8 +810,8 @@
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-subnet-api-5",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "subject": "candidate:sn-14-github-readme-latent-to-cacheon-subnet-api-2",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1074,63 +821,8 @@
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-dashboard-5",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-docs-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a candidate docs surface for SN14.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "candidate:sn-14-github-readme-latent-to-taohash-docs-6",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "subject": "candidate:sn-14-github-readme-latent-to-taohash-dashboard-1",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1266,6 +958,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Cacheon docs is a candidate docs surface for SN14.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://cacheon.ai/",
+      "subject": "candidate:sn-14-website-link-cacheon-ai-docs-3",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon docs is a candidate docs surface for SN14.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://cacheon.ai/",
+      "subject": "candidate:sn-14-website-link-cacheon-ai-docs-4",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "ORO dashboard is a candidate dashboard surface for SN15.",
       "confidence": "low",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1273,18 +987,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
       "subject": "candidate:sn-15-github-readme-oro-ai-oro-dashboard-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-10",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1295,73 +998,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
       "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-5",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-6",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-7",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-docs-9",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1371,8 +1008,470 @@
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "candidate:sn-15-github-readme-oro-ai-oro-subnet-api-8",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "subject": "candidate:sn-15-github-readme-oro-ai-oro-subnet-api-3",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO TaoMarketCap dashboard is a candidate dashboard surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "subject": "candidate:sn-15-taomarketcap-dashboard",
+      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO source repository is a candidate source-repo surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "subject": "candidate:sn-15-taomarketcap-source-repo",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO website is a candidate website surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "subject": "candidate:sn-15-taomarketcap-website",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Taopedia article is a candidate docs surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "taopedia-article",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx",
+      "subject": "candidate:sn-15-taopedia-article",
+      "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Tensorplex subnet docs is a candidate docs surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
+      "subject": "candidate:sn-15-tensorplex-docs",
+      "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO API is a candidate subnet-api surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-api",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO docs is a candidate docs surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-docs",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO health endpoint is a candidate subnet-api surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-health",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO OpenAPI JSON is a candidate openapi surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-openapi-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Swagger UI is a candidate openapi surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-swagger",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Swagger JSON is a candidate openapi surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-common-swagger-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO dashboard is a candidate dashboard surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-link-oroagents-com-dashboard-4",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO docs is a candidate docs surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-link-oroagents-com-docs-1",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO docs is a candidate docs surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-link-oroagents-com-docs-3",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO docs is a candidate docs surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-link-oroagents-com-docs-5",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO website page is a candidate website surface for SN15.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://oroagents.com/",
+      "subject": "candidate:sn-15-website-link-oroagents-com-website-2",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds TaoMarketCap dashboard is a candidate dashboard surface for SN16.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
+      "subject": "candidate:sn-16-taomarketcap-dashboard",
+      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds source repository is a candidate source-repo surface for SN16.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
+      "subject": "candidate:sn-16-taomarketcap-source-repo",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds website is a candidate website surface for SN16.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
+      "subject": "candidate:sn-16-taomarketcap-website",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds Taopedia article is a candidate docs surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "taopedia-article",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx",
+      "subject": "candidate:sn-16-taopedia-article",
+      "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds Tensorplex subnet docs is a candidate docs surface for SN16.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
+      "subject": "candidate:sn-16-tensorplex-docs",
+      "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds API is a candidate subnet-api surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-api",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds docs is a candidate docs surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-docs",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds health endpoint is a candidate subnet-api surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-health",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds OpenAPI JSON is a candidate openapi surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-openapi-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds Swagger UI is a candidate openapi surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-swagger",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds Swagger JSON is a candidate openapi surface for SN16.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitads.ai/",
+      "subject": "candidate:sn-16-website-common-swagger-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN dashboard is a candidate dashboard surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md",
+      "subject": "candidate:sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN TaoMarketCap dashboard is a candidate dashboard surface for SN17.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
+      "subject": "candidate:sn-17-taomarketcap-dashboard",
+      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN source repository is a candidate source-repo surface for SN17.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
+      "subject": "candidate:sn-17-taomarketcap-source-repo",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN website is a candidate website surface for SN17.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
+      "subject": "candidate:sn-17-taomarketcap-website",
+      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN Taopedia article is a candidate docs surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "taopedia-article",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx",
+      "subject": "candidate:sn-17-taopedia-article",
+      "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN Tensorplex subnet docs is a candidate docs surface for SN17.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
+      "subject": "candidate:sn-17-tensorplex-docs",
+      "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN source repository is a candidate source-repo surface for SN17.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
+      "subject": "candidate:sn-17-tensorplex-source-repo-1",
+      "support_summary": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN API is a candidate subnet-api surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-api",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN docs is a candidate docs surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-docs",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN health endpoint is a candidate subnet-api surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-health",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN OpenAPI JSON is a candidate openapi surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-openapi-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN Swagger UI is a candidate openapi surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-swagger",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN Swagger JSON is a candidate openapi surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-common-swagger-json",
+      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN website page is a candidate website surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-link-www-404-xyz-website-1",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "404—GEN website page is a candidate website surface for SN17.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.404.xyz/",
+      "subject": "candidate:sn-17-website-link-www-404-xyz-website-2",
+      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1383,7 +1482,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "candidate:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1394,7 +1493,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "candidate:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1405,18 +1504,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "candidate:sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse docs is a candidate docs surface for SN2.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
-      "subject": "candidate:sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1827,39 +1915,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Hone data artifact is a candidate data-artifact surface for SN5.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
-      "subject": "candidate:sn-5-github-readme-manifold-inc-hone-data-artifact-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone docs is a candidate docs surface for SN5.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
-      "subject": "candidate:sn-5-github-readme-manifold-inc-hone-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone docs is a candidate docs surface for SN5.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
-      "subject": "candidate:sn-5-github-readme-manifold-inc-hone-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Hone TaoMarketCap dashboard is a candidate dashboard surface for SN5.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2021,18 +2076,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
       "subject": "candidate:sn-6-github-readme-numinouslabs-numinous-dashboard-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Numinous dashboard is a candidate dashboard surface for SN6.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
-      "subject": "candidate:sn-6-github-readme-numinouslabs-numinous-dashboard-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2322,28 +2366,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Vanta dashboard is a candidate dashboard surface for SN8.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taoshidev/vanta-network/blob/main/README.md",
-      "subject": "candidate:sn-8-github-readme-taoshidev-vanta-network-dashboard-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vanta docs is a candidate docs surface for SN8.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taoshidev/vanta-network/blob/main/README.md",
-      "subject": "candidate:sn-8-github-readme-taoshidev-vanta-network-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Vanta TaoMarketCap dashboard is a candidate dashboard surface for SN8.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2505,7 +2527,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
       "subject": "candidate:sn-9-github-readme-macrocosm-os-iota-dashboard-1",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2516,29 +2538,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
       "subject": "candidate:sn-9-github-readme-macrocosm-os-iota-docs-2",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "iota docs is a candidate docs surface for SN9.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
-      "subject": "candidate:sn-9-github-readme-macrocosm-os-iota-docs-3",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "iota docs is a candidate docs surface for SN9.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
-      "subject": "candidate:sn-9-github-readme-macrocosm-os-iota-docs-4",
-      "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4555,39 +4555,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Apex docs is a public docs surface for SN1.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "surface:sn-1-github-readme-macrocosm-os-apex-docs-2",
-      "support_summary": "Listed in curated overlay for sn-1.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a public docs surface for SN1.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "surface:sn-1-github-readme-macrocosm-os-apex-docs-3",
-      "support_summary": "Listed in curated overlay for sn-1.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Apex docs is a public docs surface for SN1.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
-      "subject": "surface:sn-1-github-readme-macrocosm-os-apex-docs-4",
-      "support_summary": "Listed in curated overlay for sn-1.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Apex TaoMarketCap dashboard is a public dashboard surface for SN1.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4617,6 +4584,39 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/1",
       "subject": "surface:sn-1-taomarketcap-website",
+      "support_summary": "Listed in curated overlay for sn-1.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Apex Taopedia article is a public docs surface for SN1.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
+      "subject": "surface:sn-1-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-1.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Apex Tensorplex subnet docs is a public docs surface for SN1.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json",
+      "subject": "surface:sn-1-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-1.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Apex docs is a public docs surface for SN1.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://apex.macrocosmos.ai/",
+      "subject": "surface:sn-1-website-link-apex-macrocosmos-ai-docs-3",
       "support_summary": "Listed in curated overlay for sn-1.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -4871,17 +4871,6 @@
       "source_url": "https://connito.ai/",
       "subject": "surface:sn-102-website-link-connito-ai-docs-1",
       "support_summary": "Listed in curated overlay for sn-102.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Djinn docs is a public docs surface for SN103.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Djinn-Inc/djinn/blob/main/README.md",
-      "subject": "surface:sn-103-github-readme-djinn-inc-djinn-docs-1",
-      "support_summary": "Listed in curated overlay for sn-103.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5145,28 +5134,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
       "subject": "surface:sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-1",
-      "support_summary": "Listed in curated overlay for sn-107.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Minos API surface is a public subnet-api surface for SN107.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
-      "subject": "surface:sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-3",
-      "support_summary": "Listed in curated overlay for sn-107.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Minos dashboard is a public dashboard surface for SN107.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tigerinvests-com/sn107-alpha/blob/main/readme.md",
-      "subject": "surface:sn-107-github-readme-tigerinvests-com-sn107-alpha-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-107.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5556,17 +5523,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "minotaur dashboard is a public dashboard surface for SN112.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/subnet112/minotaur_subnet/blob/main/README.md",
-      "subject": "surface:sn-112-github-readme-subnet112-minotaur-subnet-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-112.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "minotaur TaoMarketCap dashboard is a public dashboard surface for SN112.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5633,17 +5589,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "TensorUSD docs is a public docs surface for SN113.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/TensorUSD/subnet/blob/main/README.md",
-      "subject": "surface:sn-113-github-readme-tensorusd-subnet-docs-2",
-      "support_summary": "Listed in curated overlay for sn-113.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "TensorUSD TaoMarketCap dashboard is a public dashboard surface for SN113.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5695,6 +5640,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/113/subnet.json",
       "subject": "surface:sn-113-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-113.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TensorUSD docs is a public docs surface for SN113.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://tensorusd.com/",
+      "subject": "surface:sn-113-website-link-tensorusd-com-docs-1",
       "support_summary": "Listed in curated overlay for sn-113.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5919,28 +5875,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Ditto docs is a public docs surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/mobiusfund/etf/blob/main/README.md",
-      "subject": "surface:sn-118-github-readme-mobiusfund-etf-docs-1",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Ditto docs is a public docs surface for SN118.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/mobiusfund/etf/blob/main/README.md",
-      "subject": "surface:sn-118-github-readme-mobiusfund-etf-docs-3",
-      "support_summary": "Listed in curated overlay for sn-118.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Ditto TaoMarketCap dashboard is a public dashboard surface for SN118.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6007,6 +5941,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Ditto docs is a public docs surface for SN118.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://heyditto.ai/",
+      "subject": "surface:sn-118-website-common-docs",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto docs is a public docs surface for SN118.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://heyditto.ai/",
+      "subject": "surface:sn-118-website-link-heyditto-ai-docs-5",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Satori TaoMarketCap dashboard is a public dashboard surface for SN119.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6037,17 +5993,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/119/subnet.json",
       "subject": "surface:sn-119-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-119.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Compute Horde dashboard is a public dashboard surface for SN12.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/README.md",
-      "subject": "surface:sn-12-github-readme-backend-developers-ltd-computehorde-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-12.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6491,17 +6436,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Astrid API surface is a public subnet-api surface for SN127.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/astridintelligence/sn-127/blob/master/README.md",
-      "subject": "surface:sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
-      "support_summary": "Listed in curated overlay for sn-127.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Astrid TaoMarketCap dashboard is a public dashboard surface for SN127.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6645,46 +6579,57 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe docs is a public docs surface for SN13.",
-      "confidence": "medium",
+      "claim": "Gravity docs is a public docs surface for SN13.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "surface:sn-13-github-readme-macrocosm-os-data-universe-docs-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "subject": "surface:sn-13-data-universe-gravity-docs",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe docs is a public docs surface for SN13.",
-      "confidence": "medium",
+      "claim": "Macrocosmos MCP docs is a public docs surface for SN13.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "surface:sn-13-github-readme-macrocosm-os-data-universe-docs-2",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "subject": "surface:sn-13-data-universe-mcp-docs",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe docs is a public docs surface for SN13.",
-      "confidence": "medium",
+      "claim": "Data Universe source repository is a public source-repo surface for SN13.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "surface:sn-13-github-readme-macrocosm-os-data-universe-docs-3",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "subject": "surface:sn-13-data-universe-source",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe docs is a public docs surface for SN13.",
-      "confidence": "medium",
+      "claim": "Data Universe website is a public website surface for SN13.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
-      "subject": "surface:sn-13-github-readme-macrocosm-os-data-universe-docs-4",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "subject": "surface:sn-13-data-universe-website",
+      "support_summary": "Listed in curated overlay for sn-13.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Macrocosmos scrapers repository is a public source-repo surface for SN13.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "subject": "surface:sn-13-macrocosmos-scrapers-source",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6700,24 +6645,24 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe source repository is a public source-repo surface for SN13.",
+      "claim": "Data Universe Taopedia article is a public docs surface for SN13.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/13",
-      "subject": "surface:sn-13-taomarketcap-source-repo",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx",
+      "subject": "surface:sn-13-taopedia-article",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Data Universe website is a public website surface for SN13.",
+      "claim": "Data Universe Tensorplex subnet docs is a public docs surface for SN13.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/13",
-      "subject": "surface:sn-13-taomarketcap-website",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json",
+      "subject": "surface:sn-13-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-13.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6729,50 +6674,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
       "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-1",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a public docs surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-10",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a public docs surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-2",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon docs is a public docs surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
-      "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-3",
-      "support_summary": "Listed in curated overlay for sn-14.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Cacheon dashboard is a public dashboard surface for SN14.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
-      "subject": "surface:sn-14-github-readme-latent-to-taohash-dashboard-5",
       "support_summary": "Listed in curated overlay for sn-14.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6806,6 +6707,28 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/14",
       "subject": "surface:sn-14-taomarketcap-website",
+      "support_summary": "Listed in curated overlay for sn-14.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon Taopedia article is a public docs surface for SN14.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_14/index.mdx",
+      "subject": "surface:sn-14-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-14.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon Tensorplex subnet docs is a public docs surface for SN14.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json",
+      "subject": "surface:sn-14-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-14.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6849,40 +6772,7 @@
       "source_tier": "community-docs",
       "source_type": "registry-observed",
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "surface:sn-15-github-readme-oro-ai-oro-docs-10",
-      "support_summary": "Listed in curated overlay for sn-15.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a public docs surface for SN15.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
       "subject": "surface:sn-15-github-readme-oro-ai-oro-docs-2",
-      "support_summary": "Listed in curated overlay for sn-15.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a public docs surface for SN15.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "surface:sn-15-github-readme-oro-ai-oro-docs-3",
-      "support_summary": "Listed in curated overlay for sn-15.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a public docs surface for SN15.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
-      "subject": "surface:sn-15-github-readme-oro-ai-oro-docs-4",
       "support_summary": "Listed in curated overlay for sn-15.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6916,6 +6806,39 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
       "subject": "surface:sn-15-taomarketcap-website",
+      "support_summary": "Listed in curated overlay for sn-15.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Taopedia article is a public docs surface for SN15.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx",
+      "subject": "surface:sn-15-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-15.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Tensorplex subnet docs is a public docs surface for SN15.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
+      "subject": "surface:sn-15-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-15.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO docs is a public docs surface for SN15.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://oroagents.com/",
+      "subject": "surface:sn-15-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-15.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7272,17 +7195,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "DSperse docs is a public docs surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
-      "subject": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
-      "support_summary": "Listed in curated overlay for sn-2.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "DSperse TaoMarketCap dashboard is a public dashboard surface for SN2.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7334,6 +7246,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json",
       "subject": "surface:sn-2-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-2.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "DSperse docs is a public docs surface for SN2.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "subject": "surface:sn-2-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-2.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7558,39 +7481,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Trishool dashboard is a public dashboard surface for SN23.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
-      "subject": "surface:sn-23-github-readme-trishoolai-trishool-phase2-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-23.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Trishool API surface is a public subnet-api surface for SN23.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
-      "subject": "surface:sn-23-github-readme-trishoolai-trishool-phase2-subnet-api-3",
-      "support_summary": "Listed in curated overlay for sn-23.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Trishool docs is a public docs surface for SN23.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/TrishoolAI/trishool-subnet/blob/main/README.md",
-      "subject": "surface:sn-23-github-readme-trishoolai-trishool-subnet-docs-1",
-      "support_summary": "Listed in curated overlay for sn-23.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Trishool TaoMarketCap dashboard is a public dashboard surface for SN23.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7664,6 +7554,17 @@
       "source_type": "registry-observed",
       "source_url": "https://trishool.ai/",
       "subject": "surface:sn-23-website-link-trishool-ai-docs-1",
+      "support_summary": "Listed in curated overlay for sn-23.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Trishool docs is a public docs surface for SN23.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://trishool.ai/",
+      "subject": "surface:sn-23-website-link-trishool-ai-docs-2",
       "support_summary": "Listed in curated overlay for sn-23.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7844,17 +7745,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Perturb API surface is a public subnet-api surface for SN26.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/0xsigurd/Perturb/blob/main/README.md",
-      "subject": "surface:sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
-      "support_summary": "Listed in curated overlay for sn-26.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Perturb TaoMarketCap dashboard is a public dashboard surface for SN26.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7987,79 +7877,68 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint dashboard is a public dashboard surface for SN29.",
-      "confidence": "medium",
+      "claim": "Coldint dynamic configuration repository is a public source-repo surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/coldint/coldint_validator/blob/main/README.md",
-      "subject": "surface:sn-29-github-readme-coldint-coldint-validator-dashboard-3",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-config-source",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint data artifact is a public data-artifact surface for SN29.",
-      "confidence": "medium",
+      "claim": "FineWeb Edu score 2 dataset is a public data-artifact surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/coldint/coldint_validator/blob/main/README.md",
-      "subject": "surface:sn-29-github-readme-coldint-coldint-validator-data-artifact-2",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-fineweb-dataset",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint TaoMarketCap dashboard is a public dashboard surface for SN29.",
-      "confidence": "medium",
+      "claim": "Coldint README is a public docs surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/29",
-      "subject": "surface:sn-29-taomarketcap-dashboard",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-readme-docs",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint source repository is a public source-repo surface for SN29.",
-      "confidence": "medium",
+      "claim": "Coldint TaoStats dashboard is a public dashboard surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/29",
-      "subject": "surface:sn-29-taomarketcap-source-repo",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-taostats-dashboard",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint Taopedia article is a public docs surface for SN29.",
-      "confidence": "medium",
+      "claim": "Coldint validator source repository is a public source-repo surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_29/index.mdx",
-      "subject": "surface:sn-29-taopedia-article",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-validator-source",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Coldint Tensorplex subnet docs is a public docs surface for SN29.",
-      "confidence": "medium",
+      "claim": "Coldint website is a public website surface for SN29.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json",
-      "subject": "surface:sn-29-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-29.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Coldint source repository is a public source-repo surface for SN29.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json",
-      "subject": "surface:sn-29-tensorplex-source-repo-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/coldint/coldint_validator",
+      "subject": "surface:sn-29-coldint-website",
       "support_summary": "Listed in curated overlay for sn-29.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8196,17 +8075,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ItsAI docs is a public docs surface for SN32.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/It-s-AI/llm-detection/blob/main/README.md",
-      "subject": "surface:sn-32-github-readme-it-s-ai-llm-detection-docs-1",
-      "support_summary": "Listed in curated overlay for sn-32.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "ItsAI TaoMarketCap dashboard is a public dashboard surface for SN32.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8262,113 +8130,58 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ReadyAI data artifact is a public data-artifact surface for SN33.",
-      "confidence": "medium",
+      "claim": "ReadyAI conversation dataset is a public data-artifact surface for SN33.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "subject": "surface:sn-33-readyai-hf-dataset",
       "support_summary": "Listed in curated overlay for sn-33.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ReadyAI data artifact is a public data-artifact surface for SN33.",
-      "confidence": "medium",
+      "claim": "ReadyAI llms.txt data repository is a public data-artifact surface for SN33.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-6",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "subject": "surface:sn-33-readyai-llms-data-repo",
       "support_summary": "Listed in curated overlay for sn-33.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ReadyAI data artifact is a public data-artifact surface for SN33.",
-      "confidence": "medium",
+      "claim": "ReadyAI README is a public docs surface for SN33.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "subject": "surface:sn-33-readyai-readme-docs",
       "support_summary": "Listed in curated overlay for sn-33.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ReadyAI docs is a public docs surface for SN33.",
-      "confidence": "medium",
+      "claim": "ReadyAI Conversation Genome source repository is a public source-repo surface for SN33.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-2",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "subject": "surface:sn-33-readyai-source",
       "support_summary": "Listed in curated overlay for sn-33.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ReadyAI docs is a public docs surface for SN33.",
-      "confidence": "medium",
+      "claim": "ReadyAI website is a public website surface for SN33.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-4",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "subject": "surface:sn-33-readyai-website",
       "support_summary": "Listed in curated overlay for sn-33.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ReadyAI docs is a public docs surface for SN33.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-5",
-      "support_summary": "Listed in curated overlay for sn-33.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ReadyAI docs is a public docs surface for SN33.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
-      "subject": "surface:sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-7",
-      "support_summary": "Listed in curated overlay for sn-33.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ReadyAI TaoMarketCap dashboard is a public dashboard surface for SN33.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
-      "subject": "surface:sn-33-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-33.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ReadyAI source repository is a public source-repo surface for SN33.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
-      "subject": "surface:sn-33-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-33.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitMind data artifact is a public data-artifact surface for SN34.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md",
-      "subject": "surface:sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
-      "support_summary": "Listed in curated overlay for sn-34.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8413,17 +8226,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json",
       "subject": "surface:sn-34-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-34.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "OxMarkets docs is a public docs surface for SN35.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/General-Tao-Ventures/cartha-cli/blob/main/README.md",
-      "subject": "surface:sn-35-github-readme-general-tao-ventures-cartha-cli-docs-1",
-      "support_summary": "Listed in curated overlay for sn-35.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8567,28 +8369,6 @@
       "source_url": "https://eirel.ai/",
       "subject": "surface:sn-36-website-link-eirel-ai-dashboard-3",
       "support_summary": "Listed in curated overlay for sn-36.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Aurelius docs is a public docs surface for SN37.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
-      "subject": "surface:sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
-      "support_summary": "Listed in curated overlay for sn-37.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Aurelius API surface is a public subnet-api surface for SN37.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
-      "subject": "surface:sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
-      "support_summary": "Listed in curated overlay for sn-37.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8900,28 +8680,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Almanac docs is a public docs surface for SN41.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
-      "subject": "surface:sn-41-github-readme-sportstensor-sn41-docs-1",
-      "support_summary": "Listed in curated overlay for sn-41.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Almanac docs is a public docs surface for SN41.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
-      "subject": "surface:sn-41-github-readme-sportstensor-sn41-docs-2",
-      "support_summary": "Listed in curated overlay for sn-41.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Almanac TaoMarketCap dashboard is a public dashboard surface for SN41.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8973,6 +8731,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json",
       "subject": "surface:sn-41-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-41.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Almanac docs is a public docs surface for SN41.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://almanac.market/",
+      "subject": "surface:sn-41-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-41.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9219,17 +8988,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Zipcode docs is a public docs surface for SN46.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/resi-labs-ai/RESI-models/blob/main/README.md",
-      "subject": "surface:sn-46-github-readme-resi-labs-ai-resi-models-docs-2",
-      "support_summary": "Listed in curated overlay for sn-46.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Zipcode TaoMarketCap dashboard is a public dashboard surface for SN46.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9347,17 +9105,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/openevolai/evolai/blob/main/README.md",
       "subject": "surface:sn-47-github-readme-openevolai-evolai-data-artifact-1",
-      "support_summary": "Listed in curated overlay for sn-47.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "EvolAI dashboard is a public dashboard surface for SN47.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/reboot-org/reboot-subnet/blob/main/README.md",
-      "subject": "surface:sn-47-github-readme-reboot-org-reboot-subnet-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-47.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9568,28 +9315,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json",
       "subject": "surface:sn-49-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-49.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone data artifact is a public data-artifact surface for SN5.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
-      "subject": "surface:sn-5-github-readme-manifold-inc-hone-data-artifact-1",
-      "support_summary": "Listed in curated overlay for sn-5.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone docs is a public docs surface for SN5.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
-      "subject": "surface:sn-5-github-readme-manifold-inc-hone-docs-2",
-      "support_summary": "Listed in curated overlay for sn-5.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9824,39 +9549,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Dojo docs is a public docs surface for SN52.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md",
-      "subject": "surface:sn-52-github-readme-tensorplex-labs-dojo-ui-docs-2",
-      "support_summary": "Listed in curated overlay for sn-52.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Dojo docs is a public docs surface for SN52.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md",
-      "subject": "surface:sn-52-github-readme-tensorplex-labs-dojo-ui-docs-3",
-      "support_summary": "Listed in curated overlay for sn-52.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Dojo docs is a public docs surface for SN52.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md",
-      "subject": "surface:sn-52-github-readme-tensorplex-labs-dojo-ui-docs-4",
-      "support_summary": "Listed in curated overlay for sn-52.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Dojo TaoMarketCap dashboard is a public dashboard surface for SN52.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9875,6 +9567,28 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/52",
       "subject": "surface:sn-52-taomarketcap-source-repo",
+      "support_summary": "Listed in curated overlay for sn-52.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Dojo Taopedia article is a public docs surface for SN52.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_52/index.mdx",
+      "subject": "surface:sn-52-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-52.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Dojo Tensorplex subnet docs is a public docs surface for SN52.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json",
+      "subject": "surface:sn-52-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-52.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10396,17 +10110,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Numinous dashboard is a public dashboard surface for SN6.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
-      "subject": "surface:sn-6-github-readme-numinouslabs-numinous-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-6.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Numinous TaoMarketCap dashboard is a public dashboard surface for SN6.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10462,47 +10165,14 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Bitsec.ai dashboard is a public dashboard surface for SN60.",
+      "claim": "Numinous dashboard is a public dashboard surface for SN6.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
-      "subject": "surface:sn-60-github-readme-bitsec-ai-sandbox-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-60.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Bitsec.ai docs is a public docs surface for SN60.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
-      "subject": "surface:sn-60-github-readme-bitsec-ai-sandbox-docs-2",
-      "support_summary": "Listed in curated overlay for sn-60.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Bitsec.ai docs is a public docs surface for SN60.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
-      "subject": "surface:sn-60-github-readme-bitsec-ai-sandbox-docs-3",
-      "support_summary": "Listed in curated overlay for sn-60.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Bitsec.ai docs is a public docs surface for SN60.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Bitsec-AI/subnet/blob/main/README.md",
-      "subject": "surface:sn-60-github-readme-bitsec-ai-subnet-docs-2",
-      "support_summary": "Listed in curated overlay for sn-60.",
+      "source_url": "https://numinouslabs.io/",
+      "subject": "surface:sn-6-website-link-numinouslabs-io-dashboard-3",
+      "support_summary": "Listed in curated overlay for sn-6.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10550,6 +10220,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Bitsec.ai Tensorplex subnet docs is a public docs surface for SN60.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json",
+      "subject": "surface:sn-60-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-60.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Bitsec.ai source repository is a public source-repo surface for SN60.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10557,6 +10238,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json",
       "subject": "surface:sn-60-tensorplex-source-repo-1",
+      "support_summary": "Listed in curated overlay for sn-60.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitsec.ai docs is a public docs surface for SN60.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://bitsec.ai/",
+      "subject": "surface:sn-60-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-60.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10690,17 +10382,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json",
       "subject": "surface:sn-62-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-62.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Enigma dashboard is a public dashboard surface for SN63.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/qbittensor-labs/enigma/blob/main/README.md",
-      "subject": "surface:sn-63-github-readme-qbittensor-labs-enigma-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-63.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10877,17 +10558,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
       "subject": "surface:sn-64-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-64.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "TAO Private Network dashboard is a public dashboard surface for SN65.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/taofu-labs/tpn-subnet/blob/main/README.md",
-      "subject": "surface:sn-65-github-readme-taofu-labs-tpn-subnet-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-65.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11430,79 +11100,68 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX data artifact is a public data-artifact surface for SN72.",
-      "confidence": "medium",
+      "claim": "NATIX Hugging Face organization is a public data-artifact surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md",
-      "subject": "surface:sn-72-github-readme-natixnetwork-streetvision-subnet-data-artifact-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-huggingface",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX TaoMarketCap dashboard is a public dashboard surface for SN72.",
-      "confidence": "medium",
+      "claim": "StreetVision README is a public docs surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
-      "subject": "surface:sn-72-taomarketcap-dashboard",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-readme-docs",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX source repository is a public source-repo surface for SN72.",
-      "confidence": "medium",
+      "claim": "StreetVision source repository is a public source-repo surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
-      "subject": "surface:sn-72-taomarketcap-source-repo",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-streetvision-source",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX website is a public website surface for SN72.",
-      "confidence": "medium",
+      "claim": "NATIX VX360 product page is a public website surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
-      "subject": "surface:sn-72-taomarketcap-website",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-vx360-page",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX Taopedia article is a public docs surface for SN72.",
-      "confidence": "medium",
+      "claim": "NATIX website is a public website surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_72/index.mdx",
-      "subject": "surface:sn-72-taopedia-article",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-website",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "StreetVision by NATIX Tensorplex subnet docs is a public docs surface for SN72.",
-      "confidence": "medium",
+      "claim": "NATIX whitepaper is a public docs surface for SN72.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json",
-      "subject": "surface:sn-72-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-72.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "StreetVision by NATIX docs is a public docs surface for SN72.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.natix.network/?utm_source=bittensor",
-      "subject": "surface:sn-72-website-link-www-natix-network-docs-10",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "subject": "surface:sn-72-natix-whitepaper-docs",
       "support_summary": "Listed in curated overlay for sn-72.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11914,28 +11573,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Vanta dashboard is a public dashboard surface for SN8.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/taoshidev/vanta-network/blob/main/README.md",
-      "subject": "surface:sn-8-github-readme-taoshidev-vanta-network-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-8.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vanta docs is a public docs surface for SN8.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/taoshidev/vanta-network/blob/main/README.md",
-      "subject": "surface:sn-8-github-readme-taoshidev-vanta-network-docs-2",
-      "support_summary": "Listed in curated overlay for sn-8.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Vanta TaoMarketCap dashboard is a public dashboard surface for SN8.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12002,50 +11639,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "dogelayer docs is a public docs surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-      "subject": "surface:sn-80-github-readme-dogelayer-ai-dogelayer-docs-1",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer docs is a public docs surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-      "subject": "surface:sn-80-github-readme-dogelayer-ai-dogelayer-docs-2",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer docs is a public docs surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-      "subject": "surface:sn-80-github-readme-dogelayer-ai-dogelayer-docs-4",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer docs is a public docs surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-      "subject": "surface:sn-80-github-readme-dogelayer-ai-dogelayer-docs-7",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "dogelayer TaoMarketCap dashboard is a public dashboard surface for SN80.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12079,6 +11672,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "dogelayer Taopedia article is a public docs surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_80/index.mdx",
+      "subject": "surface:sn-80-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "dogelayer Tensorplex subnet docs is a public docs surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/80/subnet.json",
+      "subject": "surface:sn-80-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "dogelayer docs is a public docs surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://dogelayer.ai/",
+      "subject": "surface:sn-80-website-common-docs",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "dogelayer Swagger UI is a public openapi surface for SN80.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12097,6 +11723,17 @@
       "source_type": "registry-observed",
       "source_url": "https://dogelayer.ai/",
       "subject": "surface:sn-80-website-link-dogelayer-ai-dashboard-1",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "dogelayer docs is a public docs surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://dogelayer.ai/",
+      "subject": "surface:sn-80-website-link-dogelayer-ai-docs-2",
       "support_summary": "Listed in curated overlay for sn-80.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -12142,28 +11779,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json",
       "subject": "surface:sn-81-tensorplex-source-repo-1",
       "support_summary": "Listed in curated overlay for sn-81.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Compelle dashboard is a public dashboard surface for SN82.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md",
-      "subject": "surface:sn-82-github-readme-sn-hermes-hermes-subnet-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-82.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Compelle docs is a public docs surface for SN82.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md",
-      "subject": "surface:sn-82-github-readme-sn-hermes-hermes-subnet-docs-2",
-      "support_summary": "Listed in curated overlay for sn-82.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12310,17 +11925,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ansuz docs is a public docs surface for SN84.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md",
-      "subject": "surface:sn-84-github-readme-tatsuproject-chipforge-sn84-docs-1",
-      "support_summary": "Listed in curated overlay for sn-84.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "ansuz TaoMarketCap dashboard is a public dashboard surface for SN84.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12373,17 +11977,6 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json",
       "subject": "surface:sn-84-tensorplex-source-repo-2",
       "support_summary": "Listed in curated overlay for sn-84.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vidaio docs is a public docs surface for SN85.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/vidaio-subnet/vidaio-subnet/blob/main/README.md",
-      "subject": "surface:sn-85-github-readme-vidaio-subnet-vidaio-subnet-docs-1",
-      "support_summary": "Listed in curated overlay for sn-85.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -12497,7 +12090,7 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "⚒ Taopedia article is a public docs surface for SN86.",
+      "claim": "Subnet 86 Taopedia article is a public docs surface for SN86.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
@@ -12596,39 +12189,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Investing docs is a public docs surface for SN88.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/mobiusfund/investing/blob/main/README.md",
-      "subject": "surface:sn-88-github-readme-mobiusfund-investing-docs-2",
-      "support_summary": "Listed in curated overlay for sn-88.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Investing docs is a public docs surface for SN88.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/mobiusfund/investing/blob/main/README.md",
-      "subject": "surface:sn-88-github-readme-mobiusfund-investing-docs-3",
-      "support_summary": "Listed in curated overlay for sn-88.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Investing API surface is a public subnet-api surface for SN88.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/mobiusfund/investing/blob/main/README.md",
-      "subject": "surface:sn-88-github-readme-mobiusfund-investing-subnet-api-5",
-      "support_summary": "Listed in curated overlay for sn-88.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Investing TaoMarketCap dashboard is a public dashboard surface for SN88.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12684,39 +12244,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "InfiniteHash docs is a public docs surface for SN89.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md",
-      "subject": "surface:sn-89-github-readme-backend-developers-ltd-infinitehash-docs-1",
-      "support_summary": "Listed in curated overlay for sn-89.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "InfiniteHash docs is a public docs surface for SN89.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md",
-      "subject": "surface:sn-89-github-readme-backend-developers-ltd-infinitehash-docs-2",
-      "support_summary": "Listed in curated overlay for sn-89.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "InfiniteHash docs is a public docs surface for SN89.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md",
-      "subject": "surface:sn-89-github-readme-backend-developers-ltd-infinitehash-docs-3",
-      "support_summary": "Listed in curated overlay for sn-89.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "InfiniteHash TaoMarketCap dashboard is a public dashboard surface for SN89.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12750,6 +12277,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "InfiniteHash Tensorplex subnet docs is a public docs surface for SN89.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json",
+      "subject": "surface:sn-89-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-89.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "iota dashboard is a public dashboard surface for SN9.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12757,17 +12295,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
       "subject": "surface:sn-9-github-readme-macrocosm-os-iota-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-9.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "iota docs is a public docs surface for SN9.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
-      "subject": "surface:sn-9-github-readme-macrocosm-os-iota-docs-4",
       "support_summary": "Listed in curated overlay for sn-9.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -12845,6 +12372,17 @@
       "source_type": "registry-observed",
       "source_url": "https://iota.macrocosmos.ai/",
       "subject": "surface:sn-9-website-link-iota-macrocosmos-ai-dashboard-1",
+      "support_summary": "Listed in curated overlay for sn-9.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "iota docs is a public docs surface for SN9.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "subject": "surface:sn-9-website-link-iota-macrocosmos-ai-docs-5",
       "support_summary": "Listed in curated overlay for sn-9.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -12970,17 +12508,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Bitcast dashboard is a public dashboard surface for SN93.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/bitcast-network/bitcast/blob/main/README.md",
-      "subject": "surface:sn-93-github-readme-bitcast-network-bitcast-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-93.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Bitcast TaoMarketCap dashboard is a public dashboard surface for SN93.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13065,6 +12592,17 @@
       "source_type": "registry-observed",
       "source_url": "https://stats.bitcast.network/",
       "subject": "surface:sn-93-website-link-stats-bitcast-network-dashboard-1",
+      "support_summary": "Listed in curated overlay for sn-93.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitcast dashboard is a public dashboard surface for SN93.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://stats.bitcast.network/",
+      "subject": "surface:sn-93-website-link-stats-bitcast-network-dashboard-2",
       "support_summary": "Listed in curated overlay for sn-93.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13311,17 +12849,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Albedo data artifact is a public data-artifact surface for SN97.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/unarbos/albedo/blob/main/README.md",
-      "subject": "surface:sn-97-github-readme-unarbos-albedo-data-artifact-1",
-      "support_summary": "Listed in curated overlay for sn-97.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Albedo docs is a public docs surface for SN97.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13329,17 +12856,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
       "subject": "surface:sn-97-github-readme-unitone-labs-flamewire-docs-1",
-      "support_summary": "Listed in curated overlay for sn-97.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Albedo docs is a public docs surface for SN97.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
-      "subject": "surface:sn-97-github-readme-unitone-labs-flamewire-docs-2",
       "support_summary": "Listed in curated overlay for sn-97.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13406,6 +12922,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json",
       "subject": "surface:sn-97-tensorplex-source-repo-1",
+      "support_summary": "Listed in curated overlay for sn-97.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Albedo docs is a public docs surface for SN97.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://us-east-1.hippius.com/albedo/index.html",
+      "subject": "surface:sn-97-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-97.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13509,50 +13036,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Leoma data artifact is a public data-artifact surface for SN99.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
-      "subject": "surface:sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
-      "support_summary": "Listed in curated overlay for sn-99.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Leoma docs is a public docs surface for SN99.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
-      "subject": "surface:sn-99-github-readme-rendixnetwork-leoma-docs-1",
-      "support_summary": "Listed in curated overlay for sn-99.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Leoma docs is a public docs surface for SN99.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
-      "subject": "surface:sn-99-github-readme-rendixnetwork-leoma-docs-4",
-      "support_summary": "Listed in curated overlay for sn-99.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Leoma docs is a public docs surface for SN99.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
-      "subject": "surface:sn-99-github-readme-rendixnetwork-leoma-docs-5",
-      "support_summary": "Listed in curated overlay for sn-99.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Leoma TaoMarketCap dashboard is a public dashboard surface for SN99.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13597,6 +13080,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Leoma Tensorplex subnet docs is a public docs surface for SN99.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json",
+      "subject": "surface:sn-99-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-99.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Leoma source repository is a public source-repo surface for SN99.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13604,6 +13098,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json",
       "subject": "surface:sn-99-tensorplex-source-repo-1",
+      "support_summary": "Listed in curated overlay for sn-99.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Leoma docs is a public docs surface for SN99.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://leoma.ai/",
+      "subject": "surface:sn-99-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-99.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13625,8 +13130,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1238,
+    "claim_count": 1193,
     "subnet_claim_count": 129,
-    "surface_claim_count": 859
+    "surface_claim_count": 814
   }
 }

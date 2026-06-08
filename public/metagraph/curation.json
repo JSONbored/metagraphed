@@ -41,7 +41,7 @@
       "surface_count": 12
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -53,7 +53,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 3,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -83,7 +83,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -209,47 +209,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 17,
-      "coverage_level": "probed",
-      "curation": {
-        "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
-        ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
-      },
-      "gap_count": 3,
-      "gaps": {
-        "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
-        ],
-        "missing_kinds": [
-          "openapi",
-          "subnet-api",
-          "sse"
-        ],
-        "supported_kinds": [
-          "dashboard",
-          "data-artifact",
-          "docs",
-          "source-repo",
-          "website"
-        ]
-      },
-      "name": "Hone",
-      "netuid": 5,
-      "slug": "sn-5",
-      "surface_count": 7
-    },
-    {
-      "candidate_count": 17,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -261,7 +221,49 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
+        "verified_at": null
+      },
+      "gap_count": 4,
+      "gaps": {
+        "gap_notes": [
+          "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
+        ],
+        "missing_kinds": [
+          "openapi",
+          "subnet-api",
+          "sse",
+          "data-artifact"
+        ],
+        "supported_kinds": [
+          "dashboard",
+          "docs",
+          "source-repo",
+          "website"
+        ]
+      },
+      "name": "Hone",
+      "netuid": 5,
+      "slug": "sn-5",
+      "surface_count": 5
+    },
+    {
+      "candidate_count": 16,
+      "coverage_level": "probed",
+      "curation": {
+        "gap_notes": [
+          "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
+        ],
+        "level": "machine-verified",
+        "review_state": "machine-generated",
+        "reviewed_at": null,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -329,7 +331,7 @@
       "surface_count": 15
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -341,7 +343,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 4,
@@ -368,10 +370,10 @@
       "name": "Vanta",
       "netuid": 8,
       "slug": "sn-8",
-      "surface_count": 8
+      "surface_count": 6
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -497,7 +499,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -510,7 +512,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 5,
@@ -538,31 +540,31 @@
       "name": "Compute Horde",
       "netuid": 12,
       "slug": "sn-12",
-      "surface_count": 5
+      "surface_count": 4
     },
     {
-      "candidate_count": 27,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T08:35:00.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T08:35:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -580,10 +582,10 @@
       "name": "Data Universe",
       "netuid": 13,
       "slug": "sn-13",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 28,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -622,10 +624,10 @@
       "name": "Cacheon",
       "netuid": 14,
       "slug": "sn-14",
-      "surface_count": 10
+      "surface_count": 8
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -637,7 +639,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -957,29 +959,32 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 5,
         "verified_at": null
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
+          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -987,17 +992,16 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
           "website"
         ]
       },
       "name": "Trishool",
       "netuid": 23,
       "slug": "sn-23",
-      "surface_count": 11
+      "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1079,29 +1083,32 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
+          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -1109,14 +1116,13 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
           "website"
         ]
       },
       "name": "Perturb",
       "netuid": 26,
       "slug": "sn-26",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 11,
@@ -1211,31 +1217,28 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 9,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T08:35:00.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T08:35:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse"
@@ -1244,13 +1247,14 @@
           "dashboard",
           "data-artifact",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "Coldint",
       "netuid": 29,
       "slug": "sn-29",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 12,
@@ -1343,7 +1347,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1355,7 +1359,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1382,17 +1386,58 @@
       "name": "ItsAI",
       "netuid": 32,
       "slug": "sn-32",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 6,
+      "coverage_level": "probed",
+      "curation": {
+        "gap_notes": [
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified SSE/event stream yet."
+        ],
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T08:35:00.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T08:35:00.000Z"
+      },
+      "gap_count": 4,
+      "gaps": {
+        "gap_notes": [
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified SSE/event stream yet."
+        ],
+        "missing_kinds": [
+          "dashboard",
+          "openapi",
+          "subnet-api",
+          "sse"
+        ],
+        "supported_kinds": [
+          "data-artifact",
+          "docs",
+          "source-repo",
+          "website"
+        ]
+      },
+      "name": "ReadyAI",
+      "netuid": 33,
+      "slug": "sn-33",
+      "surface_count": 5
+    },
+    {
+      "candidate_count": 4,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
@@ -1400,65 +1445,24 @@
         "source_count": 3,
         "verified_at": null
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "missing_kinds": [
           "website",
           "openapi",
           "subnet-api",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "data-artifact",
-          "docs",
-          "source-repo"
-        ]
-      },
-      "name": "ReadyAI",
-      "netuid": 33,
-      "slug": "sn-33",
-      "surface_count": 9
-    },
-    {
-      "candidate_count": 6,
-      "coverage_level": "probed",
-      "curation": {
-        "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
-        ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
-      },
-      "gap_count": 4,
-      "gaps": {
-        "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
-        ],
-        "missing_kinds": [
-          "website",
-          "openapi",
-          "subnet-api",
-          "sse"
-        ],
-        "supported_kinds": [
-          "dashboard",
-          "data-artifact",
           "docs",
           "source-repo"
         ]
@@ -1466,10 +1470,10 @@
       "name": "BitMind",
       "netuid": 34,
       "slug": "sn-34",
-      "surface_count": 5
+      "surface_count": 4
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 12,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1481,7 +1485,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1508,7 +1512,7 @@
       "name": "OxMarkets",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 15,
@@ -1553,29 +1557,32 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
+          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -1583,14 +1590,13 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
           "website"
         ]
       },
       "name": "Aurelius",
       "netuid": 37,
       "slug": "sn-37",
-      "surface_count": 8
+      "surface_count": 6
     },
     {
       "candidate_count": 11,
@@ -1723,7 +1729,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 12,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1734,7 +1740,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -1760,7 +1766,7 @@
       "name": "Almanac",
       "netuid": 41,
       "slug": "sn-41",
-      "surface_count": 8
+      "surface_count": 7
     },
     {
       "candidate_count": 3,
@@ -1809,7 +1815,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 4,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1937,7 +1943,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 29,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1974,10 +1980,10 @@
       "name": "Zipcode",
       "netuid": 46,
       "slug": "sn-46",
-      "surface_count": 12
+      "surface_count": 11
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1989,7 +1995,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2016,7 +2022,7 @@
       "name": "EvolAI",
       "netuid": 47,
       "slug": "sn-47",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 21,
@@ -2179,7 +2185,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2220,7 +2226,7 @@
       "name": "Dojo",
       "netuid": 52,
       "slug": "sn-52",
-      "surface_count": 8
+      "surface_count": 7
     },
     {
       "candidate_count": 4,
@@ -2435,7 +2441,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2513,7 +2519,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2524,7 +2530,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2550,7 +2556,7 @@
       "name": "Bitsec.ai",
       "netuid": 60,
       "slug": "sn-60",
-      "surface_count": 10
+      "surface_count": 8
     },
     {
       "candidate_count": 13,
@@ -2639,7 +2645,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2651,7 +2657,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2678,10 +2684,10 @@
       "name": "Enigma",
       "netuid": 63,
       "slug": "sn-63",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
-      "candidate_count": 28,
+      "candidate_count": 26,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2719,7 +2725,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2730,7 +2736,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2756,10 +2762,10 @@
       "name": "TAO Private Network",
       "netuid": 65,
       "slug": "sn-65",
-      "surface_count": 9
+      "surface_count": 8
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2967,7 +2973,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 11,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3007,34 +3013,34 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T08:35:00.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T08:35:00.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
+          "dashboard",
           "openapi",
           "subnet-api",
           "sse"
         ],
         "supported_kinds": [
-          "dashboard",
           "data-artifact",
           "docs",
           "source-repo",
@@ -3044,7 +3050,7 @@
       "name": "StreetVision by NATIX",
       "netuid": 72,
       "slug": "sn-72",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 4,
@@ -3093,7 +3099,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3222,7 +3228,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 11,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3302,7 +3308,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3344,7 +3350,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3355,7 +3361,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 3,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3428,7 +3434,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3440,7 +3446,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -3467,7 +3473,7 @@
       "name": "Compelle",
       "netuid": 82,
       "slug": "sn-82",
-      "surface_count": 8
+      "surface_count": 6
     },
     {
       "candidate_count": 11,
@@ -3510,7 +3516,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3523,7 +3529,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 5,
@@ -3551,10 +3557,10 @@
       "name": "ansuz",
       "netuid": 84,
       "slug": "sn-84",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3565,7 +3571,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3591,7 +3597,7 @@
       "name": "Vidaio",
       "netuid": 85,
       "slug": "sn-85",
-      "surface_count": 10
+      "surface_count": 9
     },
     {
       "candidate_count": 3,
@@ -3684,11 +3690,12 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
@@ -3698,15 +3705,17 @@
         "source_count": 4,
         "verified_at": null
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
+          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -3714,17 +3723,16 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
           "website"
         ]
       },
       "name": "Investing",
       "netuid": 88,
       "slug": "sn-88",
-      "surface_count": 9
+      "surface_count": 6
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 11,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3737,7 +3745,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 5,
@@ -3765,7 +3773,7 @@
       "name": "InfiniteHash",
       "netuid": 89,
       "slug": "sn-89",
-      "surface_count": 6
+      "surface_count": 4
     },
     {
       "candidate_count": 3,
@@ -3902,7 +3910,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3913,7 +3921,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4026,7 +4034,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4064,32 +4072,34 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 5,
         "verified_at": null
       },
-      "gap_count": 2,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "missing_kinds": [
           "subnet-api",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "data-artifact",
           "docs",
           "openapi",
           "source-repo",
@@ -4099,7 +4109,7 @@
       "name": "Albedo",
       "netuid": 97,
       "slug": "sn-97",
-      "surface_count": 10
+      "surface_count": 9
     },
     {
       "candidate_count": 19,
@@ -4144,32 +4154,34 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
-      "gap_count": 2,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "missing_kinds": [
           "subnet-api",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "data-artifact",
           "docs",
           "openapi",
           "source-repo",
@@ -4179,7 +4191,7 @@
       "name": "Leoma",
       "netuid": 99,
       "slug": "sn-99",
-      "surface_count": 10
+      "surface_count": 8
     },
     {
       "candidate_count": 17,
@@ -4270,7 +4282,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4312,7 +4324,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4324,7 +4336,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4351,7 +4363,7 @@
       "name": "Djinn",
       "netuid": 103,
       "slug": "sn-103",
-      "surface_count": 8
+      "surface_count": 7
     },
     {
       "candidate_count": 3,
@@ -4482,7 +4494,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4493,7 +4505,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4519,7 +4531,7 @@
       "name": "Minos",
       "netuid": 107,
       "slug": "sn-107",
-      "surface_count": 11
+      "surface_count": 9
     },
     {
       "candidate_count": 17,
@@ -4648,7 +4660,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 4,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4692,7 +4704,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 12,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4704,7 +4716,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4731,10 +4743,10 @@
       "name": "minotaur",
       "netuid": 112,
       "slug": "sn-112",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4746,7 +4758,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4950,7 +4962,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5122,7 +5134,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 4,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5338,29 +5350,32 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
+          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -5368,14 +5383,13 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
           "website"
         ]
       },
       "name": "Astrid",
       "netuid": 127,
       "slug": "sn-127",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
       "candidate_count": 12,

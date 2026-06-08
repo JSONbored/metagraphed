@@ -41,6 +41,7 @@ import {
   redactCredentialedUrls,
   registrySurfaceKey,
   repoRoot,
+  selectReviewableReadmeLinks,
   sha256Hex,
   slugify,
   stableStringify,
@@ -309,6 +310,53 @@ describe("script utility contracts", () => {
 
     assert.match(source, /METAGRAPH_DISCOVERY_OBSERVED_AT:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT:\s*"1"/);
+  });
+
+  test("README discovery keeps project-affiliated links and collapses generic noise", () => {
+    const links = [
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Bittensor docs",
+        url: "https://docs.bittensor.com/miners",
+      },
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Install",
+        url: "https://docs.exampleproject.ai/install",
+      },
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Advanced",
+        url: "https://docs.exampleproject.ai/advanced",
+      },
+      {
+        classification: { kind: "openapi", label: "OpenAPI surface" },
+        label: "API",
+        url: "https://api.exampleproject.ai/openapi.json",
+      },
+      {
+        classification: { kind: "dashboard", label: "dashboard" },
+        label: "Subnet stats",
+        url: "https://grafana.public.example/d/subnet?var-subnet=42",
+      },
+      {
+        classification: { kind: "dashboard", label: "dashboard" },
+        label: "TaoStats",
+        url: "https://taostats.io/subnets/42",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(links, {
+        netuid: 42,
+        repo: { owner: "ExampleProject", repo: "subnet-42" },
+      }).map((link) => link.url),
+      [
+        "https://docs.exampleproject.ai/install",
+        "https://api.exampleproject.ai/openapi.json",
+        "https://grafana.public.example/d/subnet?var-subnet=42",
+      ],
+    );
   });
 
   test("native subnet sync reports missing uvx without masking the error", () => {

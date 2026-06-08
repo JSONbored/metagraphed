@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "netuid": 33,
+  "name": "ReadyAI",
+  "slug": "sn-33",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "conversation-data",
+    "data",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "docs_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
+  "source_repo": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+  "website_url": "https://readyai.ai/",
+  "notes": "Reviewed overlay for SN33 using the official ReadyAI website, Conversation Genome source repository, README, public Hugging Face dataset, and llms.txt data repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T08:35:00.000Z",
+    "verified_at": "2026-06-08T08:35:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-33-readyai-website",
+      "name": "ReadyAI website",
+      "kind": "website",
+      "url": "https://readyai.ai/",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+        "https://readyai.ai/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ReadyAI website."
+    },
+    {
+      "id": "sn-33-readyai-source",
+      "name": "ReadyAI Conversation Genome source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official SN33 source repository."
+    },
+    {
+      "id": "sn-33-readyai-readme-docs",
+      "name": "ReadyAI README",
+      "kind": "docs",
+      "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official README for the ReadyAI Conversation Genome subnet."
+    },
+    {
+      "id": "sn-33-readyai-hf-dataset",
+      "name": "ReadyAI conversation dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+        "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Hugging Face dataset referenced by the ReadyAI repository."
+    },
+    {
+      "id": "sn-33-readyai-llms-data-repo",
+      "name": "ReadyAI llms.txt data repository",
+      "kind": "data-artifact",
+      "url": "https://github.com/afterpartyai/llms_txt_store",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+        "https://github.com/afterpartyai/llms_txt_store"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public repository of machine-readable llms.txt files generated from SN33 processing."
+    }
+  ]
+}

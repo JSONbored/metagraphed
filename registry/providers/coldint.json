@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "coldint",
+  "name": "Coldint",
+  "kind": "subnet-team",
+  "website_url": "https://coldint.io/",
+  "github_url": "https://github.com/coldint/coldint_validator",
+  "authority": "official",
+  "notes": "Provider entry for Coldint SN29 website, validator repository, dynamic configuration repository, and referenced public training dataset."
+}

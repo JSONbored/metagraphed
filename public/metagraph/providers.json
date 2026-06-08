@@ -34,6 +34,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/coldint/coldint_validator",
+      "id": "coldint",
+      "kind": "subnet-team",
+      "name": "Coldint",
+      "notes": "Provider entry for Coldint SN29 website, validator repository, dynamic configuration repository, and referenced public training dataset.",
+      "schema_version": 1,
+      "website_url": "https://coldint.io/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://www.desearch.ai/docs",
       "github_url": "https://github.com/Desearch-ai/subnet-22",
       "id": "desearch",
@@ -114,6 +124,17 @@
       "website_url": "https://luminar.network/"
     },
     {
+      "authority": "official",
+      "docs_url": "https://docs.macrocosmos.ai/",
+      "github_url": "https://github.com/macrocosm-os/data-universe",
+      "id": "macrocosmos",
+      "kind": "subnet-team",
+      "name": "Macrocosmos",
+      "notes": "Provider entry for Macrocosmos SN13 Data Universe website, documentation, source repositories, and public product surfaces.",
+      "schema_version": 1,
+      "website_url": "https://www.macrocosmos.ai/"
+    },
+    {
       "authority": "registry-observed",
       "docs_url": "https://github.com/JSONbored/metagraphed",
       "id": "metagraphed",
@@ -122,6 +143,17 @@
       "notes": "Registry and probe observations are not protocol authority.",
       "schema_version": 1,
       "website_url": "https://metagraph.sh"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.natix.network/whitepaper",
+      "github_url": "https://github.com/natixnetwork/streetvision-subnet",
+      "id": "natix",
+      "kind": "subnet-team",
+      "name": "NATIX",
+      "notes": "Provider entry for NATIX SN72 StreetVision website, whitepaper, source repository, product page, and Hugging Face organization.",
+      "schema_version": 1,
+      "website_url": "https://www.natix.network/"
     },
     {
       "authority": "official",
@@ -163,6 +195,16 @@
       "notes": "Official Bittensor network and Subtensor endpoint documentation source.",
       "schema_version": 1,
       "website_url": "https://bittensor.com"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+      "id": "readyai",
+      "kind": "subnet-team",
+      "name": "ReadyAI",
+      "notes": "Provider entry for ReadyAI SN33 website, Conversation Genome source repository, public dataset, and generated llms.txt data repository.",
+      "schema_version": 1,
+      "website_url": "https://readyai.ai/"
     },
     {
       "authority": "official",
