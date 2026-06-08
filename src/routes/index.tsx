@@ -79,18 +79,8 @@ function OverviewPage() {
   );
 }
 
-function StatStripSkeleton() {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border rounded overflow-hidden">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-card p-4">
-          <Skeleton className="h-3 w-24 mb-2" />
-          <Skeleton className="h-7 w-20" />
-        </div>
-      ))}
-    </div>
-  );
-}
+
+
 
 function StatCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
