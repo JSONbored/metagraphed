@@ -57,7 +57,9 @@ console.log(
 function localSteps() {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
-    nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
+    nodeStep("build-artifacts", "scripts/build-artifacts.mjs", {
+      METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+    }),
     nodeStep("generate-types", "scripts/generate-types.mjs"),
     nodeStep("generate-client", "scripts/generate-client.mjs", "--write"),
     nodeStep("r2-manifest", "scripts/r2-manifest.mjs", "--write"),

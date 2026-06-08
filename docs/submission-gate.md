@@ -216,7 +216,7 @@ normal backend/code PRs.
 Reference PRs:
 
 - AI-merged safe candidate example:
-  https://github.com/JSONbored/metagraphed/pull/87
+  https://github.com/JSONbored/metagraphed/pull/96
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
 - Closed duplicate candidate example:

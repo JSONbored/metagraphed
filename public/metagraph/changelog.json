@@ -1,20 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "5057a500457537513b25eebb11914b86e3a64ec103958db08e09cb428d195919",
-        "path": "freshness.json"
-      },
-      {
-        "hash": "0719fcf89add77728c955b014ceea0baf7f32b11584bc546889d814dd21715e6",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "2fd6b049e95bf2d2ad4b9df5d8d39e67a9f8be680051012ff35a860973a69509",
-        "path": "review/gap-priorities.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -32,7 +19,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 3,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
