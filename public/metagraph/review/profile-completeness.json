@@ -402,25 +402,6 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
-      "candidate_count": 12,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Endure Network",
-      "netuid": 30,
-      "priority_score": 102,
-      "profile_level": "directory-only",
-      "slug": "sn-30",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
       "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
@@ -630,6 +611,25 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
+      "candidate_count": 12,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "Endure Network",
+      "netuid": 30,
+      "priority_score": 97,
+      "profile_level": "directory-only",
+      "slug": "sn-30",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
       "candidate_count": 16,
       "completeness_score": 40,
       "confidence": "high",
@@ -684,25 +684,6 @@
       "priority_score": 95,
       "profile_level": "directory-only",
       "slug": "sn-81",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 5,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "ansuz",
-      "netuid": 84,
-      "priority_score": 95,
-      "profile_level": "directory-only",
-      "slug": "sn-84",
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
@@ -1720,6 +1701,24 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
+      "candidate_count": 5,
+      "completeness_score": 55,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "ansuz",
+      "netuid": 84,
+      "priority_score": 70,
+      "profile_level": "identity-complete",
+      "slug": "sn-84",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
       "candidate_count": 26,
       "completeness_score": 70,
       "confidence": "high",
@@ -2348,13 +2347,13 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 50,
-      "medium": 79
+      "high": 52,
+      "medium": 77
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 31,
-      "identity-complete": 53,
+      "directory-only": 30,
+      "identity-complete": 54,
       "operational": 43
     },
     "critical_gap_counts": {
@@ -2364,9 +2363,9 @@
       "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 117,
-      "missing-website": 27
+      "missing-website": 26
     },
-    "needs_identity_count": 33,
+    "needs_identity_count": 32,
     "needs_operational_count": 84,
     "profile_count": 129
   }

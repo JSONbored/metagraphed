@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "endure",
+  "name": "Endure",
+  "kind": "subnet-team",
+  "website_url": "https://endure.network/",
+  "docs_url": "https://docs.endure.network/",
+  "authority": "official",
+  "notes": "Provider entry for Endure Network SN30 official website and documentation."
+}

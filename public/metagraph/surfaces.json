@@ -4621,163 +4621,49 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-30-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Endure Network TaoMarketCap dashboard",
-      "netuid": 30,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/30"
-      ],
-      "subnet_name": "Endure Network",
-      "subnet_slug": "sn-30",
-      "url": "https://taomarketcap.com/subnets/30"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-30-taomarketcap-website",
-      "kind": "website",
-      "name": "Endure Network website",
-      "netuid": 30,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/30"
-      ],
-      "subnet_name": "Endure Network",
-      "subnet_slug": "sn-30",
-      "url": "https://endure.network/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-30-taopedia-article",
+      "authority": "official",
+      "id": "sn-30-endure-docs",
       "kind": "docs",
-      "name": "Endure Network Taopedia article",
+      "name": "Endure documentation",
       "netuid": 30,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Official Endure documentation linked from the project website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taopedia-articles",
+      "provider": "endure",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx"
-      ],
-      "subnet_name": "Endure Network",
-      "subnet_slug": "sn-30",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-30-tensorplex-docs",
-      "kind": "docs",
-      "name": "Endure Network Tensorplex subnet docs",
-      "netuid": 30,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json"
-      ],
-      "subnet_name": "Endure Network",
-      "subnet_slug": "sn-30",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/30"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-30-website-link-endure-network-docs-1",
-      "kind": "docs",
-      "name": "Endure Network docs",
-      "netuid": 30,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://endure.network/"
       ],
       "subnet_name": "Endure Network",
       "subnet_slug": "sn-30",
       "url": "https://docs.endure.network/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-30-endure-website",
+      "kind": "website",
+      "name": "Endure website",
+      "netuid": 30,
+      "notes": "Official Endure Network website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "endure",
+      "public_safe": true,
+      "source_urls": [
+        "https://endure.network/"
+      ],
+      "subnet_name": "Endure Network",
+      "subnet_slug": "sn-30",
+      "url": "https://endure.network/"
     },
     {
       "auth_required": false,
@@ -13246,127 +13132,46 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-84-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "ansuz TaoMarketCap dashboard",
-      "netuid": 84,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/84"
-      ],
-      "subnet_name": "ansuz",
-      "subnet_slug": "sn-84",
-      "url": "https://taomarketcap.com/subnets/84"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-84-taopedia-article",
+      "authority": "official",
+      "id": "sn-84-chipforge-docs",
       "kind": "docs",
-      "name": "ansuz Taopedia article",
+      "name": "ChipForge documentation",
       "netuid": 84,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Official ChipForge documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taopedia-articles",
+      "provider": "chipforge",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
+        "https://www.chipforge.io/"
       ],
       "subnet_name": "ansuz",
       "subnet_slug": "sn-84",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
+      "url": "https://docs.chipforge.io/"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-84-tensorplex-docs",
-      "kind": "docs",
-      "name": "ansuz Tensorplex subnet docs",
-      "netuid": 84,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
-      ],
-      "subnet_name": "ansuz",
-      "subnet_slug": "sn-84",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/84"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-84-tensorplex-source-repo-1",
+      "authority": "official",
+      "id": "sn-84-chipforge-source",
       "kind": "source-repo",
-      "name": "ansuz source repository",
+      "name": "ChipForge source repository",
       "netuid": 84,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Official ChipForge source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "chipforge",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
+        "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
+        "https://github.com/TatsuProject/ChipForge_SN84"
       ],
       "subnet_name": "ansuz",
       "subnet_slug": "sn-84",
@@ -13374,35 +13179,27 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-84-tensorplex-source-repo-2",
-      "kind": "source-repo",
-      "name": "ansuz source repository",
+      "authority": "official",
+      "id": "sn-84-chipforge-website",
+      "kind": "website",
+      "name": "ChipForge website",
       "netuid": 84,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Official ChipForge website from the project source repository homepage.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "chipforge",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
+        "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
+        "https://www.chipforge.io/"
       ],
       "subnet_name": "ansuz",
       "subnet_slug": "sn-84",
-      "url": "https://github.com/TatsuProject/chipforge_eda_server"
+      "url": "https://www.chipforge.io/"
     },
     {
       "auth_required": false,

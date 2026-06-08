@@ -771,16 +771,6 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Endure Network",
-      "netuid": 30,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 5,
-      "slug": "sn-30"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "NIOME",
       "netuid": 55,
       "operational_kinds": [],
@@ -937,6 +927,16 @@
       "operational_surface_count": 0,
       "priority_score": 2,
       "slug": "sn-21"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Endure Network",
+      "netuid": 30,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 2,
+      "slug": "sn-30"
     },
     {
       "candidate_api_count": 6,

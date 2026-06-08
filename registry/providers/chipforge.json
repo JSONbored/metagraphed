@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "chipforge",
+  "name": "ChipForge",
+  "kind": "subnet-team",
+  "website_url": "https://www.chipforge.io/",
+  "docs_url": "https://docs.chipforge.io/",
+  "github_url": "https://github.com/TatsuProject/ChipForge_SN84",
+  "authority": "official",
+  "notes": "Provider entry for ChipForge SN84 official website, documentation, and source repository."
+}

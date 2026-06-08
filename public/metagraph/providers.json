@@ -73,6 +73,17 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://docs.chipforge.io/",
+      "github_url": "https://github.com/TatsuProject/ChipForge_SN84",
+      "id": "chipforge",
+      "kind": "subnet-team",
+      "name": "ChipForge",
+      "notes": "Provider entry for ChipForge SN84 official website, documentation, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.chipforge.io/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://chutes.ai/docs",
       "github_url": "https://github.com/chutesai/chutes",
       "id": "chutes",
@@ -152,6 +163,16 @@
       "notes": "Bittensor RPC provider with documented HTTP/WSS examples. API-key URLs are not published as public registry endpoints.",
       "schema_version": 1,
       "website_url": "https://www.dwellir.com"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.endure.network/",
+      "id": "endure",
+      "kind": "subnet-team",
+      "name": "Endure",
+      "notes": "Provider entry for Endure Network SN30 official website and documentation.",
+      "schema_version": 1,
+      "website_url": "https://endure.network/"
     },
     {
       "authority": "official",

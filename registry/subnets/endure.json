@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "netuid": 30,
+  "name": "Endure Network",
+  "slug": "sn-30",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "identity-reviewed",
+    "official-docs",
+    "official-website",
+    "risk-intelligence"
+  ],
+  "website_url": "https://endure.network/",
+  "docs_url": "https://docs.endure.network/",
+  "dashboard_url": "https://taomarketcap.com/subnets/30",
+  "notes": "Reviewed overlay for SN30 using the official Endure website and documentation. No verified source repository, public API, OpenAPI, SSE, or data artifact surface is promoted yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:45:00.000Z",
+    "verified_at": "2026-06-08T10:45:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified source repository yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-30-endure-website",
+      "name": "Endure website",
+      "kind": "website",
+      "url": "https://endure.network/",
+      "provider": "endure",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://endure.network/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Endure Network website."
+    },
+    {
+      "id": "sn-30-endure-docs",
+      "name": "Endure documentation",
+      "kind": "docs",
+      "url": "https://docs.endure.network/",
+      "provider": "endure",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://endure.network/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Endure documentation linked from the project website."
+    }
+  ]
+}

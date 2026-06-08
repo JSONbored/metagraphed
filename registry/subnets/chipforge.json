@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "netuid": 84,
+  "name": "ansuz",
+  "slug": "sn-84",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "chip-design",
+    "hardware",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://www.chipforge.io/",
+  "docs_url": "https://docs.chipforge.io/",
+  "source_repo": "https://github.com/TatsuProject/ChipForge_SN84",
+  "dashboard_url": "https://taomarketcap.com/subnets/84",
+  "notes": "Reviewed overlay for SN84 using the official ChipForge website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:45:00.000Z",
+    "verified_at": "2026-06-08T10:45:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified unauthenticated public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-84-chipforge-website",
+      "name": "ChipForge website",
+      "kind": "website",
+      "url": "https://www.chipforge.io/",
+      "provider": "chipforge",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
+        "https://www.chipforge.io/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ChipForge website from the project source repository homepage."
+    },
+    {
+      "id": "sn-84-chipforge-docs",
+      "name": "ChipForge documentation",
+      "kind": "docs",
+      "url": "https://docs.chipforge.io/",
+      "provider": "chipforge",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.chipforge.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ChipForge documentation."
+    },
+    {
+      "id": "sn-84-chipforge-source",
+      "name": "ChipForge source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/TatsuProject/ChipForge_SN84",
+      "provider": "chipforge",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
+        "https://github.com/TatsuProject/ChipForge_SN84"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ChipForge source repository."
+    }
+  ]
+}

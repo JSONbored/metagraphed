@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 879,
+  "document_count": 876,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -100,6 +100,20 @@
       ],
       "type": "provider",
       "url": "https://www.byzantiumai.net/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:chipforge",
+      "subtitle": "subnet-team",
+      "title": "ChipForge",
+      "tokens": [
+        "chipforge",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.chipforge.io/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -213,6 +227,20 @@
       ],
       "type": "provider",
       "url": "https://www.dwellir.com"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:endure",
+      "subtitle": "subnet-team",
+      "title": "Endure",
+      "tokens": [
+        "endure",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://endure.network/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -993,8 +1021,18 @@
         "84",
         "ansuz",
         "baseline",
+        "chip",
         "curated",
-        "sn"
+        "design",
+        "docs",
+        "hardware",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/84"
@@ -1740,9 +1778,17 @@
         "30",
         "baseline",
         "curated",
+        "defi",
+        "docs",
         "endure",
+        "identity",
+        "intelligence",
         "network",
-        "sn"
+        "official",
+        "reviewed",
+        "risk",
+        "sn",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/30"
@@ -4494,102 +4540,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-tensorplex-source-repo-1",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "ansuz source repository",
-      "tokens": [
-        "84",
-        "ansuz",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/TatsuProject/ChipForge_SN84"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-tensorplex-source-repo-2",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "ansuz source repository",
-      "tokens": [
-        "84",
-        "ansuz",
-        "docs",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/TatsuProject/chipforge_eda_server"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-taomarketcap-dashboard",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "ansuz TaoMarketCap dashboard",
-      "tokens": [
-        "84",
-        "ansuz",
-        "dashboard",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/84"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-taopedia-article",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "docs / taopedia-articles",
-      "title": "ansuz Taopedia article",
-      "tokens": [
-        "84",
-        "ansuz",
-        "article",
-        "articles",
-        "docs",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-tensorplex-docs",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "ansuz Tensorplex subnet docs",
-      "tokens": [
-        "84",
-        "ansuz",
-        "docs",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/84"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-1-apex-docs",
       "netuid": 1,
       "slug": "sn-1",
@@ -6224,6 +6174,60 @@
       ],
       "type": "surface",
       "url": "https://cacheon.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-84-chipforge-docs",
+      "netuid": 84,
+      "slug": "sn-84",
+      "subtitle": "docs / chipforge",
+      "title": "ChipForge documentation",
+      "tokens": [
+        "84",
+        "ansuz",
+        "chipforge",
+        "docs",
+        "documentation",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://docs.chipforge.io/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-84-chipforge-source",
+      "netuid": 84,
+      "slug": "sn-84",
+      "subtitle": "source-repo / chipforge",
+      "title": "ChipForge source repository",
+      "tokens": [
+        "84",
+        "ansuz",
+        "chipforge",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/TatsuProject/ChipForge_SN84"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-84-chipforge-website",
+      "netuid": 84,
+      "slug": "sn-84",
+      "subtitle": "website / chipforge",
+      "title": "ChipForge website",
+      "tokens": [
+        "84",
+        "ansuz",
+        "chipforge",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.chipforge.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8176,92 +8180,34 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-website-link-endure-network-docs-1",
+      "id": "surface:sn-30-endure-docs",
       "netuid": 30,
       "slug": "sn-30",
-      "subtitle": "docs / taomarketcap",
-      "title": "Endure Network docs",
+      "subtitle": "docs / endure",
+      "title": "Endure documentation",
       "tokens": [
         "30",
         "docs",
+        "documentation",
         "endure",
         "network",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.endure.network/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-taomarketcap-dashboard",
+      "id": "surface:sn-30-endure-website",
       "netuid": 30,
       "slug": "sn-30",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Endure Network TaoMarketCap dashboard",
-      "tokens": [
-        "30",
-        "dashboard",
-        "endure",
-        "network",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/30"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-taopedia-article",
-      "netuid": 30,
-      "slug": "sn-30",
-      "subtitle": "docs / taopedia-articles",
-      "title": "Endure Network Taopedia article",
-      "tokens": [
-        "30",
-        "article",
-        "articles",
-        "docs",
-        "endure",
-        "network",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-tensorplex-docs",
-      "netuid": 30,
-      "slug": "sn-30",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Endure Network Tensorplex subnet docs",
-      "tokens": [
-        "30",
-        "docs",
-        "endure",
-        "network",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/30"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-taomarketcap-website",
-      "netuid": 30,
-      "slug": "sn-30",
-      "subtitle": "website / taomarketcap",
-      "title": "Endure Network website",
+      "subtitle": "website / endure",
+      "title": "Endure website",
       "tokens": [
         "30",
         "endure",
         "network",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",

@@ -3,59 +3,63 @@
     "added": [],
     "modified": [
       {
-        "hash": "82fca078bc72b721a16ab31e8e9b5cdacdc3b1dd9af8d51d0ebf416f968f4ea8",
+        "hash": "5b15f20e426f7a86e80c68c2de2e60013a2d4aeee740bbdee8077e87936c65e1",
         "path": "coverage.json"
       },
       {
-        "hash": "2e50137266d08ffd5f5481cf593f5e0d77e87837bc680ac91f5c69af182fde05",
+        "hash": "4d069f485a906431234c5d95f00eb8cb382c8ae46e9e674ed32c619b21ce5e81",
         "path": "curation.json"
       },
       {
-        "hash": "3899c81e1edfbc20102c229c6d3a83004e3fd3bb2d02984a6de6ac136f40684a",
+        "hash": "2a4c379fcfe97e2c9a9939dae5efe0a4261381d839772e60d208f7f2c5117900",
         "path": "evidence-ledger.json"
       },
       {
-        "hash": "c8bf0facbb419fe08cfec8fa31b8e99e06b86da66fa5ea7911fdda075bb9e0c6",
+        "hash": "2cfcdf5a35ca8f861da450090390b71793f40ed200108feea9436fcd7f8be2ca",
         "path": "freshness.json"
       },
       {
-        "hash": "afa54bc459ce563cb96578f4c1ffdc5d78446fa0927640c133d732f188f86160",
+        "hash": "9869c0b6697de58c9e05162eebec84e76f24bdd8039a3f12b8c895fd376da63f",
         "path": "gaps.json"
       },
       {
-        "hash": "82a0b58fc2e9e9b542833e298232faee86838e412cfbd2d4be41b2d3054a7c92",
+        "hash": "6132624d110895f1553d256f4a5b76c48265035ce3ff69cdd100d8c5d75ff488",
         "path": "profiles.json"
       },
       {
-        "hash": "8f5d431546ba417a40560fad52b3288e2547b4ef40caaf88730bc95bfd497b5f",
+        "hash": "d50c499bee11468313b061f354da01d798d1c5251adf025062c1bc363a94ccb2",
         "path": "providers.json"
       },
       {
-        "hash": "3c77c46e13ff39f44a86d2d2641c8be82ac76c9f6ab488d5b12cc7d8f478c88a",
+        "hash": "f39a8a1f67ab397f8169b7a75db2434af94d40378a77cdc5ec6fb8494e1707db",
+        "path": "review/adapter-candidates.json"
+      },
+      {
+        "hash": "fbe3051ed199a77f0ca72bc1770f455f17d21f7d49f9af4ba5c2d500587f7ef9",
         "path": "review/curation.json"
       },
       {
-        "hash": "264725afa03827ab2fe57c31efbd7b17d8336aab6ad64d7aa780000cca755d19",
+        "hash": "4a600f51fadfbaa4a2f9f155dd14ed2b381916806b5f1fc89406c21d41e2dfcd",
         "path": "review/enrichment-queue.json"
       },
       {
-        "hash": "57eba055d57cff66fc31e201d75616a8b29fc6f837866a0b13b7a61a746c0e04",
+        "hash": "3b8a903f0ec1a561a1eace832aade5e6f630315e5ae11d4493dee8f1556838ed",
         "path": "review/gap-priorities.json"
       },
       {
-        "hash": "08b64d463367ce7df3ee43027c6066605d9db572cd8d6072e65e707c8f2998a0",
+        "hash": "031cf20f3512e2074c0356746246bbf81d5f5cfc21c0291de9102f308a6e52f6",
         "path": "review/profile-completeness.json"
       },
       {
-        "hash": "620279cbbe65ace07d33e803a27b8d681b5215d6165d0837074ddf4da2cff62e",
+        "hash": "c0f7d33c094d3ccf0f894ef15a1d4e1c8c3960ed0730b245d97c9cda139776b7",
         "path": "search.json"
       },
       {
-        "hash": "f5086550f32c5bff87ff7819584a5474e50e6a5271cda76126ca7cdd8252682d",
+        "hash": "60fc4c1d3df1784c107e133ab3ef3879a1c6e1040fb247397b996ed70c6ad63a",
         "path": "subnets.json"
       },
       {
-        "hash": "0837d13cc776892b3599502bc4134e4cea0ae5be55ba2a8d50aad5fbd066daaa",
+        "hash": "534f18858df5446851fc2805b8f818187d2d12091f9f7b9942c916f6a93bca2f",
         "path": "surfaces.json"
       }
     ],
@@ -72,22 +76,11 @@
   "subnets": {
     "added": [],
     "removed": [],
-    "renamed": [
-      {
-        "after": "Sparket",
-        "before": "gaia",
-        "netuid": 57
-      },
-      {
-        "after": "Bitrecs",
-        "before": "gamma_small",
-        "netuid": 122
-      }
-    ]
+    "renamed": []
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 14,
+    "artifact_modified_count": 15,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -107,13 +100,13 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 694,
-        "before": 701,
-        "delta": -7
+        "after": 689,
+        "before": 694,
+        "delta": -5
       }
     },
     "netuid_added_count": 0,
     "netuid_removed_count": 0,
-    "netuid_renamed_count": 2
+    "netuid_renamed_count": 0
   }
 }

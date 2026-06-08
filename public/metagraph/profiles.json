@@ -2511,10 +2511,15 @@
     {
       "candidate_count": 12,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "defi",
+        "identity-reviewed",
+        "official-docs",
+        "official-website",
+        "risk-intelligence"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-openapi",
@@ -2533,15 +2538,15 @@
           "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 35
+        "score": 40
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
       "interface_count": 3,
       "missing_critical_count": 5,
-      "monitored_endpoint_count": 5,
+      "monitored_endpoint_count": 2,
       "name": "Endure Network",
       "native_name": "Endure Network",
       "native_name_quality": "chain",
@@ -2549,35 +2554,33 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-30-taomarketcap-website",
+        "id": "sn-30-endure-website",
         "kind": "website",
-        "name": "Endure Network website",
-        "provider": "taomarketcap",
+        "name": "Endure website",
+        "provider": "endure",
         "url": "https://endure.network/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/30",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx",
+        "docs_url": "https://docs.endure.network/",
         "source_repo": null,
         "website_url": "https://endure.network/"
       },
       "profile_level": "directory-only",
       "project_name": "Endure Network",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 3,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:45:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/30",
+          "https://docs.endure.network/",
           "https://endure.network/",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json",
           "https://taomarketcap.com/subnets/30"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-30",
       "status": "active",
       "subnet_type": "application",
@@ -2586,7 +2589,7 @@
         "docs",
         "website"
       ],
-      "surface_count": 5,
+      "surface_count": 2,
       "symbol": "ו",
       "team": null
     },
@@ -7012,37 +7015,40 @@
     {
       "candidate_count": 5,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "chip-design",
+        "hardware",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 5,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 3,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 3,
       "name": "ansuz",
       "native_name": "ansuz",
       "native_name_quality": "chain",
@@ -7050,44 +7056,45 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-84-taopedia-article",
-        "kind": "docs",
-        "name": "ansuz Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
+        "id": "sn-84-chipforge-website",
+        "kind": "website",
+        "name": "ChipForge website",
+        "provider": "chipforge",
+        "url": "https://www.chipforge.io/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/84",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx",
+        "docs_url": "https://docs.chipforge.io/",
         "source_repo": "https://github.com/TatsuProject/ChipForge_SN84",
-        "website_url": null
+        "website_url": "https://www.chipforge.io/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "ansuz",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:45:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/84",
+          "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
+          "https://docs.chipforge.io/",
           "https://github.com/TatsuProject/ChipForge_SN84",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json",
-          "https://taomarketcap.com/subnets/84"
+          "https://taomarketcap.com/subnets/84",
+          "https://www.chipforge.io/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-84",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 3,
       "symbol": "ᚨ",
       "team": null
     },
@@ -10730,13 +10737,13 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 50,
-      "medium": 79
+      "high": 52,
+      "medium": 77
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 31,
-      "identity-complete": 53,
+      "directory-only": 30,
+      "identity-complete": 54,
       "operational": 43
     },
     "profile_count": 129

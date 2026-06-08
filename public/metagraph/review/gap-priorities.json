@@ -405,25 +405,6 @@
       "verified_candidate_count": 11
     },
     {
-      "candidate_count": 12,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Endure Network",
-      "netuid": 30,
-      "priority_score": 68,
-      "review_state": "machine-generated",
-      "slug": "sn-30",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 5
-    },
-    {
       "candidate_count": 22,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -602,25 +583,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 4,
       "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 5,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "ansuz",
-      "netuid": 84,
-      "priority_score": 61,
-      "review_state": "machine-generated",
-      "slug": "sn-84",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 5
     },
     {
       "candidate_count": 5,
@@ -1885,6 +1847,25 @@
       "verified_candidate_count": 9
     },
     {
+      "candidate_count": 12,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Endure Network",
+      "netuid": 30,
+      "priority_score": 23,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-30",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 2,
+      "verified_candidate_count": 5
+    },
+    {
       "candidate_count": 23,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -2276,6 +2257,24 @@
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 9,
       "verified_candidate_count": 11
+    },
+    {
+      "candidate_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "ansuz",
+      "netuid": 84,
+      "priority_score": 4,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-84",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 3,
+      "verified_candidate_count": 5
     },
     {
       "candidate_count": 4,
