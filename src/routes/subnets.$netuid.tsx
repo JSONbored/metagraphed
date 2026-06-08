@@ -127,6 +127,15 @@ function ProfileShell({ netuid }: { netuid: number }) {
   return (
     <>
       <ProfileHero
+        icon={
+          <BrandIcon
+            url={profile?.website ?? profile?.homepage}
+            iconUrl={profile?.icon_url}
+            name={profile?.name}
+            fallback={netuid}
+            size={48}
+          />
+        }
         eyebrow={
           <span className="inline-flex items-center gap-2">
             <span>Netuid {String(netuid).padStart(3, "0")}</span>
