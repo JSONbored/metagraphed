@@ -416,7 +416,8 @@ function EndpointsPanel({ netuid }: { netuid: number }) {
 }
 
 function EndpointsTableLoader({ netuid }: { netuid: number }) {
-  const { data, meta } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   if (rows.length === 0) {
     return (
@@ -568,7 +569,8 @@ function SchemasPanel({ netuid }: { netuid: number }) {
 /* ----------------------------- surfaces list ----------------------------- */
 
 function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }) {
-  const { data, meta } = useSuspenseQuery(subnetSurfacesQuery(netuid));
+  const { data } = useSuspenseQuery(subnetSurfacesQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Surface[];
   if (rows.length === 0)
     return (
@@ -651,7 +653,8 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
 /* ----------------------------- candidates list ----------------------------- */
 
 function CandidatesList({ netuid }: { netuid: number }) {
-  const { data, meta } = useSuspenseQuery(subnetCandidatesQuery(netuid));
+  const { data } = useSuspenseQuery(subnetCandidatesQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Candidate[];
   if (rows.length === 0)
     return (

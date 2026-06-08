@@ -203,7 +203,8 @@ function EndpointsGlanceLoader({ slug }: { slug: string }) {
 }
 
 function EndpointsTableLoader({ slug }: { slug: string }) {
-  const { data, meta } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   if (rows.length === 0) {
     return (
@@ -219,7 +220,8 @@ function EndpointsTableLoader({ slug }: { slug: string }) {
 }
 
 function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean }) {
-  const { data, meta } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   const grouped = useMemo(() => {
     const m = new Map<number, Endpoint[]>();
