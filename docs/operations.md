@@ -74,7 +74,7 @@ npm run worker:deploy:dry-run
 Actual writes require explicit environment gates:
 
 - `METAGRAPH_ALLOW_R2_UPLOAD=1`
-- `METAGRAPH_R2_UPLOAD_HISTORY=1` when the publish job should also write run-prefix history copies for changed artifacts and control files.
+- `METAGRAPH_R2_UPLOAD_HISTORY=1` when the publish job should also write run-prefix history copies for all planned artifacts and control files.
 - `METAGRAPH_R2_UPLOAD_FORCE=1` when a publish job should ignore the remote `latest/r2-manifest.json` comparison and republish every planned artifact.
 - `METAGRAPH_R2_UPLOAD_LIMIT` for smoke-only uploads against a small artifact subset. Limited smoke uploads skip control files so `latest/r2-manifest.json` continues to describe only a complete latest artifact set.
 - `METAGRAPH_ALLOW_KV_WRITE=1`

@@ -55,10 +55,15 @@ import {
   artifactStorageTierForPath,
   artifactStorageTierForRelativePath,
   isR2OnlyArtifactPath,
+  schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
-import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
+import {
+  MissingEndpointArtifactsError,
+  missingEndpointArtifactDetails,
+  renderEndpointOpsBrief,
+} from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
 import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
 import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
@@ -103,6 +108,24 @@ describe("script utility contracts", () => {
         },
       ),
       "unsupported",
+    );
+  });
+
+  test("classifies redirect-limit probes with unsafe targets as unsafe", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          redirect_target: "http://169.254.169.254/latest/meta-data/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsafe",
     );
   });
 
@@ -344,6 +367,26 @@ describe("script utility contracts", () => {
     assert.match(brief, /Health, uptime, latency, incidents/);
   });
 
+  test("reports missing endpoint brief artifacts with an actionable error", async () => {
+    const missing = await missingEndpointArtifactDetails([
+      "endpoint-brief-test-missing.json",
+    ]);
+
+    assert.deepEqual(
+      missing.map(({ relativePath }) => relativePath),
+      ["endpoint-brief-test-missing.json"],
+    );
+
+    const error = new MissingEndpointArtifactsError(missing);
+    assert.match(
+      error.message,
+      /Endpoint operations brief artifacts are missing/,
+    );
+    assert.match(error.message, /npm run artifacts:prepare-local/);
+    assert.match(error.message, /npm run r2:download/);
+    assert.match(error.message, /endpoint-brief-test-missing\.json/);
+  });
+
   test("renders an endpoint operations brief from pool artifacts", () => {
     const brief = renderEndpointOpsBrief({
       endpoint_summary: {
@@ -424,6 +467,7 @@ describe("script utility contracts", () => {
       "utf8",
     );
 
+    assert.match(source, /METAGRAPH_BUILD_TIMESTAMP:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_DISCOVERY_OBSERVED_AT:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT:\s*"1"/);
   });
@@ -563,6 +607,32 @@ describe("script utility contracts", () => {
       true,
     );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
+    assert.equal(
+      schemaDetailArtifactRelativePath(
+        "/metagraph/schemas/sn-6-numinous-openapi-schema.json",
+      ),
+      "schemas/sn-6-numinous-openapi-schema.json",
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("schemas/allways-swagger.json"),
+      "schemas/allways-swagger.json",
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schemas/index.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/../../package.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schemas/../package.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schema-drift.json"),
+      null,
+    );
 
     const stagedPath = artifactOutputPath("health/history/2099-01-01.json");
     try {
@@ -740,10 +810,7 @@ describe("script utility contracts", () => {
       overlaySet.manualOverlays[0].categories.includes("baseline-augmented"),
       true,
     );
-    assert.equal(
-      overlaySet.manualOverlays[0].dashboard_url,
-      "https://taostats.io/subnets/25/metagraph",
-    );
+    assert.equal(overlaySet.manualOverlays[0].dashboard_url, undefined);
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 
@@ -923,6 +990,8 @@ describe("script utility contracts", () => {
     assert.equal(normalizePublicUrl(null), null);
     assert.equal(normalizePublicUrl("notaurl"), null);
     assert.equal(normalizePublicUrl("http://10.0.0.1"), null);
+    assert.equal(normalizePublicUrl("https://user:pass@metagraph.sh"), null);
+    assert.equal(normalizePublicUrl("https://user@metagraph.sh"), null);
     assert.equal(isJsonContentType("application/openapi+json"), true);
     assert.equal(isHtmlContentType("text/html; charset=utf-8"), true);
     assert.equal(sha256Hex("metagraphed").length, 64);

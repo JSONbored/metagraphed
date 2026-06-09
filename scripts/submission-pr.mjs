@@ -20,6 +20,7 @@ import { submissionFormattingErrors } from "./submission-formatting.mjs";
 const args = process.argv.slice(2);
 const changedFilesPath = valueAfter("--changed-files");
 const outPath = valueAfter("--out");
+const inputRoot = path.resolve(valueAfter("--input-root") || process.cwd());
 const submitter =
   valueAfter("--submitter") || process.env.GITHUB_ACTOR || process.env.USER;
 const failOnBlocking = !args.includes("--no-fail");
@@ -39,10 +40,10 @@ const directProviderFile = changedFiles.find((file) =>
   DIRECT_PROVIDER_PATTERN.test(file),
 );
 const candidateDocument = directCandidateFile
-  ? await readJson(path.resolve(directCandidateFile))
+  ? await readJson(path.join(inputRoot, directCandidateFile))
   : null;
 const providerDocument = directProviderFile
-  ? await readJson(path.resolve(directProviderFile))
+  ? await readJson(path.join(inputRoot, directProviderFile))
   : null;
 const directSubmissionRaw = new Map(
   (
@@ -51,7 +52,7 @@ const directSubmissionRaw = new Map(
         .filter(Boolean)
         .map(async (file) => [
           file,
-          await fs.readFile(path.resolve(file), "utf8"),
+          await fs.readFile(path.join(inputRoot, file), "utf8"),
         ]),
     )
   ).map(([file, raw]) => [file, raw]),
