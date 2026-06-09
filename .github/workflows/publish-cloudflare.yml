@@ -1,13 +1,21 @@
 name: Publish Cloudflare Backend
 
+# Scheduled DATA refresh (ADR 0001). Builds fresh artifacts (live probes +
+# adapter snapshots) and publishes them to R2 + the KV `latest` pointer. The
+# Worker CODE + committed assets are deployed separately by Cloudflare Workers
+# Builds on push to main; this workflow only refreshes the DATA the Worker
+# serves from R2/KV, decoupled from code pushes (so a docs commit no longer
+# re-probes 1k+ surfaces). Run with workflow_dispatch publish_mode=dry-run to
+# validate without writing to R2/KV.
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    # Every 6h — keeps published data within the freshness windows
+    # (surface-health blocks at 6h, adapter-snapshots at 24h).
+    - cron: "17 1,7,13,19 * * *"
   workflow_dispatch:
     inputs:
       publish_mode:
-        description: "Use publish for real R2/KV/Worker deployment; use dry-run for validation only."
+        description: "Use publish for real R2/KV publish; use dry-run for validation only."
         required: true
         default: publish
         type: choice
@@ -20,7 +28,7 @@ permissions:
 
 concurrency:
   group: publish-cloudflare-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -131,7 +139,7 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Validate Cloudflare backend
+      - name: Validate backend contracts
         run: |
           npm run validate:schemas
           npm run validate:api
@@ -141,13 +149,6 @@ jobs:
           npm run validate:docs
           npm run validate:intake
           npm run validate:workflows
-          npm run cloudflare:verify:dry-run
-          npm run r2:manifest:dry-run
-          npm run r2:download:dry-run
-          npm run kv:publish:dry-run
-          npm run worker:deploy:dry-run
-        env:
-          METAGRAPH_REQUIRE_KV_BINDING: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID != '' && '1' || '0' }}
 
       - name: Public-safety scan
         run: npm run scan:public-safety
@@ -206,14 +207,10 @@ jobs:
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
 
-      - name: Deploy Worker
-        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
-        run: ./node_modules/.bin/wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Smoke deployed API
+      # Worker CODE is deployed by Cloudflare Workers Builds on push to main;
+      # this workflow only refreshes the DATA in R2/KV. The live Worker reads
+      # the new KV pointer + R2 on its next origin miss.
+      - name: Smoke live API
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run smoke:live
         env:
