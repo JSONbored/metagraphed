@@ -174,6 +174,52 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
+  test("rejects submitted public artifacts outside the generated indexes", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-artifacts-"));
+    try {
+      const changedFiles = path.join(tmp, "changed-files.txt");
+      writeFileSync(changedFiles, "public/metagraph/endpoints.json\n");
+
+      assert.throws(
+        () =>
+          execFileSync(
+            process.execPath,
+            [
+              "scripts/ci-verify-submitted-artifacts.mjs",
+              "--changed-files",
+              changedFiles,
+            ],
+            { encoding: "utf8", stdio: "pipe" },
+          ),
+        /Unexpected submitted artifact/,
+      );
+    } finally {
+      rmSync(tmp, { force: true, recursive: true });
+    }
+  });
+
+  test("diff-checks submitted public artifacts from the generated indexes", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-artifacts-"));
+    try {
+      const changedFiles = path.join(tmp, "changed-files.txt");
+      writeFileSync(changedFiles, "public/metagraph/surfaces.json\n");
+
+      const output = execFileSync(
+        process.execPath,
+        [
+          "scripts/ci-verify-submitted-artifacts.mjs",
+          "--changed-files",
+          changedFiles,
+        ],
+        { encoding: "utf8", stdio: "pipe" },
+      );
+
+      assert.match(output, /Submitted public artifacts are reproducible/);
+    } finally {
+      rmSync(tmp, { force: true, recursive: true });
+    }
+  });
+
   test("routes direct provider profile PRs to manual review", () => {
     const document = structuredClone(validProviderDocument);
     document.submission.submitted_by = "jsonbored";
