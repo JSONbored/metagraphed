@@ -1,106 +1,89 @@
-## Route-by-route UX/UI audit
+# Registry UX polish — round 2
 
-### Critical bugs (fix first)
+Round-2 polish across Endpoints, Providers, Subnet detail, Health, and the global navbar search. No backend/data-model changes — pure presentation, filtering, grouping, and shared-component refactors.
 
-**1. Health page — broken JSX renders literal text**
-`src/routes/health.tsx:339` wraps JSX in a template string:
-```tsx
-<span>{i.ended_at ? `ended $<TimeAgo at={i.ended_at} />` : "—"}</span>
-```
-Resolved incidents render the literal string `ended $<TimeAgo at={i.ended_at} />`. Replace with the same `<>ended <TimeAgo at={i.ended_at} /></>` pattern that `endpoints.tsx` already uses.
+## 1. Endpoints route (`src/routes/endpoints.tsx`)
 
-**2. Home stat strip permanently shows "—"**
-`src/routes/index.tsx:111` wraps `useSuspenseQuery` calls in `try/catch`. Suspense throws a Promise during loading; the catch swallows it and the cells fall through to "—" forever (visible in screenshots). Convert `StatStrip` to non-suspense `useQuery` (it's stat data, partial loads are fine), or split each cell into its own `<Suspense>` + `<QueryErrorBoundary>` and read with `useSuspenseQuery` normally.
+Right now this page is three plain tables with no controls and no shared incident card.
 
-**3. Time formatting in seconds**
-`health.tsx` (avg age, max age) and home `StatStrip` (avg freshness) print `${Math.round(n)}s` — "20363s" instead of "5h 39m". Replace with `formatRelative()` / a humanised duration formatter.
+- **Add `IncidentCard` import** and replace the inline incident `<li>` with `<IncidentCard incident={i} />` so `/endpoints` matches `/health`.
+- **Toolbar (sticky, `backdrop-blur`)** above "All endpoints":
+  - search input (matches url/provider/region/netuid)
+  - kind multi-select (rpc, wss, api, sse, docs, dashboard, …)
+  - provider select (derived from rows)
+  - health filter (ok/warn/down/unknown)
+  - clear-all chip
+- **URL-driven state** via existing `tableSearchSchema` (`q`, `kind`, `provider`, `health`, `sort`, `order`, `page`, `pageSize`). Use search params so views are shareable.
+- **Sortable columns** (netuid, kind, provider, region, health, latency, probed) using `sortBy`. Click header to toggle.
+- **Pagination**: client-side `paginate()` with a footer "Showing X of Y · page size 25/50/100".
+- **Row decorations** matching `/surfaces`: copy-URL button + `<ExternalLink>` icon on the URL cell; truncate with title tooltip.
+- **Incidents section**:
+  - Reuse the `/health` host-grouping (`hostKeyFromEndpointId`) + state-filter chips (All/Down/Degraded/Resolved).
+  - Show top 12, "Show all N" toggle.
+  - Empty state: "No incidents in window".
 
----
+## 2. Providers route (`src/routes/providers.index.tsx`)
 
-### Home (`/`)
+- **Toolbar**: search (name/slug/notes/host), kind filter, authority filter (official / provider-claimed / community / unknown), sort (name | surfaces | endpoints | subnets).
+- **Stickier header** + result count ("12 of 47 providers").
+- **Empty/Stale/Error states**:
+  - Empty (filter): "No providers match this filter" + clear chip.
+  - Empty (data): keep existing.
+  - Stale: reuse `<StaleBanner />` when `meta.generated_at` is stale.
+  - Error: `QueryErrorBoundary` fallback already covers, but add a retry that calls `router.invalidate()`.
+- **Smoother loading**: replace the single tall `<Skeleton h-64>` with a 6-card skeleton grid matching the real layout (no layout shift on first paint).
+- **Card polish**: fix name truncation by allowing the name to wrap to 2 lines (`line-clamp-2`) instead of cutting mid-word; move the authority chip to a footer row on narrow widths so it stops squeezing the name.
 
-- **Add BrandIcon column** to the "Active subnets" preview table for parity with `/subnets`.
-- **Misleading footer copy**: "Showing first 12 of 12" when registry has 129. Rename section to "Recent subnets" or fetch 12 *with the total count* and show "12 of 129".
-- **Pilot cards**: title + chip duplicate the eyebrow ("SN7" + "Allways" + "ADAPTER" + paragraph). Tighten — one chip on the right, two-line content max.
-- **API URL block** uses `truncate={false}` and sits next to the headline; on narrow widths it wraps awkwardly. Cap width / move under heading on `<md`.
+## 3. Subnet detail (`src/routes/subnets.$netuid.tsx`)
 
-### Subnets list (`/subnets`)
+- **Verified vs candidate labeling** — introduce a single `<CurationBadge level="verified|candidate|machine|pilot|native"/>` chip and apply consistently to every surface, endpoint, link, and gap row. Candidates always carry an "unverified — community" tone (amber/border) and never mix into verified counts.
+- **Section anchors** (already have `section-anchor`): standardize headings as `Identity → Profile → Surfaces → Endpoints → Health → Gaps → Evidence → Providers → Candidates` with a sticky in-page TOC on `lg:` widths.
+- **Endpoints-at-a-glance tiles**: replace `0 —` with `none tracked` (already planned earlier; finish across all four tiles).
+- **Surfaces block**: group by kind (API / Schema / Docs / Dashboard / Repo / Data / SSE) inside collapsible sub-sections; show count next to each kind header.
+- **Evidence panel**: tighten layout — left col = source, right col = `<TimeAgo />` + outbound link; collapse if >6 rows.
+- **Gaps**: render as checklist with severity dot; link "Suggest on GitHub" per row.
+- **Candidates section**: explicit amber banner: "Unverified leads — not part of the verified registry. Helps reviewers triage."
 
-- BrandIcons render fine after load; first-paint shows empty tiles. Render the **monogram as the skeleton itself** (not the pulse) so the cell is never visually empty.
-- "Updated" column is all `—` — verify the field; if always null, drop the column or surface freshness on hover instead.
-- Mobile cards already exist; confirm sticky filter row gets a backdrop on scroll (currently looks unstyled when content scrolls underneath).
+## 4. Health route (`src/routes/health.tsx`)
 
-### Subnets detail (`/subnets/:netuid`)
+Most of the round-1 work landed. Remaining:
 
-- "Endpoints at a glance" tiles for **Root RPC/WSS** and **SSE/Data** show `0 —` which reads as broken. When count is 0, show one line ("none tracked") instead of `0` + dash placeholder.
-- "+1 more group — open the Surfaces tab" link is too muted. Promote to a small button-style row at the bottom of the Surfaces preview.
-- "Known gaps" section repeats the same bullet points already shown in the "Coverage / Missing" sidebar. Dedupe or move bullets out of the sidebar.
-- Hero shows blurry / late favicons for a beat. Same monogram-as-skeleton fix.
+- **Severity sort toggle** for incident groups: "By severity" (default) | "By recency" | "By incident count".
+- **Per-group action**: "Expand all / Collapse all" link above the list.
+- **Refresh control polish**: add a "Refresh now" button (forces `queryClient.invalidateQueries({queryKey:["metagraphed"]})`) next to the countdown; keep countdown but render the seconds in a fixed-width slot so it doesn't jitter.
+- **Source health table**: add inline `humaniseSeconds` for last-seen age in addition to `<TimeAgo />`.
+- **Stale banner**: clarify copy ("snapshot is N min old — auto-refresh paused" when paused).
 
-### Surfaces (`/surfaces`)
+## 5. Navbar — upgraded global search (`src/components/metagraphed/app-shell.tsx`)
 
-- Already strong: filters, infinite scroll, evidence panel.
-- URL column truncates without ellipsis — add `text-overflow` and tooltip; add a small Copy button next to the external-link icon for quick paste.
-- No empty-state when filters return nothing — currently shows raw `<EmptyState>` without a "Clear filters" CTA.
+Current search is functional but minimal. Rebuild as a proper command-palette-style dropdown.
 
-### Endpoints (`/endpoints`)
+- **Trigger**: keyboard shortcut `⌘K` / `Ctrl+K` opens and focuses the input; `/` also focuses (when not in another field).
+- **Wider input** with kbd hint chip on the right (`⌘K`).
+- **Grouped results** in the popover: Subnets · Surfaces · Endpoints · Providers · Docs — each group with a small header and a "see all" link to the matching list route prefilled with `?q=`.
+- **Keyboard navigation**: ↑/↓ moves selection (visual highlight), Enter activates, Esc closes, Tab cycles groups.
+- **Recent searches**: persist last 5 to `localStorage` (`mg.search.recent`), show under "Recent" when input is empty and focused.
+- **Suggested queries** when empty: a row of clickable chips ("bittensor", "taostats", "rpc", "openapi", "sn7").
+- **Result rows**: show `BrandIcon` for providers/subnets where derivable, kind badge, title, and secondary line (host/netuid). Highlight matched substring.
+- **Loading**: thin progress bar across the top of the popover while `isFetching`; no layout shift between states.
+- **Empty result**: "No matches. Press Enter to browse /subnets filtered by '…'." — same as today, but add secondary actions: "Search providers", "Search endpoints".
+- **Mobile**: open as full-screen sheet (uses existing `Sheet` UI primitive) so suggestions are usable on small screens.
+- **A11y**: proper `role="combobox"` + `aria-activedescendant`, listbox/option roles, focus trap inside the mobile sheet.
 
-- **No filters or search** despite being the densest list page. Add `kind`, `provider`, `health` filters and a search input (mirror `/surfaces` controls).
-- **No pagination/infinite scroll** — fetches everything; add the same pattern.
-- URL column lacks `<ExternalLink>` decoration that surfaces uses. Add it + copy button.
-- RPC pools table is all `—` — collapse empty columns automatically or replace with a "Pool metadata pending" empty state.
-- "Proxy: future" cells need a tooltip explaining proxy routing is future-scoped (the page intro mentions it; tooltip on the cell ties the two together).
-- `durationLabel` is duplicated with `health.tsx` → extract to `src/lib/metagraphed/format.ts`.
+## 6. Shared bits
 
-### Providers list (`/providers`)
+- **New `src/components/metagraphed/curation-badge.tsx`** — single source of truth for verified/candidate styling.
+- **`src/components/metagraphed/toolbar.tsx`** — extracted sticky filter row (`backdrop-blur bg-paper/85`) reused by Endpoints, Providers, Surfaces.
+- **`src/components/metagraphed/kbd.tsx`** — small `<Kbd>⌘K</Kbd>` primitive for the search hint.
+- **`src/lib/metagraphed/search-history.ts`** — recent-search persistence helper.
 
-- **No search, filter, or sort.** With ~50+ providers and growing, add: search box, kind filter (subnet-team / infrastructure-provider / data-provider / community), authority filter (official / provider-claimed / community), and a sort (name / surfaces / endpoints / subnets).
-- Card icons render empty for ~300ms on first paint. Monogram-as-skeleton fix.
-- Truncated provider name like "Actual Com…" cuts at three letters — bump max-width or wrap to two lines before truncating.
+## Files
 
-### Providers detail (`/providers/:slug`)
+- New: `curation-badge.tsx`, `toolbar.tsx`, `kbd.tsx`, `search-history.ts`
+- Edit: `endpoints.tsx`, `providers.index.tsx`, `subnets.$netuid.tsx`, `health.tsx`, `app-shell.tsx`
 
-- Clean overall.
-- "Subnets served" cards are fixed-width (3-col grid) and waste space when only 4 entries. Switch to flex-wrap with min-width so 5 fit on a row, 2 wrap nicely.
-- Provider hero brand-icon same first-paint issue.
+## Out of scope
 
-### Health (`/health`)
-
-- **Incidents list is overwhelming** — 40+ near-identical "Degraded · sn-N-subnetradar-dashboard · This operation was aborted". Add:
-  - Group by host pattern (parse the suffix after the netuid in `endpoint_id`); show one collapsible row per host with a count badge.
-  - State filter (Down / Degraded / Resolved) + sort by severity.
-  - Default-show top N, with "Show all" expand.
-- **Source-health "Freshness" column** is just a coloured dot with no label or timestamp — surface the relative age next to the dot or wrap in a tooltip.
-- "Last seen" column empty for most rows — if backend returns null universally, drop the column; otherwise show `—` with a tooltip.
-- **AutoRefreshControl** is busy: select + Pause button + "Next sync · 30s" + tab-hidden chip + idle chip. Consolidate into a single rounded control: `[●] Auto · every 30s · syncing`, with the pause icon inline and one chip for tab-hidden state.
-
-### Schemas, Gaps, About
-
-- Out of scope for this round (no obvious issues from screenshots; user did not list them as focus). Flagging here so we can do a follow-up pass.
-
----
-
-### Cross-cutting refactors
-
-- **Extract shared utilities**: `durationLabel` (endpoints + health), `humaniseSeconds` (home + health), incident card component (endpoints + health).
-- **Table padding consistency**: standardize on `px-4 py-2.5` across endpoints/health/source-health to match subnets/surfaces.
-- **Sticky filter rows**: subnets/surfaces filter rows need a `bg-card/95 backdrop-blur` when scrolled so table content doesn't bleed through.
-- **BrandIcon first-paint**: render the monogram tile as the loading state itself (current `animate-pulse` over an empty surface tile reads as broken when many cards load at once).
-
----
-
-### Out of scope for this pass
-
-- Schemas, Gaps, About route audits.
-- Adding pagination/server-side filters that require backend changes — limited to what the client can do with the existing `/api/v1/*` endpoints.
-- Visual redesign / palette changes.
-
----
-
-### Suggested execution order
-1. Critical bug fixes (1, 2, 3) — quick wins, visible immediately.
-2. Endpoints filters + URL polish.
-3. Providers list filters + search.
-4. Health incidents grouping + AutoRefreshControl simplification.
-5. Cross-cutting refactors + BrandIcon monogram-skeleton.
-6. Home table tweaks and subnet detail polish.
+- No new API routes or query changes.
+- No registry data writes.
+- No proxy/load-balancer surfaces (still future-scoped).
