@@ -37,6 +37,7 @@ import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
+  schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
 
 const providers = await loadProviders();
@@ -2970,10 +2971,16 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
   ) {
     return null;
   }
+  const previousSchemas = previous.schemas || [];
+  if (
+    previousSchemas.some(
+      (schema) => !schemaDetailArtifactRelativePath(schema.path || ""),
+    )
+  ) {
+    return null;
+  }
   const currentIds = openApiSurfaceIds(surfaces);
-  const previousIds = (previous.schemas || [])
-    .map((schema) => schema.surface_id)
-    .sort();
+  const previousIds = previousSchemas.map((schema) => schema.surface_id).sort();
   if (!sameStringSet(currentIds, previousIds)) {
     return null;
   }
@@ -3794,7 +3801,13 @@ function delta(before, after) {
 
 function artifactFile(relativePath) {
   const tier = artifactStorageTierForRelativePath(relativePath);
-  return path.join(tier === "r2" ? r2OutputRoot : outputRoot, relativePath);
+  const root = tier === "r2" ? r2OutputRoot : outputRoot;
+  const filePath = path.resolve(root, relativePath);
+  const relativeToRoot = path.relative(root, filePath);
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    throw new Error(`Artifact path escapes output root: ${relativePath}`);
+  }
+  return filePath;
 }
 
 function r2ArtifactDir(relativePath) {
@@ -3802,13 +3815,7 @@ function r2ArtifactDir(relativePath) {
 }
 
 function schemaDetailArtifactPath(entry) {
-  const relativePath = String(entry.path || "")
-    .replace(/^\/+metagraph\//, "")
-    .replace(/^\/+/, "");
-  if (!relativePath || relativePath === "schemas/index.json") {
-    return null;
-  }
-  return relativePath;
+  return schemaDetailArtifactRelativePath(entry.path || "");
 }
 
 async function collectArtifactDigests({
