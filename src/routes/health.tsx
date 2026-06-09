@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
+import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
