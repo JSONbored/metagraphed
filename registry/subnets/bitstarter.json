@@ -4,9 +4,15 @@
   "name": "Bitstarter #1",
   "slug": "sn-91",
   "status": "active",
-  "categories": ["baseline-curated", "identity-reviewed", "official-website"],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "dashboard_url": "https://taomarketcap.com/subnets/91",
   "website_url": "https://bitstarter.ai/",
+  "source_repo": "https://github.com/AlphaCoreBittensor/alphacore",
   "baseline_excluded_surface_ids": [
     "sn-91-taomarketcap-website",
     "sn-91-website-common-api",
@@ -21,18 +27,18 @@
     "sn-91-website-link-bitstarter-ai-website-4",
     "sn-91-website-link-bitstarter-ai-website-5"
   ],
-  "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, how-it-works page, project submission page, and universal TaoMarketCap dashboard. Common docs/API/OpenAPI paths currently return 404 and no verified source repository, machine-readable schema, safe public subnet API endpoint, or SSE surface has been found yet.",
+  "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, how-it-works page, project submission page, AlphaCore source repository, and universal TaoMarketCap dashboard. Common docs/API/OpenAPI paths currently return 404 and no verified machine-readable schema, safe public subnet API endpoint, or SSE surface has been found yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:25:00.000Z",
     "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 6,
+    "source_count": 7,
     "gap_notes": [
       "Official website, app, how-it-works, and project submission pages are live and verified.",
       "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
       "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
-      "No verified source repository yet.",
+      "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
@@ -58,6 +64,27 @@
         "timeout_ms": 10000
       },
       "notes": "Public Bitstarter website."
+    },
+    {
+      "id": "sn-91-alphacore-source",
+      "name": "AlphaCore source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/AlphaCoreBittensor/alphacore",
+      "provider": "alphacore",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitstarter.ai/",
+        "https://github.com/AlphaCoreBittensor/alphacore"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public AlphaCore repository linked from the live Bitstarter project page for SN91."
     },
     {
       "id": "sn-91-bitstarter-app",

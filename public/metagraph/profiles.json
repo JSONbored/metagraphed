@@ -13342,41 +13342,36 @@
         "baseline-augmented",
         "baseline-curated",
         "identity-reviewed",
+        "official-source-repo",
         "official-website"
       ],
       "completeness": {
         "confidence": "high",
         "gap_reasons": [
-          "missing-source-repo",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "identity_level": "partial",
-        "identity_surface_count": 2,
-        "missing_critical_count": 5,
-        "missing_identity": [
-          "source-repo"
-        ],
+        "identity_level": "complete",
+        "identity_surface_count": 3,
+        "missing_critical_count": 4,
+        "missing_identity": [],
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "source-repo"
-        ],
-        "profile_level": "identity-partial",
-        "score": 40
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 40,
+      "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 9,
+      "endpoint_count": 10,
       "gap_reasons": [
-        "missing-source-repo",
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse",
@@ -13384,9 +13379,10 @@
       ],
       "identity_evidence": {
         "candidate_identity_count": 9,
-        "curated_identity_count": 2,
+        "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
+          "source-repo",
           "website"
         ],
         "live_candidate_identity_kinds": [
@@ -13406,23 +13402,19 @@
         ],
         "unverified_candidate_identity_kinds": []
       },
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "source-repo"
-      ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
       ],
-      "missing_required": [
-        "source-repo"
-      ],
-      "monitored_endpoint_count": 9,
+      "missing_required": [],
+      "monitored_endpoint_count": 10,
       "name": "Bitstarter #1",
       "native_identity": {
         "additional": null,
@@ -13450,15 +13442,15 @@
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/91",
         "docs_url": "https://app.bitstarter.ai/how-it-works/",
-        "source_repo": null,
+        "source_repo": "https://github.com/AlphaCoreBittensor/alphacore",
         "website_url": "https://bitstarter.ai/"
       },
-      "profile_level": "identity-partial",
+      "profile_level": "identity-complete",
       "project_name": "Bitstarter #1",
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 10,
+        "interface_source_count": 11,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
         "source_urls": [
@@ -13468,6 +13460,7 @@
           "https://app.bitstarter.ai/submit-a-project/incubator/",
           "https://backprop.finance/dtao/subnets/91-bitstarter-1",
           "https://bitstarter.ai/",
+          "https://github.com/AlphaCoreBittensor/alphacore",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json",
           "https://subnetradar.com/subnet/91",
@@ -13479,14 +13472,17 @@
       "status": "active",
       "subnet_type": "application",
       "suggested_submission_kinds": [
-        "source-repo"
+        "openapi",
+        "subnet-api",
+        "data-artifact"
       ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
+        "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 10,
       "symbol": "ᚁ",
       "team": null
     },
@@ -18872,13 +18868,13 @@
       "medium": 38
     },
     "by_identity_level": {
-      "complete": 102,
-      "partial": 27
+      "complete": 103,
+      "partial": 26
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "identity-complete": 75,
-      "identity-partial": 25,
+      "identity-complete": 76,
+      "identity-partial": 24,
       "operational": 27
     },
     "identity_promotion_candidate_count": 1,

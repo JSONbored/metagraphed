@@ -2516,77 +2516,6 @@
       "verified_candidate_count": 13
     },
     {
-      "adapter_score": 9,
-      "candidate_count": 18,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 40,
-      "contribution_hint": "Submit one official public source-repo candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "source-repo"
-      ],
-      "endpoint_count": 9,
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [
-        "source-repo"
-      ],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "operational_interface_count": 0,
-      "priority_score": 121,
-      "profile_level": "identity-partial",
-      "reason_codes": [
-        "missing-source-repo"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-91-backprop-dashboard",
-        "sn-91-native-chain-website",
-        "sn-91-subnetradar-dashboard",
-        "sn-91-taomarketcap-dashboard",
-        "sn-91-taopedia-article"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-91",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/91",
-        "https://app.bitstarter.ai/",
-        "https://app.bitstarter.ai/how-it-works/",
-        "https://app.bitstarter.ai/submit-a-project/incubator/",
-        "https://backprop.finance/dtao/subnets/91-bitstarter-1",
-        "https://bitstarter.ai/",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 9,
-      "verified_candidate_count": 11
-    },
-    {
       "adapter_score": 8,
       "candidate_count": 17,
       "candidate_evidence_summary": {
@@ -8651,6 +8580,78 @@
     },
     {
       "adapter_score": 10,
+      "candidate_count": 18,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 10,
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [],
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_interface_count": 0,
+      "priority_score": 96,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-91-backprop-dashboard",
+        "sn-91-native-chain-website",
+        "sn-91-subnetradar-dashboard",
+        "sn-91-taomarketcap-dashboard",
+        "sn-91-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-91",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/91",
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/how-it-works/",
+        "https://app.bitstarter.ai/submit-a-project/incubator/",
+        "https://backprop.finance/dtao/subnets/91-bitstarter-1",
+        "https://bitstarter.ai/",
+        "https://github.com/AlphaCoreBittensor/alphacore",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 10,
+      "verified_candidate_count": 11
+    },
+    {
+      "adapter_score": 10,
       "candidate_count": 17,
       "candidate_evidence_summary": {
         "candidate_count": 0,
@@ -10578,8 +10579,8 @@
       "verify-existing-evidence": 1
     },
     "identity_level_counts": {
-      "complete": 102,
-      "partial": 27
+      "complete": 103,
+      "partial": 26
     },
     "lane_counts": {
       "adapter-candidate": 12,
@@ -10593,10 +10594,10 @@
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 75,
-      "openapi": 84,
-      "source-repo": 21,
-      "subnet-api": 84,
+      "data-artifact": 76,
+      "openapi": 85,
+      "source-repo": 20,
+      "subnet-api": 85,
       "website": 14
     }
   }

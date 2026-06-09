@@ -960,25 +960,6 @@
       "verified_candidate_count": 17
     },
     {
-      "candidate_count": 18,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "priority_score": 29,
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-91",
-      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
-      "surface_count": 9,
-      "verified_candidate_count": 11
-    },
-    {
       "candidate_count": 6,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -1841,6 +1822,24 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 12,
       "verified_candidate_count": 13
+    },
+    {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "priority_score": 17,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-91",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 10,
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 6,

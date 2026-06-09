@@ -3,12 +3,16 @@
     "added": [],
     "modified": [
       {
-        "hash": "749cb31ae47d201b0d9216c9cee4e352c57d57f44455b6357080e2a02fb7a9a2",
-        "path": "api-index.json"
+        "hash": "c55c242e3564cc23fc02c90089f0d7c9dfe529bd56670bfb9bdb564850a65510",
+        "path": "freshness.json"
       },
       {
-        "hash": "f6f817ba645eec8c7054105d99af1cad40ca4d6a7d1b6352b51d41e3e9050b04",
-        "path": "contracts.json"
+        "hash": "cdf6a067428f3a4c962e7c1231572aff59eb6c267ff19a0089390bbeda9a2eef",
+        "path": "providers.json"
+      },
+      {
+        "hash": "6222ec0f323dcf598f8c50d9e7559056ee2238238abd0c7ed59a22d036ab166a",
+        "path": "search.json"
       }
     ],
     "removed": []
@@ -28,7 +32,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 2,
+    "artifact_modified_count": 3,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -48,8 +52,8 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1135,
-        "before": 1135,
+        "after": 1136,
+        "before": 1136,
         "delta": 0
       }
     },

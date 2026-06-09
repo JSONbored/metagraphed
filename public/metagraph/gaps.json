@@ -2541,7 +2541,7 @@
           "Official website, app, how-it-works, and project submission pages are live and verified.",
           "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
           "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
-          "No verified source repository yet.",
+          "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -2549,7 +2549,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -2558,6 +2557,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },

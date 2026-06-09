@@ -3979,7 +3979,7 @@
           "Official website, app, how-it-works, and project submission pages are live and verified.",
           "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
           "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
-          "No verified source repository yet.",
+          "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -3989,16 +3989,16 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 9,
+        "source_count": 10,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Official website, app, how-it-works, and project submission pages are live and verified.",
           "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
           "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
-          "No verified source repository yet.",
+          "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -4006,7 +4006,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -4015,13 +4014,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },
       "name": "Bitstarter #1",
       "netuid": 91,
       "slug": "sn-91",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
       "candidate_count": 7,

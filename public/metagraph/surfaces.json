@@ -24112,6 +24112,30 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-alphacore-source",
+      "kind": "source-repo",
+      "name": "AlphaCore source repository",
+      "netuid": 91,
+      "notes": "Public AlphaCore repository linked from the live Bitstarter project page for SN91.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "alphacore",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitstarter.ai/",
+        "https://github.com/AlphaCoreBittensor/alphacore"
+      ],
+      "subnet_name": "Bitstarter #1",
+      "subnet_slug": "sn-91",
+      "url": "https://github.com/AlphaCoreBittensor/alphacore"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-91-backprop-dashboard",
       "kind": "dashboard",

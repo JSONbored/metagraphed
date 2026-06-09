@@ -199,16 +199,16 @@
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-09T04:34:13.705Z",
+      "as_of": null,
       "id": "surface-health",
       "lane": "health-probe",
-      "notes": "Observed health is probe-derived.",
+      "notes": "Run probes with METAGRAPH_WRITE_PROBE_RESULTS=1 before production publish.",
       "path": "public/metagraph/health/latest.json",
       "required_for_publish": true,
       "stale_after_hours": 6,
       "stale_behavior": "block",
-      "status": "captured",
-      "timestamp": "2026-06-09T04:34:13.705Z",
+      "status": "missing",
+      "timestamp": null,
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -217,15 +217,17 @@
     "adapter_snapshot_as_of": "2026-06-08T22:54:35.669Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T22:52:53.437Z",
-    "health_probe_as_of": "2026-06-09T04:34:13.705Z",
-    "health_surface_count": 1128,
-    "missing_blocking_source_count": 0,
+    "health_probe_as_of": null,
+    "health_surface_count": 1129,
+    "missing_blocking_source_count": 1,
     "native_data_as_of": "2026-06-08T22:53:27Z",
     "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
     "openapi_surface_count": 12,
-    "publish_ready_without_age_check": true,
+    "publish_ready_without_age_check": false,
     "schema_snapshot_as_of": "2026-06-08T23:01:01.012Z",
-    "stale_window_warnings": [],
+    "stale_window_warnings": [
+      "surface-health has no observed timestamp; production publish should block."
+    ],
     "verification_as_of": "2026-06-08T22:52:53.437Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
     "warning_source_count": 11

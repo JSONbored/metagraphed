@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1353,
+  "document_count": 1355,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -76,6 +76,20 @@
       ],
       "type": "provider",
       "url": "https://all-ways.io"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:alphacore",
+      "subtitle": "subnet-team",
+      "title": "AlphaCore",
+      "tokens": [
+        "alphacore",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://alpha-core.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -2128,9 +2142,11 @@
         "official",
         "on",
         "qjjrq2kg",
+        "repo",
         "reviewed",
         "sn",
         "soon",
+        "source",
         "subnet",
         "website"
       ],
@@ -8003,6 +8019,26 @@
       ],
       "type": "surface",
       "url": "https://almanac.market/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-91-alphacore-source",
+      "netuid": 91,
+      "slug": "sn-91",
+      "subtitle": "source-repo / alphacore",
+      "title": "AlphaCore source repository",
+      "tokens": [
+        "1",
+        "91",
+        "alphacore",
+        "bitstarter",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/AlphaCoreBittensor/alphacore"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

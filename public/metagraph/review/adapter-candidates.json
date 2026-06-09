@@ -1256,6 +1256,33 @@
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-91-website-common-api",
+        "sn-91-website-common-health",
+        "sn-91-website-common-openapi-json",
+        "sn-91-website-common-swagger",
+        "sn-91-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-91",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
       "candidate_api_count": 6,
       "candidate_api_ids": [
         "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1",
@@ -1553,33 +1580,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-80",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-91-website-common-api",
-        "sn-91-website-common-health",
-        "sn-91-website-common-openapi-json",
-        "sn-91-website-common-swagger",
-        "sn-91-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 9,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-91",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
