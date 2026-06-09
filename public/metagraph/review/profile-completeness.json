@@ -973,7 +973,7 @@
       "profile_level": "identity-partial",
       "review_state": "maintainer-reviewed",
       "slug": "sn-89",
-      "source_count": 7,
+      "source_count": 8,
       "stale_identity_candidate_kind_count": 2,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
@@ -1182,7 +1182,7 @@
       "profile_level": "identity-partial",
       "review_state": "needs-review",
       "slug": "sn-81",
-      "source_count": 7,
+      "source_count": 8,
       "stale_identity_candidate_kind_count": 0,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [

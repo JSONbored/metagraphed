@@ -3,16 +3,60 @@
     "added": [],
     "modified": [
       {
-        "hash": "c55c242e3564cc23fc02c90089f0d7c9dfe529bd56670bfb9bdb564850a65510",
+        "hash": "afa46e451f4a76e5ccd210cb41b4c23baac33daa83ab03936e532d53b9c9247a",
+        "path": "coverage.json"
+      },
+      {
+        "hash": "df63fb2fe0865454c7f48de082e3d7efe6da1735a6e74895e1bb9e7210a8b33b",
+        "path": "curation.json"
+      },
+      {
+        "hash": "1dc5fb36a4759fcc4699568ca6cfc443a4d70ceaa1e861bc5eae85f032a5109b",
+        "path": "evidence-ledger.json"
+      },
+      {
+        "hash": "4e86e36d20a018d7c025988cecbc9342420c449ba933495638e4427a32adb094",
         "path": "freshness.json"
       },
       {
-        "hash": "cdf6a067428f3a4c962e7c1231572aff59eb6c267ff19a0089390bbeda9a2eef",
-        "path": "providers.json"
+        "hash": "273b6205550b017cd434346c874db748238a4d3664cb72e70dd40ba5fd2d655a",
+        "path": "gaps.json"
       },
       {
-        "hash": "6222ec0f323dcf598f8c50d9e7559056ee2238238abd0c7ed59a22d036ab166a",
+        "hash": "d1ef555c85baf57fcbfc8f558a7b74de0b959e78d8a8eafb5c6c9af6724540d2",
+        "path": "profiles.json"
+      },
+      {
+        "hash": "ee10f348c282b206d31a61798d1f5644a2c4be1718fbe763765487f44642c311",
+        "path": "review/adapter-candidates.json"
+      },
+      {
+        "hash": "1edc8cd1e338affc98a0fd1c257b5d74d22e61f059f993fed93e6f9c1e7d97a8",
+        "path": "review/curation.json"
+      },
+      {
+        "hash": "033a0a752348fe5ec2200d35e16248a9026487c58a8eba0629de4d88f33b109e",
+        "path": "review/enrichment-queue.json"
+      },
+      {
+        "hash": "f5281ff5de774e9f2aa2bc260dc342745972154f03f499eb60248acfe51f4e5e",
+        "path": "review/gap-priorities.json"
+      },
+      {
+        "hash": "d207e89b36e20d30085013bca6eeba58e42a3057e142377d2cfa8bc334e8ba42",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "87814dbe7ac687ae0222bb4dd55386a7acc334360d73dbe6f644cade09b8a585",
         "path": "search.json"
+      },
+      {
+        "hash": "be6596f3e2f19f5c8eb9fdd394828602313f0c7284fd67f5ffe5d4dc6f16a017",
+        "path": "subnets.json"
+      },
+      {
+        "hash": "d6a3772b2ce0fec8d53d60ba7c7376070034103fa33284a9a3e12d8f850534ba",
+        "path": "surfaces.json"
       }
     ],
     "removed": []
@@ -32,7 +76,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 3,
+    "artifact_modified_count": 14,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -52,9 +96,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1136,
+        "after": 1138,
         "before": 1136,
-        "delta": 0
+        "delta": 2
       }
     },
     "netuid_added_count": 0,

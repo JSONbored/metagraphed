@@ -14851,6 +14851,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Grail repository documentation is a public docs surface for SN81.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/one-covenant/grail/tree/main/docs",
+      "subject": "surface:sn-81-grail-docs",
+      "support_summary": "Listed in curated overlay for sn-81.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Grail Grafana dashboard is a public dashboard surface for SN81.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -15529,6 +15540,17 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/89-infinitehash",
       "subject": "surface:sn-89-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-89.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "InfiniteHash auction incentive documentation is a public docs surface for SN89.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
+      "subject": "surface:sn-89-infinitehash-auction-docs",
       "support_summary": "Listed in curated overlay for sn-89.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -16672,8 +16694,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1515,
+    "claim_count": 1517,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1136
+    "surface_claim_count": 1138
   }
 }

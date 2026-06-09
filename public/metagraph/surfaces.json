@@ -21895,6 +21895,30 @@
     {
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-81-grail-docs",
+      "kind": "docs",
+      "name": "Grail repository documentation",
+      "netuid": 81,
+      "notes": "Public Grail docs directory with miner, validator, FAQ, incentive, and operational setup documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/grail/tree/main/docs",
+        "https://github.com/one-covenant/grail"
+      ],
+      "subnet_name": "Grail",
+      "subnet_slug": "sn-81",
+      "url": "https://github.com/one-covenant/grail/tree/main/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
       "id": "sn-81-grail-grafana",
       "kind": "dashboard",
       "name": "Grail Grafana dashboard",
@@ -23751,6 +23775,30 @@
       "subnet_name": "InfiniteHash",
       "subnet_slug": "sn-89",
       "url": "https://backprop.finance/dtao/subnets/89-infinitehash"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-89-infinitehash-auction-docs",
+      "kind": "docs",
+      "name": "InfiniteHash auction incentive documentation",
+      "netuid": 89,
+      "notes": "Public InfiniteHash documentation for the subnet auction incentive mechanism.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "infinitehash",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
+        "https://github.com/backend-developers-ltd/InfiniteHash"
+      ],
+      "subnet_name": "InfiniteHash",
+      "subnet_slug": "sn-89",
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
     },
     {
       "auth_required": false,
