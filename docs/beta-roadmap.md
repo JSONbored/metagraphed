@@ -196,9 +196,16 @@ guarantees); and a handful of copy-paste example queries against the live beta.
 
 ### Phase 1 — Beta launch
 
-- Confirm a green production publish and a passing `npm run smoke:live`
-  (Finding 3). _Note: recent `publish-cloudflare` runs are red — confirm whether
-  the Cloudflare secrets are configured (fail-closed) or a real failure._
+- **Done (Phase 1, self-sufficient publish):** Confirm a green production publish
+  and a passing `npm run smoke:live` (Finding 3). _Root cause was the `publish`
+  job's `Validate registry` step failing the publish-only freshness gate
+  (`adapter-snapshots is stale`), **upstream** of the secret check — not missing
+  Cloudflare credentials. The production build now re-snapshots adapters (it
+  already re-probes health) so the publish is green by construction; the three
+  Cloudflare secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+  `METAGRAPH_KV_NAMESPACE_ID`) and the "Actions may create PRs" setting are
+  configured. Part of the artifact-churn-elimination migration — see
+  `docs/adr/0001-r2-only-data-artifacts.md`._
 - **Done (worker edge hardening, not in original findings):** `/health` readiness
   probe, time-bounded R2 reads (`r2_timeout` 504), and structured observability
   logging.
