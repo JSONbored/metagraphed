@@ -88,6 +88,26 @@ export function artifactStorageTierForPath(artifactPath = "") {
   return artifactStorageTierForRelativePath(artifactRelativePath(artifactPath));
 }
 
+export function schemaDetailArtifactRelativePath(artifactPath = "") {
+  const relativePath = artifactRelativePath(artifactPath);
+  if (!relativePath || relativePath === "schemas/index.json") {
+    return null;
+  }
+  if (!relativePath.startsWith("schemas/") || !relativePath.endsWith(".json")) {
+    return null;
+  }
+  if (relativePath.includes("\\")) {
+    return null;
+  }
+  const segments = relativePath.split("/");
+  if (
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    return null;
+  }
+  return relativePath;
+}
+
 export function isR2OnlyArtifactPath(artifactPath = "") {
   return artifactStorageTierForPath(artifactPath) === ARTIFACT_STORAGE_TIERS.r2;
 }

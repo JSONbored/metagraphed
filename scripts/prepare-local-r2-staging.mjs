@@ -3,7 +3,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { repoRoot, stableStringify } from "./lib.mjs";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  schemaDetailArtifactRelativePath,
+} from "../src/artifact-storage.mjs";
 
 const trackedPublicArtifacts = execFileSync(
   "git",
@@ -24,6 +27,7 @@ for (const relativePath of trackedPublicArtifacts) {
     content: existsSync(filePath) ? await readFile(filePath) : null,
   });
 }
+const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const schemaSnapshotDetails = await loadSchemaSnapshotDetails();
 
 const result = spawnSync(process.execPath, ["scripts/build-artifacts.mjs"], {
@@ -47,7 +51,7 @@ for (const [relativePath, original] of originals) {
 }
 
 for (const [relativePath, content] of schemaSnapshotDetails) {
-  const filePath = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  const filePath = stagedSnapshotPath(relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, content);
 }
@@ -71,6 +75,21 @@ console.log(
   ),
 );
 
+function stagedSnapshotPath(relativePath) {
+  const filePath = path.resolve(r2StagingRoot, relativePath);
+  const relativeToRoot = path.relative(r2StagingRoot, filePath);
+  if (
+    relativeToRoot.startsWith("..") ||
+    path.isAbsolute(relativeToRoot) ||
+    relativeToRoot === ""
+  ) {
+    throw new Error(
+      `Refusing schema snapshot path outside R2 staging root: ${relativePath}`,
+    );
+  }
+  return filePath;
+}
+
 async function loadSchemaSnapshotDetails() {
   const indexPath = path.join(repoRoot, "public/metagraph/schemas/index.json");
   if (!existsSync(indexPath)) {
@@ -80,17 +99,11 @@ async function loadSchemaSnapshotDetails() {
   const index = JSON.parse(await readFile(indexPath, "utf8"));
   const details = new Map();
   for (const entry of index.schemas || []) {
-    const relativePath = String(entry.path || "")
-      .replace(/^\/+metagraph\//, "")
-      .replace(/^\/+/, "");
-    if (!relativePath || relativePath === "schemas/index.json") {
+    const relativePath = schemaDetailArtifactRelativePath(entry.path || "");
+    if (!relativePath) {
       continue;
     }
-    const filePath = path.join(
-      repoRoot,
-      R2_STAGING_RELATIVE_ROOT,
-      relativePath,
-    );
+    const filePath = stagedSnapshotPath(relativePath);
     if (existsSync(filePath)) {
       details.set(relativePath, await readFile(filePath));
     } else if (entry.snapshot && typeof entry.snapshot === "object") {

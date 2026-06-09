@@ -1,4 +1,6 @@
+import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
+import { promisify } from "node:util";
 import path from "node:path";
 import {
   buildEndpointResourceArtifact,
@@ -37,7 +39,10 @@ import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
+  schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -88,18 +93,19 @@ const fullVerificationByCandidate = new Map(
 const canonicalVerificationByCandidate = new Map(
   (verification.results || []).map((result) => [result.candidate_id, result]),
 );
-const previousArtifactDigests = await collectArtifactDigests({
-  includeR2Root: false,
+const previousArtifactDigests = await collectPreviousPublicArtifactDigests({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
-const previousSubnetsArtifact = await readOptionalJson(
+const previousSubnetsArtifact = await readPreviousPublicArtifactJson(
+  "subnets.json",
   path.join(outputRoot, "subnets.json"),
 );
 const previousFreshnessArtifact = await readOptionalJson(
   path.join(outputRoot, "freshness.json"),
 );
-const previousCoverageArtifact = await readOptionalJson(
+const previousCoverageArtifact = await readPreviousPublicArtifactJson(
+  "coverage.json",
   path.join(outputRoot, "coverage.json"),
 );
 const previousHealthArtifact = await loadPreviousHealthArtifact();
@@ -2516,7 +2522,12 @@ function buildSurfaceHealthRow(surface, previous) {
   ) {
     row.method_results = previous.method_results;
   }
-  if (Array.isArray(previous.methods_supported)) {
+  if (
+    Array.isArray(previous.methods_supported) ||
+    (previous.methods_supported &&
+      typeof previous.methods_supported === "object" &&
+      !Array.isArray(previous.methods_supported))
+  ) {
     row.methods_supported = previous.methods_supported;
   }
   return row;
@@ -2970,10 +2981,16 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
   ) {
     return null;
   }
+  const previousSchemas = previous.schemas || [];
+  if (
+    previousSchemas.some(
+      (schema) => !schemaDetailArtifactRelativePath(schema.path || ""),
+    )
+  ) {
+    return null;
+  }
   const currentIds = openApiSurfaceIds(surfaces);
-  const previousIds = (previous.schemas || [])
-    .map((schema) => schema.surface_id)
-    .sort();
+  const previousIds = previousSchemas.map((schema) => schema.surface_id).sort();
   if (!sameStringSet(currentIds, previousIds)) {
     return null;
   }
@@ -3794,7 +3811,13 @@ function delta(before, after) {
 
 function artifactFile(relativePath) {
   const tier = artifactStorageTierForRelativePath(relativePath);
-  return path.join(tier === "r2" ? r2OutputRoot : outputRoot, relativePath);
+  const root = tier === "r2" ? r2OutputRoot : outputRoot;
+  const filePath = path.resolve(root, relativePath);
+  const relativeToRoot = path.relative(root, filePath);
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    throw new Error(`Artifact path escapes output root: ${relativePath}`);
+  }
+  return filePath;
 }
 
 function r2ArtifactDir(relativePath) {
@@ -3802,13 +3825,96 @@ function r2ArtifactDir(relativePath) {
 }
 
 function schemaDetailArtifactPath(entry) {
-  const relativePath = String(entry.path || "")
-    .replace(/^\/+metagraph\//, "")
-    .replace(/^\/+/, "");
-  if (!relativePath || relativePath === "schemas/index.json") {
+  return schemaDetailArtifactRelativePath(entry.path || "");
+}
+
+async function collectPreviousPublicArtifactDigests({ publicRoot, r2Root }) {
+  const committedArtifacts = await collectCommittedPublicArtifactDigests();
+  if (committedArtifacts) {
+    return committedArtifacts;
+  }
+  return collectArtifactDigests({
+    includeR2Root: false,
+    publicRoot,
+    r2Root,
+  });
+}
+
+async function collectCommittedPublicArtifactDigests() {
+  const publicPrefix = "public/metagraph/";
+  const output = await gitOutput([
+    "ls-tree",
+    "-r",
+    "--name-only",
+    "HEAD",
+    "--",
+    publicPrefix,
+  ]);
+  if (output === null) {
     return null;
   }
-  return relativePath;
+  const files = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const artifacts = [];
+  for (const filePath of files) {
+    const relativePath = filePath.slice(publicPrefix.length);
+    if (!isChangelogArtifactPath(relativePath)) {
+      continue;
+    }
+    const raw = await gitBuffer(["show", `HEAD:${filePath}`]);
+    if (raw === null) {
+      return null;
+    }
+    artifacts.push({
+      path: relativePath,
+      hash: sha256Hex(raw),
+    });
+  }
+  return artifacts.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+async function readPreviousPublicArtifactJson(relativePath, fallbackPath) {
+  const raw = await gitBuffer([
+    "show",
+    `HEAD:public/metagraph/${relativePath}`,
+  ]);
+  if (raw !== null) {
+    return JSON.parse(Buffer.from(raw).toString("utf8"));
+  }
+  return readOptionalJson(fallbackPath);
+}
+
+function isChangelogArtifactPath(relativePath) {
+  return (
+    relativePath.endsWith(".json") &&
+    !["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
+      relativePath,
+    ) &&
+    artifactStorageTierForRelativePath(relativePath) !== "r2"
+  );
+}
+
+async function gitOutput(args) {
+  const output = await gitBuffer(args);
+  return output ? Buffer.from(output).toString("utf8") : null;
+}
+
+async function gitBuffer(args) {
+  try {
+    const { stdout } = await execFileAsync("git", args, {
+      cwd: repoRoot,
+      encoding: "buffer",
+      maxBuffer: 1024 * 1024 * 50,
+    });
+    return stdout;
+  } catch (error) {
+    if (error.code === "ENOENT" || error.status === 128) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function collectArtifactDigests({

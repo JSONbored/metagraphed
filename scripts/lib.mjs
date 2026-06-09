@@ -506,6 +506,8 @@ export function normalizePublicUrl(value) {
     const url = new URL(candidate);
     if (
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
