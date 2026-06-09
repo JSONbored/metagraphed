@@ -72,6 +72,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
+      # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
+      # from live GitHub metadata. Refuse to publish if any degraded to broken
+      # auth / all-HTML-fallback (strict via METAGRAPH_PRODUCTION_BUILD).
+      - name: Validate adapter data quality
+        run: npm run validate:adapters
+
       - name: Stage reviewed publish artifacts
         run: |
           set -euo pipefail

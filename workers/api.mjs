@@ -477,7 +477,7 @@ async function withTimeout(promise, ms) {
 
 // Lightweight readiness probe for uptime checks and load balancers. Reports
 // which bindings are wired without touching R2/KV (no I/O, no cold-start cost).
-function handleHealthRequest(request, env) {
+async function handleHealthRequest(request, env) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return errorResponse(
       "method_not_allowed",
@@ -487,21 +487,49 @@ function handleHealthRequest(request, env) {
       { allow: "GET, HEAD, OPTIONS" },
     );
   }
+
+  const bindings = {
+    assets: Boolean(env.ASSETS?.fetch),
+    r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
+    kv: Boolean(env.METAGRAPH_CONTROL?.get),
+  };
+
+  // Data freshness — the scheduled refresh (ADR 0001) advances the KV `latest`
+  // pointer's published_at every ~6h. If that pipeline silently stops, the
+  // pointer goes stale; report `degraded` + HTTP 503 so an uptime monitor
+  // pointed at /health catches a broken data-refresh. Only a *present* stale
+  // pointer trips it, so local/dev and the worker-test harness (no published
+  // pointer) stay healthy.
+  const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 12;
+  const pointer = bindings.kv ? await latestPointer(env) : null;
+  const publishedAtIso =
+    pointer && typeof pointer.published_at === "string"
+      ? pointer.published_at
+      : null;
+  const publishedMs = publishedAtIso ? Date.parse(publishedAtIso) : NaN;
+  const ageHours = Number.isFinite(publishedMs)
+    ? (Date.now() - publishedMs) / 3_600_000
+    : null;
+  const stale = ageHours !== null && ageHours > maxAgeHours;
+
   const body = JSON.stringify({
-    status: "ok",
+    status: stale ? "degraded" : "ok",
     service: "metagraphed",
     contract_version: contractVersion(env),
     rpc_proxy_enabled: env.METAGRAPH_ENABLE_RPC_PROXY === "true",
-    bindings: {
-      assets: Boolean(env.ASSETS?.fetch),
-      r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
-      kv: Boolean(env.METAGRAPH_CONTROL?.get),
+    bindings,
+    freshness: {
+      published_at: publishedAtIso,
+      age_hours: ageHours === null ? null : Math.round(ageHours * 100) / 100,
+      max_age_hours: maxAgeHours,
+      stale,
     },
   });
+
   const headers = apiHeaders("short");
-  headers.set("x-metagraph-health", "ok");
+  headers.set("x-metagraph-health", stale ? "degraded" : "ok");
   return new Response(request.method === "HEAD" ? null : body, {
-    status: 200,
+    status: stale ? 503 : 200,
     headers,
   });
 }
