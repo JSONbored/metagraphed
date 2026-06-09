@@ -1,3 +1,5 @@
+import { constants as fsConstants } from "node:fs";
+import { access } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { artifactFilePath, readJson, stableStringify } from "./lib.mjs";
 
@@ -5,25 +7,56 @@ const args = new Set(process.argv.slice(2));
 const jsonMode = args.has("--json");
 const limit = positiveInt(valueAfter("--limit"), 10);
 
-if (isCliEntrypoint()) {
-  const snapshot = await loadEndpointOpsSnapshot({ limit });
+const REQUIRED_ENDPOINT_ARTIFACTS = [
+  "endpoints.json",
+  "endpoint-pools.json",
+  "rpc/pools.json",
+  "endpoint-incidents.json",
+  "rpc-endpoints.json",
+];
 
-  if (jsonMode) {
-    console.log(stableStringify(snapshot));
-  } else {
-    console.log(renderEndpointOpsBrief(snapshot));
+export class MissingEndpointArtifactsError extends Error {
+  constructor(missing) {
+    const formattedPaths = missing
+      .map(({ relativePath, filePath }) => `- ${relativePath} (${filePath})`)
+      .join("\n");
+    super(
+      [
+        "Endpoint operations brief artifacts are missing.",
+        "Run `npm run artifacts:prepare-local` to build local R2 staging, or `npm run r2:download -- --prefix latest/` when R2 credentials are available, then retry `npm run endpoint:brief`.",
+        "Missing artifacts:",
+        formattedPaths,
+      ].join("\n"),
+    );
+    this.name = "MissingEndpointArtifactsError";
+    this.missing = missing;
+  }
+}
+
+if (isCliEntrypoint()) {
+  try {
+    const snapshot = await loadEndpointOpsSnapshot({ limit });
+
+    if (jsonMode) {
+      console.log(stableStringify(snapshot));
+    } else {
+      console.log(renderEndpointOpsBrief(snapshot));
+    }
+  } catch (error) {
+    if (error instanceof MissingEndpointArtifactsError) {
+      console.error(error.message);
+      process.exitCode = 1;
+    } else {
+      throw error;
+    }
   }
 }
 
 export async function loadEndpointOpsSnapshot({ limit = 10 } = {}) {
+  await assertEndpointArtifactsAvailable(REQUIRED_ENDPOINT_ARTIFACTS);
+
   const [endpoints, endpointPools, rpcPools, incidents, rpcEndpoints] =
-    await Promise.all([
-      readArtifact("endpoints.json"),
-      readArtifact("endpoint-pools.json"),
-      readArtifact("rpc/pools.json"),
-      readArtifact("endpoint-incidents.json"),
-      readArtifact("rpc-endpoints.json"),
-    ]);
+    await Promise.all(REQUIRED_ENDPOINT_ARTIFACTS.map(readArtifact));
 
   return {
     schema_version: 1,
@@ -232,6 +265,31 @@ function firstRealTimestamp(values) {
       value.length > 0 &&
       value !== "1970-01-01T00:00:00.000Z",
   );
+}
+
+export async function missingEndpointArtifactDetails(relativePaths) {
+  const missing = [];
+
+  for (const relativePath of relativePaths) {
+    const filePath = artifactFilePath(relativePath);
+    try {
+      await access(filePath, fsConstants.R_OK);
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+      missing.push({ relativePath, filePath });
+    }
+  }
+
+  return missing;
+}
+
+async function assertEndpointArtifactsAvailable(relativePaths) {
+  const missing = await missingEndpointArtifactDetails(relativePaths);
+  if (missing.length > 0) {
+    throw new MissingEndpointArtifactsError(missing);
+  }
 }
 
 async function readArtifact(relativePath) {

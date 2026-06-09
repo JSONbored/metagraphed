@@ -58,7 +58,11 @@ import {
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
-import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
+import {
+  MissingEndpointArtifactsError,
+  missingEndpointArtifactDetails,
+  renderEndpointOpsBrief,
+} from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
 import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
 import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
@@ -342,6 +346,26 @@ describe("script utility contracts", () => {
     assert.match(brief, /SN33 ReadyAI - priority 93/);
     assert.match(brief, /SN64 Chutes - score 72/);
     assert.match(brief, /Health, uptime, latency, incidents/);
+  });
+
+  test("reports missing endpoint brief artifacts with an actionable error", async () => {
+    const missing = await missingEndpointArtifactDetails([
+      "endpoint-brief-test-missing.json",
+    ]);
+
+    assert.deepEqual(
+      missing.map(({ relativePath }) => relativePath),
+      ["endpoint-brief-test-missing.json"],
+    );
+
+    const error = new MissingEndpointArtifactsError(missing);
+    assert.match(
+      error.message,
+      /Endpoint operations brief artifacts are missing/,
+    );
+    assert.match(error.message, /npm run artifacts:prepare-local/);
+    assert.match(error.message, /npm run r2:download/);
+    assert.match(error.message, /endpoint-brief-test-missing\.json/);
   });
 
   test("renders an endpoint operations brief from pool artifacts", () => {
