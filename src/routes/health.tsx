@@ -129,6 +129,7 @@ function AutoRefreshControl({
   onIntervalChange: (ms: number) => void;
 }) {
   const fetching = useIsFetching({ queryKey: ["metagraphed"] });
+  const qc = useQueryClient();
   const active = enabled && visible;
   const [secondsLeft, setSecondsLeft] = useState(Math.round(intervalMs / 1000));
 
