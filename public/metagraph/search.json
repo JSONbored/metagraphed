@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1359,
+  "document_count": 1358,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -11581,21 +11581,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-native-chain-website",
-      "netuid": 38,
-      "slug": "colosseum",
-      "subtitle": "website / tao-colosseum",
-      "title": "colosseum website",
-      "tokens": [
-        "colosseum",
-        "tao",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://www.taocolosseum.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

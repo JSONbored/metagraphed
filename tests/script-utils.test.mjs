@@ -716,6 +716,7 @@ describe("script utility contracts", () => {
         },
         source_repo: "https://github.com/macrocosm-os/mainframe",
         baseline_excluded_surface_ids: ["sn-25-stale-docs"],
+        baseline_excluded_surface_urls: ["https://example.com/rejected"],
         surfaces: [
           {
             id: "sn-25-mainframe-source",
@@ -748,6 +749,20 @@ describe("script utility contracts", () => {
           "Universal Taostats subnet metagraph dashboard candidate.",
       },
       {
+        id: "sn-25-native-chain-website",
+        netuid: 25,
+        name: "Mainframe rejected website",
+        kind: "website",
+        url: "https://example.com/rejected",
+        provider: "macrocosmos",
+        source_type: "native-chain-identity",
+        source_tier: "native-chain",
+        source_url: "https://example.com/native",
+        source_urls: ["https://example.com/native"],
+        review_notes:
+          "Native Subtensor identity URL for a previously rejected surface.",
+      },
+      {
         id: "sn-25-stale-docs",
         netuid: 25,
         name: "Mainframe stale docs",
@@ -778,6 +793,19 @@ describe("script utility contracts", () => {
           },
         },
         {
+          candidate_id: "sn-25-native-chain-website",
+          classification: "live",
+          content_type: "text/html; charset=utf-8",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            rate_limited: false,
+            redirected: false,
+            source_tier: "native-chain",
+            transient_failure: false,
+          },
+        },
+        {
           candidate_id: "sn-25-stale-docs",
           classification: "live",
           content_type: "text/html; charset=utf-8",
@@ -801,6 +829,10 @@ describe("script utility contracts", () => {
       verification,
     });
 
+    const rejectedBaseline = overlaySet.manualBaselineOverlays[0].surfaces.find(
+      (surface) => surface.id === "sn-25-native-chain-website",
+    );
+    assert.equal(rejectedBaseline.url, "https://example.com/rejected");
     assert.equal(overlaySet.generatedOverlays.length, 0);
     assert.deepEqual(
       overlaySet.manualOverlays[0].surfaces.map((surface) => surface.id),

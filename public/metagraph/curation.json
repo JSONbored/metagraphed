@@ -1691,10 +1691,10 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T19:30:00.000Z",
-        "source_count": 7,
+        "source_count": 6,
         "verified_at": "2026-06-08T19:30:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "TAO Colosseum source repository is live and promoted.",
@@ -1707,6 +1707,7 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1715,14 +1716,13 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
       "slug": "colosseum",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
       "candidate_count": 7,

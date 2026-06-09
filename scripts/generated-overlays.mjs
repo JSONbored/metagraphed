@@ -10,6 +10,7 @@ import {
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
+  normalizePublicUrl,
   readJson,
   registrySurfaceKey,
   repoRoot,
@@ -122,9 +123,18 @@ export function augmentManualOverlaysWithBaseline(
       const excludedSurfaceIds = new Set(
         manualOverlay.baseline_excluded_surface_ids || [],
       );
+      const excludedSurfaceUrls = new Set(
+        (manualOverlay.baseline_excluded_surface_urls || [])
+          .map((url) => normalizePublicUrl(url))
+          .filter(Boolean),
+      );
       const existingKeys = new Set(manualSurfaces.map(registrySurfaceKey));
       const additions = baselineSurfaces.filter((surface) => {
         if (excludedSurfaceIds.has(surface.id)) {
+          return false;
+        }
+        const normalizedUrl = normalizePublicUrl(surface.url);
+        if (normalizedUrl && excludedSurfaceUrls.has(normalizedUrl)) {
           return false;
         }
         const key = registrySurfaceKey(surface);

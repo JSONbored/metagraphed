@@ -1081,6 +1081,7 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1089,8 +1090,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "colosseum",

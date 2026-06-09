@@ -2495,33 +2495,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health",
-        "sn-38-website-common-openapi-json",
-        "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "colosseum",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-48-website-common-api",
         "sn-48-website-common-health",
         "sn-48-website-common-openapi-json",
@@ -2868,6 +2841,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-127",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "colosseum",
+      "netuid": 38,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 6,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "colosseum",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {

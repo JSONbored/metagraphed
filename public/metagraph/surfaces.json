@@ -10418,39 +10418,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-38-native-chain-website",
-      "kind": "website",
-      "name": "colosseum website",
-      "netuid": 38,
-      "notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38",
-        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
-      ],
-      "subnet_name": "colosseum",
-      "subnet_slug": "colosseum",
-      "url": "https://www.taocolosseum.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-38-subnetradar-dashboard",
       "kind": "dashboard",
       "name": "colosseum SubnetRadar dashboard",

@@ -10209,17 +10209,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "colosseum website is a public website surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
-      "subject": "surface:sn-38-native-chain-website",
-      "support_summary": "Listed in curated overlay for colosseum.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "colosseum SubnetRadar dashboard is a public dashboard surface for SN38.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16716,8 +16705,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1519,
+    "claim_count": 1518,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1140
+    "surface_claim_count": 1139
   }
 }

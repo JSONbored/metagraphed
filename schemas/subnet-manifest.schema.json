@@ -75,6 +75,14 @@
       },
       "uniqueItems": true
     },
+    "baseline_excluded_surface_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "uniqueItems": true
+    },
     "surfaces": {
       "type": "array",
       "items": {

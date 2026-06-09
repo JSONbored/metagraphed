@@ -17,6 +17,7 @@
     "sn-38-taomarketcap-website",
     "sn-38-website-common-docs"
   ],
+  "baseline_excluded_surface_urls": ["https://www.taocolosseum.com/"],
   "notes": "Reviewed overlay for SN38 colosseum. The TAO Colosseum source repository is live, while the previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page and is intentionally not promoted as a curated website/docs surface.",
   "curation": {
     "level": "maintainer-reviewed",
