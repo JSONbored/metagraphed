@@ -5660,6 +5660,7 @@
         ],
         "live_candidate_identity_kinds": [
           "docs",
+          "source-repo",
           "website"
         ],
         "native_contact_present": true,
@@ -5671,8 +5672,7 @@
         ],
         "needs_promotion_kinds": [],
         "stale_candidate_identity_kinds": [
-          "docs",
-          "source-repo"
+          "docs"
         ],
         "unverified_candidate_identity_kinds": []
       },

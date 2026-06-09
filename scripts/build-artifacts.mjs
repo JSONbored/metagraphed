@@ -678,7 +678,15 @@ await writeJson(
   }),
 );
 await writeJson(artifactFile("schema-drift.json"), schemaDriftArtifact);
+await fs.rm(r2ArtifactDir("schemas"), { recursive: true, force: true });
 await writeJson(artifactFile("schemas/index.json"), schemaIndexArtifact);
+for (const entry of schemaIndexArtifact.schemas || []) {
+  const relativePath = schemaDetailArtifactPath(entry);
+  if (!relativePath || !entry.snapshot || typeof entry.snapshot !== "object") {
+    continue;
+  }
+  await writeJson(artifactFile(relativePath), entry.snapshot);
+}
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,
@@ -3791,6 +3799,16 @@ function artifactFile(relativePath) {
 
 function r2ArtifactDir(relativePath) {
   return path.join(r2OutputRoot, relativePath);
+}
+
+function schemaDetailArtifactPath(entry) {
+  const relativePath = String(entry.path || "")
+    .replace(/^\/+metagraph\//, "")
+    .replace(/^\/+/, "");
+  if (!relativePath || relativePath === "schemas/index.json") {
+    return null;
+  }
+  return relativePath;
 }
 
 async function collectArtifactDigests({

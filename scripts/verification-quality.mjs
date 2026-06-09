@@ -1,4 +1,23 @@
 export function preservePreviousGithubMetadata(result, previousByCandidate) {
+  const previous = previousByCandidate.get(result.candidate_id);
+  if (isRetryableFailure(result) && isPreviouslyHealthy(previous)) {
+    return {
+      ...result,
+      classification: previous.classification,
+      confidence_score: Math.max(
+        Number(result.confidence_score || 0),
+        Number(previous.confidence_score || 0),
+      ),
+      content_type: previous.content_type ?? result.content_type,
+      error: previous.error ?? null,
+      private_redirect_blocked:
+        previous.private_redirect_blocked ?? result.private_redirect_blocked,
+      quality_signals: previous.quality_signals || result.quality_signals,
+      redirect_target: previous.redirect_target ?? result.redirect_target,
+      status: previous.status || result.status,
+    };
+  }
+
   if (
     result.kind !== "source-repo" ||
     result.status !== "ok" ||
@@ -16,7 +35,6 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
     return result;
   }
 
-  const previous = previousByCandidate.get(result.candidate_id);
   if (
     !previous ||
     previous.status !== "ok" ||
@@ -46,6 +64,19 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
       ...preservedSignals,
     },
   };
+}
+
+function isRetryableFailure(result) {
+  return ["rate-limited", "timeout", "transient"].includes(
+    result?.classification,
+  );
+}
+
+function isPreviouslyHealthy(previous) {
+  return (
+    previous?.status === "ok" &&
+    ["live", "redirected"].includes(previous?.classification)
+  );
 }
 
 function stripUndefined(value) {

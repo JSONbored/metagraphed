@@ -5917,6 +5917,7 @@
         ],
         "live_candidate_identity_kinds": [
           "docs",
+          "source-repo",
           "website"
         ],
         "native_contact_present": true,
@@ -5928,8 +5929,7 @@
         ],
         "needs_promotion_kinds": [],
         "stale_candidate_identity_kinds": [
-          "docs",
-          "source-repo"
+          "docs"
         ],
         "unverified_candidate_identity_kinds": []
       },
@@ -5937,7 +5937,7 @@
       "identity_promotion_kind_count": 0,
       "identity_promotion_kinds": [],
       "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 2,
+      "live_identity_candidate_kind_count": 3,
       "missing_critical_count": 4,
       "missing_identity": [],
       "missing_operational": [
@@ -5957,7 +5957,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "colosseum",
       "source_count": 9,
-      "stale_identity_candidate_kind_count": 2,
+      "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",

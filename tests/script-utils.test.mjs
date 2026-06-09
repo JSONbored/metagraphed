@@ -135,6 +135,54 @@ describe("script utility contracts", () => {
     });
   });
 
+  test("preserves previous healthy verification when a candidate probe is retryable", () => {
+    const current = {
+      candidate_id: "sn-29-subnetradar-dashboard",
+      classification: "timeout",
+      confidence_score: 9,
+      content_type: null,
+      error: "probe-failed",
+      kind: "dashboard",
+      quality_signals: {
+        public_safe: true,
+        source_tier: "third-party-index",
+        transient_failure: true,
+      },
+      status: "failed",
+    };
+    const previousByCandidate = new Map([
+      [
+        "sn-29-subnetradar-dashboard",
+        {
+          candidate_id: "sn-29-subnetradar-dashboard",
+          classification: "live",
+          confidence_score: 77,
+          content_type: "text/html; charset=utf-8",
+          error: null,
+          kind: "dashboard",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            source_tier: "third-party-index",
+            transient_failure: false,
+          },
+          status: "ok",
+        },
+      ],
+    ]);
+
+    const preserved = preservePreviousGithubMetadata(
+      current,
+      previousByCandidate,
+    );
+
+    assert.equal(preserved.classification, "live");
+    assert.equal(preserved.status, "ok");
+    assert.equal(preserved.confidence_score, 77);
+    assert.equal(preserved.content_type, "text/html; charset=utf-8");
+    assert.equal(preserved.quality_signals.transient_failure, false);
+  });
+
   test("reads, writes, and lists JSON files deterministically", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-test-"));
     try {

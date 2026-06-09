@@ -2891,7 +2891,7 @@
       "slug": "allways",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 22,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 19,
@@ -2942,7 +2942,7 @@
       "slug": "sn-51",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 10,
-      "verified_candidate_count": 20
+      "verified_candidate_count": 19
     },
     {
       "candidate_count": 24,
@@ -2959,7 +2959,7 @@
       "slug": "sn-46",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 16
     },
     {
       "candidate_count": 20,
@@ -2995,7 +2995,7 @@
       "slug": "sn-65",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 15
     },
     {
       "candidate_count": 20,
@@ -3013,7 +3013,7 @@
       "slug": "sn-93",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 16
+      "verified_candidate_count": 14
     },
     {
       "candidate_count": 20,
@@ -3049,7 +3049,7 @@
       "slug": "sn-18",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 13
     },
     {
       "candidate_count": 19,
@@ -3265,7 +3265,7 @@
       "slug": "sn-99",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 10,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 17,
@@ -3337,7 +3337,7 @@
       "slug": "sn-60",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 10,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 16,
@@ -3355,7 +3355,7 @@
       "slug": "sn-78",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 10,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 16,
@@ -3373,7 +3373,7 @@
       "slug": "sn-80",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 19,
@@ -3408,7 +3408,7 @@
       "slug": "sn-41",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 15,
@@ -3426,7 +3426,7 @@
       "slug": "sn-50",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 15,
@@ -3444,7 +3444,7 @@
       "slug": "sn-105",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 15,
@@ -3480,7 +3480,7 @@
       "slug": "sn-124",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 15,
@@ -3498,7 +3498,7 @@
       "slug": "sn-128",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 18,
@@ -3515,7 +3515,7 @@
       "slug": "sn-97",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
-      "verified_candidate_count": 15
+      "verified_candidate_count": 13
     },
     {
       "candidate_count": 14,
@@ -3533,7 +3533,7 @@
       "slug": "sn-71",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 14,
@@ -3551,7 +3551,7 @@
       "slug": "sn-77",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 14,
@@ -3569,7 +3569,7 @@
       "slug": "sn-83",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 14,
@@ -3690,7 +3690,7 @@
       "slug": "sn-64",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 17,
-      "verified_candidate_count": 22
+      "verified_candidate_count": 21
     },
     {
       "candidate_count": 25,
@@ -3705,7 +3705,7 @@
       "slug": "gradients",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 14,
-      "verified_candidate_count": 22
+      "verified_candidate_count": 20
     },
     {
       "candidate_count": 26,
@@ -3742,7 +3742,7 @@
       "slug": "actual",
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 7,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 25,
@@ -3833,7 +3833,7 @@
       "slug": "sn-114",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 11,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 16
     },
     {
       "candidate_count": 6,
@@ -4006,7 +4006,7 @@
       "slug": "numinous",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 11,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 19,
@@ -4023,7 +4023,7 @@
       "slug": "sn-88",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 12
     },
     {
       "candidate_count": 15,
@@ -4060,7 +4060,7 @@
       "slug": "sn-75",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 11,
-      "verified_candidate_count": 20
+      "verified_candidate_count": 19
     },
     {
       "candidate_count": 26,
@@ -4171,7 +4171,7 @@
       "slug": "sn-32",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 19
+      "verified_candidate_count": 18
     },
     {
       "candidate_count": 9,
@@ -4404,7 +4404,7 @@
       "slug": "sn-85",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 7,
-      "verified_candidate_count": 18
+      "verified_candidate_count": 16
     },
     {
       "candidate_count": 22,
@@ -4456,7 +4456,7 @@
       "slug": "gittensor",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 16,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 12
     },
     {
       "candidate_count": 20,
@@ -4474,7 +4474,7 @@
       "slug": "cacheon",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 11,
-      "verified_candidate_count": 15
+      "verified_candidate_count": 14
     },
     {
       "candidate_count": 20,
@@ -4771,7 +4771,7 @@
       "slug": "dsperse",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 12
     },
     {
       "candidate_count": 17,
@@ -4875,7 +4875,7 @@
       "slug": "colosseum",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 7,
-      "verified_candidate_count": 10
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 15,
@@ -4929,7 +4929,7 @@
       "slug": "sn-16",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 14,
@@ -4945,7 +4945,7 @@
       "slug": "sn-22",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 15,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "candidate_count": 17,
@@ -4962,7 +4962,7 @@
       "slug": "sn-66",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 12,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 13
     },
     {
       "candidate_count": 11,
@@ -5012,7 +5012,7 @@
       "slug": "sn-96",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 12,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 8,
@@ -5030,7 +5030,7 @@
       "slug": "sn-12",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
-      "verified_candidate_count": 8
+      "verified_candidate_count": 7
     },
     {
       "candidate_count": 8,

@@ -64,7 +64,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 22,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 12,
@@ -403,15 +403,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -456,21 +455,20 @@
         "sn-65-subnetradar-dashboard",
         "sn-65-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-65-website-common-api",
-        "sn-65-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-65-website-common-openapi-json",
         "sn-65-website-common-swagger",
-        "sn-65-website-common-swagger-json"
+        "sn-65-website-common-swagger-json",
+        "sn-65-website-common-api",
+        "sn-65-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-65-website-common-api",
-        "sn-65-website-common-health",
         "sn-65-website-common-openapi-json",
         "sn-65-website-common-swagger",
-        "sn-65-website-common-swagger-json"
+        "sn-65-website-common-swagger-json",
+        "sn-65-website-common-api",
+        "sn-65-website-common-health"
       ],
       "slug": "sn-65",
       "source_urls": [
@@ -483,9 +481,9 @@
         "https://subnetradar.com/subnet/65",
         "https://tpn.taofu.xyz/"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 9,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 15
     },
     {
       "adapter_score": 8,
@@ -496,15 +494,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -549,21 +546,20 @@
         "sn-93-native-chain-website",
         "sn-93-subnetradar-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-93-website-common-api",
-        "sn-93-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-93-website-common-openapi-json",
         "sn-93-website-common-swagger",
-        "sn-93-website-common-swagger-json"
+        "sn-93-website-common-swagger-json",
+        "sn-93-website-common-api",
+        "sn-93-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-93-website-common-api",
-        "sn-93-website-common-health",
         "sn-93-website-common-openapi-json",
         "sn-93-website-common-swagger",
-        "sn-93-website-common-swagger-json"
+        "sn-93-website-common-swagger-json",
+        "sn-93-website-common-api",
+        "sn-93-website-common-health"
       ],
       "slug": "sn-93",
       "source_urls": [
@@ -576,9 +572,9 @@
         "https://stats.bitcast.network/",
         "https://subnetradar.com/subnet/93"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 16
+      "verified_candidate_count": 14
     },
     {
       "adapter_score": 71,
@@ -1378,16 +1374,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 4,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -1432,10 +1426,9 @@
         "sn-18-subnetradar-dashboard",
         "sn-18-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-18-website-common-api"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-18-website-common-api",
         "sn-18-website-common-openapi-json",
         "sn-18-website-common-swagger",
         "sn-18-website-common-swagger-json",
@@ -1459,9 +1452,9 @@
         "https://subnetradar.com/subnet/18",
         "https://www.zeussubnet.com/"
       ],
-      "stale_candidate_count": 4,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 13
     },
     {
       "adapter_score": 8,
@@ -2075,15 +2068,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 3,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -2128,22 +2120,20 @@
         "sn-99-native-chain-github",
         "sn-99-native-chain-website"
       ],
-      "sample_live_candidate_ids": [
-        "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1",
-        "sn-99-website-common-api",
-        "sn-99-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-99-website-common-openapi-json",
         "sn-99-website-common-swagger",
-        "sn-99-website-common-swagger-json"
+        "sn-99-website-common-swagger-json",
+        "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1",
+        "sn-99-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1",
-        "sn-99-website-common-api",
-        "sn-99-website-common-health",
         "sn-99-website-common-openapi-json",
-        "sn-99-website-common-swagger"
+        "sn-99-website-common-swagger",
+        "sn-99-website-common-swagger-json",
+        "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1",
+        "sn-99-website-common-api"
       ],
       "slug": "sn-99",
       "source_urls": [
@@ -2156,9 +2146,9 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_99/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 6,
       "surface_count": 10,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 7,
@@ -2327,7 +2317,7 @@
       ],
       "stale_candidate_count": 3,
       "surface_count": 10,
-      "verified_candidate_count": 20
+      "verified_candidate_count": 19
     },
     {
       "adapter_score": 10,
@@ -2338,16 +2328,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 4,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -2392,20 +2380,19 @@
         "sn-60-native-chain-website",
         "sn-60-subnetradar-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-60-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-60-website-common-openapi-json",
         "sn-60-website-common-swagger",
         "sn-60-website-common-swagger-json",
+        "sn-60-website-common-health",
         "sn-60-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-60-website-common-health",
         "sn-60-website-common-openapi-json",
         "sn-60-website-common-swagger",
         "sn-60-website-common-swagger-json",
+        "sn-60-website-common-health",
         "sn-60-website-common-api"
       ],
       "slug": "sn-60",
@@ -2419,9 +2406,9 @@
         "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
       ],
-      "stale_candidate_count": 4,
+      "stale_candidate_count": 5,
       "surface_count": 10,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 10,
@@ -2432,15 +2419,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -2485,21 +2471,20 @@
         "sn-78-subnetradar-dashboard",
         "sn-78-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-78-website-common-api",
-        "sn-78-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-78-website-common-openapi-json",
         "sn-78-website-common-swagger",
-        "sn-78-website-common-swagger-json"
+        "sn-78-website-common-swagger-json",
+        "sn-78-website-common-api",
+        "sn-78-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-78-website-common-api",
-        "sn-78-website-common-health",
         "sn-78-website-common-openapi-json",
         "sn-78-website-common-swagger",
-        "sn-78-website-common-swagger-json"
+        "sn-78-website-common-swagger-json",
+        "sn-78-website-common-api",
+        "sn-78-website-common-health"
       ],
       "slug": "sn-78",
       "source_urls": [
@@ -2512,9 +2497,9 @@
         "https://subnetradar.com/subnet/78",
         "https://www.vocence.ai/"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 10,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 8,
@@ -2615,15 +2600,13 @@
         "kinds_with_candidates": [
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 4,
         "stale_kinds": [
           "subnet-api"
         ],
-        "stale_or_failed_count": 1,
+        "stale_or_failed_count": 2,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -2661,10 +2644,9 @@
         "sn-46-github-readme-resi-labs-ai-resi-models-dashboard-1",
         "sn-46-native-chain-github"
       ],
-      "sample_live_candidate_ids": [
-        "sn-46-website-link-zipcode-ai-subnet-api-3"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-46-website-link-zipcode-ai-subnet-api-3",
         "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-1"
       ],
       "sample_target_candidate_ids": [
@@ -2684,9 +2666,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
         "https://subnetradar.com/subnet/46"
       ],
-      "stale_candidate_count": 1,
+      "stale_candidate_count": 2,
       "surface_count": 11,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 16
     },
     {
       "adapter_score": 9,
@@ -3061,16 +3043,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 4,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3115,20 +3095,19 @@
         "sn-80-subnetradar-dashboard",
         "sn-80-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-80-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-80-website-common-openapi-json",
         "sn-80-website-common-swagger",
         "sn-80-website-common-swagger-json",
+        "sn-80-website-common-health",
         "sn-80-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-80-website-common-health",
         "sn-80-website-common-openapi-json",
         "sn-80-website-common-swagger",
         "sn-80-website-common-swagger-json",
+        "sn-80-website-common-health",
         "sn-80-website-common-api"
       ],
       "slug": "sn-80",
@@ -3142,9 +3121,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/80/subnet.json",
         "https://subnetradar.com/subnet/80"
       ],
-      "stale_candidate_count": 4,
+      "stale_candidate_count": 5,
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 7,
@@ -3325,15 +3304,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3378,21 +3356,20 @@
         "sn-41-subnetradar-dashboard",
         "sn-41-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-41-website-common-api",
-        "sn-41-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-41-website-common-openapi-json",
         "sn-41-website-common-swagger",
-        "sn-41-website-common-swagger-json"
+        "sn-41-website-common-swagger-json",
+        "sn-41-website-common-api",
+        "sn-41-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-41-website-common-api",
-        "sn-41-website-common-health",
         "sn-41-website-common-openapi-json",
         "sn-41-website-common-swagger",
-        "sn-41-website-common-swagger-json"
+        "sn-41-website-common-swagger-json",
+        "sn-41-website-common-api",
+        "sn-41-website-common-health"
       ],
       "slug": "sn-41",
       "source_urls": [
@@ -3405,9 +3382,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json",
         "https://subnetradar.com/subnet/41"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 8,
@@ -3418,15 +3395,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 3,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3471,22 +3447,20 @@
         "sn-50-native-chain-website",
         "sn-50-subnetradar-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
-        "sn-50-website-common-api",
-        "sn-50-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-50-website-common-openapi-json",
         "sn-50-website-common-swagger",
-        "sn-50-website-common-swagger-json"
+        "sn-50-website-common-swagger-json",
+        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
+        "sn-50-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
-        "sn-50-website-common-api",
-        "sn-50-website-common-health",
         "sn-50-website-common-openapi-json",
-        "sn-50-website-common-swagger"
+        "sn-50-website-common-swagger",
+        "sn-50-website-common-swagger-json",
+        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
+        "sn-50-website-common-api"
       ],
       "slug": "sn-50",
       "source_urls": [
@@ -3499,9 +3473,9 @@
         "https://subnetradar.com/subnet/50",
         "https://synthdata.co/"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 6,
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 27,
@@ -3579,7 +3553,7 @@
       ],
       "stale_candidate_count": 1,
       "surface_count": 7,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 9,
@@ -3590,15 +3564,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3643,19 +3616,18 @@
         "sn-105-subnetradar-dashboard",
         "sn-105-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-105-website-common-swagger",
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
         "sn-105-website-common-openapi-json",
         "sn-105-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
+        "sn-105-website-common-swagger",
         "sn-105-website-common-api",
         "sn-105-website-common-health",
-        "sn-105-website-common-swagger",
         "sn-105-website-common-openapi-json",
         "sn-105-website-common-swagger-json"
       ],
@@ -3670,9 +3642,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/105/subnet.json",
         "https://subnetradar.com/subnet/105"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 8,
@@ -3683,15 +3655,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3736,21 +3707,20 @@
         "sn-124-native-chain-website",
         "sn-124-subnetradar-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-124-website-common-api",
-        "sn-124-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-124-website-common-openapi-json",
         "sn-124-website-common-swagger",
-        "sn-124-website-common-swagger-json"
+        "sn-124-website-common-swagger-json",
+        "sn-124-website-common-api",
+        "sn-124-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-124-website-common-api",
-        "sn-124-website-common-health",
         "sn-124-website-common-openapi-json",
         "sn-124-website-common-swagger",
-        "sn-124-website-common-swagger-json"
+        "sn-124-website-common-swagger-json",
+        "sn-124-website-common-api",
+        "sn-124-website-common-health"
       ],
       "slug": "sn-124",
       "source_urls": [
@@ -3763,9 +3733,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json",
         "https://subnetradar.com/subnet/124"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 9,
@@ -3776,15 +3746,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3829,21 +3798,20 @@
         "sn-128-subnetradar-dashboard",
         "sn-128-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-128-website-common-api",
-        "sn-128-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-128-website-common-openapi-json",
         "sn-128-website-common-swagger",
-        "sn-128-website-common-swagger-json"
+        "sn-128-website-common-swagger-json",
+        "sn-128-website-common-api",
+        "sn-128-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-128-website-common-api",
-        "sn-128-website-common-health",
         "sn-128-website-common-openapi-json",
         "sn-128-website-common-swagger",
-        "sn-128-website-common-swagger-json"
+        "sn-128-website-common-swagger-json",
+        "sn-128-website-common-api",
+        "sn-128-website-common-health"
       ],
       "slug": "sn-128",
       "source_urls": [
@@ -3856,9 +3824,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json",
         "https://subnetradar.com/subnet/128"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 9,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 8,
@@ -3869,15 +3837,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -3922,21 +3889,20 @@
         "sn-71-subnetradar-dashboard",
         "sn-71-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-71-website-common-api",
-        "sn-71-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-71-website-common-openapi-json",
         "sn-71-website-common-swagger",
-        "sn-71-website-common-swagger-json"
+        "sn-71-website-common-swagger-json",
+        "sn-71-website-common-api",
+        "sn-71-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-71-website-common-api",
-        "sn-71-website-common-health",
         "sn-71-website-common-openapi-json",
         "sn-71-website-common-swagger",
-        "sn-71-website-common-swagger-json"
+        "sn-71-website-common-swagger-json",
+        "sn-71-website-common-api",
+        "sn-71-website-common-health"
       ],
       "slug": "sn-71",
       "source_urls": [
@@ -3949,9 +3915,9 @@
         "https://leadpoet.com/",
         "https://subnetradar.com/subnet/71"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 8,
@@ -3962,15 +3928,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -4015,19 +3980,18 @@
         "sn-77-subnetradar-dashboard",
         "sn-77-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-77-website-common-api",
-        "sn-77-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-77-website-common-swagger",
+        "sn-77-website-common-api",
+        "sn-77-website-common-health",
         "sn-77-website-common-openapi-json",
         "sn-77-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
+        "sn-77-website-common-swagger",
         "sn-77-website-common-api",
         "sn-77-website-common-health",
-        "sn-77-website-common-swagger",
         "sn-77-website-common-openapi-json",
         "sn-77-website-common-swagger-json"
       ],
@@ -4042,9 +4006,9 @@
         "https://sn77.xyz/",
         "https://subnetradar.com/subnet/77"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 8,
@@ -4055,15 +4019,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -4108,21 +4071,20 @@
         "sn-83-subnetradar-dashboard",
         "sn-83-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-83-website-common-api",
-        "sn-83-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-83-website-common-openapi-json",
         "sn-83-website-common-swagger",
-        "sn-83-website-common-swagger-json"
+        "sn-83-website-common-swagger-json",
+        "sn-83-website-common-api",
+        "sn-83-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-83-website-common-api",
-        "sn-83-website-common-health",
         "sn-83-website-common-openapi-json",
         "sn-83-website-common-swagger",
-        "sn-83-website-common-swagger-json"
+        "sn-83-website-common-swagger-json",
+        "sn-83-website-common-api",
+        "sn-83-website-common-health"
       ],
       "slug": "sn-83",
       "source_urls": [
@@ -4135,9 +4097,9 @@
         "https://github.com/toptensor/CliqueAI",
         "https://subnetradar.com/subnet/83"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 8,
@@ -4544,7 +4506,7 @@
       ],
       "stale_candidate_count": 3,
       "surface_count": 17,
-      "verified_candidate_count": 22
+      "verified_candidate_count": 21
     },
     {
       "adapter_score": 8,
@@ -4686,7 +4648,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 14,
-      "verified_candidate_count": 22
+      "verified_candidate_count": 20
     },
     {
       "adapter_score": 6,
@@ -4933,15 +4895,13 @@
         "kinds_with_candidates": [
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 3,
         "stale_kinds": [
           "subnet-api"
         ],
-        "stale_or_failed_count": 1,
+        "stale_or_failed_count": 3,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -4979,16 +4939,15 @@
         "sn-97-native-chain-github",
         "sn-97-native-chain-website"
       ],
-      "sample_live_candidate_ids": [
-        "sn-97-website-common-health",
-        "sn-97-github-readme-unitone-labs-flamewire-subnet-api-2"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-97-github-readme-unitone-labs-flamewire-subnet-api-2",
+        "sn-97-website-common-health",
         "sn-97-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-97-website-common-health",
         "sn-97-github-readme-unitone-labs-flamewire-subnet-api-2",
+        "sn-97-website-common-health",
         "sn-97-website-common-api"
       ],
       "slug": "sn-97",
@@ -5002,9 +4961,9 @@
         "https://github.com/unarbos/albedo",
         "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
       ],
-      "stale_candidate_count": 1,
+      "stale_candidate_count": 3,
       "surface_count": 11,
-      "verified_candidate_count": 15
+      "verified_candidate_count": 13
     },
     {
       "adapter_score": 29,
@@ -5264,16 +5223,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -5317,15 +5274,13 @@
         "sn-75-subnetradar-dashboard",
         "sn-75-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-75-website-link-hippius-com-subnet-api-10"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-75-website-link-hippius-com-subnet-api-10",
         "sn-75-website-common-openapi-json",
         "sn-75-website-common-swagger",
         "sn-75-website-common-swagger-json",
-        "sn-75-website-common-api",
-        "sn-75-website-common-health"
+        "sn-75-website-common-api"
       ],
       "sample_target_candidate_ids": [
         "sn-75-website-link-hippius-com-subnet-api-10",
@@ -5345,9 +5300,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json",
         "https://github.com/thenervelab/hippius-storage-miner"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 6,
       "surface_count": 11,
-      "verified_candidate_count": 20
+      "verified_candidate_count": 19
     },
     {
       "adapter_score": 29,
@@ -5446,16 +5401,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -5499,20 +5452,18 @@
         "sn-32-subnetradar-dashboard",
         "sn-32-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-32-website-link-its-ai-org-subnet-api-5"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-32-website-common-openapi-json",
         "sn-32-website-common-swagger-json",
+        "sn-32-website-link-its-ai-org-subnet-api-5",
         "sn-32-website-common-swagger",
-        "sn-32-website-common-api",
-        "sn-32-website-common-health"
+        "sn-32-website-common-api"
       ],
       "sample_target_candidate_ids": [
-        "sn-32-website-link-its-ai-org-subnet-api-5",
         "sn-32-website-common-openapi-json",
         "sn-32-website-common-swagger-json",
+        "sn-32-website-link-its-ai-org-subnet-api-5",
         "sn-32-website-common-swagger",
         "sn-32-website-common-api"
       ],
@@ -5527,9 +5478,9 @@
         "https://subnetradar.com/subnet/32",
         "https://taomarketcap.com/subnets/32"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 6,
       "surface_count": 8,
-      "verified_candidate_count": 19
+      "verified_candidate_count": 18
     },
     {
       "adapter_score": 8,
@@ -6443,13 +6394,13 @@
         "live_kinds": [
           "subnet-api"
         ],
-        "live_or_redirected_count": 2,
+        "live_or_redirected_count": 1,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 4,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -6492,18 +6443,18 @@
         "sn-114-taomarketcap-dashboard"
       ],
       "sample_live_candidate_ids": [
-        "sn-114-website-link-thesoma-ai-subnet-api-7",
         "sn-114-website-common-api"
       ],
       "sample_stale_candidate_ids": [
+        "sn-114-website-link-thesoma-ai-subnet-api-7",
         "sn-114-website-common-openapi-json",
         "sn-114-website-common-swagger",
         "sn-114-website-common-swagger-json",
         "sn-114-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-114-website-link-thesoma-ai-subnet-api-7",
         "sn-114-website-common-api",
+        "sn-114-website-link-thesoma-ai-subnet-api-7",
         "sn-114-website-common-openapi-json",
         "sn-114-website-common-swagger",
         "sn-114-website-common-swagger-json"
@@ -6519,9 +6470,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114",
         "https://subnetradar.com/subnet/114"
       ],
-      "stale_candidate_count": 4,
+      "stale_candidate_count": 5,
       "surface_count": 11,
-      "verified_candidate_count": 17
+      "verified_candidate_count": 16
     },
     {
       "adapter_score": 7,
@@ -6675,7 +6626,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 11,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 9,
@@ -7462,15 +7413,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 4,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 2,
+        "stale_or_failed_count": 4,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7514,19 +7464,18 @@
         "sn-85-subnetradar-dashboard",
         "sn-85-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-85-website-common-openapi-json",
+        "sn-85-website-common-swagger-json",
         "sn-85-website-common-api",
         "sn-85-website-common-health"
       ],
-      "sample_stale_candidate_ids": [
-        "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger-json"
-      ],
       "sample_target_candidate_ids": [
-        "sn-85-website-common-api",
-        "sn-85-website-common-health",
         "sn-85-website-common-openapi-json",
-        "sn-85-website-common-swagger-json"
+        "sn-85-website-common-swagger-json",
+        "sn-85-website-common-api",
+        "sn-85-website-common-health"
       ],
       "slug": "sn-85",
       "source_urls": [
@@ -7539,9 +7488,9 @@
         "https://taomarketcap.com/subnets/85",
         "https://vidaio.io/"
       ],
-      "stale_candidate_count": 2,
+      "stale_candidate_count": 4,
       "surface_count": 7,
-      "verified_candidate_count": 18
+      "verified_candidate_count": 16
     },
     {
       "adapter_score": 11,
@@ -7552,16 +7501,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7605,15 +7552,13 @@
         "sn-14-github-readme-latent-to-taohash-dashboard-1",
         "sn-14-native-chain-github"
       ],
-      "sample_live_candidate_ids": [
-        "sn-14-github-readme-latent-to-cacheon-subnet-api-2"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
         "sn-14-website-common-openapi-json",
         "sn-14-website-common-swagger",
         "sn-14-website-common-swagger-json",
-        "sn-14-website-common-api",
-        "sn-14-website-common-health"
+        "sn-14-website-common-api"
       ],
       "sample_target_candidate_ids": [
         "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
@@ -7633,9 +7578,9 @@
         "https://github.com/latent-to/taohash/blob/main/README.md",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 6,
       "surface_count": 11,
-      "verified_candidate_count": 15
+      "verified_candidate_count": 14
     },
     {
       "adapter_score": 0,
@@ -7938,16 +7883,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -7989,15 +7932,13 @@
         "sn-88-native-chain-github",
         "sn-88-native-chain-website"
       ],
-      "sample_live_candidate_ids": [
-        "sn-88-github-readme-mobiusfund-investing-subnet-api-2"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
+        "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
         "sn-88-website-common-openapi-json",
         "sn-88-website-common-swagger",
         "sn-88-website-common-swagger-json",
-        "sn-88-website-common-api",
-        "sn-88-website-common-health"
+        "sn-88-website-common-api"
       ],
       "sample_target_candidate_ids": [
         "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
@@ -8017,9 +7958,9 @@
         "https://investing88.ai/",
         "https://subnetradar.com/subnet/88"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 6,
       "surface_count": 8,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 12
     },
     {
       "adapter_score": 9,
@@ -8734,15 +8675,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 4,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 2,
+        "stale_or_failed_count": 4,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8786,19 +8726,18 @@
         "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
         "sn-2-native-chain-github"
       ],
-      "sample_live_candidate_ids": [
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-2-website-common-openapi-json",
+        "sn-2-website-common-swagger-json",
         "sn-2-website-common-api",
         "sn-2-website-common-health"
       ],
-      "sample_stale_candidate_ids": [
-        "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger-json"
-      ],
       "sample_target_candidate_ids": [
-        "sn-2-website-common-api",
-        "sn-2-website-common-health",
         "sn-2-website-common-openapi-json",
-        "sn-2-website-common-swagger-json"
+        "sn-2-website-common-swagger-json",
+        "sn-2-website-common-api",
+        "sn-2-website-common-health"
       ],
       "slug": "dsperse",
       "source_urls": [
@@ -8810,9 +8749,9 @@
         "https://sn2-docs.inferencelabs.com/",
         "https://subnet2.inferencelabs.com/"
       ],
-      "stale_candidate_count": 2,
+      "stale_candidate_count": 4,
       "surface_count": 8,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 12
     },
     {
       "adapter_score": 8,
@@ -8913,15 +8852,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 2,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 5,
         "stale_kinds": [
-          "openapi"
+          "openapi",
+          "subnet-api"
         ],
-        "stale_or_failed_count": 3,
+        "stale_or_failed_count": 5,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -8965,21 +8903,20 @@
         "sn-38-subnetradar-dashboard",
         "sn-38-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-38-website-common-openapi-json",
         "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
+        "sn-38-website-common-swagger-json",
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health",
         "sn-38-website-common-openapi-json",
         "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
+        "sn-38-website-common-swagger-json",
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
       ],
       "slug": "colosseum",
       "source_urls": [
@@ -8992,9 +8929,9 @@
         "https://subnetradar.com/subnet/38",
         "https://taomarketcap.com/subnets/38"
       ],
-      "stale_candidate_count": 3,
+      "stale_candidate_count": 5,
       "surface_count": 7,
-      "verified_candidate_count": 10
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 7,
@@ -9219,7 +9156,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 8,
-      "verified_candidate_count": 11
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 93,
@@ -9437,7 +9374,7 @@
       ],
       "stale_candidate_count": 3,
       "surface_count": 12,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 13
     },
     {
       "adapter_score": 75,
@@ -9501,7 +9438,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 15,
-      "verified_candidate_count": 12
+      "verified_candidate_count": 10
     },
     {
       "adapter_score": 56,
@@ -9511,13 +9448,13 @@
         "kinds_with_candidates": [
           "subnet-api"
         ],
-        "live_kinds": [
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "stale_kinds": [
           "subnet-api"
         ],
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
+        "stale_or_failed_count": 2,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -9553,11 +9490,11 @@
         "sn-74-native-chain-github",
         "sn-74-native-chain-website"
       ],
-      "sample_live_candidate_ids": [
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
         "sn-74-website-common-api",
         "sn-74-website-common-health"
       ],
-      "sample_stale_candidate_ids": [],
       "sample_target_candidate_ids": [
         "sn-74-website-common-api",
         "sn-74-website-common-health"
@@ -9573,9 +9510,9 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_74/index.mdx"
       ],
-      "stale_candidate_count": 0,
+      "stale_candidate_count": 2,
       "surface_count": 16,
-      "verified_candidate_count": 14
+      "verified_candidate_count": 12
     },
     {
       "adapter_score": 31,
@@ -9727,13 +9664,13 @@
         "kinds_with_candidates": [
           "subnet-api"
         ],
-        "live_kinds": [
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 1,
+        "stale_kinds": [
           "subnet-api"
         ],
-        "live_or_redirected_count": 1,
-        "reviewable_count": 1,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
+        "stale_or_failed_count": 1,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -9746,7 +9683,7 @@
         "data-artifact"
       ],
       "endpoint_count": 8,
-      "evidence_action": "review-existing-evidence",
+      "evidence_action": "replace-stale-evidence",
       "identity_level": "complete",
       "identity_surface_count": 3,
       "lane": "direct-submission",
@@ -9777,10 +9714,10 @@
         "sn-12-subnetradar-dashboard",
         "sn-12-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
         "sn-12-github-readme-backend-developers-ltd-computehorde-subnet-api-1"
       ],
-      "sample_stale_candidate_ids": [],
       "sample_target_candidate_ids": [
         "sn-12-github-readme-backend-developers-ltd-computehorde-subnet-api-1"
       ],
@@ -9795,9 +9732,9 @@
         "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
         "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
       ],
-      "stale_candidate_count": 0,
+      "stale_candidate_count": 1,
       "surface_count": 8,
-      "verified_candidate_count": 8
+      "verified_candidate_count": 7
     },
     {
       "adapter_score": 0,
@@ -10437,7 +10374,7 @@
       ],
       "stale_candidate_count": 0,
       "surface_count": 12,
-      "verified_candidate_count": 13
+      "verified_candidate_count": 11
     },
     {
       "adapter_score": 51,
@@ -10576,8 +10513,7 @@
     "evidence_action_counts": {
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 72,
-      "review-existing-evidence": 1,
+      "replace-stale-evidence": 73,
       "submit-new-evidence": 37,
       "verify-existing-evidence": 1
     },

@@ -126,7 +126,7 @@ function compactVerificationArtifact(artifactValue) {
 }
 
 function compactVerificationResult(result) {
-  return stripNullish({
+  const compact = {
     candidate_id: result.candidate_id,
     classification: result.classification,
     confidence_score: result.confidence_score,
@@ -135,16 +135,32 @@ function compactVerificationResult(result) {
     kind: result.kind,
     netuid: result.netuid,
     provider: result.provider,
-    redirect_target: result.redirect_target,
-    private_redirect_blocked: result.private_redirect_blocked,
-    quality_signals: compactQualitySignals(result.quality_signals),
+    quality_signals: compactQualitySignals(result.quality_signals, result.kind),
     status: result.status,
-  });
+  };
+
+  if (result.redirect_target) {
+    compact.redirect_target = result.redirect_target;
+  }
+  if (result.private_redirect_blocked) {
+    compact.private_redirect_blocked = result.private_redirect_blocked;
+  }
+
+  return stripNullish(compact);
 }
 
-function compactQualitySignals(signals) {
+function compactQualitySignals(signals, kind = null) {
   if (!signals || typeof signals !== "object") {
     return signals;
+  }
+  if (kind === "source-repo") {
+    return stripNullish({
+      archived: signals.archived,
+      has_default_branch: signals.has_default_branch,
+      has_recent_push_metadata: signals.has_recent_push_metadata,
+      public_safe: signals.public_safe,
+      source_tier: signals.source_tier,
+    });
   }
   return stripNullish({
     archived: signals.archived,
@@ -472,12 +488,25 @@ function isContentMismatch(probe, candidate) {
   if (candidate.kind === "openapi") {
     return !isJsonContentType(probe.content_type);
   }
+  if (candidate.kind === "subnet-api") {
+    return !isMachineReadableApiContentType(probe.content_type);
+  }
   if (candidate.kind === "sse") {
     return !String(probe.content_type || "")
       .toLowerCase()
       .includes("text/event-stream");
   }
   return false;
+}
+
+function isMachineReadableApiContentType(contentType) {
+  const normalized = String(contentType || "").toLowerCase();
+  return (
+    normalized.includes("json") ||
+    normalized.includes("text/plain") ||
+    normalized.includes("text/event-stream") ||
+    normalized.includes("application/octet-stream")
+  );
 }
 
 function scoreCandidate(candidate, probe) {
