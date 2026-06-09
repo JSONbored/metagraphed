@@ -106,6 +106,24 @@ describe("script utility contracts", () => {
     );
   });
 
+  test("classifies redirect-limit probes with unsafe targets as unsafe", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          redirect_target: "http://169.254.169.254/latest/meta-data/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsafe",
+    );
+  });
+
   test("preserves previous GitHub metadata when source-repo API enrichment degrades", () => {
     const current = {
       candidate_id: "sn-1-native-chain-github",
