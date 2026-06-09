@@ -18005,7 +18005,8 @@
         "baseline-augmented",
         "baseline-curated",
         "identity-reviewed",
-        "official-source-repo"
+        "official-source-repo",
+        "sdk"
       ],
       "completeness": {
         "confidence": "high",
@@ -18037,7 +18038,7 @@
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 6,
+      "endpoint_count": 7,
       "gap_reasons": [
         "missing-website",
         "missing-openapi",
@@ -18068,7 +18069,7 @@
       },
       "identity_level": "partial",
       "identity_surface_count": 2,
-      "interface_count": 3,
+      "interface_count": 4,
       "missing_critical_count": 5,
       "missing_identity": [
         "website"
@@ -18082,7 +18083,7 @@
       "missing_required": [
         "website"
       ],
-      "monitored_endpoint_count": 6,
+      "monitored_endpoint_count": 7,
       "name": "MANTIS",
       "native_identity": {
         "additional": null,
@@ -18118,13 +18119,14 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/123",
           "https://backprop.finance/dtao/subnets/123-mantis",
           "https://github.com/Barbariandev/MANTIS",
+          "https://github.com/Barbariandev/mantis_model_iteration_tool",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json",
           "https://subnetradar.com/subnet/123",
@@ -18141,9 +18143,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
+        "sdk",
         "source-repo"
       ],
-      "surface_count": 6,
+      "surface_count": 7,
       "symbol": "𑀀",
       "team": null
     },

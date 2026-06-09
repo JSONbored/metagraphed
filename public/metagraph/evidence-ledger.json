@@ -7019,6 +7019,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "MANTIS model iteration tool is a public sdk surface for SN123.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Barbariandev/MANTIS",
+      "subject": "surface:sn-123-mantis-model-iteration-tool",
+      "support_summary": "Listed in curated overlay for sn-123.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "MANTIS source repository is a public source-repo surface for SN123.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16694,8 +16705,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1517,
+    "claim_count": 1518,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1138
+    "surface_claim_count": 1139
   }
 }

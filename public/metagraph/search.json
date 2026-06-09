@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1357,
+  "document_count": 1358,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -4181,6 +4181,7 @@
         "official",
         "repo",
         "reviewed",
+        "sdk",
         "sn",
         "source"
       ],
@@ -18735,6 +18736,25 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/123-mantis"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-123-mantis-model-iteration-tool",
+      "netuid": 123,
+      "slug": "sn-123",
+      "subtitle": "sdk / mantis",
+      "title": "MANTIS model iteration tool",
+      "tokens": [
+        "123",
+        "iteration",
+        "mantis",
+        "model",
+        "sdk",
+        "sn",
+        "tool"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Barbariandev/mantis_model_iteration_tool"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

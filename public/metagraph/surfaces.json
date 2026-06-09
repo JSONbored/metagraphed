@@ -32136,6 +32136,30 @@
     {
       "auth_required": false,
       "authority": "official",
+      "id": "sn-123-mantis-model-iteration-tool",
+      "kind": "sdk",
+      "name": "MANTIS model iteration tool",
+      "netuid": 123,
+      "notes": "Public SDK/tooling repository linked from the MANTIS source README for strategy iteration, GUI workflows, and local evaluation helpers.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Barbariandev/MANTIS",
+        "https://github.com/Barbariandev/mantis_model_iteration_tool"
+      ],
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "url": "https://github.com/Barbariandev/mantis_model_iteration_tool"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-123-mantis-source",
       "kind": "source-repo",
       "name": "MANTIS source repository",

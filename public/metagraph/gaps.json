@@ -3451,7 +3451,7 @@
       "gaps": {
         "gap_notes": [
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "The linked model iteration tool repository includes SDK and API guide references for builder workflows.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3467,6 +3467,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "sdk",
           "source-repo"
         ]
       },

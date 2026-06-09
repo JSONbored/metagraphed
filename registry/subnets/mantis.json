@@ -7,21 +7,22 @@
   "categories": [
     "baseline-curated",
     "identity-reviewed",
+    "sdk",
     "official-source-repo"
   ],
   "source_repo": "https://github.com/Barbariandev/MANTIS",
   "dashboard_url": "https://taomarketcap.com/subnets/123",
   "website_url": null,
-  "notes": "Reviewed overlay for SN123 using the live MANTIS source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "notes": "Reviewed overlay for SN123 using the live MANTIS source repository and linked model-iteration SDK/tooling repository. No standalone website, docs site, public API, OpenAPI, SSE, or data artifact has been verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:50:00.000Z",
     "verified_at": "2026-06-08T10:50:00.000Z",
-    "source_count": 4,
+    "source_count": 5,
     "gap_notes": [
       "No verified standalone website yet.",
-      "No verified docs site yet.",
+      "The linked model iteration tool repository includes SDK and API guide references for builder workflows.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
@@ -49,6 +50,27 @@
         "timeout_ms": 10000
       },
       "notes": "Public MANTIS source repository for SN123."
+    },
+    {
+      "id": "sn-123-mantis-model-iteration-tool",
+      "name": "MANTIS model iteration tool",
+      "kind": "sdk",
+      "url": "https://github.com/Barbariandev/mantis_model_iteration_tool",
+      "provider": "mantis",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Barbariandev/MANTIS",
+        "https://github.com/Barbariandev/mantis_model_iteration_tool"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public SDK/tooling repository linked from the MANTIS source README for strategy iteration, GUI workflows, and local evaluation helpers."
     }
   ]
 }

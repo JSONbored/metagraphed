@@ -7312,7 +7312,7 @@
       "direct_submission_kinds": [
         "website"
       ],
-      "endpoint_count": 6,
+      "endpoint_count": 7,
       "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "identity_surface_count": 2,
@@ -7353,13 +7353,14 @@
         "https://api.taomarketcap.com/public/v1/subnets/123",
         "https://backprop.finance/dtao/subnets/123-mantis",
         "https://github.com/Barbariandev/MANTIS",
+        "https://github.com/Barbariandev/mantis_model_iteration_tool",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json",
         "https://subnetradar.com/subnet/123",
         "https://taomarketcap.com/subnets/123"
       ],
       "stale_candidate_count": 0,
-      "surface_count": 6,
+      "surface_count": 7,
       "verified_candidate_count": 7
     },
     {

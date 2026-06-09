@@ -1525,12 +1525,13 @@
       "profile_level": "identity-partial",
       "review_state": "maintainer-reviewed",
       "slug": "sn-123",
-      "source_count": 7,
+      "source_count": 8,
       "stale_identity_candidate_kind_count": 0,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
+        "sdk",
         "source-repo"
       ]
     },
