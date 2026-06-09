@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -207,6 +208,114 @@ test("artifact build ignores forged committed health observations by default", (
     assert.equal(rebuilt.summary.status_counts.ok || 0, 0);
   } finally {
     writeFileSync(artifactPath, original);
+    if (originalCache === null) {
+      rmSync(cachePath, { force: true });
+    } else {
+      writeFileSync(cachePath, originalCache);
+    }
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    restoreSupportArtifacts(supportArtifacts);
+  }
+}, 30_000);
+
+test("artifact build preserves object-shaped live RPC method support", () => {
+  const healthPath = artifactFilePath("health/latest.json");
+  const rpcPath = artifactFilePath("rpc-endpoints.json");
+  const endpointsPath = artifactFilePath("endpoints.json");
+  const cachePath = ".cache/metagraphed/health/latest.json";
+  const originalCache = existsSync(cachePath)
+    ? readFileSync(cachePath, "utf8")
+    : null;
+  const supportArtifacts = snapshotSupportArtifacts();
+  const previousHealth = JSON.parse(readFileSync(healthPath, "utf8"));
+  const target = previousHealth.surfaces.find(
+    (surface) =>
+      surface.kind === "subtensor-rpc" && surface.public_safe === true,
+  );
+  assert(target, "expected a public-safe subtensor RPC health row");
+
+  previousHealth.source = "live-smoke-probe";
+  previousHealth.generated_at = "2999-01-01T00:00:00.000Z";
+  target.status = "ok";
+  target.classification = "live";
+  target.last_checked = "2999-01-01T00:00:00.000Z";
+  target.last_ok = "2999-01-01T00:00:00.000Z";
+  target.verified_at = "2999-01-01T00:00:00.000Z";
+  target.latency_ms = 7;
+  target.archive_support = true;
+  target.latest_block = 4242424;
+  target.rpc_method_count = 4;
+  target.method_results = {
+    chain_getHeader: { ok: true },
+    rpc_methods: { ok: true },
+  };
+  target.methods_supported = {
+    chain_getHeader: true,
+    system_health: true,
+    rpc_methods: true,
+    chain_getBlockHash: true,
+  };
+
+  try {
+    mkdirSync(".cache/metagraphed/health", { recursive: true });
+    writeFileSync(cachePath, `${JSON.stringify(previousHealth, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
+      stdio: "pipe",
+    });
+
+    const rebuiltHealth = JSON.parse(readFileSync(healthPath, "utf8"));
+    const rebuiltHealthTarget = rebuiltHealth.surfaces.find(
+      (surface) => surface.surface_id === target.surface_id,
+    );
+    const rpcEndpoint = JSON.parse(
+      readFileSync(rpcPath, "utf8"),
+    ).endpoints.find((endpoint) => endpoint.id === target.surface_id);
+    const endpointResource = JSON.parse(
+      readFileSync(endpointsPath, "utf8"),
+    ).endpoints.find((endpoint) => endpoint.surface_id === target.surface_id);
+
+    assert.deepEqual(
+      rebuiltHealthTarget.methods_supported,
+      target.methods_supported,
+    );
+    assert.deepEqual(rpcEndpoint.methods_supported, target.methods_supported);
+    assert.deepEqual(endpointResource.method_support, target.methods_supported);
+    assert(
+      endpointResource.score_reasons.some(
+        (reason) => reason.reason === "method-support" && reason.points === 20,
+      ),
+      "expected endpoint scoring to include preserved method support",
+    );
+  } finally {
     if (originalCache === null) {
       rmSync(cachePath, { force: true });
     } else {
