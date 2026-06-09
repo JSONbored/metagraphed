@@ -45,11 +45,10 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/uvx" --version
 
-      - name: Refresh publish artifacts
-        run: npm run pipeline:refresh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          METAGRAPH_WRITE_PROBE_RESULTS: "1"
+      - name: Prepare reviewed publish artifacts
+        run: |
+          npm run artifacts:prepare-local
+          npm run r2:manifest
 
       - name: Validate registry
         run: npm run validate
