@@ -16,9 +16,9 @@ const manifest = await readJson(
 const buildSummary = await readJson(
   path.join(repoRoot, "public/metagraph/build-summary.json"),
 );
-const freshness = await readJson(
-  path.join(repoRoot, "public/metagraph/freshness.json"),
-);
+// Tier-aware: freshness.json is R2-only (ADR 0001), so resolve it through
+// artifactFilePath (dist/) rather than a hardcoded public/ path.
+const freshness = await readJson(artifactFilePath("freshness.json"));
 const endpointPools = await readJson(artifactFilePath("endpoint-pools.json"));
 const sourceHealth = await readJson(artifactFilePath("source-health.json"));
 
