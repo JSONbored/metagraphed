@@ -134,7 +134,10 @@ public/metagraph/evidence-ledger.json
 public/metagraph/gaps.json
 public/metagraph/profiles.json
 public/metagraph/providers.json
+public/metagraph/schema-drift.json
 public/metagraph/search.json
+public/metagraph/surfaces.json
+public/metagraph/freshness.json
 public/metagraph/review/adapter-candidates.json
 public/metagraph/review/curation.json
 public/metagraph/review/enrichment-queue.json

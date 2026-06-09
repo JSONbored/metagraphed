@@ -35,15 +35,15 @@ const R2_ONLY_PATTERNS = [
   /^surfaces\/(?:\d+|\{netuid\})\.json$/,
   /^verification\/latest\.json$/,
   /^verification\/subnets\/(?:\d+|\{netuid\})\.json$/,
-  // High-churn data with NO hardcoded public-path readers, moved out of git
-  // (ADR 0001): derived from committed inputs + live enrichment, built to dist/,
-  // served from R2 + edge cache, never committed. ~3.1 MB of per-refresh churn
-  // eliminated. (surfaces/freshness/schema-drift stay dual below — they have
-  // hardcoded readers in sync-summary/kv-publish; moving them needs a tier-aware
-  // read, a follow-up. Likewise the small digests build-summary/changelog/
-  // r2-manifest and subnets/coverage.)
+  // High-churn data moved out of git (ADR 0001): derived from committed inputs +
+  // live enrichment, built to dist/, served from R2 + edge cache, never
+  // committed. ~4.3 MB of per-refresh churn eliminated. Their readers are
+  // tier-aware (artifactFilePath / kv-publish) or tolerate a null (sync-summary).
+  // (The small digests build-summary/changelog/r2-manifest and subnets/coverage
+  // stay dual — they feed the changelog/ci-verify against a committed baseline.)
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
+  /^freshness\.json$/,
   /^gaps\.json$/,
   /^profiles\.json$/,
   /^providers\.json$/,
@@ -52,7 +52,9 @@ const R2_ONLY_PATTERNS = [
   /^review\/enrichment-queue\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
+  /^schema-drift\.json$/,
   /^search\.json$/,
+  /^surfaces\.json$/,
 ];
 
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API
@@ -68,12 +70,6 @@ const DUAL_PATTERNS = [
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^coverage\.json$/,
-  // Hardcoded public-path readers keep these dual for now (follow-up to route
-  // them to R2 via a tier-aware read): surfaces + freshness (sync-summary.mjs,
-  // kv-publish-pointer.mjs), schema-drift (sync-summary.mjs).
-  /^freshness\.json$/,
-  /^schema-drift\.json$/,
-  /^surfaces\.json$/,
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
   // subnets.json (124 KB) stays committed: the changelog diffs it against the
