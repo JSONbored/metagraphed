@@ -75,6 +75,59 @@ describe("Worker runtime", () => {
     assert.notEqual(body.meta.generated_at, publishedAt);
   });
 
+  test("serves a health readiness probe", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/health"),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.status, "ok");
+    assert.equal(body.service, "metagraphed");
+    assert.equal(body.bindings.assets, true);
+    assert.equal(typeof body.bindings.r2, "boolean");
+    assert.equal(typeof body.bindings.kv, "boolean");
+
+    const head = await handleRequest(
+      new Request("https://metagraph.sh/health", { method: "HEAD" }),
+      env,
+      {},
+    );
+    assert.equal(head.status, 200);
+
+    const post = await handleRequest(
+      new Request("https://metagraph.sh/health", { method: "POST" }),
+      env,
+      {},
+    );
+    assert.equal(post.status, 405);
+  });
+
+  test("returns 504 when an R2 read exceeds the timeout", async () => {
+    const slowEnv = {
+      ...env,
+      METAGRAPH_R2_TIMEOUT_MS: "20",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          return {
+            async json() {
+              return {};
+            },
+          };
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json"),
+      slowEnv,
+      {},
+    );
+    assert.equal(response.status, 504);
+    assert.equal((await response.json()).error.code, "r2_timeout");
+  });
+
   test("serves raw R2-tier artifacts from archive storage", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),

@@ -62,6 +62,14 @@ any path in the published artifact contract, with `x-metagraph-artifact-source` 
 `x-metagraph-storage-tier` headers. The enveloped `/api/v1/*` routes are preferred
 for app consumption; raw routes are convenient for static/diff tooling.
 
+## Operational Route: `/health`
+
+`GET https://metagraph.sh/health` is a no-I/O readiness probe (not part of the
+versioned `/api/v1` contract). It returns `200` with
+`{ status, service, contract_version, rpc_proxy_enabled, bindings: { assets, r2,
+kv } }` so uptime checks and load balancers can confirm the Worker is live and
+which bindings are wired without touching R2/KV.
+
 ## Query Semantics (list routes)
 
 List routes accept a stable set of query parameters (validated server-side;
@@ -92,10 +100,11 @@ Omitting all paging params returns the full collection (back-compatible).
 
 ## Error Codes
 
-`not_found` (404), `method_not_allowed` (405), `invalid_query` (400), and the RPC
-proxy codes (`rpc_proxy_disabled` 501, `rpc_method_blocked` 403,
-`rpc_endpoint_unavailable` 503, etc.). Errors always carry `error.code` and a human
-`error.message`.
+`not_found` (404), `method_not_allowed` (405), `invalid_query` (400),
+`r2_binding_missing` (404), `r2_timeout` (504, R2 read exceeded
+`METAGRAPH_R2_TIMEOUT_MS`, default 5s), and the RPC proxy codes
+(`rpc_proxy_disabled` 501, `rpc_method_blocked` 403, `rpc_endpoint_unavailable`
+503, etc.). Errors always carry `error.code` and a human `error.message`.
 
 ## Versioning & Stability Guarantees
 

@@ -82,6 +82,10 @@ export async function handleRequest(request, env = {}, _ctx = {}) {
     );
   }
 
+  if (url.pathname === "/health") {
+    return handleHealthRequest(request, env);
+  }
+
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
     return handleApiRequest(request, env, url);
   }
@@ -339,6 +343,73 @@ function matchRoute(pathname) {
   return null;
 }
 
+const DEFAULT_R2_TIMEOUT_MS = 5000;
+
+// Structured log captured by Workers observability. Only called on notable
+// non-happy paths (R2 timeout, static fallback) so it does not spam logs.
+// Disabled with METAGRAPH_DISABLE_REQUEST_LOGS=true.
+function logEvent(env, level, event, fields = {}) {
+  if (env.METAGRAPH_DISABLE_REQUEST_LOGS === "true") {
+    return;
+  }
+  try {
+    console.log(JSON.stringify({ level, event, ...fields }));
+  } catch {
+    // Never let logging break a request.
+  }
+}
+
+function r2TimeoutMs(env) {
+  const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
+}
+
+// R2's get() takes no AbortSignal, so bound it with a race: a slow/degraded
+// bucket yields a controlled 504 (and static fallback where allowed) instead of
+// hanging the request until the platform wall-clock limit.
+async function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Lightweight readiness probe for uptime checks and load balancers. Reports
+// which bindings are wired without touching R2/KV (no I/O, no cold-start cost).
+function handleHealthRequest(request, env) {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return errorResponse(
+      "method_not_allowed",
+      "The health route only accepts GET and HEAD.",
+      405,
+      {},
+      { allow: "GET, HEAD, OPTIONS" },
+    );
+  }
+  const body = JSON.stringify({
+    status: "ok",
+    service: "metagraphed",
+    contract_version: contractVersion(env),
+    rpc_proxy_enabled: env.METAGRAPH_ENABLE_RPC_PROXY === "true",
+    bindings: {
+      assets: Boolean(env.ASSETS?.fetch),
+      r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
+      kv: Boolean(env.METAGRAPH_CONTROL?.get),
+    },
+  });
+  const headers = apiHeaders("short");
+  headers.set("x-metagraph-health", "ok");
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
+}
+
 async function readArtifact(env, artifactPath) {
   const storageTier = artifactStorageTierForPath(artifactPath);
 
@@ -347,6 +418,10 @@ async function readArtifact(env, artifactPath) {
     if (r2.ok || env.METAGRAPH_ALLOW_R2_STATIC_FALLBACK !== "true") {
       return r2;
     }
+    logEvent(env, "warn", "r2_static_fallback", {
+      artifact_path: artifactPath,
+      r2_code: r2.code,
+    });
     return readAsset(env, artifactPath, storageTier);
   }
 
@@ -405,7 +480,24 @@ async function readR2(env, artifactPath, storageTier) {
   }
 
   const key = await latestR2Key(artifactPath, env);
-  const object = await env.METAGRAPH_ARCHIVE.get(key);
+  let object;
+  try {
+    object = await withTimeout(
+      env.METAGRAPH_ARCHIVE.get(key),
+      r2TimeoutMs(env),
+    );
+  } catch {
+    logEvent(env, "warn", "r2_read_timeout", {
+      key,
+      storage_tier: storageTier,
+    });
+    return {
+      ok: false,
+      status: 504,
+      code: "r2_timeout",
+      message: `R2 read timed out: ${key}`,
+    };
+  }
   if (!object) {
     return {
       ok: false,
