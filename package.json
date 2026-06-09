@@ -50,6 +50,7 @@
     "contract:summary": "node scripts/contract-change-summary.mjs",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:adapters": "node scripts/validate-adapters.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
     "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",
