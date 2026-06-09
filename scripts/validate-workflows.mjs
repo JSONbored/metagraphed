@@ -133,6 +133,38 @@ for (const workflow of workflows) {
   }
   if (workflow === "publish-cloudflare.yml") {
     check(
+      !content.includes("npm run pipeline:refresh"),
+      workflow,
+      "publish workflow must not refresh live registry data during deployment",
+    );
+    check(
+      !content.includes('METAGRAPH_WRITE_PROBE_RESULTS: "1"'),
+      workflow,
+      "publish workflow must not write live probe results during deployment",
+    );
+    check(
+      content.includes("npm run artifacts:prepare-local") &&
+        content.includes("npm run r2:manifest"),
+      workflow,
+      "publish workflow must prepare R2 artifacts from reviewed repository inputs",
+    );
+    check(
+      /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),
+      workflow,
+      "publish workflow must isolate refresh tooling from Cloudflare publishing secrets",
+    );
+    check(
+      !/python3\s+-m\s+pip\s+install[\s\S]*\buv==/.test(content),
+      workflow,
+      "publish workflow must not install uv from PyPI in a secret-bearing path",
+    );
+    check(
+      content.includes("astral-sh/setup-uv@") &&
+        content.includes("cloudflare-publish-artifacts"),
+      workflow,
+      "publish workflow must pass refreshed artifacts from the isolated refresh job",
+    );
+    check(
       content.includes('METAGRAPH_R2_UPLOAD_HISTORY: "1"'),
       workflow,
       "publish workflow must upload versioned R2 history objects",
@@ -149,6 +181,16 @@ for (const workflow of workflows) {
       ),
       workflow,
       "publish workflow must fail closed when Cloudflare publishing secrets are missing",
+    );
+    check(
+      content.includes('METAGRAPH_PRODUCTION_BUILD: "1"'),
+      workflow,
+      "publish workflow must explicitly use the production build path",
+    );
+    check(
+      content.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
+      workflow,
+      "publish workflow must explicitly require probe-derived health",
     );
     check(
       content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
