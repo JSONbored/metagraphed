@@ -169,16 +169,19 @@ for (const workflow of workflows) {
       workflow,
       "publish workflow must not refresh live registry data during deployment",
     );
+    const refreshJob = workflowJobBlock(content, "refresh");
+    const publishJob = workflowJobBlock(content, "publish");
     check(
-      !content.includes('METAGRAPH_WRITE_PROBE_RESULTS: "1"'),
+      !publishJob.includes('METAGRAPH_WRITE_PROBE_RESULTS: "1"'),
       workflow,
-      "publish workflow must not write live probe results during deployment",
+      "publish job must not write live probe results during deployment",
     );
     check(
-      content.includes("npm run artifacts:prepare-local") &&
-        content.includes("npm run r2:manifest"),
+      refreshJob.includes('METAGRAPH_PRODUCTION_BUILD: "1"') &&
+        refreshJob.includes("npm run build") &&
+        refreshJob.includes("npm run r2:manifest"),
       workflow,
-      "publish workflow must prepare R2 artifacts from reviewed repository inputs",
+      "publish workflow refresh job must prepare R2 artifacts with the production probe-health build path",
     );
     check(
       /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),
@@ -215,14 +218,14 @@ for (const workflow of workflows) {
       "publish workflow must fail closed when Cloudflare publishing secrets are missing",
     );
     check(
-      content.includes('METAGRAPH_PRODUCTION_BUILD: "1"'),
+      refreshJob.includes('METAGRAPH_PRODUCTION_BUILD: "1"'),
       workflow,
-      "publish workflow must explicitly use the production build path",
+      "publish workflow refresh job must explicitly use the production build path",
     );
     check(
-      content.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
+      publishJob.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
       workflow,
-      "publish workflow must explicitly require probe-derived health",
+      "publish workflow publish job must explicitly require probe-derived health",
     );
     check(
       content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
@@ -246,4 +249,18 @@ function check(condition, workflow, message) {
   if (!condition) {
     errors.push(`${workflow}: ${message}`);
   }
+}
+
+function workflowJobBlock(content, jobName) {
+  const match = content.match(
+    new RegExp(
+      String.raw`^  ${escapeRegExp(jobName)}:\n[\s\S]*?(?=^  [A-Za-z0-9_-]+:\n|(?![\s\S]))`,
+      "m",
+    ),
+  );
+  return match?.[0] || "";
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
