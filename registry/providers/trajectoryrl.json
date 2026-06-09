@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "trajectoryrl",
+  "name": "TrajectoryRL",
+  "kind": "subnet-team",
+  "website_url": "https://trajrl.com/",
+  "docs_url": "https://trajrl.com/docs",
+  "github_url": "https://github.com/trajectoryRL/trajectoryRL",
+  "authority": "official",
+  "public_notes": "Provider profile for TrajectoryRL / SN11. Public surfaces include the TrajectoryRL website, docs, leaderboard, live, winners, benchmark pages, and source repository.",
+  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet."
+}

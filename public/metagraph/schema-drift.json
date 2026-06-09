@@ -1,7 +1,7 @@
 {
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "observed_at": "2026-06-08T18:26:37.780Z",
+  "observed_at": "2026-06-08T23:01:01.012Z",
   "openapi_surface_count": 12,
   "schema_backed_surface_count": 12,
   "schema_version": 1,
@@ -9,9 +9,7 @@
   "status": "captured",
   "summary": {
     "by_drift_status": {
-      "changed": 1,
-      "new": 1,
-      "unchanged": 10
+      "unchanged": 12
     },
     "by_status": {
       "captured": 12
@@ -105,11 +103,11 @@
       "url": "https://tournament-api.nepher.ai/openapi.json"
     },
     {
-      "drift_status": "new",
+      "drift_status": "unchanged",
       "error": null,
       "hash": "06d41d91c60dd8b9c9b114f083b3aa78231184bd57ff74c3d53f2abf31965003",
       "netuid": 56,
-      "previous_hash": null,
+      "previous_hash": "06d41d91c60dd8b9c9b114f083b3aa78231184bd57ff74c3d53f2abf31965003",
       "schema_url": "https://api.gradients.io/openapi.json",
       "status": "captured",
       "subnet_slug": "gradients",
@@ -141,11 +139,11 @@
       "url": "https://api.gittensor.io/swagger-json"
     },
     {
-      "drift_status": "changed",
+      "drift_status": "unchanged",
       "error": null,
       "hash": "640b104c41c2e9abd1d511aa8b15b8d983c3c0448df3c2219248c8ab60fb1c87",
       "netuid": 96,
-      "previous_hash": "8a520fd1ee1037929b75f68f4a627610e58eede285d044bfaae20ea7a0860ae0",
+      "previous_hash": "640b104c41c2e9abd1d511aa8b15b8d983c3c0448df3c2219248c8ab60fb1c87",
       "schema_url": "https://verathos.ai/openapi.json",
       "status": "captured",
       "subnet_slug": "sn-96",

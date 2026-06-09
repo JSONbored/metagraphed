@@ -60,6 +60,8 @@ import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
+import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
+import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -87,6 +89,118 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("classifies redirect-limit probes as unsupported", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect limit exceeded",
+          redirect_target: "https://example.com/api/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsupported",
+    );
+  });
+
+  test("preserves previous GitHub metadata when source-repo API enrichment degrades", () => {
+    const current = {
+      candidate_id: "sn-1-native-chain-github",
+      classification: "live",
+      confidence_score: 45,
+      kind: "source-repo",
+      quality_signals: {
+        public_safe: true,
+        source_tier: "native-chain",
+      },
+      status: "ok",
+    };
+    const previousByCandidate = new Map([
+      [
+        "sn-1-native-chain-github",
+        {
+          candidate_id: "sn-1-native-chain-github",
+          classification: "live",
+          confidence_score: 80,
+          kind: "source-repo",
+          quality_signals: {
+            archived: false,
+            has_default_branch: true,
+            has_recent_push_metadata: true,
+            public_safe: true,
+            source_tier: "native-chain",
+          },
+          status: "ok",
+        },
+      ],
+    ]);
+
+    const preserved = preservePreviousGithubMetadata(
+      current,
+      previousByCandidate,
+    );
+
+    assert.equal(preserved.confidence_score, 80);
+    assert.deepEqual(preserved.quality_signals, {
+      archived: false,
+      has_default_branch: true,
+      has_recent_push_metadata: true,
+      public_safe: true,
+      source_tier: "native-chain",
+    });
+  });
+
+  test("preserves previous healthy verification when a candidate probe is retryable", () => {
+    const current = {
+      candidate_id: "sn-29-subnetradar-dashboard",
+      classification: "timeout",
+      confidence_score: 9,
+      content_type: null,
+      error: "probe-failed",
+      kind: "dashboard",
+      quality_signals: {
+        public_safe: true,
+        source_tier: "third-party-index",
+        transient_failure: true,
+      },
+      status: "failed",
+    };
+    const previousByCandidate = new Map([
+      [
+        "sn-29-subnetradar-dashboard",
+        {
+          candidate_id: "sn-29-subnetradar-dashboard",
+          classification: "live",
+          confidence_score: 77,
+          content_type: "text/html; charset=utf-8",
+          error: null,
+          kind: "dashboard",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            source_tier: "third-party-index",
+            transient_failure: false,
+          },
+          status: "ok",
+        },
+      ],
+    ]);
+
+    const preserved = preservePreviousGithubMetadata(
+      current,
+      previousByCandidate,
+    );
+
+    assert.equal(preserved.classification, "live");
+    assert.equal(preserved.status, "ok");
+    assert.equal(preserved.confidence_score, 77);
+    assert.equal(preserved.content_type, "text/html; charset=utf-8");
+    assert.equal(preserved.quality_signals.transient_failure, false);
+  });
+
   test("reads, writes, and lists JSON files deterministically", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-test-"));
     try {
@@ -178,7 +292,7 @@ describe("script utility contracts", () => {
       profile_summary: {
         average_completeness_score: 49,
         by_level: {
-          "directory-only": 38,
+          "identity-partial": 38,
           operational: 46,
         },
         critical_gap_counts: {
@@ -219,7 +333,7 @@ describe("script utility contracts", () => {
 
     assert.match(brief, /Metagraphed Curation Brief/);
     assert.match(brief, /Active Finney netuids: 129/);
-    assert.match(brief, /Profile levels: directory-only 38, operational 46/);
+    assert.match(brief, /Profile levels: identity-partial 38, operational 46/);
     assert.match(
       brief,
       /Critical gaps: missing-openapi 81, missing-source-repo 44/,
@@ -729,6 +843,13 @@ describe("script utility contracts", () => {
       7,
       false,
     ]);
+    const oauthRedirect =
+      "https://accounts.google.com/v3/signin/identifier?client_id=abc&state=volatile&nonce=random";
+    assert.equal(isCredentialedUrl(oauthRedirect), true);
+    assert.equal(
+      redactCredentialedUrl(oauthRedirect),
+      "https://accounts.google.com/v3/signin/identifier",
+    );
     assert.equal(redactCredentialedUrl("not a url"), "not a url");
     assert.equal(
       redactCredentialedUrl("https://example.com/download?file=1"),

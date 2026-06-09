@@ -25,6 +25,7 @@ const R2_ONLY_PATTERNS = [
   /^providers\/[^/]+\/endpoints\.json$/,
   /^review-queue\.json$/,
   /^review\/enrichment-evidence\.json$/,
+  /^review\/enrichment-targets\.json$/,
   /^rpc\/pools\.json$/,
   /^rpc-endpoints\.json$/,
   /^schemas\/(?!index\.json$).+\.json$/,

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "taofi",
+  "name": "TaoFi",
+  "kind": "subnet-team",
+  "website_url": "https://www.taofi.com/pool",
+  "docs_url": "https://docs.taofi.com/",
+  "github_url": "https://github.com/Swap-Subnet/swap-subnet",
+  "authority": "official",
+  "public_notes": "Provider profile for Swap / SN10 through TaoFi. Public surfaces include the TaoFi pool page, docs, and source repository.",
+  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet."
+}

@@ -850,6 +850,7 @@ function buildHealthArtifacts(surfaceHealth, options) {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: options.generatedAt,
+    observed_at: options.probeFinishedAt || options.observedAt || null,
     probe_started_at: options.probeStartedAt,
     probe_finished_at: options.probeFinishedAt,
     source: options.source,

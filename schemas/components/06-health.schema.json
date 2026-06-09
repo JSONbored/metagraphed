@@ -243,8 +243,12 @@
           },
           {
             "type": "object",
-            "required": ["summary", "surfaces"],
+            "required": ["observed_at", "summary", "surfaces"],
             "properties": {
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
               "summary": {
                 "type": "object",
                 "additionalProperties": true

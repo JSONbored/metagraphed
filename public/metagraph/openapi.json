@@ -2136,6 +2136,13 @@
           {
             "additionalProperties": true,
             "properties": {
+              "observed_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "summary": {
                 "additionalProperties": true,
                 "type": "object"
@@ -2148,6 +2155,7 @@
               }
             },
             "required": [
+              "observed_at",
               "summary",
               "surfaces"
             ],
@@ -3597,6 +3605,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -3777,10 +3786,14 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
             ]
+          },
+          "queue_context": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetQueueContext"
           },
           "reason_codes": {
             "items": {
@@ -3853,6 +3866,7 @@
           "netuid",
           "priority_score",
           "profile_level",
+          "queue_context",
           "reason_codes",
           "recommended_action",
           "sample_live_candidate_ids",
@@ -3929,6 +3943,89 @@
           "target_ids",
           "target_type",
           "top_netuids"
+        ],
+        "type": "object"
+      },
+      "ReviewEnrichmentTargetQueueContext": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completeness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "identity_surface_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "source_url_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stale_candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "verified_candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "curation_level",
+          "direct_submission_kind_count",
+          "endpoint_count",
+          "identity_surface_count",
+          "operational_interface_count",
+          "profile_level",
+          "review_state",
+          "source_url_count",
+          "stale_candidate_count",
+          "surface_count",
+          "verified_candidate_count"
         ],
         "type": "object"
       },
@@ -4154,6 +4251,18 @@
                   "critical_gap_counts": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "identity_promotion_candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "native_identity_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "native_identity_unpromoted_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "needs_identity_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -4172,6 +4281,9 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "native_identity_count",
+                  "identity_promotion_candidate_count",
+                  "native_identity_unpromoted_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
@@ -4216,6 +4328,9 @@
             },
             "type": "array"
           },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+          },
           "identity_level": {
             "enum": [
               "none",
@@ -4224,8 +4339,22 @@
               "complete"
             ]
           },
+          "identity_promotion_kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "identity_promotion_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
           "identity_surface_count": {
             "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "live_identity_candidate_kind_count": {
             "minimum": 0,
             "type": "integer"
           },
@@ -4254,6 +4383,10 @@
           "name": {
             "type": "string"
           },
+          "native_identity_signal_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "native_name_quality": {
             "enum": [
               "chain",
@@ -4276,6 +4409,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -4288,6 +4422,10 @@
             "type": "string"
           },
           "source_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stale_identity_candidate_kind_count": {
             "minimum": 0,
             "type": "integer"
           },
@@ -4308,12 +4446,17 @@
           "curation_level",
           "gap_reasons",
           "identity_level",
+          "identity_evidence",
+          "identity_promotion_kind_count",
+          "identity_promotion_kinds",
           "identity_surface_count",
+          "live_identity_candidate_kind_count",
           "missing_critical_count",
           "missing_identity",
           "missing_operational",
           "missing_required",
           "name",
+          "native_identity_signal_count",
           "native_name_quality",
           "netuid",
           "operational_interface_count",
@@ -4322,6 +4465,7 @@
           "review_state",
           "slug",
           "source_count",
+          "stale_identity_candidate_kind_count",
           "supported_interface_kinds",
           "suggested_next_action"
         ],
@@ -5652,6 +5796,9 @@
             },
             "type": "array"
           },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+          },
           "identity_level": {
             "enum": [
               "none",
@@ -5698,6 +5845,9 @@
           "name": {
             "type": "string"
           },
+          "native_identity": {
+            "$ref": "#/components/schemas/SubnetProfileNativeIdentity"
+          },
           "native_name": {
             "type": [
               "string",
@@ -5734,6 +5884,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -5790,6 +5941,7 @@
           "netuid",
           "slug",
           "name",
+          "native_identity",
           "subnet_type",
           "status",
           "project_name",
@@ -5803,6 +5955,7 @@
           "endpoint_count",
           "monitored_endpoint_count",
           "candidate_count",
+          "identity_evidence",
           "completeness",
           "provenance",
           "curation_level",
@@ -5923,6 +6076,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -5947,6 +6101,153 @@
           "gap_reasons"
         ],
         "type": "object"
+      },
+      "SubnetProfileIdentityEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_identity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "curated_identity_count": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "curated_identity_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "live_candidate_identity_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "native_contact_present": {
+            "type": "boolean"
+          },
+          "native_description_present": {
+            "type": "boolean"
+          },
+          "native_identity_count": {
+            "maximum": 2,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "native_identity_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "needs_promotion_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "stale_candidate_identity_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "unverified_candidate_identity_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidate_identity_count",
+          "curated_identity_count",
+          "curated_identity_kinds",
+          "live_candidate_identity_kinds",
+          "native_contact_present",
+          "native_description_present",
+          "native_identity_count",
+          "native_identity_kinds",
+          "needs_promotion_kinds",
+          "stale_candidate_identity_kinds",
+          "unverified_candidate_identity_kinds"
+        ],
+        "type": "object"
+      },
+      "SubnetProfileNativeIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "additional": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contact_present": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "website_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "subnet_name",
+          "description",
+          "additional",
+          "website_url",
+          "github_url",
+          "discord_url",
+          "logo_url",
+          "contact_present"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
       },
       "SubnetProfilePrimaryLinks": {
         "additionalProperties": false,
@@ -6059,6 +6360,18 @@
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
                   },
+                  "identity_promotion_candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "native_identity_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "native_identity_unpromoted_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "profile_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -6067,6 +6380,9 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "native_identity_count",
+                  "identity_promotion_candidate_count",
+                  "native_identity_unpromoted_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence"
@@ -6440,6 +6756,13 @@
               "candidate_count": {
                 "minimum": 0,
                 "type": "integer"
+              },
+              "observed_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "results": {
                 "items": {
@@ -9086,6 +9409,7 @@
             "schema": {
               "enum": [
                 "directory-only",
+                "identity-partial",
                 "identity-complete",
                 "operational",
                 "adapter-backed"
@@ -10336,6 +10660,7 @@
             "schema": {
               "enum": [
                 "directory-only",
+                "identity-partial",
                 "identity-complete",
                 "operational",
                 "adapter-backed"
@@ -10661,6 +10986,7 @@
             "schema": {
               "enum": [
                 "directory-only",
+                "identity-partial",
                 "identity-complete",
                 "operational",
                 "adapter-backed"
@@ -11059,6 +11385,7 @@
             "schema": {
               "enum": [
                 "directory-only",
+                "identity-partial",
                 "identity-complete",
                 "operational",
                 "adapter-backed"
@@ -11095,6 +11422,43 @@
           },
           {
             "in": "query",
+            "name": "identity_promotion_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "native_name_quality",
+            "required": false,
+            "schema": {
+              "enum": [
+                "chain",
+                "placeholder",
+                "empty"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -11121,12 +11485,17 @@
                 "candidate_count",
                 "completeness_score",
                 "identity_level",
+                "identity_promotion_kind_count",
                 "identity_surface_count",
+                "live_identity_candidate_kind_count",
                 "missing_critical_count",
                 "name",
+                "native_identity_signal_count",
+                "native_name_quality",
                 "netuid",
                 "priority_score",
-                "profile_level"
+                "profile_level",
+                "stale_identity_candidate_kind_count"
               ],
               "type": "string"
             }

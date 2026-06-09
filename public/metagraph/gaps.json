@@ -142,13 +142,16 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, network pages, and source repository are verified live.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified docs site yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -220,13 +223,16 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, dashboard, transparency page, tokenomics page, and source repository are verified live.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified docs site yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -275,13 +281,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+          "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -302,13 +310,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, leaderboard, live, winners, benchmark pages, and source repository are verified live.",
+          "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -440,13 +450,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs page, and source repository are verified live.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -551,6 +563,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Official website, subnet, and roadmap pages are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Previously discovered GitHub source repository candidate currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -744,6 +759,7 @@
       "gaps": {
         "gap_notes": [
           "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths on nodexo.ai are not promoted because the origin rejects simple machine probes.",
           "Previously discovered GitHub source repository candidates currently return 404.",
           "No verified live source repository yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -830,6 +846,9 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Official website and documentation are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths on endure.network currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Generic email-protection pages are not listed as subnet interfaces.",
           "No verified source repository yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
@@ -1062,7 +1081,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1071,7 +1089,8 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "colosseum",
@@ -1170,14 +1189,13 @@
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as a placeholder.",
-          "No verified official website yet.",
+          "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1186,7 +1204,8 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "Gopher",
@@ -2237,7 +2256,7 @@
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -2461,7 +2480,7 @@
       "gaps": {
         "gap_notes": [
           "Project homepage currently returns HTTP 402.",
-          "No verified docs site yet.",
+          "The subnet auction incentive mechanism is documented in the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -2519,7 +2538,10 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
+          "Official website, app, how-it-works, and project submission pages are live and verified.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+          "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
+          "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -2527,7 +2549,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -2536,6 +2557,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },
@@ -2548,6 +2570,8 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
+          "Official website and dashboard are verified live.",
           "Previously discovered Tensorclaw source repository currently returns 404.",
           "No verified live source repository yet.",
           "No verified docs site yet beyond directory pages.",
@@ -2569,7 +2593,7 @@
           "website"
         ]
       },
-      "name": "luis",
+      "name": "Tensorclaw",
       "netuid": 92,
       "slug": "sn-92"
     },
@@ -2634,7 +2658,7 @@
         "gap_notes": [
           "Previously discovered GitHub organization/source candidate currently returns 404.",
           "No verified live source repository yet.",
-          "Authenticated docs redirect to login and are not promoted as public docs.",
+          "Common docs/API/health/OpenAPI/Swagger paths redirect to login and are not promoted as public docs, API, or schema surfaces.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet."
@@ -2929,6 +2953,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "repo-registry",
           "source-repo",
           "website"
         ]
@@ -3026,18 +3051,17 @@
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
-          "No verified SSE/event stream yet.",
-          "No verified standalone static data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo"
         ]
@@ -3426,7 +3450,7 @@
       "gaps": {
         "gap_notes": [
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "The linked model iteration tool repository includes SDK and API guide references for builder workflows.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3442,6 +3466,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "sdk",
           "source-repo"
         ]
       },

@@ -1,28 +1,29 @@
 {
   "application_subnet_count": 128,
-  "candidate_count": 2018,
+  "candidate_count": 2021,
   "candidate_subnet_count": 129,
   "chain_subnet_count": 129,
   "curated_overlay_count": 129,
   "curation_level_counts": {
     "adapter-backed": 2,
-    "machine-verified": 43,
-    "maintainer-reviewed": 84
+    "machine-verified": 38,
+    "maintainer-reviewed": 89
   },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "manifested_count": 0,
   "native_only_count": 0,
   "native_only_with_candidates": 0,
   "native_only_without_candidates": 0,
-  "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
+  "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
   "network": "finney",
   "probed_count": 129,
-  "probed_surface_count": 1107,
+  "probed_surface_count": 1133,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
     "candidates": "registry/candidates",
     "native": {
+      "identity_storage": "SubtensorModule.SubnetIdentitiesV3",
       "kind": "bittensor-sdk",
       "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
       "package": "bittensor",
@@ -31,5 +32,5 @@
     },
     "overlays": "registry/subnets"
   },
-  "surface_count": 1114
+  "surface_count": 1140
 }

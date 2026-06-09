@@ -16,6 +16,7 @@ import {
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
+  normalizePublicUrl,
   readJson,
   redactCredentialedUrls,
   repoRoot,
@@ -44,7 +45,10 @@ const candidates = await loadCandidates();
 const candidateDiscovery = await readOptionalJson(
   path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
 );
-const verification = redactCredentialedUrls(await loadVerification());
+const verification = redactCredentialedUrls(
+  await loadVerification({ preferDetailed: false }),
+);
+const detailedVerification = redactCredentialedUrls(await loadVerification());
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot = await loadNativeSnapshot();
@@ -71,7 +75,7 @@ const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
 const contractVersion = CONTRACT_VERSION;
-const fullVerification = buildFullVerificationArtifact(verification, {
+const fullVerification = buildFullVerificationArtifact(detailedVerification, {
   contractVersion,
   generatedAt,
 });
@@ -80,6 +84,9 @@ const fullVerificationByCandidate = new Map(
     result.candidate_id,
     result,
   ]),
+);
+const canonicalVerificationByCandidate = new Map(
+  (verification.results || []).map((result) => [result.candidate_id, result]),
 );
 const previousArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
@@ -294,18 +301,34 @@ const candidateIndex = candidates.map((candidate) => ({
     nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
       ?.name || null,
 }));
+const canonicalCandidateIndex = candidates.map((candidate) => ({
+  ...candidate,
+  verification:
+    canonicalVerificationByCandidate.get(candidate.id) ||
+    fullVerificationResultOrNull(candidate.verification),
+  subnet_name:
+    nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
+      ?.name || null,
+}));
 
 const profileArtifacts = buildSubnetProfileArtifacts({
-  candidates: candidateIndex,
+  candidates: canonicalCandidateIndex,
   endpoints: endpointResources.endpoints,
+  nativeIdentitiesByNetuid: new Map(
+    chainSubnets.map((subnet) => [
+      subnet.netuid,
+      subnet.chain_identity || null,
+    ]),
+  ),
   subnets: mergedSubnets,
   surfaces,
 });
 const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
-  candidates: candidateIndex,
+  candidates: canonicalCandidateIndex,
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
+  subnets: activeOverlays,
   verification,
 });
 const enrichmentQueue = enrichmentArtifacts.queueArtifact;
@@ -585,7 +608,12 @@ await writeJson(
 await writeJson(artifactFile("openapi.json"), openApi);
 await writeJson(
   artifactFile("search.json"),
-  buildSearchIndex(mergedSubnets, surfaces, providers),
+  buildSearchIndex(
+    mergedSubnets,
+    surfaces,
+    providers,
+    profileArtifacts.byNetuid,
+  ),
 );
 await writeJson(
   artifactFile("freshness.json"),
@@ -650,7 +678,15 @@ await writeJson(
   }),
 );
 await writeJson(artifactFile("schema-drift.json"), schemaDriftArtifact);
+await fs.rm(r2ArtifactDir("schemas"), { recursive: true, force: true });
 await writeJson(artifactFile("schemas/index.json"), schemaIndexArtifact);
+for (const entry of schemaIndexArtifact.schemas || []) {
+  const relativePath = schemaDetailArtifactPath(entry);
+  if (!relativePath || !entry.snapshot || typeof entry.snapshot !== "object") {
+    continue;
+  }
+  await writeJson(artifactFile(relativePath), entry.snapshot);
+}
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,
@@ -926,6 +962,7 @@ function buildSubnetProfileArtifacts({
   surfaces,
   endpoints,
   candidates,
+  nativeIdentitiesByNetuid = new Map(),
 }) {
   const surfacesByNetuid = groupByNetuid(surfaces);
   const endpointsByNetuid = groupByNetuid(endpoints);
@@ -935,6 +972,7 @@ function buildSubnetProfileArtifacts({
       buildSubnetProfile({
         candidates: candidatesByNetuid.get(subnet.netuid) || [],
         endpoints: endpointsByNetuid.get(subnet.netuid) || [],
+        nativeIdentity: nativeIdentitiesByNetuid.get(subnet.netuid) || null,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
       }),
@@ -949,12 +987,20 @@ function buildSubnetProfileArtifacts({
       gap_reasons: profile.completeness.gap_reasons,
       missing_critical_count: profile.missing_critical_count,
       identity_level: profile.identity_level,
+      identity_evidence: profile.identity_evidence,
+      identity_promotion_kind_count:
+        profile.identity_evidence.needs_promotion_kinds.length,
+      identity_promotion_kinds: profile.identity_evidence.needs_promotion_kinds,
       identity_surface_count: profile.identity_surface_count,
+      live_identity_candidate_kind_count:
+        profile.identity_evidence.live_candidate_identity_kinds.length,
       missing_operational: profile.completeness.missing_operational,
       missing_required: profile.completeness.missing_required,
       missing_identity: profile.missing_identity,
       name: profile.name,
       native_name_quality: profile.native_name_quality,
+      native_identity_signal_count:
+        profile.identity_evidence.native_identity_count,
       netuid: profile.netuid,
       operational_interface_count: profile.operational_interface_count,
       priority_score:
@@ -966,6 +1012,8 @@ function buildSubnetProfileArtifacts({
       review_state: profile.review_state,
       slug: profile.slug,
       source_count: profile.provenance.interface_source_count,
+      stale_identity_candidate_kind_count:
+        profile.identity_evidence.stale_candidate_identity_kinds.length,
       suggested_next_action: profileSuggestedNextAction(profile),
       supported_interface_kinds: profile.supported_interface_kinds,
     }))
@@ -992,6 +1040,17 @@ function buildSubnetProfileArtifacts({
       by_profile_level: countBy(profiles, "profile_level"),
       by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
+      native_identity_count: profiles.filter(
+        (profile) => profile.native_identity,
+      ).length,
+      identity_promotion_candidate_count: profiles.filter(
+        (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
+      native_identity_unpromoted_count: profiles.filter(
+        (profile) =>
+          profile.identity_evidence.native_identity_count > 0 &&
+          profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
       critical_gap_counts: countGapReasons(reviewProfiles),
     },
     summary: {
@@ -1000,6 +1059,17 @@ function buildSubnetProfileArtifacts({
       by_profile_level: countBy(profiles, "profile_level"),
       by_identity_level: countBy(profiles, "identity_level"),
       by_confidence: countBy(profiles, "confidence"),
+      native_identity_count: profiles.filter(
+        (profile) => profile.native_identity,
+      ).length,
+      identity_promotion_candidate_count: profiles.filter(
+        (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
+      native_identity_unpromoted_count: profiles.filter(
+        (profile) =>
+          profile.identity_evidence.native_identity_count > 0 &&
+          profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
     },
   };
 }
@@ -1009,6 +1079,7 @@ function buildEnrichmentQueueArtifacts({
   curationReview,
   profiles,
   reviewProfiles,
+  subnets,
   verification,
 }) {
   const verificationByCandidate = new Map(
@@ -1029,6 +1100,12 @@ function buildEnrichmentQueueArtifacts({
       candidate,
     ]),
   );
+  const excludedCandidateIdsByNetuid = new Map(
+    subnets.map((subnet) => [
+      subnet.netuid,
+      new Set(subnet.baseline_excluded_surface_ids || []),
+    ]),
+  );
   const candidatesByNetuid = groupByNetuid(candidates);
 
   const fullQueue = profiles
@@ -1038,7 +1115,10 @@ function buildEnrichmentQueueArtifacts({
         gapPriority: gapPriorityByNetuid.get(profile.netuid),
         profile,
         reviewProfile: reviewProfileByNetuid.get(profile.netuid),
-        subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+        subnetCandidates: enrichmentCandidatesForSubnet({
+          excludedIds: excludedCandidateIdsByNetuid.get(profile.netuid),
+          subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+        }),
         verificationByCandidate,
       }),
     )
@@ -1112,6 +1192,13 @@ function buildEnrichmentQueueArtifacts({
     queue,
   });
   return { evidenceArtifact, queueArtifact, targetArtifact };
+}
+
+function enrichmentCandidatesForSubnet({ excludedIds, subnetCandidates }) {
+  if (!excludedIds || excludedIds.size === 0) {
+    return subnetCandidates;
+  }
+  return subnetCandidates.filter((candidate) => !excludedIds.has(candidate.id));
 }
 
 function buildEnrichmentTargetsArtifact({ evidenceEntries, queue }) {
@@ -1206,13 +1293,14 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     stale_or_failed_count: 0,
     unverified_count: 0,
   };
-  const action = surfaceTargetAction(entry.evidence_action);
+  const evidenceAction = surfaceEvidenceAction(candidateEvidence);
+  const action = surfaceTargetAction(evidenceAction);
   return {
     auto_review_candidate: !entry.manual_review_required,
     candidate_command: candidateCommandTemplate(entry.netuid, kind),
     candidate_evidence: candidateEvidence,
-    contribution_prompt: contributionPromptForKind(kind, entry.evidence_action),
-    evidence_action: entry.evidence_action,
+    contribution_prompt: contributionPromptForKind(kind, evidenceAction),
+    evidence_action: evidenceAction,
     identity_level: entry.identity_level,
     kind,
     lane: entry.lane,
@@ -1222,6 +1310,7 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     netuid: entry.netuid,
     priority_score: entry.priority_score,
     profile_level: entry.profile_level,
+    queue_context: enrichmentTargetQueueContext(entry),
     reason_codes: entry.reason_codes,
     recommended_action: entry.recommended_action,
     sample_live_candidate_ids: entry.sample_live_candidate_ids,
@@ -1235,6 +1324,19 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     target_type: "surface-candidate",
     target_action: action,
   };
+}
+
+function surfaceEvidenceAction(candidateEvidence) {
+  if (!candidateEvidence || candidateEvidence.candidate_count === 0) {
+    return "submit-new-evidence";
+  }
+  if (candidateEvidence.live_or_redirected_count > 0) {
+    return "review-existing-evidence";
+  }
+  if (candidateEvidence.stale_or_failed_count > 0) {
+    return "replace-stale-evidence";
+  }
+  return "verify-existing-evidence";
 }
 
 function nonSurfaceEnrichmentTarget({ entry, targetType }) {
@@ -1258,6 +1360,7 @@ function nonSurfaceEnrichmentTarget({ entry, targetType }) {
     netuid: entry.netuid,
     priority_score: entry.priority_score,
     profile_level: entry.profile_level,
+    queue_context: enrichmentTargetQueueContext(entry),
     reason_codes: entry.reason_codes,
     recommended_action: entry.recommended_action,
     sample_live_candidate_ids: entry.sample_live_candidate_ids,
@@ -1270,6 +1373,25 @@ function nonSurfaceEnrichmentTarget({ entry, targetType }) {
     target_id: enrichmentTargetId(entry, targetType, null),
     target_type: targetType,
     target_action: targetType,
+  };
+}
+
+function enrichmentTargetQueueContext(entry) {
+  return {
+    adapter_score: entry.adapter_score,
+    candidate_count: entry.candidate_count,
+    completeness_score: entry.completeness_score,
+    curation_level: entry.curation_level,
+    direct_submission_kind_count: entry.direct_submission_kinds.length,
+    endpoint_count: entry.endpoint_count,
+    identity_surface_count: entry.identity_surface_count,
+    operational_interface_count: entry.operational_interface_count,
+    profile_level: entry.profile_level,
+    review_state: entry.review_state,
+    source_url_count: entry.source_urls.length,
+    stale_candidate_count: entry.stale_candidate_count,
+    surface_count: entry.surface_count,
+    verified_candidate_count: entry.verified_candidate_count,
   };
 }
 
@@ -1899,7 +2021,13 @@ function countGapReasons(profiles) {
   );
 }
 
-function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
+function buildSubnetProfile({
+  subnet,
+  surfaces,
+  endpoints,
+  candidates,
+  nativeIdentity,
+}) {
   const archiveSupported = surfaces.some(surfaceHasArchiveSupport);
   const supportedKinds = [
     ...new Set([
@@ -1925,6 +2053,12 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
   });
   const sourceUrls = profileSourceUrls({ primaryLinks, surfaces });
   const confidence = profileConfidence(subnet.curation);
+  const nativeIdentityInfo = nativeIdentitySummary(nativeIdentity);
+  const identityEvidence = profileIdentityEvidence({
+    candidates,
+    nativeIdentity: nativeIdentityInfo,
+    primaryLinks,
+  });
 
   const profile = {
     netuid: subnet.netuid,
@@ -1932,6 +2066,7 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     name: subnet.name,
     native_name: subnet.native_name,
     native_name_quality: subnet.native_name_quality,
+    native_identity: nativeIdentityInfo,
     subnet_type: subnet.subnet_type,
     status: subnet.status,
     symbol: subnet.symbol,
@@ -1948,6 +2083,7 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
       (endpoint) => endpoint.monitoring_status === "monitored",
     ).length,
     candidate_count: candidates.length,
+    identity_evidence: identityEvidence,
     interface_count: supportedKinds.length,
     operational_interface_count: operationalKinds.length,
     completeness,
@@ -1977,6 +2113,107 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     ...profile,
     suggested_submission_kinds: directSubmissionKindsForProfile(profile),
   };
+}
+
+function nativeIdentitySummary(identity) {
+  if (!identity || typeof identity !== "object") {
+    return null;
+  }
+
+  return {
+    source: identity.source || "SubtensorModule.SubnetIdentitiesV3",
+    subnet_name: cleanProfileText(identity.subnet_name),
+    description: cleanProfileText(identity.description),
+    additional: cleanProfileText(identity.additional),
+    website_url: normalizePublicUrl(identity.subnet_url),
+    github_url: normalizePublicUrl(identity.github_repo),
+    discord_url: normalizePublicUrl(identity.discord),
+    logo_url: normalizePublicUrl(identity.logo_url),
+    contact_present: Boolean(identity.contact_present),
+  };
+}
+
+function profileIdentityEvidence({ candidates, nativeIdentity, primaryLinks }) {
+  const identityKinds = ["docs", "source-repo", "website"];
+  const curatedIdentityKinds = identityKinds
+    .filter((kind) => primaryLinkForKind(primaryLinks, kind))
+    .sort();
+  const nativeIdentityKinds = [
+    ...(nativeIdentity?.github_url ? ["source-repo"] : []),
+    ...(nativeIdentity?.website_url ? ["website"] : []),
+  ].sort();
+  const identityCandidates = candidates.filter((candidate) =>
+    identityKinds.includes(candidate.kind),
+  );
+  const liveCandidateIdentityKinds = candidateIdentityKindsByClassification(
+    identityCandidates,
+    ["live", "redirected"],
+  );
+  const staleCandidateIdentityKinds = candidateIdentityKindsByClassification(
+    identityCandidates,
+    ["content-mismatch", "dead", "timeout", "unsafe", "unsupported"],
+  );
+  const unverifiedCandidateIdentityKinds =
+    candidateIdentityKindsByClassification(identityCandidates, [
+      "auth-required",
+      "maintainer-review",
+      "rate-limited",
+      "schema-valid",
+      "transient",
+      "unknown",
+      "verified",
+    ]);
+  const needsPromotionKinds = liveCandidateIdentityKinds.filter(
+    (kind) => !curatedIdentityKinds.includes(kind),
+  );
+
+  return {
+    candidate_identity_count: identityCandidates.length,
+    curated_identity_count: curatedIdentityKinds.length,
+    curated_identity_kinds: curatedIdentityKinds,
+    live_candidate_identity_kinds: liveCandidateIdentityKinds,
+    native_contact_present: Boolean(nativeIdentity?.contact_present),
+    native_description_present: Boolean(nativeIdentity?.description),
+    native_identity_count: nativeIdentityKinds.length,
+    native_identity_kinds: nativeIdentityKinds,
+    needs_promotion_kinds: needsPromotionKinds,
+    stale_candidate_identity_kinds: staleCandidateIdentityKinds,
+    unverified_candidate_identity_kinds: unverifiedCandidateIdentityKinds,
+  };
+}
+
+function candidateIdentityKindsByClassification(candidates, classifications) {
+  const classificationSet = new Set(classifications);
+  return [
+    ...new Set(
+      candidates
+        .filter((candidate) =>
+          classificationSet.has(candidateIdentityClassification(candidate)),
+        )
+        .map((candidate) => candidate.kind),
+    ),
+  ].sort();
+}
+
+function candidateIdentityClassification(candidate) {
+  return candidate.verification?.classification || candidate.state || "unknown";
+}
+
+function primaryLinkForKind(primaryLinks, kind) {
+  const fieldByKind = {
+    docs: "docs_url",
+    "source-repo": "source_repo",
+    website: "website_url",
+  };
+  return primaryLinks[fieldByKind[kind]] || null;
+}
+
+function cleanProfileText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const clean = value.trim();
+  return clean || null;
 }
 
 function subnetProfileCompleteness({
@@ -2047,7 +2284,9 @@ function subnetProfileCompleteness({
         ? "operational"
         : missingRequired.length === 0
           ? "identity-complete"
-          : "directory-only";
+          : identitySurfaceCount > 0
+            ? "identity-partial"
+            : "directory-only";
   const gapReasons = [
     ...missingRequired.map((kind) => `missing-${kind}`),
     ...missingRecommended.map((kind) => `missing-${kind}`),
@@ -2381,6 +2620,7 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: options.generatedAt,
+    observed_at: options.probeFinishedAt || options.observedAt || null,
     source: options.source,
     probe_started_at: options.probeStartedAt,
     probe_finished_at: options.probeFinishedAt,
@@ -2763,24 +3003,33 @@ function sameStringSet(a, b) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function buildSearchIndex(subnets, surfacesForIndex, providerList) {
+function buildSearchIndex(
+  subnets,
+  surfacesForIndex,
+  providerList,
+  profilesByNetuid = new Map(),
+) {
   const documents = [
-    ...subnets.map((subnet) => ({
-      id: `subnet:${subnet.netuid}`,
-      type: "subnet",
-      netuid: subnet.netuid,
-      slug: subnet.slug,
-      title: subnet.name,
-      subtitle: `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
-      url: `/subnets/${subnet.netuid}`,
-      artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
-      tokens: compactTokens([
-        subnet.name,
-        subnet.slug,
-        subnet.symbol,
-        subnet.categories?.join(" "),
-      ]),
-    })),
+    ...subnets.map((subnet) => {
+      const profile = profilesByNetuid.get(subnet.netuid);
+      return {
+        id: `subnet:${subnet.netuid}`,
+        type: "subnet",
+        netuid: subnet.netuid,
+        slug: subnet.slug,
+        title: subnet.name,
+        subtitle: `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
+        url: `/subnets/${subnet.netuid}`,
+        artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
+        tokens: compactTokens([
+          subnet.name,
+          subnet.slug,
+          subnet.symbol,
+          subnet.categories?.join(" "),
+          nativeIdentityTokenText(profile?.native_identity),
+        ]),
+      };
+    }),
     ...surfacesForIndex.map((surface) => ({
       id: `surface:${surface.id}`,
       type: "surface",
@@ -2828,6 +3077,23 @@ function buildSearchIndex(subnets, surfacesForIndex, providerList) {
   };
 }
 
+function nativeIdentityTokenText(identity) {
+  if (!identity || typeof identity !== "object") {
+    return "";
+  }
+  return [
+    identity.subnet_name,
+    identity.description,
+    identity.additional,
+    identity.website_url,
+    identity.github_url,
+    identity.discord_url,
+    identity.logo_url,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function compactTokens(values) {
   return [
     ...new Set(
@@ -2872,6 +3138,7 @@ function buildFreshnessArtifact({
     nonPlaceholderTimestamp(candidateDiscovery?.generated_at) ||
     null;
   const verificationAsOf =
+    nonPlaceholderTimestamp(verificationArtifact.observed_at) ||
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
     previousFreshness?.sources?.find(
@@ -3532,6 +3799,16 @@ function artifactFile(relativePath) {
 
 function r2ArtifactDir(relativePath) {
   return path.join(r2OutputRoot, relativePath);
+}
+
+function schemaDetailArtifactPath(entry) {
+  const relativePath = String(entry.path || "")
+    .replace(/^\/+metagraph\//, "")
+    .replace(/^\/+/, "");
+  if (!relativePath || relativePath === "schemas/index.json") {
+    return null;
+  }
+  return relativePath;
 }
 
 async function collectArtifactDigests({

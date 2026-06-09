@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "alphacore",
+  "name": "AlphaCore",
+  "kind": "subnet-team",
+  "website_url": "https://alpha-core.ai/",
+  "github_url": "https://github.com/AlphaCoreBittensor/alphacore",
+  "authority": "official",
+  "public_notes": "Provider entry for the AlphaCore source repository linked from the live Bitstarter SN91 project page.",
+  "notes": "The public Bitstarter website identifies AlphaCore as the project behind SN91 and links AlphaCoreBittensor/alphacore. The AlphaCore marketing domain currently returns an origin error to simple probes, so the GitHub repository is the verified public source surface."
+}

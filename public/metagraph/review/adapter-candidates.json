@@ -983,6 +983,28 @@
       "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
     },
     {
+      "candidate_api_count": 0,
+      "candidate_api_ids": [],
+      "candidate_api_kinds": [],
+      "curation_level": "maintainer-reviewed",
+      "name": "Academia",
+      "netuid": 109,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "operational_surface_ids": [
+        "sn-109-academia-archives"
+      ],
+      "priority_score": 27,
+      "reason_codes": [
+        "data-artifact-surface"
+      ],
+      "recommended_adapter_kind": "data-artifact-adapter",
+      "slug": "sn-109",
+      "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
+    },
+    {
       "candidate_api_count": 6,
       "candidate_api_ids": [
         "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
@@ -1008,6 +1030,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-13",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-11-website-common-api",
+        "sn-11-website-common-health",
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 12,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-11",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1123,6 +1172,60 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-5-website-common-api",
+        "sn-5-website-common-health",
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Hone",
+      "netuid": 5,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-5",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-8-website-common-api",
+        "sn-8-website-common-health",
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Vanta",
+      "netuid": 8,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-8",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-60-website-common-api",
         "sn-60-website-common-health",
         "sn-60-website-common-openapi-json",
@@ -1172,6 +1275,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-78",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-91-website-common-api",
+        "sn-91-website-common-health",
+        "sn-91-website-common-openapi-json",
+        "sn-91-website-common-swagger",
+        "sn-91-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-91",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1309,6 +1439,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-19",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-20-website-common-api",
+        "sn-20-website-common-health",
+        "sn-20-website-common-openapi-json",
+        "sn-20-website-common-swagger",
+        "sn-20-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "GroundLayer",
+      "netuid": 20,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-20",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1477,6 +1634,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-100-website-common-api",
+        "sn-100-website-common-health",
+        "sn-100-website-common-openapi-json",
+        "sn-100-website-common-swagger",
+        "sn-100-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Plaτform",
+      "netuid": 100,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-100",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-102-website-common-api",
         "sn-102-website-common-health",
         "sn-102-website-common-openapi-json",
@@ -1526,6 +1710,33 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-103",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health",
+        "sn-105-website-common-openapi-json",
+        "sn-105-website-common-swagger",
+        "sn-105-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "machine-verified",
+      "name": "Beam",
+      "netuid": 105,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 9,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-105",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1622,7 +1833,7 @@
         "openapi",
         "subnet-api"
       ],
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "Swap",
       "netuid": 10,
       "operational_kinds": [],
@@ -1634,33 +1845,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-10",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-11-website-common-api",
-        "sn-11-website-common-health",
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-11",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1698,7 +1882,7 @@
         "openapi",
         "subnet-api"
       ],
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "BitAds",
       "netuid": 16,
       "operational_kinds": [],
@@ -1818,6 +2002,34 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "nodexo",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 6,
+      "candidate_api_ids": [
+        "sn-32-website-common-api",
+        "sn-32-website-common-health",
+        "sn-32-website-common-openapi-json",
+        "sn-32-website-common-swagger",
+        "sn-32-website-common-swagger-json",
+        "sn-32-website-link-its-ai-org-subnet-api-5"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "ItsAI",
+      "netuid": 32,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 8,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-32",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2148,60 +2360,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-100-website-common-api",
-        "sn-100-website-common-health",
-        "sn-100-website-common-openapi-json",
-        "sn-100-website-common-swagger",
-        "sn-100-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "Plaτform",
-      "netuid": 100,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-100",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-105-website-common-api",
-        "sn-105-website-common-health",
-        "sn-105-website-common-openapi-json",
-        "sn-105-website-common-swagger",
-        "sn-105-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Beam",
-      "netuid": 105,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-105",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-106-website-common-api",
         "sn-106-website-common-health",
         "sn-106-website-common-openapi-json",
@@ -2283,87 +2441,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-5-website-common-api",
-        "sn-5-website-common-health",
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Hone",
-      "netuid": 5,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-5",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-8-website-common-api",
-        "sn-8-website-common-health",
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Vanta",
-      "netuid": 8,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-8",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-20-website-common-api",
-        "sn-20-website-common-health",
-        "sn-20-website-common-openapi-json",
-        "sn-20-website-common-swagger",
-        "sn-20-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "GroundLayer",
-      "netuid": 20,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-20",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-21-website-common-api",
         "sn-21-website-common-health",
         "sn-21-website-common-openapi-json",
@@ -2416,22 +2493,21 @@
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
-      "candidate_api_count": 6,
+      "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-32-website-common-api",
-        "sn-32-website-common-health",
-        "sn-32-website-common-openapi-json",
-        "sn-32-website-common-swagger",
-        "sn-32-website-common-swagger-json",
-        "sn-32-website-link-its-ai-org-subnet-api-5"
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
       ],
       "candidate_api_kinds": [
         "openapi",
         "subnet-api"
       ],
       "curation_level": "maintainer-reviewed",
-      "name": "ItsAI",
-      "netuid": 32,
+      "name": "colosseum",
+      "netuid": 38,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "operational_surface_ids": [],
@@ -2440,7 +2516,7 @@
         "candidate-api-evidence"
       ],
       "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-32",
+      "slug": "colosseum",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2527,6 +2603,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-62-website-common-api",
+        "sn-62-website-common-health",
+        "sn-62-website-common-openapi-json",
+        "sn-62-website-common-swagger",
+        "sn-62-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Ridges",
+      "netuid": 62,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 7,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-62",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-63-website-common-api",
         "sn-63-website-common-health",
         "sn-63-website-common-openapi-json",
@@ -2608,19 +2711,19 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-91-website-common-api",
-        "sn-91-website-common-health",
-        "sn-91-website-common-openapi-json",
-        "sn-91-website-common-swagger",
-        "sn-91-website-common-swagger-json"
+        "sn-89-website-common-api",
+        "sn-89-website-common-health",
+        "sn-89-website-common-openapi-json",
+        "sn-89-website-common-swagger",
+        "sn-89-website-common-swagger-json"
       ],
       "candidate_api_kinds": [
         "openapi",
         "subnet-api"
       ],
       "curation_level": "maintainer-reviewed",
-      "name": "Bitstarter #1",
-      "netuid": 91,
+      "name": "InfiniteHash",
+      "netuid": 89,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "operational_surface_ids": [],
@@ -2629,7 +2732,7 @@
         "candidate-api-evidence"
       ],
       "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-91",
+      "slug": "sn-89",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2770,60 +2873,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health",
-        "sn-38-website-common-openapi-json",
-        "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 6,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "colosseum",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-62-website-common-api",
-        "sn-62-website-common-health",
-        "sn-62-website-common-openapi-json",
-        "sn-62-website-common-swagger",
-        "sn-62-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "Ridges",
-      "netuid": 62,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 6,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-62",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-76-website-common-api",
         "sn-76-website-common-health",
         "sn-76-website-common-openapi-json",
@@ -2847,33 +2896,6 @@
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-76",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-89-website-common-api",
-        "sn-89-website-common-health",
-        "sn-89-website-common-openapi-json",
-        "sn-89-website-common-swagger",
-        "sn-89-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "InfiniteHash",
-      "netuid": 89,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 6,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-89",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     }
   ],
   "contract_version": "2026-06-06.1",
@@ -2883,12 +2905,12 @@
     "adapter_backed_count": 2,
     "by_curation_level": {
       "adapter-backed": 2,
-      "machine-verified": 43,
-      "maintainer-reviewed": 53
+      "machine-verified": 38,
+      "maintainer-reviewed": 59
     },
     "by_recommended_adapter_kind": {
       "custom-adapter": 77,
-      "data-artifact-adapter": 13,
+      "data-artifact-adapter": 14,
       "generic-openapi-or-custom": 8
     },
     "candidate_api_kind_counts": {
@@ -2896,11 +2918,11 @@
       "openapi": 93,
       "subnet-api": 96
     },
-    "candidate_count": 98,
-    "data_artifact_backed_count": 15,
+    "candidate_count": 99,
+    "data_artifact_backed_count": 16,
     "openapi_backed_count": 10,
     "operational_kind_counts": {
-      "data-artifact": 15,
+      "data-artifact": 16,
       "openapi": 10,
       "sse": 1,
       "subnet-api": 14

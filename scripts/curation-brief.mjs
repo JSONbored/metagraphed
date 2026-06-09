@@ -59,6 +59,10 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
       by_level: profileCompleteness.summary?.by_profile_level || {},
       critical_gap_counts:
         profileCompleteness.summary?.critical_gap_counts || {},
+      identity_promotion_candidate_count:
+        profileCompleteness.summary?.identity_promotion_candidate_count ?? null,
+      native_identity_unpromoted_count:
+        profileCompleteness.summary?.native_identity_unpromoted_count ?? null,
     },
     enrichment_summary: enrichmentQueue.summary || {},
     enrichment_target_summary: enrichmentTargets.summary || {},
@@ -111,6 +115,8 @@ export function renderCurationBrief(snapshot) {
     `- Candidate surfaces: ${snapshot.coverage.candidates}`,
     `- Average profile completeness: ${snapshot.profile_summary.average_completeness_score ?? "unknown"}`,
     `- Profile levels: ${formatCounts(snapshot.profile_summary.by_level)}`,
+    `- Identity promotion candidates: ${snapshot.profile_summary.identity_promotion_candidate_count ?? "unknown"}`,
+    `- Native identity with unpromoted live links: ${snapshot.profile_summary.native_identity_unpromoted_count ?? "unknown"}`,
     `- Critical gaps: ${formatCounts(snapshot.profile_summary.critical_gap_counts)}`,
     "",
     "## Best Direct PR Targets",

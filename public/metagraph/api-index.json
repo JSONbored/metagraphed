@@ -355,7 +355,7 @@
       "id": "review-enrichment-targets",
       "path": "/metagraph/review/enrichment-targets.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -599,6 +599,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -1824,7 +1825,9 @@
         "netuid",
         "profile_level",
         "confidence",
-        "identity_level"
+        "identity_level",
+        "identity_promotion_kinds",
+        "native_name_quality"
       ],
       "query_parameters": [
         {
@@ -1839,6 +1842,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -1870,6 +1874,39 @@
           }
         },
         {
+          "name": "identity_promotion_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "native_name_quality",
+          "schema": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1891,12 +1928,17 @@
               "candidate_count",
               "completeness_score",
               "identity_level",
+              "identity_promotion_kind_count",
               "identity_surface_count",
+              "live_identity_candidate_kind_count",
               "missing_critical_count",
               "name",
+              "native_identity_signal_count",
+              "native_name_quality",
               "netuid",
               "priority_score",
-              "profile_level"
+              "profile_level",
+              "stale_identity_candidate_kind_count"
             ],
             "type": "string"
           }
@@ -2186,6 +2228,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -2553,6 +2596,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"

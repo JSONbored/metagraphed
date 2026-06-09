@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "netuid": 16,
+  "name": "BitAds",
+  "slug": "sn-16",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://bitads.ai/",
+  "docs_url": "https://bitads.ai/docs",
+  "source_repo": "https://github.com/FirstTensorLabs/BitAds",
+  "dashboard_url": "https://taomarketcap.com/subnets/16",
+  "baseline_excluded_surface_ids": [
+    "sn-16-taomarketcap-source-repo",
+    "sn-16-taomarketcap-website",
+    "sn-16-website-common-api",
+    "sn-16-website-common-docs",
+    "sn-16-website-common-health",
+    "sn-16-website-common-openapi-json",
+    "sn-16-website-common-swagger",
+    "sn-16-website-common-swagger-json"
+  ],
+  "notes": "Reviewed overlay for SN16 BitAds using the official BitAds website, docs page, and source repository. Common API/OpenAPI/Swagger paths currently return website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "verified_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Official website, docs page, and source repository are verified live.",
+      "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-16-bitads-website",
+      "name": "BitAds website",
+      "kind": "website",
+      "url": "https://bitads.ai/",
+      "provider": "bitads",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitads.ai/",
+        "https://github.com/FirstTensorLabs/BitAds"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BitAds website."
+    },
+    {
+      "id": "sn-16-bitads-docs",
+      "name": "BitAds docs",
+      "kind": "docs",
+      "url": "https://bitads.ai/docs",
+      "provider": "bitads",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://bitads.ai/docs"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BitAds documentation page."
+    },
+    {
+      "id": "sn-16-bitads-source",
+      "name": "BitAds source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/FirstTensorLabs/BitAds",
+      "provider": "bitads",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/FirstTensorLabs/BitAds"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BitAds source repository."
+    }
+  ]
+}

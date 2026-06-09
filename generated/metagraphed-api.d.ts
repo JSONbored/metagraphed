@@ -1205,6 +1205,8 @@ export interface components {
             verified_at?: string | null;
         };
         HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** Format: date-time */
+            observed_at: string | null;
             summary: {
                 [key: string]: unknown;
             };
@@ -1562,7 +1564,7 @@ export interface components {
             operational_interface_count: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             reason_codes: string[];
             recommended_action: string;
             review_state: components["schemas"]["ReviewState"];
@@ -1594,7 +1596,8 @@ export interface components {
             netuid: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+            queue_context: components["schemas"]["ReviewEnrichmentTargetQueueContext"];
             reason_codes: string[];
             recommended_action: string;
             sample_live_candidate_ids: string[];
@@ -1618,6 +1621,23 @@ export interface components {
             target_ids: string[];
             target_type: components["schemas"]["ReviewEnrichmentTargetType"];
             top_netuids: number[];
+        };
+        ReviewEnrichmentTargetQueueContext: {
+            adapter_score: number;
+            candidate_count: number;
+            completeness_score: number;
+            curation_level: components["schemas"]["CurationLevel"];
+            direct_submission_kind_count: number;
+            endpoint_count: number;
+            identity_surface_count: number;
+            operational_interface_count: number;
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+            review_state: components["schemas"]["ReviewState"];
+            source_url_count: number;
+            stale_candidate_count: number;
+            surface_count: number;
+            verified_candidate_count: number;
         };
         ReviewEnrichmentTargetsArtifact: components["schemas"]["ArtifactBase"] & ({
             groups: components["schemas"]["ReviewEnrichmentTargetGroup"][];
@@ -1668,6 +1688,9 @@ export interface components {
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
                 critical_gap_counts: components["schemas"]["CountMap"];
+                identity_promotion_candidate_count: number;
+                native_identity_count: number;
+                native_identity_unpromoted_count: number;
                 needs_identity_count: number;
                 needs_operational_count: number;
                 profile_count: number;
@@ -1682,24 +1705,30 @@ export interface components {
             confidence: "low" | "medium" | "high";
             curation_level: components["schemas"]["CurationLevel"];
             gap_reasons: string[];
+            identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
             /** @enum {unknown} */
             identity_level: "none" | "directory" | "partial" | "complete";
+            identity_promotion_kind_count: number;
+            identity_promotion_kinds: components["schemas"]["SurfaceKind"][];
             identity_surface_count: number;
+            live_identity_candidate_kind_count: number;
             missing_critical_count: number;
             missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             name: string;
+            native_identity_signal_count: number;
             /** @enum {unknown} */
             native_name_quality: "chain" | "placeholder" | "empty";
             netuid: number;
             operational_interface_count: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             review_state: components["schemas"]["ReviewState"];
             slug: string;
             source_count: number;
+            stale_identity_candidate_kind_count: number;
             suggested_next_action: string;
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
@@ -2017,6 +2046,7 @@ export interface components {
             curation_level: components["schemas"]["CurationLevel"];
             endpoint_count: number;
             gap_reasons: string[];
+            identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
             /** @enum {unknown} */
             identity_level: "none" | "directory" | "partial" | "complete";
             identity_surface_count: number;
@@ -2027,6 +2057,7 @@ export interface components {
             missing_required: components["schemas"]["SurfaceKind"][];
             monitored_endpoint_count: number;
             name: string;
+            native_identity: components["schemas"]["SubnetProfileNativeIdentity"];
             native_name?: string | null;
             /** @enum {unknown} */
             native_name_quality?: "chain" | "placeholder" | "empty";
@@ -2036,7 +2067,7 @@ export interface components {
             primary_app_surface: components["schemas"]["SubnetProfileSurfaceSummary"];
             primary_links: components["schemas"]["SubnetProfilePrimaryLinks"];
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             project_name: string;
             provenance: components["schemas"]["SubnetProfileProvenance"];
             review_state: components["schemas"]["ReviewState"];
@@ -2071,9 +2102,37 @@ export interface components {
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             score: number;
         };
+        SubnetProfileIdentityEvidence: {
+            candidate_identity_count: number;
+            curated_identity_count: number;
+            curated_identity_kinds: components["schemas"]["SurfaceKind"][];
+            live_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+            native_contact_present: boolean;
+            native_description_present: boolean;
+            native_identity_count: number;
+            native_identity_kinds: components["schemas"]["SurfaceKind"][];
+            needs_promotion_kinds: components["schemas"]["SurfaceKind"][];
+            stale_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+            unverified_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+        };
+        SubnetProfileNativeIdentity: {
+            additional: string | null;
+            contact_present: boolean;
+            description: string | null;
+            /** Format: uri */
+            discord_url: string | null;
+            /** Format: uri */
+            github_url: string | null;
+            /** Format: uri */
+            logo_url: string | null;
+            source: string;
+            subnet_name: string | null;
+            /** Format: uri */
+            website_url: string | null;
+        } | null;
         SubnetProfilePrimaryLinks: {
             /** Format: uri */
             dashboard_url: string | null;
@@ -2099,6 +2158,9 @@ export interface components {
                 by_confidence: components["schemas"]["CountMap"];
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
+                identity_promotion_candidate_count: number;
+                native_identity_count: number;
+                native_identity_unpromoted_count: number;
                 profile_count: number;
             };
         } & {
@@ -2201,6 +2263,8 @@ export interface components {
         });
         VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count: number;
+            /** Format: date-time */
+            observed_at?: string | null;
             results: components["schemas"]["VerificationResult"][];
             summary?: {
                 [key: string]: unknown;
@@ -3514,7 +3578,7 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 q?: string;
                 limit?: number;
                 cursor?: number;
@@ -3981,7 +4045,7 @@ export interface operations {
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 review_state?: string;
                 manual_review_required?: "true" | "false";
@@ -4067,7 +4131,7 @@ export interface operations {
                 manual_review_required?: "true" | "false";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
@@ -4223,12 +4287,14 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
                 identity_level?: "none" | "directory" | "partial" | "complete";
+                identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                native_name_quality?: "chain" | "placeholder" | "empty";
                 limit?: number;
                 cursor?: number;
-                sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_surface_count" | "missing_critical_count" | "name" | "netuid" | "priority_score" | "profile_level";
+                sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 order?: "asc" | "desc";
             };
             header?: never;

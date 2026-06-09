@@ -7,20 +7,22 @@
   "categories": [
     "baseline-curated",
     "identity-reviewed",
+    "official-docs",
     "official-source-repo"
   ],
   "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
+  "docs_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
   "dashboard_url": "https://taomarketcap.com/subnets/89",
-  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website/API surface.",
+  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository, repository documentation, and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website/API surface.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:25:00.000Z",
     "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 4,
+    "source_count": 5,
     "gap_notes": [
       "Project homepage currently returns HTTP 402.",
-      "No verified docs site yet.",
+      "The subnet auction incentive mechanism is documented in the public source repository.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
@@ -45,6 +47,27 @@
         "timeout_ms": 10000
       },
       "notes": "Official InfiniteHash source repository for SN89."
+    },
+    {
+      "id": "sn-89-infinitehash-auction-docs",
+      "name": "InfiniteHash auction incentive documentation",
+      "kind": "docs",
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
+      "provider": "infinitehash",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
+        "https://github.com/backend-developers-ltd/InfiniteHash"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public InfiniteHash documentation for the subnet auction incentive mechanism."
     }
   ]
 }

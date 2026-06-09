@@ -342,6 +342,129 @@
         },
         "additionalProperties": false
       },
+      "SubnetProfileNativeIdentity": {
+        "type": ["object", "null"],
+        "required": [
+          "source",
+          "subnet_name",
+          "description",
+          "additional",
+          "website_url",
+          "github_url",
+          "discord_url",
+          "logo_url",
+          "contact_present"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "additional": {
+            "type": ["string", "null"]
+          },
+          "website_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "github_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "discord_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "logo_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "contact_present": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubnetProfileIdentityEvidence": {
+        "type": "object",
+        "required": [
+          "candidate_identity_count",
+          "curated_identity_count",
+          "curated_identity_kinds",
+          "live_candidate_identity_kinds",
+          "native_contact_present",
+          "native_description_present",
+          "native_identity_count",
+          "native_identity_kinds",
+          "needs_promotion_kinds",
+          "stale_candidate_identity_kinds",
+          "unverified_candidate_identity_kinds"
+        ],
+        "properties": {
+          "candidate_identity_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curated_identity_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "curated_identity_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "live_candidate_identity_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "native_contact_present": {
+            "type": "boolean"
+          },
+          "native_description_present": {
+            "type": "boolean"
+          },
+          "native_identity_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "native_identity_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "needs_promotion_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "stale_candidate_identity_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "unverified_candidate_identity_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetProfileCompleteness": {
         "type": "object",
         "required": [
@@ -365,6 +488,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -455,6 +579,7 @@
           "netuid",
           "slug",
           "name",
+          "native_identity",
           "subnet_type",
           "status",
           "project_name",
@@ -468,6 +593,7 @@
           "endpoint_count",
           "monitored_endpoint_count",
           "candidate_count",
+          "identity_evidence",
           "completeness",
           "provenance",
           "curation_level",
@@ -500,6 +626,9 @@
           },
           "native_name_quality": {
             "enum": ["chain", "placeholder", "empty"]
+          },
+          "native_identity": {
+            "$ref": "#/components/schemas/SubnetProfileNativeIdentity"
           },
           "subnet_type": {
             "$ref": "#/components/schemas/SubnetType"
@@ -556,6 +685,9 @@
             "type": "integer",
             "minimum": 0
           },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+          },
           "interface_count": {
             "type": "integer",
             "minimum": 0
@@ -582,6 +714,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -657,6 +790,9 @@
                 "required": [
                   "profile_count",
                   "average_completeness_score",
+                  "native_identity_count",
+                  "identity_promotion_candidate_count",
+                  "native_identity_unpromoted_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence"
@@ -670,6 +806,18 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "native_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "identity_promotion_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "native_identity_unpromoted_count": {
+                    "type": "integer",
+                    "minimum": 0
                   },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"

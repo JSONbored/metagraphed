@@ -3,6 +3,7 @@ import {
   buildTimestamp,
   isUnsafeResolvedUrl,
   loadNativeSnapshot,
+  loadProviders,
   loadSubnets,
   nativeDisplayName,
   readJson,
@@ -20,6 +21,8 @@ const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const nativeSnapshot = await loadNativeSnapshot();
 const existingOverlays = await loadSubnets();
+const providers = await loadProviders();
+const providerIds = new Set(providers.map((provider) => provider.id));
 const observedAt =
   process.env.METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT === "1"
     ? process.env.METAGRAPH_DISCOVERY_OBSERVED_AT || new Date().toISOString()
@@ -31,6 +34,12 @@ const overlayNameByNetuid = new Map(
   existingOverlays
     .filter((overlay) => overlay.name)
     .map((overlay) => [overlay.netuid, overlay.name]),
+);
+const overlayProviderByNetuid = new Map(
+  existingOverlays.map((overlay) => [
+    overlay.netuid,
+    selectOverlayProvider(overlay),
+  ]),
 );
 const netuidsWithProjectDocs = new Set(
   existingOverlays
@@ -48,6 +57,7 @@ const warnings = [];
 const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
 const restoredProviders = new Set();
 
+await discoverFromNativeChainIdentity();
 await discoverFromTaoMarketCap();
 await discoverFromTensorplexSubnetDocs();
 await discoverFromTaopediaArticles();
@@ -104,6 +114,10 @@ if (!dryRun) {
       observed_at: observedAt,
       sources: [
         {
+          id: "native-subnet-identities-v3",
+          url: "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
+        },
+        {
           id: "taomarketcap",
           url: "https://api.taomarketcap.com/public/v1/subnets/",
         },
@@ -142,6 +156,89 @@ if (!dryRun) {
 }
 
 console.log(stableStringify(summary));
+
+async function discoverFromNativeChainIdentity() {
+  const sourceUrl =
+    "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html";
+
+  for (const subnet of nativeSnapshot.subnets) {
+    const identity = subnet.chain_identity;
+    if (!identity || typeof identity !== "object") {
+      continue;
+    }
+
+    const displayName =
+      cleanName(identity.subnet_name) || displayNameForNetuid(subnet.netuid);
+    const provider = providerForNativeIdentity(subnet.netuid);
+
+    for (const url of extractUrls(identity.subnet_url)) {
+      addCandidate({
+        id: `sn-${subnet.netuid}-native-chain-website`,
+        netuid: subnet.netuid,
+        name: `${displayName} website`,
+        kind: "website",
+        url,
+        source_url: sourceUrl,
+        source_type: "subtensor-subnet-identities-v3",
+        source_tier: "native-chain",
+        confidence: "high",
+        provider,
+        review_notes:
+          "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
+      });
+    }
+
+    for (const url of extractUrls(identity.github_repo)) {
+      addCandidate({
+        id: `sn-${subnet.netuid}-native-chain-github`,
+        netuid: subnet.netuid,
+        name: `${displayName} GitHub ${
+          githubSurfaceKind(url) === "repo-registry"
+            ? "repository registry"
+            : "source repository"
+        }`,
+        kind: githubSurfaceKind(url),
+        url,
+        source_url: sourceUrl,
+        source_type: "subtensor-subnet-identities-v3",
+        source_tier: "native-chain",
+        confidence: "high",
+        provider,
+        review_notes:
+          "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
+      });
+    }
+  }
+}
+
+function selectOverlayProvider(overlay) {
+  const ignoredProviders = new Set([
+    "backprop-finance",
+    "opentensor",
+    "subnetradar",
+    "taomarketcap",
+    "taopedia-articles",
+    "taostats",
+    "tensorplex-subnet-docs",
+  ]);
+  for (const surface of overlay.surfaces || []) {
+    if (
+      surface.provider &&
+      providerIds.has(surface.provider) &&
+      !ignoredProviders.has(surface.provider)
+    ) {
+      return surface.provider;
+    }
+  }
+  if (overlay.slug && providerIds.has(overlay.slug)) {
+    return overlay.slug;
+  }
+  return "opentensor";
+}
+
+function providerForNativeIdentity(netuid) {
+  return overlayProviderByNetuid.get(netuid) || "opentensor";
+}
 
 async function discoverFromTaoMarketCap() {
   const limit = 100;
@@ -767,6 +864,21 @@ function displayNameForNetuid(netuid) {
   );
 }
 
+function githubSurfaceKind(urlValue) {
+  try {
+    const url = new URL(urlValue);
+    if (
+      url.hostname === "github.com" &&
+      /^\/orgs\/[^/]+\/repositories\/?$/i.test(url.pathname)
+    ) {
+      return "repo-registry";
+    }
+  } catch {
+    return "source-repo";
+  }
+  return "source-repo";
+}
+
 function addCandidate(candidate) {
   const normalizedUrl = normalizePublicUrl(candidate.url);
   if (!normalizedUrl) {
@@ -888,6 +1000,9 @@ function isPlaceholder(value) {
   const normalized = value.toLowerCase();
   return [
     "example.com",
+    "github.com/deprecated/deprecated",
+    "github.com/username/repo",
+    "github.com/yourusername/yourrepo",
     "yourwebsite",
     "your-org",
     "deprecated.com",

@@ -152,12 +152,12 @@ const checks = [
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],
   [
-    "/api/v1/review/profile-completeness?identity_level=partial&limit=3",
+    "/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
     (body) => {
-      assert.equal(body.data.profiles.length <= 3, true);
+      assert.equal(body.data.profiles.length > 0, true);
       assert.equal(
-        body.data.profiles.every(
-          (profile) => profile.identity_level === "partial",
+        body.data.profiles.every((profile) =>
+          profile.identity_promotion_kinds.includes("source-repo"),
         ),
         true,
       );

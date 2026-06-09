@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "netuid": 5,
+  "name": "Hone",
+  "slug": "sn-5",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://www.hone.training/",
+  "source_repo": "https://github.com/manifold-inc/hone",
+  "dashboard_url": "https://taomarketcap.com/subnets/5",
+  "baseline_excluded_surface_ids": [
+    "sn-5-taomarketcap-source-repo",
+    "sn-5-taomarketcap-website",
+    "sn-5-website-common-api",
+    "sn-5-website-common-docs",
+    "sn-5-website-common-health",
+    "sn-5-website-common-openapi-json",
+    "sn-5-website-common-swagger",
+    "sn-5-website-common-swagger-json",
+    "sn-5-website-link-www-hone-training-website-1",
+    "sn-5-website-link-www-hone-training-website-2",
+    "sn-5-website-link-www-hone-training-website-3",
+    "sn-5-website-subdomain-docs-docs-hone-training"
+  ],
+  "notes": "Reviewed overlay for SN5 Hone using the official Hone website, source repository, and public network pages. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational interfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "verified_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Official website, network pages, and source repository are verified live.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+      "No verified docs site yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-5-hone-website",
+      "name": "Hone website",
+      "kind": "website",
+      "url": "https://www.hone.training/",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/",
+        "https://github.com/manifold-inc/hone"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hone website."
+    },
+    {
+      "id": "sn-5-hone-network",
+      "name": "Hone network",
+      "kind": "dashboard",
+      "url": "https://www.hone.training/network",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hone public network page."
+    },
+    {
+      "id": "sn-5-hone-nodes",
+      "name": "Hone nodes",
+      "kind": "dashboard",
+      "url": "https://www.hone.training/nodes",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hone public nodes page."
+    },
+    {
+      "id": "sn-5-hone-projects",
+      "name": "Hone projects",
+      "kind": "dashboard",
+      "url": "https://www.hone.training/projects",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hone public projects page."
+    },
+    {
+      "id": "sn-5-hone-source",
+      "name": "Hone source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/manifold-inc/hone",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/manifold-inc/hone"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hone source repository."
+    }
+  ]
+}

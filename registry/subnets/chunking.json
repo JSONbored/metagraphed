@@ -13,6 +13,7 @@
   ],
   "website_url": "https://subnet.chunking.com/",
   "source_repo": null,
+  "baseline_excluded_surface_ids": ["sn-40-taomarketcap-source-repo"],
   "notes": "Reviewed overlay for SN40 Chunking. Multiple public directories identify VectorChat as the team and subnet.chunking.com as the official website, but the website currently has an expired TLS certificate and the historical VectorChat/chunking_subnet repository returns 404.",
   "curation": {
     "level": "maintainer-reviewed",

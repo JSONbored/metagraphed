@@ -8,14 +8,29 @@
   "source_repo": null,
   "dashboard_url": "https://taomarketcap.com/subnets/20",
   "website_url": "https://www.groundlayer.xyz/",
-  "notes": "Reviewed overlay for SN20 using the live GroundLayer website. Previously discovered source repository candidates are not live and no public docs/API/OpenAPI/SSE/data artifact has been verified yet.",
+  "baseline_excluded_surface_ids": [
+    "sn-20-taomarketcap-source-repo",
+    "sn-20-taomarketcap-website",
+    "sn-20-website-common-api",
+    "sn-20-website-common-docs",
+    "sn-20-website-common-health",
+    "sn-20-website-common-openapi-json",
+    "sn-20-website-common-swagger",
+    "sn-20-website-common-swagger-json",
+    "sn-20-website-link-groundlayer-xyz-website-1",
+    "sn-20-website-link-groundlayer-xyz-website-2"
+  ],
+  "notes": "Reviewed overlay for SN20 using the live GroundLayer website, subnet page, and roadmap. Previously discovered source repository candidates are not live and common API/docs/OpenAPI paths currently return 404.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T11:15:00.000Z",
     "verified_at": "2026-06-08T11:15:00.000Z",
-    "source_count": 4,
+    "source_count": 6,
     "gap_notes": [
+      "Official website, subnet, and roadmap pages are live and verified.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+      "Previously discovered GitHub source repository candidate currently returns 404.",
       "No verified live source repository yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -45,6 +60,48 @@
         "timeout_ms": 10000
       },
       "notes": "Official GroundLayer website."
+    },
+    {
+      "id": "sn-20-groundlayer-subnet-page",
+      "name": "GroundLayer subnet page",
+      "kind": "website",
+      "url": "https://www.groundlayer.xyz/subnet",
+      "provider": "groundlayer",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.groundlayer.xyz/",
+        "https://www.groundlayer.xyz/subnet"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official GroundLayer subnet information page."
+    },
+    {
+      "id": "sn-20-groundlayer-roadmap",
+      "name": "GroundLayer roadmap",
+      "kind": "website",
+      "url": "https://www.groundlayer.xyz/roadmap",
+      "provider": "groundlayer",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.groundlayer.xyz/",
+        "https://www.groundlayer.xyz/roadmap"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official GroundLayer roadmap page."
     }
   ]
 }

@@ -7,17 +7,27 @@ import {
   isUnsafeResolvedUrl,
   redactCredentialedUrl,
   loadCandidates,
+  readJson,
   repoRoot,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
+import {
+  classifyHttpProbe,
+  isContentMismatch,
+} from "./http-probe-classification.mjs";
+import { preservePreviousGithubMetadata } from "./verification-quality.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const candidates = await loadCandidates();
+const previousVerificationByCandidate = await loadPreviousVerificationIndex();
 const startedAt = new Date().toISOString();
-const results = await mapLimit(candidates, 16, verifyCandidate);
+const results = (await mapLimit(candidates, 16, verifyCandidate)).map(
+  (result) =>
+    preservePreviousGithubMetadata(result, previousVerificationByCandidate),
+);
 const finishedAt = new Date().toISOString();
 
 const artifact = {
@@ -87,10 +97,28 @@ async function verifyCandidate(candidate) {
   return verifyHttpSurface(base, candidate);
 }
 
+async function loadPreviousVerificationIndex() {
+  try {
+    const previous = await readJson(
+      path.join(repoRoot, "registry/verification/promotions.json"),
+    );
+    return new Map(
+      (previous.results || []).map((result) => [result.candidate_id, result]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 function compactVerificationArtifact(artifactValue) {
+  const observedAt =
+    process.env.METAGRAPH_VERIFICATION_OBSERVED_AT ||
+    artifactValue.verification_finished_at ||
+    null;
   return {
     schema_version: artifactValue.schema_version,
     generated_at: buildTimestamp(),
+    observed_at: observedAt,
     verification_started_at: null,
     verification_finished_at: null,
     candidate_count: artifactValue.candidate_count,
@@ -102,7 +130,7 @@ function compactVerificationArtifact(artifactValue) {
 }
 
 function compactVerificationResult(result) {
-  return stripNullish({
+  const compact = {
     candidate_id: result.candidate_id,
     classification: result.classification,
     confidence_score: result.confidence_score,
@@ -111,16 +139,32 @@ function compactVerificationResult(result) {
     kind: result.kind,
     netuid: result.netuid,
     provider: result.provider,
-    redirect_target: result.redirect_target,
-    private_redirect_blocked: result.private_redirect_blocked,
-    quality_signals: compactQualitySignals(result.quality_signals),
+    quality_signals: compactQualitySignals(result.quality_signals, result.kind),
     status: result.status,
-  });
+  };
+
+  if (result.redirect_target) {
+    compact.redirect_target = result.redirect_target;
+  }
+  if (result.private_redirect_blocked) {
+    compact.private_redirect_blocked = result.private_redirect_blocked;
+  }
+
+  return stripNullish(compact);
 }
 
-function compactQualitySignals(signals) {
+function compactQualitySignals(signals, kind = null) {
   if (!signals || typeof signals !== "object") {
     return signals;
+  }
+  if (kind === "source-repo") {
+    return stripNullish({
+      archived: signals.archived,
+      has_default_branch: signals.has_default_branch,
+      has_recent_push_metadata: signals.has_recent_push_metadata,
+      public_safe: signals.public_safe,
+      source_tier: signals.source_tier,
+    });
   }
   return stripNullish({
     archived: signals.archived,
@@ -349,6 +393,19 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
       };
     }
 
+    if ([301, 302, 303, 307, 308].includes(response.status) && location) {
+      const redirectTarget = new URL(location, url).toString();
+      await response.body?.cancel();
+      return {
+        ok: false,
+        error: "redirect limit exceeded",
+        latency_ms: latencyMs,
+        method_tested: method,
+        redirect_target: redactCredentialedUrl(redirectTarget),
+        status_code: response.status,
+      };
+    }
+
     await response.body?.cancel();
     return {
       ok: response.ok,
@@ -399,61 +456,8 @@ async function fetchJson(url, headers = {}) {
   }
 }
 
-function classifyHttpProbe(probe, candidate = null) {
-  if (probe.unsafe_url || probe.private_redirect_blocked) {
-    return "unsafe";
-  }
-  if (probe.error_class === "AbortError") {
-    return "timeout";
-  }
-  if (
-    probe.redirect_target &&
-    probe.status_code >= 200 &&
-    probe.status_code < 400
-  ) {
-    if (isContentMismatch(probe, candidate)) {
-      return "content-mismatch";
-    }
-    return "redirected";
-  }
-  if (probe.status_code >= 200 && probe.status_code < 400) {
-    if (isContentMismatch(probe, candidate)) {
-      return "content-mismatch";
-    }
-    return "live";
-  }
-  if (probe.status_code === 429) {
-    return "rate-limited";
-  }
-  if ([401, 403].includes(probe.status_code)) {
-    return "auth-required";
-  }
-  if ([404, 410].includes(probe.status_code)) {
-    return "dead";
-  }
-  if (probe.status_code >= 500) {
-    return "transient";
-  }
-  return "unsupported";
-}
-
 function isPromotable(result) {
   return ["live", "redirected"].includes(result.classification);
-}
-
-function isContentMismatch(probe, candidate) {
-  if (!candidate || !probe.ok) {
-    return false;
-  }
-  if (candidate.kind === "openapi") {
-    return !isJsonContentType(probe.content_type);
-  }
-  if (candidate.kind === "sse") {
-    return !String(probe.content_type || "")
-      .toLowerCase()
-      .includes("text/event-stream");
-  }
-  return false;
 }
 
 function scoreCandidate(candidate, probe) {

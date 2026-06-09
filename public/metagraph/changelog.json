@@ -3,7 +3,7 @@
     "added": [],
     "modified": [
       {
-        "hash": "e7e2f1aa54ad9d6e92c71e33efa26eb5d7dc47be69bf2ee048a4879194a6b4a9",
+        "hash": "f3efe62128910a2c9b6e24a67e54ccab48d8731422f2854e94ff80d33eb330a5",
         "path": "freshness.json"
       }
     ],
@@ -28,8 +28,8 @@
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 2018,
-        "before": 2018,
+        "after": 2021,
+        "before": 2021,
         "delta": 0
       },
       "curated_overlay_count": {
@@ -44,8 +44,8 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1114,
-        "before": 1114,
+        "after": 1140,
+        "before": 1140,
         "delta": 0
       }
     },

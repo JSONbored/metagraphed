@@ -598,6 +598,14 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(changelog.source, "generated-artifact-diff");
   assert.equal(search.document_count, search.documents.length);
+  const nodexoSearchDocument = search.documents.find(
+    (document) => document.id === "subnet:27",
+  );
+  assert.equal(
+    nodexoSearchDocument?.tokens.includes("decentralized") &&
+      nodexoSearchDocument.tokens.includes("compute"),
+    true,
+  );
   assert.equal(
     freshness.summary.native_snapshot_captured_at,
     native.captured_at,
@@ -673,6 +681,24 @@ test("public artifacts are internally consistent", () => {
     new Set(enrichmentTargets.targets.map((target) => target.target_id)).size,
     enrichmentTargets.targets.length,
   );
+  const enrichmentQueueByNetuid = new Map(
+    enrichmentQueue.queue.map((entry) => [entry.netuid, entry]),
+  );
+  assert.equal(
+    enrichmentTargets.targets.every((target) => {
+      const queueEntry = enrichmentQueueByNetuid.get(target.netuid);
+      return (
+        queueEntry &&
+        target.queue_context &&
+        target.queue_context.candidate_count === queueEntry.candidate_count &&
+        target.queue_context.completeness_score ===
+          queueEntry.completeness_score &&
+        target.queue_context.review_state === queueEntry.review_state &&
+        target.queue_context.surface_count === queueEntry.surface_count
+      );
+    }),
+    true,
+  );
   assert.equal(
     enrichmentTargets.targets.filter(
       (target) => target.target_type === "surface-candidate",
@@ -702,6 +728,45 @@ test("public artifacts are internally consistent", () => {
   assert.equal(
     enrichmentTargets.targets.some(
       (target) => target.target_type === "adapter-review",
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentTargets.targets.every((target) => {
+      if (target.target_type !== "surface-candidate") {
+        return true;
+      }
+      if (!target.candidate_evidence?.candidate_count) {
+        return (
+          target.evidence_action === "submit-new-evidence" &&
+          target.target_action === "submit-new-candidate"
+        );
+      }
+      if (target.candidate_evidence.live_or_redirected_count > 0) {
+        return (
+          target.evidence_action === "review-existing-evidence" &&
+          target.target_action === "review-existing-candidate"
+        );
+      }
+      if (target.candidate_evidence.stale_or_failed_count > 0) {
+        return (
+          target.evidence_action === "replace-stale-evidence" &&
+          target.target_action === "replace-stale-candidate"
+        );
+      }
+      return (
+        target.evidence_action === "verify-existing-evidence" &&
+        target.target_action === "verify-existing-candidate"
+      );
+    }),
+    true,
+  );
+  assert.equal(
+    enrichmentTargets.targets.some(
+      (target) =>
+        target.target_type === "surface-candidate" &&
+        target.evidence_action === "submit-new-evidence" &&
+        target.candidate_evidence?.candidate_count === 0,
     ),
     true,
   );
@@ -781,6 +846,40 @@ test("public artifacts are internally consistent", () => {
       return counts;
     }, {}),
   );
+  assert.equal(
+    profiles.profiles.every(
+      (profile) =>
+        profile.identity_evidence &&
+        profile.identity_evidence.curated_identity_count ===
+          profile.identity_evidence.curated_identity_kinds.length &&
+        profile.identity_evidence.native_identity_count ===
+          profile.identity_evidence.native_identity_kinds.length,
+    ),
+    true,
+  );
+  assert.equal(
+    profileCompleteness.profiles.every(
+      (profile) =>
+        profile.identity_evidence &&
+        profile.identity_promotion_kind_count ===
+          profile.identity_promotion_kinds.length &&
+        profile.identity_promotion_kind_count ===
+          profile.identity_evidence.needs_promotion_kinds.length,
+    ),
+    true,
+  );
+  assert.equal(
+    profileCompleteness.summary.identity_promotion_candidate_count,
+    profileCompleteness.profiles.filter(
+      (profile) => profile.identity_promotion_kind_count > 0,
+    ).length,
+  );
+  assert.equal(
+    profiles.summary.identity_promotion_candidate_count,
+    profiles.profiles.filter(
+      (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+    ).length,
+  );
   assert.deepEqual(
     profiles.summary.by_identity_level,
     profiles.profiles.reduce((counts, profile) => {
@@ -836,7 +935,7 @@ test("public artifacts are internally consistent", () => {
     0,
   );
   assert.equal(
-    profileCompleteness.summary.by_profile_level["directory-only"] > 0,
+    profileCompleteness.summary.by_profile_level["identity-partial"] > 0,
     true,
   );
   assert.equal(
@@ -961,6 +1060,20 @@ test("limited R2 upload dry run skips control manifests", () => {
   assert.equal(summary.control_artifact_count, 0);
   assert.equal(summary.skipped_control_artifact_count, 3);
   assert.equal(summary.planned_object_count, 5);
+});
+
+test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
+  const queue = readArtifact("review/enrichment-queue.json");
+  const ditto = queue.queue.find((entry) => entry.netuid === 118);
+
+  assert(ditto, "expected SN118 Ditto enrichment queue entry");
+  assert.equal(ditto.evidence_action, "submit-new-evidence");
+  assert.deepEqual(ditto.sample_target_candidate_ids, []);
+  assert.deepEqual(ditto.sample_live_candidate_ids, []);
+  assert.equal(
+    ditto.candidate_evidence_summary.live_kinds.includes("source-repo"),
+    false,
+  );
 });
 
 test("Worker API serves public artifact envelopes", async () => {

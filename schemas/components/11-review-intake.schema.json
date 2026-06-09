@@ -162,12 +162,17 @@
           "curation_level",
           "gap_reasons",
           "identity_level",
+          "identity_evidence",
+          "identity_promotion_kind_count",
+          "identity_promotion_kinds",
           "identity_surface_count",
+          "live_identity_candidate_kind_count",
           "missing_critical_count",
           "missing_identity",
           "missing_operational",
           "missing_required",
           "name",
+          "native_identity_signal_count",
           "native_name_quality",
           "netuid",
           "operational_interface_count",
@@ -176,6 +181,7 @@
           "review_state",
           "slug",
           "source_count",
+          "stale_identity_candidate_kind_count",
           "supported_interface_kinds",
           "suggested_next_action"
         ],
@@ -204,10 +210,27 @@
           "identity_level": {
             "enum": ["none", "directory", "partial", "complete"]
           },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+          },
+          "identity_promotion_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "identity_promotion_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
           "identity_surface_count": {
             "type": "integer",
             "minimum": 0,
             "maximum": 3
+          },
+          "live_identity_candidate_kind_count": {
+            "type": "integer",
+            "minimum": 0
           },
           "missing_critical_count": {
             "type": "integer",
@@ -237,6 +260,10 @@
           "native_name_quality": {
             "enum": ["chain", "placeholder", "empty"]
           },
+          "native_identity_signal_count": {
+            "type": "integer",
+            "minimum": 0
+          },
           "netuid": {
             "type": "integer",
             "minimum": 0
@@ -252,6 +279,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -264,6 +292,10 @@
             "type": "string"
           },
           "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_identity_candidate_kind_count": {
             "type": "integer",
             "minimum": 0
           },
@@ -441,6 +473,7 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -612,6 +645,89 @@
         },
         "additionalProperties": false
       },
+      "ReviewEnrichmentTargetQueueContext": {
+        "type": "object",
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "curation_level",
+          "direct_submission_kind_count",
+          "endpoint_count",
+          "identity_surface_count",
+          "operational_interface_count",
+          "profile_level",
+          "review_state",
+          "source_url_count",
+          "stale_candidate_count",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "adapter_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "source_url_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "ReviewEnrichmentEvidenceEntry": {
         "type": "object",
         "required": [
@@ -688,6 +804,7 @@
           "netuid",
           "priority_score",
           "profile_level",
+          "queue_context",
           "reason_codes",
           "recommended_action",
           "sample_live_candidate_ids",
@@ -763,10 +880,14 @@
           "profile_level": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
             ]
+          },
+          "queue_context": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetQueueContext"
           },
           "reason_codes": {
             "type": "array",
@@ -1100,6 +1221,9 @@
                   "needs_identity_count",
                   "needs_operational_count",
                   "average_completeness_score",
+                  "native_identity_count",
+                  "identity_promotion_candidate_count",
+                  "native_identity_unpromoted_count",
                   "by_identity_level",
                   "by_profile_level",
                   "by_confidence",
@@ -1122,6 +1246,18 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "native_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "identity_promotion_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "native_identity_unpromoted_count": {
+                    "type": "integer",
+                    "minimum": 0
                   },
                   "by_profile_level": {
                     "$ref": "#/components/schemas/CountMap"
@@ -1400,6 +1536,10 @@
               "candidate_count": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
               },
               "summary": {
                 "type": "object",

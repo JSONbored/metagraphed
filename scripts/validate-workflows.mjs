@@ -149,6 +149,22 @@ for (const workflow of workflows) {
       "publish workflow must prepare R2 artifacts from reviewed repository inputs",
     );
     check(
+      /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),
+      workflow,
+      "publish workflow must isolate refresh tooling from Cloudflare publishing secrets",
+    );
+    check(
+      !/python3\s+-m\s+pip\s+install[\s\S]*\buv==/.test(content),
+      workflow,
+      "publish workflow must not install uv from PyPI in a secret-bearing path",
+    );
+    check(
+      content.includes("astral-sh/setup-uv@") &&
+        content.includes("cloudflare-publish-artifacts"),
+      workflow,
+      "publish workflow must pass refreshed artifacts from the isolated refresh job",
+    );
+    check(
       content.includes('METAGRAPH_R2_UPLOAD_HISTORY: "1"'),
       workflow,
       "publish workflow must upload versioned R2 history objects",

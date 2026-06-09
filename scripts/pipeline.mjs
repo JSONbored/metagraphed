@@ -88,9 +88,9 @@ function checkCommands() {
 
 function refreshCommands(refreshTimestamp) {
   const refreshEnv = {
-    METAGRAPH_BUILD_TIMESTAMP: refreshTimestamp,
     METAGRAPH_DISCOVERY_OBSERVED_AT: refreshTimestamp,
     METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT: "1",
+    METAGRAPH_VERIFICATION_OBSERVED_AT: refreshTimestamp,
   };
   const commands = [
     step("sync:subnets"),

@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-08T16:07:26.746Z",
+      "captured_at": "2026-06-08T22:54:35.669Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-08T16:07:26.746Z",
+          "captured_at": "2026-06-08T22:54:35.669Z",
           "content_type": "application/json",
-          "hash": "8a520fd1ee1037929b75f68f4a627610e58eede285d044bfaae20ea7a0860ae0",
-          "latency_ms": 750,
+          "hash": "640b104c41c2e9abd1d511aa8b15b8d983c3c0448df3c2219248c8ab60fb1c87",
+          "latency_ms": 767,
           "name": "Verathos OpenAPI schema",
           "provider": "verathos",
           "schema_url": "https://verathos.ai/openapi.json",
@@ -67,7 +67,7 @@
       "total_path_count": 24
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-08T16:07:26.746Z",
+      "captured_at": "2026-06-08T22:54:35.669Z",
       "status": "captured",
       "surface_count": 1,
       "surfaces": [

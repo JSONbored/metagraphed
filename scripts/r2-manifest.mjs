@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
   buildTimestamp,
@@ -21,13 +22,32 @@ const fullManifestPath = path.join(
   R2_STAGING_RELATIVE_ROOT,
   "r2-manifest.json",
 );
+const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const fullManifest = write
   ? await buildManifest()
-  : await readJson(fullManifestPath).catch(() => null);
+  : existsSync(r2StagingRoot)
+    ? await buildManifest()
+    : await readJson(fullManifestPath).catch(() => null);
 const manifest = write
   ? buildCompactManifest(fullManifest)
   : await readJson(manifestPath);
 const validationManifest = fullManifest || manifest;
+
+if (!write && fullManifest) {
+  const expectedManifest = buildCompactManifest(fullManifest);
+  if (stableStringify(manifest) !== stableStringify(expectedManifest)) {
+    console.error(
+      stableStringify({
+        error: "r2 compact manifest is stale",
+        expected_artifact_count: expectedManifest.artifact_count,
+        actual_artifact_count: manifest.artifact_count,
+        expected_full_artifact_count: expectedManifest.full_artifact_count,
+        actual_full_artifact_count: manifest.full_artifact_count,
+      }),
+    );
+    process.exit(1);
+  }
+}
 
 const summary = {
   artifact_count: manifest.artifact_count,
@@ -126,6 +146,7 @@ function buildCompactManifest(fullManifest) {
       "/metagraph/health/latest.json",
       "/metagraph/review-queue.json",
       "/metagraph/review/enrichment-evidence.json",
+      "/metagraph/review/enrichment-targets.json",
       "/metagraph/source-snapshots.json",
       "/metagraph/types.d.ts",
       "/metagraph/verification/latest.json",

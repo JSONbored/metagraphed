@@ -13,6 +13,7 @@
   ],
   "website_url": "https://taolend.io/",
   "source_repo": null,
+  "baseline_excluded_surface_ids": ["sn-116-tensorplex-source-repo-1"],
   "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity currently reports hard_sign, while public subnet directories identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted.",
   "curation": {
     "level": "maintainer-reviewed",
