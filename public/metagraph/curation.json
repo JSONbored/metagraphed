@@ -4029,9 +4029,7 @@
       "curation": {
         "gap_notes": [
           "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-          "Official website and dashboard are verified live.",
-          "Previously discovered Tensorclaw source repository currently returns 404.",
-          "No verified live source repository yet.",
+          "Official website, dashboard, and source repository are verified live.",
           "No verified docs site yet beyond directory pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -4040,17 +4038,15 @@
         ],
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T20:15:00.000Z",
-        "source_count": 6,
-        "verified_at": "2026-06-08T20:15:00.000Z"
+        "reviewed_at": "2026-06-09T12:25:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-09T12:25:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-          "Official website and dashboard are verified live.",
-          "Previously discovered Tensorclaw source repository currently returns 404.",
-          "No verified live source repository yet.",
+          "Official website, dashboard, and source repository are verified live.",
           "No verified docs site yet beyond directory pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -4058,7 +4054,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -4067,13 +4062,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },
       "name": "Tensorclaw",
       "netuid": 92,
       "slug": "sn-92",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
       "candidate_count": 20,

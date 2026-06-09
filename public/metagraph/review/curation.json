@@ -4631,25 +4631,6 @@
       "candidate_count": 7,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Tensorclaw",
-      "netuid": 92,
-      "priority_score": 18,
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-92",
-      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
-      "surface_count": 7,
-      "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 7,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
         "website",
         "openapi",
         "subnet-api",
@@ -5135,6 +5116,24 @@
         "sse",
         "data-artifact"
       ],
+      "name": "Tensorclaw",
+      "netuid": 92,
+      "priority_score": 6,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-92",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
       "name": "oneoneone",
       "netuid": 111,
       "priority_score": 6,
@@ -5266,7 +5265,7 @@
     "gap_kind_counts": {
       "data-artifact": 113,
       "openapi": 119,
-      "source-repo": 20,
+      "source-repo": 19,
       "sse": 128,
       "subnet-api": 115,
       "website": 15

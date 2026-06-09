@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1358,
+  "document_count": 1359,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -5836,12 +5836,13 @@
         "92",
         "augmented",
         "baseline",
-        "cleanup",
         "curated",
         "drift",
         "identity",
         "inference",
         "official",
+        "repo",
+        "restored",
         "reviewed",
         "sn",
         "source",
@@ -24873,6 +24874,24 @@
       ],
       "type": "surface",
       "url": "https://www.tensorclaw.ai/dashboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-tensorclaw-source-repo",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "source-repo / tensorclaw",
+      "title": "Tensorclaw source repository",
+      "tokens": [
+        "92",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "tensorclaw"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorclaw/tensorclaw"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

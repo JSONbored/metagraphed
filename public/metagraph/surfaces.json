@@ -24540,6 +24540,30 @@
     {
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-92-tensorclaw-source-repo",
+      "kind": "source-repo",
+      "name": "Tensorclaw source repository",
+      "netuid": 92,
+      "notes": "The official Tensorclaw website links this public repository, and the README identifies it as Bittensor Tensorclaw Subnet 92.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.tensorclaw.ai/",
+        "https://github.com/tensorclaw/tensorclaw"
+      ],
+      "subnet_name": "Tensorclaw",
+      "subnet_slug": "sn-92",
+      "url": "https://github.com/tensorclaw/tensorclaw"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
       "id": "sn-92-tensorclaw-website",
       "kind": "website",
       "name": "Tensorclaw website",

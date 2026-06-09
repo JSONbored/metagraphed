@@ -2571,9 +2571,7 @@
       "gaps": {
         "gap_notes": [
           "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-          "Official website and dashboard are verified live.",
-          "Previously discovered Tensorclaw source repository currently returns 404.",
-          "No verified live source repository yet.",
+          "Official website, dashboard, and source repository are verified live.",
           "No verified docs site yet beyond directory pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
@@ -2581,7 +2579,6 @@
           "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -2590,6 +2587,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },

@@ -218,7 +218,7 @@
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T22:52:53.437Z",
     "health_probe_as_of": null,
-    "health_surface_count": 1132,
+    "health_surface_count": 1133,
     "missing_blocking_source_count": 1,
     "native_data_as_of": "2026-06-08T22:53:27Z",
     "native_snapshot_captured_at": "2026-06-08T22:53:27Z",

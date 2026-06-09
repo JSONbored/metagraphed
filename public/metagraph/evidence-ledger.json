@@ -15962,6 +15962,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Tensorclaw source repository is a public source-repo surface for SN92.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.tensorclaw.ai/",
+      "subject": "surface:sn-92-tensorclaw-source-repo",
+      "support_summary": "Listed in curated overlay for sn-92.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Tensorclaw website is a public website surface for SN92.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16705,8 +16716,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1518,
+    "claim_count": 1519,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1139
+    "surface_claim_count": 1140
   }
 }
