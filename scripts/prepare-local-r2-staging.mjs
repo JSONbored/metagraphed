@@ -24,6 +24,7 @@ for (const relativePath of trackedPublicArtifacts) {
     content: existsSync(filePath) ? await readFile(filePath) : null,
   });
 }
+const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const schemaSnapshotDetails = await loadSchemaSnapshotDetails();
 
 const result = spawnSync(process.execPath, ["scripts/build-artifacts.mjs"], {
@@ -47,7 +48,7 @@ for (const [relativePath, original] of originals) {
 }
 
 for (const [relativePath, content] of schemaSnapshotDetails) {
-  const filePath = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  const filePath = stagedSnapshotPath(relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, content);
 }
@@ -71,6 +72,21 @@ console.log(
   ),
 );
 
+function stagedSnapshotPath(relativePath) {
+  const filePath = path.resolve(r2StagingRoot, relativePath);
+  const relativeToRoot = path.relative(r2StagingRoot, filePath);
+  if (
+    relativeToRoot.startsWith("..") ||
+    path.isAbsolute(relativeToRoot) ||
+    relativeToRoot === ""
+  ) {
+    throw new Error(
+      `Refusing schema snapshot path outside R2 staging root: ${relativePath}`,
+    );
+  }
+  return filePath;
+}
+
 async function loadSchemaSnapshotDetails() {
   const indexPath = path.join(repoRoot, "public/metagraph/schemas/index.json");
   if (!existsSync(indexPath)) {
@@ -86,11 +102,7 @@ async function loadSchemaSnapshotDetails() {
     if (!relativePath || relativePath === "schemas/index.json") {
       continue;
     }
-    const filePath = path.join(
-      repoRoot,
-      R2_STAGING_RELATIVE_ROOT,
-      relativePath,
-    );
+    const filePath = stagedSnapshotPath(relativePath);
     if (existsSync(filePath)) {
       details.set(relativePath, await readFile(filePath));
     } else if (entry.snapshot && typeof entry.snapshot === "object") {
