@@ -55,6 +55,7 @@ import {
   artifactStorageTierForPath,
   artifactStorageTierForRelativePath,
   isR2OnlyArtifactPath,
+  schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
@@ -103,6 +104,24 @@ describe("script utility contracts", () => {
         },
       ),
       "unsupported",
+    );
+  });
+
+  test("classifies redirect-limit probes with unsafe targets as unsafe", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          redirect_target: "http://169.254.169.254/latest/meta-data/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsafe",
     );
   });
 
@@ -563,6 +582,32 @@ describe("script utility contracts", () => {
       true,
     );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
+    assert.equal(
+      schemaDetailArtifactRelativePath(
+        "/metagraph/schemas/sn-6-numinous-openapi-schema.json",
+      ),
+      "schemas/sn-6-numinous-openapi-schema.json",
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("schemas/allways-swagger.json"),
+      "schemas/allways-swagger.json",
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schemas/index.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/../../package.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schemas/../package.json"),
+      null,
+    );
+    assert.equal(
+      schemaDetailArtifactRelativePath("/metagraph/schema-drift.json"),
+      null,
+    );
 
     const stagedPath = artifactOutputPath("health/history/2099-01-01.json");
     try {
@@ -740,10 +785,7 @@ describe("script utility contracts", () => {
       overlaySet.manualOverlays[0].categories.includes("baseline-augmented"),
       true,
     );
-    assert.equal(
-      overlaySet.manualOverlays[0].dashboard_url,
-      "https://taostats.io/subnets/25/metagraph",
-    );
+    assert.equal(overlaySet.manualOverlays[0].dashboard_url, undefined);
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 
