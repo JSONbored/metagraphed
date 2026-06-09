@@ -162,6 +162,25 @@ jobs:
       - name: Validate private boundary
         run: npm run validate:private-boundary
 
+      # The validate/test steps above rebuild artifacts in-place WITHOUT the
+      # probe-result cache, which clobbers the probe-derived health/pools/
+      # freshness the refresh job built (real probe_finished_at + "ok" statuses
+      # become the 1970 epoch placeholder + all "unknown"). r2:upload/kv:publish
+      # below would then publish that unprobed dataset — leaving every RPC pool
+      # with zero eligible endpoints. Re-restore the immutable reviewed artifacts
+      # so we publish exactly what was reviewed, then assert they carry live
+      # probe health so an all-"unknown" dataset can never ship silently.
+      - name: Re-restore reviewed artifacts and assert probe health
+        run: |
+          set -euo pipefail
+          rm -rf public/metagraph dist/metagraph-r2
+          cp -R "$RUNNER_TEMP/publish-artifacts/public/metagraph" public/metagraph
+          if [ -d "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" ]; then
+            mkdir -p dist
+            cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
+          fi
+          npm run assert:probe-health
+
       - name: Check Cloudflare publishing secrets
         id: cloudflare-secrets
         run: |
