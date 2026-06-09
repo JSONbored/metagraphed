@@ -29,11 +29,22 @@ const ROUTES = API_ROUTES.map((entry) => ({
   },
 }));
 
+// Read-only, bounded Substrate/Subtensor methods safe to expose through the
+// public proxy. Deliberately excludes heavy/abusable reads (state_getMetadata,
+// state_getStorage) and anything mutating — those stay blocked by the allowlist
+// plus DENIED_RPC_PREFIXES.
 const SAFE_RPC_METHODS = new Set([
-  "chain_getHeader",
+  "chain_getBlock",
   "chain_getBlockHash",
-  "system_health",
+  "chain_getFinalizedHead",
+  "chain_getHeader",
   "rpc_methods",
+  "state_getRuntimeVersion",
+  "system_chain",
+  "system_health",
+  "system_name",
+  "system_properties",
+  "system_version",
 ]);
 const DENIED_RPC_PREFIXES = [
   "author_",
@@ -302,6 +313,26 @@ async function handleRpcProxyRequest(request, env, url) {
       "Read-only RPC proxying is intentionally disabled until endpoint scoring, abuse controls, and method filtering are enabled.",
       501,
     );
+  }
+
+  // Per-client abuse control. Skipped when the ratelimit binding is absent
+  // (local dev / not yet provisioned) so tests and local runs are unaffected;
+  // enforced on Cloudflare where the binding is bound.
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const clientKey =
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-forwarded-for") ||
+      "anonymous";
+    const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
+    if (!success) {
+      return errorResponse(
+        "rpc_rate_limited",
+        "Too many RPC proxy requests from this client; slow down.",
+        429,
+        {},
+        { "retry-after": "60" },
+      );
+    }
   }
 
   const contentLength = Number(request.headers.get("content-length") || 0);
@@ -961,19 +992,52 @@ function contractVersion(env) {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
-function selectSafeRpcEndpoint(pool) {
+// Load-balance across ALL eligible + upstream-safe endpoints rather than always
+// picking the highest-scored one, so no single upstream becomes a hotspot.
+// Returns an unsafe endpoint (for a 502) only when every eligible endpoint fails
+// the upstream safety policy, and a null endpoint when none are eligible (503).
+export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
+  const safe = [];
   let unsafeEndpoint = null;
   for (const endpoint of pool?.endpoints || []) {
     if (!endpoint?.pool_eligible) {
       continue;
     }
     if (isSafeRpcEndpointUrl(endpoint.url)) {
-      return { endpoint, unsafeEndpoint: null };
+      safe.push(endpoint);
+    } else {
+      unsafeEndpoint ||= endpoint;
     }
-    unsafeEndpoint ||= endpoint;
   }
 
-  return { endpoint: null, unsafeEndpoint };
+  if (!safe.length) {
+    return { endpoint: null, unsafeEndpoint };
+  }
+  return {
+    endpoint: weightedPickEndpoint(safe, randomFn),
+    unsafeEndpoint: null,
+  };
+}
+
+// Weighted-random pick favouring higher-scored (healthier/faster) endpoints,
+// falling back to uniform weighting when scores are absent so traffic still
+// spreads. randomFn is injectable for deterministic tests.
+export function weightedPickEndpoint(endpoints, randomFn = Math.random) {
+  if (endpoints.length === 1) {
+    return endpoints[0];
+  }
+  const weights = endpoints.map((endpoint) =>
+    Number.isFinite(endpoint.score) && endpoint.score > 0 ? endpoint.score : 1,
+  );
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let cursor = randomFn() * total;
+  for (let index = 0; index < endpoints.length; index += 1) {
+    cursor -= weights[index];
+    if (cursor < 0) {
+      return endpoints[index];
+    }
+  }
+  return endpoints[endpoints.length - 1];
 }
 
 function isSafeRpcEndpointUrl(value) {
