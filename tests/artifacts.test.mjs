@@ -4,6 +4,7 @@ import {
   chmodSync,
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -211,6 +212,114 @@ test("artifact build ignores forged committed health observations by default", (
     assert.equal(rebuilt.summary.status_counts.ok || 0, 0);
   } finally {
     writeFileSync(artifactPath, original);
+    if (originalCache === null) {
+      rmSync(cachePath, { force: true });
+    } else {
+      writeFileSync(cachePath, originalCache);
+    }
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    restoreSupportArtifacts(supportArtifacts);
+  }
+}, 30_000);
+
+test("artifact build preserves object-shaped live RPC method support", () => {
+  const healthPath = artifactFilePath("health/latest.json");
+  const rpcPath = artifactFilePath("rpc-endpoints.json");
+  const endpointsPath = artifactFilePath("endpoints.json");
+  const cachePath = ".cache/metagraphed/health/latest.json";
+  const originalCache = existsSync(cachePath)
+    ? readFileSync(cachePath, "utf8")
+    : null;
+  const supportArtifacts = snapshotSupportArtifacts();
+  const previousHealth = JSON.parse(readFileSync(healthPath, "utf8"));
+  const target = previousHealth.surfaces.find(
+    (surface) =>
+      surface.kind === "subtensor-rpc" && surface.public_safe === true,
+  );
+  assert(target, "expected a public-safe subtensor RPC health row");
+
+  previousHealth.source = "live-smoke-probe";
+  previousHealth.generated_at = "2999-01-01T00:00:00.000Z";
+  target.status = "ok";
+  target.classification = "live";
+  target.last_checked = "2999-01-01T00:00:00.000Z";
+  target.last_ok = "2999-01-01T00:00:00.000Z";
+  target.verified_at = "2999-01-01T00:00:00.000Z";
+  target.latency_ms = 7;
+  target.archive_support = true;
+  target.latest_block = 4242424;
+  target.rpc_method_count = 4;
+  target.method_results = {
+    chain_getHeader: { ok: true },
+    rpc_methods: { ok: true },
+  };
+  target.methods_supported = {
+    chain_getHeader: true,
+    system_health: true,
+    rpc_methods: true,
+    chain_getBlockHash: true,
+  };
+
+  try {
+    mkdirSync(".cache/metagraphed/health", { recursive: true });
+    writeFileSync(cachePath, `${JSON.stringify(previousHealth, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
+      stdio: "pipe",
+    });
+
+    const rebuiltHealth = JSON.parse(readFileSync(healthPath, "utf8"));
+    const rebuiltHealthTarget = rebuiltHealth.surfaces.find(
+      (surface) => surface.surface_id === target.surface_id,
+    );
+    const rpcEndpoint = JSON.parse(
+      readFileSync(rpcPath, "utf8"),
+    ).endpoints.find((endpoint) => endpoint.id === target.surface_id);
+    const endpointResource = JSON.parse(
+      readFileSync(endpointsPath, "utf8"),
+    ).endpoints.find((endpoint) => endpoint.surface_id === target.surface_id);
+
+    assert.deepEqual(
+      rebuiltHealthTarget.methods_supported,
+      target.methods_supported,
+    );
+    assert.deepEqual(rpcEndpoint.methods_supported, target.methods_supported);
+    assert.deepEqual(endpointResource.method_support, target.methods_supported);
+    assert(
+      endpointResource.score_reasons.some(
+        (reason) => reason.reason === "method-support" && reason.points === 20,
+      ),
+      "expected endpoint scoring to include preserved method support",
+    );
+  } finally {
     if (originalCache === null) {
       rmSync(cachePath, { force: true });
     } else {
@@ -1044,25 +1153,27 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
   }
 });
 
-test("R2 history upload writes every planned run-prefix artifact", () => {
-  const temporaryDirectory = mkdtempSync(
-    path.join(tmpdir(), "metagraphed-r2-upload-"),
-  );
-  const wranglerPath = path.join(temporaryDirectory, "wrangler");
-  const putLogPath = path.join(temporaryDirectory, "put-log.jsonl");
-  const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  writeFileSync(
-    wranglerPath,
-    String.raw`#!/usr/bin/env node
-import { appendFileSync, readFileSync } from "node:fs";
+test(
+  "R2 history upload writes every planned run-prefix artifact",
+  () => {
+    const temporaryDirectory = mkdtempSync(
+      path.join(tmpdir(), "metagraphed-r2-upload-"),
+    );
+    const wranglerPath = path.join(temporaryDirectory, "wrangler");
+    const putLogPath = path.join(temporaryDirectory, "put-log.jsonl");
+    const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    writeFileSync(
+      wranglerPath,
+      String.raw`#!/usr/bin/env node
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 
 const args = process.argv.slice(2);
 if (args[0] !== "r2" || args[1] !== "object") {
   process.exit(2);
 }
 if (args[2] === "get") {
-  process.stdout.write(readFileSync(process.env.FAKE_REMOTE_MANIFEST, "utf8"));
+  writeFileSync(1, readFileSync(process.env.FAKE_REMOTE_MANIFEST));
   process.exit(0);
 }
 if (args[2] === "put") {
@@ -1074,56 +1185,58 @@ if (args[2] === "put") {
 }
 process.exit(2);
 `,
-  );
-  chmodSync(wranglerPath, 0o755);
+    );
+    chmodSync(wranglerPath, 0o755);
 
-  try {
-    const output = execFileSync(
-      process.execPath,
-      ["scripts/r2-upload.mjs", "--write"],
-      {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          FAKE_PUT_LOG: putLogPath,
-          FAKE_REMOTE_MANIFEST: manifestPath,
-          METAGRAPH_ALLOW_R2_UPLOAD: "1",
-          METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
-          METAGRAPH_R2_UPLOAD_HISTORY: "1",
-          METAGRAPH_WRANGLER_BIN: wranglerPath,
+    try {
+      const output = execFileSync(
+        process.execPath,
+        ["scripts/r2-upload.mjs", "--write"],
+        {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            FAKE_PUT_LOG: putLogPath,
+            FAKE_REMOTE_MANIFEST: manifestPath,
+            METAGRAPH_ALLOW_R2_UPLOAD: "1",
+            METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
+            METAGRAPH_R2_UPLOAD_HISTORY: "1",
+            METAGRAPH_WRANGLER_BIN: wranglerPath,
+          },
+          stdio: "pipe",
         },
-        stdio: "pipe",
-      },
-    );
-    const summary = JSON.parse(output);
-    const putKeys = readFileSync(putLogPath, "utf8")
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line).key);
+      );
+      const summary = JSON.parse(output);
+      const putKeys = readFileSync(putLogPath, "utf8")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line).key);
 
-    assert.equal(summary.remote_manifest_status, "found");
-    assert.equal(summary.changed_artifact_count, 0);
-    assert.equal(summary.skipped_artifact_count, manifest.artifacts.length);
-    assert.equal(summary.uploaded_latest_count, 0);
-    assert.equal(summary.uploaded_control_count, 3);
-    assert.equal(
-      summary.uploaded_history_count,
-      manifest.artifacts.length + summary.uploaded_control_count,
-    );
-    assert.equal(
-      putKeys.filter((key) => key.startsWith(manifest.run_prefix)).length,
-      manifest.artifacts.length + summary.uploaded_control_count,
-    );
-    assert(
-      putKeys.includes(manifest.artifacts.at(-1).key),
-      "expected history upload to include artifacts unchanged in latest",
-    );
-  } finally {
-    rmSync(temporaryDirectory, { force: true, recursive: true });
-  }
-});
+      assert.equal(summary.remote_manifest_status, "found");
+      assert.equal(summary.changed_artifact_count, 0);
+      assert.equal(summary.skipped_artifact_count, manifest.artifacts.length);
+      assert.equal(summary.uploaded_latest_count, 0);
+      assert.equal(summary.uploaded_control_count, 3);
+      assert.equal(
+        summary.uploaded_history_count,
+        manifest.artifacts.length + summary.uploaded_control_count,
+      );
+      assert.equal(
+        putKeys.filter((key) => key.startsWith(manifest.run_prefix)).length,
+        manifest.artifacts.length + summary.uploaded_control_count,
+      );
+      assert(
+        putKeys.includes(manifest.artifacts.at(-1).key),
+        "expected history upload to include artifacts unchanged in latest",
+      );
+    } finally {
+      rmSync(temporaryDirectory, { force: true, recursive: true });
+    }
+  },
+  30_000,
+);
 
 test("limited R2 upload dry run skips control manifests", () => {
   const output = execFileSync(

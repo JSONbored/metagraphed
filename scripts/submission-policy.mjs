@@ -39,6 +39,72 @@ const STATUS_REPORT_TYPES = new Set([
   "other",
 ]);
 
+const CANDIDATE_STATES = new Set([
+  "schema-invalid",
+  "schema-valid",
+  "maintainer-review",
+  "verified",
+  "stale",
+  "rejected",
+]);
+
+const CANDIDATE_SOURCE_TIERS = new Set([
+  "native-chain",
+  "provider-claimed",
+  "third-party-index",
+  "community-docs",
+]);
+
+const CANDIDATE_CONFIDENCE_LEVELS = new Set(["low", "medium", "high"]);
+
+const CANDIDATE_VERIFICATION_CLASSIFICATIONS = new Set([
+  "live",
+  "redirected",
+  "auth-required",
+  "dead",
+  "unsafe",
+  "unsupported",
+  "rate-limited",
+  "transient",
+  "timeout",
+  "content-mismatch",
+]);
+
+const CANDIDATE_SCHEMA_FIELDS = new Set([
+  "schema_version",
+  "id",
+  "netuid",
+  "state",
+  "name",
+  "kind",
+  "url",
+  "source_url",
+  "source_urls",
+  "source_type",
+  "source_tier",
+  "confidence",
+  "provider",
+  "auth_required",
+  "public_safe",
+  "verification",
+  "rate_limit_notes",
+  "review_notes",
+]);
+
+const REQUIRED_CANDIDATE_SCHEMA_FIELDS = [
+  "schema_version",
+  "id",
+  "netuid",
+  "state",
+  "name",
+  "kind",
+  "url",
+  "source_url",
+  "provider",
+  "auth_required",
+  "public_safe",
+];
+
 export const PUBLIC_PREFLIGHT_STATES = new Set([
   "submit_pr",
   "fix_required",
@@ -683,6 +749,130 @@ export function extractSingleProvider(document) {
   };
 }
 
+function validateCandidateSchemaShape(candidate) {
+  const errors = [];
+
+  for (const field of REQUIRED_CANDIDATE_SCHEMA_FIELDS) {
+    if (candidate[field] === undefined) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `candidate ${field} is required`,
+      });
+    }
+  }
+
+  for (const field of Object.keys(candidate)) {
+    if (!CANDIDATE_SCHEMA_FIELDS.has(field)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `candidate ${field} is not allowed`,
+      });
+    }
+  }
+
+  if (candidate.state !== undefined && !CANDIDATE_STATES.has(candidate.state)) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate state is unsupported",
+    });
+  }
+  if (
+    candidate.name !== undefined &&
+    (typeof candidate.name !== "string" || candidate.name.length === 0)
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate name is required",
+    });
+  }
+  if (
+    candidate.auth_required !== undefined &&
+    typeof candidate.auth_required !== "boolean"
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate auth_required must be boolean",
+    });
+  }
+  if (
+    candidate.public_safe !== undefined &&
+    typeof candidate.public_safe !== "boolean"
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate public_safe must be boolean",
+    });
+  }
+  if (
+    candidate.source_tier !== undefined &&
+    !CANDIDATE_SOURCE_TIERS.has(candidate.source_tier)
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate source_tier is unsupported",
+    });
+  }
+  if (
+    candidate.confidence !== undefined &&
+    !CANDIDATE_CONFIDENCE_LEVELS.has(candidate.confidence)
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate confidence is unsupported",
+    });
+  }
+  if (
+    candidate.source_type !== undefined &&
+    typeof candidate.source_type !== "string"
+  ) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "candidate source_type must be a string",
+    });
+  }
+  for (const field of ["rate_limit_notes", "review_notes"]) {
+    if (
+      candidate[field] !== undefined &&
+      typeof candidate[field] !== "string"
+    ) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `candidate ${field} must be a string`,
+      });
+    }
+  }
+  if (candidate.verification !== undefined && candidate.verification !== null) {
+    if (
+      typeof candidate.verification !== "object" ||
+      Array.isArray(candidate.verification)
+    ) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate verification must be an object",
+      });
+    } else {
+      if (
+        !CANDIDATE_VERIFICATION_CLASSIFICATIONS.has(
+          candidate.verification.classification,
+        )
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate verification classification is unsupported",
+        });
+      }
+      if (typeof candidate.verification.verified_at !== "string") {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate verification verified_at must be a string",
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
 export function validateCandidateForSubmission({
   candidate,
   document = {},
@@ -712,6 +902,8 @@ export function validateCandidateForSubmission({
       manual_reasons,
     };
   }
+
+  errors.push(...validateCandidateSchemaShape(candidate));
 
   if (candidate.schema_version !== 1) {
     errors.push({
