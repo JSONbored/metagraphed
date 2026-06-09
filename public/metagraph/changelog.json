@@ -1,24 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "b11176131600564f580306d1d166135df33da69a8c75a0a3385c4e0a657f6c72",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "187803271b76aecdde48762ed3c74bef468d20889f9a7b77ad1b9096301c1e05",
-        "path": "review/enrichment-queue.json"
-      },
-      {
-        "hash": "251a5891665ab12a06917d8c99fb7377db83b053f57f3e38fa5517707c16afc2",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "98a8ddde177be85e0a69d0c46f4f7f0527edc07e552fbddec307c4b65a8e0fc9",
-        "path": "subnets.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -36,7 +19,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 4,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
