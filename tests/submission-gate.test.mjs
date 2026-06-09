@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, test } from "vitest";
 import {
   loadNativeSnapshot,
@@ -78,6 +81,36 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.scope, "direct-candidate");
     assert.equal(scope.errors.length, 1);
     assert.equal(scope.errors[0].category, "generated-artifact-tampering");
+  });
+
+  test("routes mixed direct candidate PRs through the UGC gate", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "metagraphed-route-"));
+    try {
+      const changedFiles = join(tmp, "changed-files.txt");
+      writeFileSync(
+        changedFiles,
+        [
+          "registry/candidates/community/allways-docs-example.json",
+          "README.md",
+        ].join("\n"),
+      );
+
+      const output = execFileSync(
+        process.execPath,
+        ["scripts/ci-validate-route.mjs", "--changed-files", changedFiles],
+        { encoding: "utf8" },
+      );
+      const report = JSON.parse(output);
+
+      assert.equal(report.mode, "ugc");
+      assert.equal(report.scope, "direct-candidate");
+      assert.deepEqual(
+        report.errors.map((error) => error.category),
+        ["generated-artifact-tampering"],
+      );
+    } finally {
+      rmSync(tmp, { force: true, recursive: true });
+    }
   });
 
   test("routes direct provider profile PRs to manual review", () => {
