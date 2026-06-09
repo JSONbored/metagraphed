@@ -681,6 +681,24 @@ test("public artifacts are internally consistent", () => {
     new Set(enrichmentTargets.targets.map((target) => target.target_id)).size,
     enrichmentTargets.targets.length,
   );
+  const enrichmentQueueByNetuid = new Map(
+    enrichmentQueue.queue.map((entry) => [entry.netuid, entry]),
+  );
+  assert.equal(
+    enrichmentTargets.targets.every((target) => {
+      const queueEntry = enrichmentQueueByNetuid.get(target.netuid);
+      return (
+        queueEntry &&
+        target.queue_context &&
+        target.queue_context.candidate_count === queueEntry.candidate_count &&
+        target.queue_context.completeness_score ===
+          queueEntry.completeness_score &&
+        target.queue_context.review_state === queueEntry.review_state &&
+        target.queue_context.surface_count === queueEntry.surface_count
+      );
+    }),
+    true,
+  );
   assert.equal(
     enrichmentTargets.targets.filter(
       (target) => target.target_type === "surface-candidate",

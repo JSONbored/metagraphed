@@ -3,12 +3,12 @@
     "added": [],
     "modified": [
       {
-        "hash": "5c5a20e0644297c71b9f497d040a3fa53b633cccd941195268f56261ae0613ca",
-        "path": "review/enrichment-queue.json"
+        "hash": "749cb31ae47d201b0d9216c9cee4e352c57d57f44455b6357080e2a02fb7a9a2",
+        "path": "api-index.json"
       },
       {
-        "hash": "ae53d8889f6f7e6549b36507e6f94a421f065b47d348f762864255e263126bc4",
-        "path": "review/enrichment-targets.json"
+        "hash": "f6f817ba645eec8c7054105d99af1cad40ca4d6a7d1b6352b51d41e3e9050b04",
+        "path": "contracts.json"
       }
     ],
     "removed": []

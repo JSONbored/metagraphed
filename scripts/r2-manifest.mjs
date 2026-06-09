@@ -146,6 +146,7 @@ function buildCompactManifest(fullManifest) {
       "/metagraph/health/latest.json",
       "/metagraph/review-queue.json",
       "/metagraph/review/enrichment-evidence.json",
+      "/metagraph/review/enrichment-targets.json",
       "/metagraph/source-snapshots.json",
       "/metagraph/types.d.ts",
       "/metagraph/verification/latest.json",

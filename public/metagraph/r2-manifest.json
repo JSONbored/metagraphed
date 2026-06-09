@@ -1,14 +1,14 @@
 {
-  "artifact_count": 24,
-  "artifact_size_bytes": 6098501,
+  "artifact_count": 23,
+  "artifact_size_bytes": 5349362,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/1970-01-01T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "10c5f4661f9cbb2d9cb3acc8be209635ed277d1ce29717a893a36dc270f881ab",
-      "size_bytes": 87517,
+      "sha256": "749cb31ae47d201b0d9216c9cee4e352c57d57f44455b6357080e2a02fb7a9a2",
+      "size_bytes": 87516,
       "storage_tier": "dual"
     },
     {
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "5e3bafb17bcc701ba9aab645b8ae40ca10518969fda7d86bbc85cf21d27ba9a0",
-      "size_bytes": 1513,
+      "sha256": "f35b533e7ee09bad64cb9a362ef8b6bbb7ae40eb8d3f0af57d9003b1a8e98277",
+      "size_bytes": 1483,
       "storage_tier": "dual"
     },
     {
@@ -25,8 +25,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "f1ee86995f7953a878322af4e72fce6d448c9ebfc1d04e03f6bcaa0a0b97eaea",
-      "size_bytes": 19020,
+      "sha256": "f6f817ba645eec8c7054105d99af1cad40ca4d6a7d1b6352b51d41e3e9050b04",
+      "size_bytes": 19019,
       "storage_tier": "dual"
     },
     {
@@ -61,7 +61,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "3892332032d845a7d5d4b55d211c32a9e0e0801a5afaa54b87ad86e63f371496",
+      "sha256": "5c6308f42de03908c223d7bba15c647e40d47f9e66c0c42fc5fd44664f739513",
       "size_bytes": 7486,
       "storage_tier": "dual"
     },
@@ -79,8 +79,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "093a7f93b56287a463bdb1c1d64700bf74d498e7b83b4cf1f1b6965e7dc0950b",
-      "size_bytes": 362556,
+      "sha256": "98b965c69c28222adc78bc2db38360c70e672295e8549f6e5949dfb45161f8fd",
+      "size_bytes": 365182,
       "storage_tier": "dual"
     },
     {
@@ -127,15 +127,6 @@
       "sha256": "5c5a20e0644297c71b9f497d040a3fa53b633cccd941195268f56261ae0613ca",
       "size_bytes": 366716,
       "storage_tier": "dual"
-    },
-    {
-      "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-targets.json",
-      "latest_key": "latest/review/enrichment-targets.json",
-      "path": "/metagraph/review/enrichment-targets.json",
-      "sha256": "ae53d8889f6f7e6549b36507e6f94a421f065b47d348f762864255e263126bc4",
-      "size_bytes": 752698,
-      "storage_tier": "git"
     },
     {
       "content_type": "application/json",
@@ -214,8 +205,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "23afd2cefaf04a650420158e76c476caa288352d70fe2b4bab24c06800a43da1",
-      "size_bytes": 203029,
+      "sha256": "517a0fb6a437162f225a2899809f0be0484793727dee3709eff0f0870c16b477",
+      "size_bytes": 203994,
       "storage_tier": "dual"
     }
   ],
@@ -223,7 +214,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1271,
-  "full_artifact_size_bytes": 50456486,
+  "full_artifact_size_bytes": 50613349,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -234,6 +225,7 @@
     "/metagraph/health/latest.json",
     "/metagraph/review-queue.json",
     "/metagraph/review/enrichment-evidence.json",
+    "/metagraph/review/enrichment-targets.json",
     "/metagraph/source-snapshots.json",
     "/metagraph/types.d.ts",
     "/metagraph/verification/latest.json"
@@ -242,12 +234,12 @@
   "schema_version": 1,
   "storage_tier_counts": {
     "dual": 22,
-    "git": 2,
-    "r2": 1247
+    "git": 1,
+    "r2": 1248
   },
   "storage_tier_size_bytes": {
-    "dual": 5086804,
-    "git": 1011697,
-    "r2": 44357985
+    "dual": 5090363,
+    "git": 258999,
+    "r2": 45263987
   }
 }

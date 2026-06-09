@@ -1205,6 +1205,8 @@ export interface components {
             verified_at?: string | null;
         };
         HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** Format: date-time */
+            observed_at: string | null;
             summary: {
                 [key: string]: unknown;
             };
@@ -1595,6 +1597,7 @@ export interface components {
             priority_score: number;
             /** @enum {unknown} */
             profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+            queue_context: components["schemas"]["ReviewEnrichmentTargetQueueContext"];
             reason_codes: string[];
             recommended_action: string;
             sample_live_candidate_ids: string[];
@@ -1618,6 +1621,23 @@ export interface components {
             target_ids: string[];
             target_type: components["schemas"]["ReviewEnrichmentTargetType"];
             top_netuids: number[];
+        };
+        ReviewEnrichmentTargetQueueContext: {
+            adapter_score: number;
+            candidate_count: number;
+            completeness_score: number;
+            curation_level: components["schemas"]["CurationLevel"];
+            direct_submission_kind_count: number;
+            endpoint_count: number;
+            identity_surface_count: number;
+            operational_interface_count: number;
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+            review_state: components["schemas"]["ReviewState"];
+            source_url_count: number;
+            stale_candidate_count: number;
+            surface_count: number;
+            verified_candidate_count: number;
         };
         ReviewEnrichmentTargetsArtifact: components["schemas"]["ArtifactBase"] & ({
             groups: components["schemas"]["ReviewEnrichmentTargetGroup"][];

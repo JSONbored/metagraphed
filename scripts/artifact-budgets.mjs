@@ -14,7 +14,7 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("review/profile-completeness.json", 350_000, 1_000_000),
   budget("review/enrichment-evidence.json", 500_000, 1_000_000),
   budget("review/enrichment-queue.json", 500_000, 1_000_000),
-  budget("review/enrichment-targets.json", 900_000, 1_500_000),
+  budget("review/enrichment-targets.json", 1_100_000, 1_500_000),
 ];
 
 const DEFAULT_BUDGET = budget("*", 250_000, 1_000_000);

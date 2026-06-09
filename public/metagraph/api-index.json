@@ -355,7 +355,7 @@
       "id": "review-enrichment-targets",
       "path": "/metagraph/review/enrichment-targets.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",

@@ -645,6 +645,89 @@
         },
         "additionalProperties": false
       },
+      "ReviewEnrichmentTargetQueueContext": {
+        "type": "object",
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "curation_level",
+          "direct_submission_kind_count",
+          "endpoint_count",
+          "identity_surface_count",
+          "operational_interface_count",
+          "profile_level",
+          "review_state",
+          "source_url_count",
+          "stale_candidate_count",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "adapter_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "source_url_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "ReviewEnrichmentEvidenceEntry": {
         "type": "object",
         "required": [
@@ -721,6 +804,7 @@
           "netuid",
           "priority_score",
           "profile_level",
+          "queue_context",
           "reason_codes",
           "recommended_action",
           "sample_live_candidate_ids",
@@ -801,6 +885,9 @@
               "operational",
               "adapter-backed"
             ]
+          },
+          "queue_context": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetQueueContext"
           },
           "reason_codes": {
             "type": "array",

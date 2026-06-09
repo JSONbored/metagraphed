@@ -1302,6 +1302,7 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
     netuid: entry.netuid,
     priority_score: entry.priority_score,
     profile_level: entry.profile_level,
+    queue_context: enrichmentTargetQueueContext(entry),
     reason_codes: entry.reason_codes,
     recommended_action: entry.recommended_action,
     sample_live_candidate_ids: entry.sample_live_candidate_ids,
@@ -1351,6 +1352,7 @@ function nonSurfaceEnrichmentTarget({ entry, targetType }) {
     netuid: entry.netuid,
     priority_score: entry.priority_score,
     profile_level: entry.profile_level,
+    queue_context: enrichmentTargetQueueContext(entry),
     reason_codes: entry.reason_codes,
     recommended_action: entry.recommended_action,
     sample_live_candidate_ids: entry.sample_live_candidate_ids,
@@ -1363,6 +1365,25 @@ function nonSurfaceEnrichmentTarget({ entry, targetType }) {
     target_id: enrichmentTargetId(entry, targetType, null),
     target_type: targetType,
     target_action: targetType,
+  };
+}
+
+function enrichmentTargetQueueContext(entry) {
+  return {
+    adapter_score: entry.adapter_score,
+    candidate_count: entry.candidate_count,
+    completeness_score: entry.completeness_score,
+    curation_level: entry.curation_level,
+    direct_submission_kind_count: entry.direct_submission_kinds.length,
+    endpoint_count: entry.endpoint_count,
+    identity_surface_count: entry.identity_surface_count,
+    operational_interface_count: entry.operational_interface_count,
+    profile_level: entry.profile_level,
+    review_state: entry.review_state,
+    source_url_count: entry.source_urls.length,
+    stale_candidate_count: entry.stale_candidate_count,
+    surface_count: entry.surface_count,
+    verified_candidate_count: entry.verified_candidate_count,
   };
 }
 
@@ -2591,6 +2612,7 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: options.generatedAt,
+    observed_at: options.probeFinishedAt || options.observedAt || null,
     source: options.source,
     probe_started_at: options.probeStartedAt,
     probe_finished_at: options.probeFinishedAt,
