@@ -139,6 +139,42 @@ and **fails** (exit 1) when `METAGRAPH_PRODUCTION_BUILD=1` or
 `METAGRAPH_REQUIRE_ADAPTER_AUTH=1` — so the scheduled publish and `sync-subnets` runs
 refuse to ship degraded adapter data after a token break.
 
+## Enabling the RPC Proxy
+
+The read-only Subtensor RPC proxy (`POST /rpc/v1/finney`, `/rpc/v1/finney/wss`) ships
+**disabled** (`METAGRAPH_ENABLE_RPC_PROXY: "false"`). The Worker-side abuse controls
+are in place; enable it only after the dashboard-side WAF step and a live smoke.
+
+Already enforced in the Worker:
+
+- **Method allowlist** — read-only `SAFE_RPC_METHODS` only; `DENIED_RPC_PREFIXES`
+  (`author_`, `state_call`, `sudo_`, `payment_`, `contracts_`) and heavy reads
+  (`state_getMetadata`, `state_getStorage`) stay blocked.
+- **Upstream SSRF guard** — only `TRUSTED_RPC_UPSTREAM_ORIGINS`, https/wss, no private IPs.
+- **Load balancing** — weighted-random across all eligible+safe pool endpoints.
+- **Body cap** 64 KB, **upstream timeout** 10 s, single JSON-RPC object only.
+- **Rate limit** — the `RPC_RATE_LIMITER` binding: 100 requests / 60 s per client IP
+  (returns `429 rpc_rate_limited`). Enforced on Cloudflare; skipped locally.
+
+Before flipping the flag:
+
+1. **Cloudflare WAF (dashboard — required).** Add zone rules scoped to
+   `http.request.uri.path contains "/rpc/"`:
+   - a **Rate Limiting rule** as a coarse pre-Worker cap (e.g. 120 req / min per IP,
+     action: managed challenge/block) to absorb distributed abuse;
+   - a **custom rule** to block non-`POST` methods and oversized bodies on `/rpc/*`;
+   - ensure the zone's Managed Ruleset / Bot Fight Mode is on.
+2. **Verify the pool.** `curl https://metagraph.sh/metagraph/rpc/pools.json` and confirm
+   at least one endpoint per pool has `"pool_eligible": true` (otherwise the proxy
+   returns `503 rpc_endpoint_unavailable`).
+3. **Flip the flag.** Set `METAGRAPH_ENABLE_RPC_PROXY` to `"true"` in `wrangler.jsonc`;
+   the push deploys via Cloudflare Workers Builds.
+4. **Smoke.** `POST /rpc/v1/finney` with `{"jsonrpc":"2.0","id":1,"method":"system_health"}`
+   expects `200`; a blocked method (e.g. `author_submitExtrinsic`) expects
+   `403 rpc_method_blocked`; a burst past the limit expects `429`.
+
+To disable in an incident, set the flag back to `"false"` (or via env override) and redeploy.
+
 ## Rollback
 
 Rollback is pointer-first:
