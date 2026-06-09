@@ -23,26 +23,25 @@ const fullManifestPath = path.join(
   "r2-manifest.json",
 );
 const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
+const manifest = write ? null : await readJson(manifestPath);
 const fullManifest = write
   ? await buildManifest()
   : existsSync(r2StagingRoot)
-    ? await buildManifest()
+    ? await buildManifest(manifest.generated_at)
     : await readJson(fullManifestPath).catch(() => null);
-const manifest = write
-  ? buildCompactManifest(fullManifest)
-  : await readJson(manifestPath);
-const validationManifest = fullManifest || manifest;
+const compactManifest = write ? buildCompactManifest(fullManifest) : manifest;
+const validationManifest = fullManifest || compactManifest;
 
 if (!write && fullManifest) {
   const expectedManifest = buildCompactManifest(fullManifest);
-  if (stableStringify(manifest) !== stableStringify(expectedManifest)) {
+  if (stableStringify(compactManifest) !== stableStringify(expectedManifest)) {
     console.error(
       stableStringify({
         error: "r2 compact manifest is stale",
         expected_artifact_count: expectedManifest.artifact_count,
-        actual_artifact_count: manifest.artifact_count,
+        actual_artifact_count: compactManifest.artifact_count,
         expected_full_artifact_count: expectedManifest.full_artifact_count,
-        actual_full_artifact_count: manifest.full_artifact_count,
+        actual_full_artifact_count: compactManifest.full_artifact_count,
       }),
     );
     process.exit(1);
@@ -50,20 +49,21 @@ if (!write && fullManifest) {
 }
 
 const summary = {
-  artifact_count: manifest.artifact_count,
-  artifact_size_bytes: manifest.artifact_size_bytes,
-  bucket_binding: manifest.bucket_binding,
-  bucket_name: manifest.bucket_name,
-  full_artifact_count: manifest.full_artifact_count || manifest.artifact_count,
-  manifest_kind: manifest.manifest_kind || "full",
-  latest_prefix: manifest.latest_prefix,
-  run_prefix: manifest.run_prefix,
+  artifact_count: compactManifest.artifact_count,
+  artifact_size_bytes: compactManifest.artifact_size_bytes,
+  bucket_binding: compactManifest.bucket_binding,
+  bucket_name: compactManifest.bucket_name,
+  full_artifact_count:
+    compactManifest.full_artifact_count || compactManifest.artifact_count,
+  manifest_kind: compactManifest.manifest_kind || "full",
+  latest_prefix: compactManifest.latest_prefix,
+  run_prefix: compactManifest.run_prefix,
 };
 
 if (write) {
   await mkdir(path.dirname(fullManifestPath), { recursive: true });
   await writeJson(fullManifestPath, fullManifest);
-  await writeJson(manifestPath, manifest);
+  await writeJson(manifestPath, compactManifest);
 }
 
 for (const artifact of validationManifest.artifacts) {
@@ -83,8 +83,7 @@ for (const artifact of validationManifest.artifacts) {
 
 console.log(stableStringify(summary));
 
-async function buildManifest() {
-  const generatedAt = buildTimestamp();
+async function buildManifest(generatedAt = buildTimestamp()) {
   const version = generatedAt.replace(/[:.]/g, "-");
   const publicRoot = path.join(repoRoot, "public/metagraph");
   const r2Root = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);

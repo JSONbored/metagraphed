@@ -36,10 +36,11 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            fs.writeFileSync('issue.json', JSON.stringify(context.payload.issue, null, 2));
+            const path = require('path');
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'issue.json'), JSON.stringify(context.payload.issue, null, 2));
 
       - name: Import approved candidate
-        run: npm run intake:import -- --issue-json issue.json --out intake-report.json
+        run: npm run intake:import -- --issue-json "$RUNNER_TEMP/issue.json" --out "$RUNNER_TEMP/intake-report.json"
 
       - name: Rebuild artifacts
         run: npm run build
@@ -80,6 +81,12 @@ jobs:
             - npm run validate:workflows
             - npm run scan:public-safety
             - npm test
+          add-paths: |
+            registry/**
+            public/**
+            dist/metagraph-r2/**
+            schemas/**
+            generated/**
           labels: |
             interface-submission
             metagraphed-under-review
