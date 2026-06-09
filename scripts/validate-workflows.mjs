@@ -94,6 +94,22 @@ for (const workflow of workflows) {
       workflow,
       "intake import must use the checked-in import script",
     );
+    check(
+      !content.includes("--issue-json issue.json") &&
+        !content.includes("--out intake-report.json"),
+      workflow,
+      "intake import must keep transient issue and report files outside the repository workspace",
+    );
+    check(
+      content.includes("add-paths:") &&
+        content.includes("registry/**") &&
+        content.includes("public/**") &&
+        content.includes("dist/metagraph-r2/**") &&
+        content.includes("schemas/**") &&
+        content.includes("generated/**"),
+      workflow,
+      "intake import pull request must allowlist generated registry artifact paths",
+    );
   }
   if (workflow === "submission-gate.yml") {
     check(
