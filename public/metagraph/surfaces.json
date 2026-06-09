@@ -28834,6 +28834,30 @@
     {
       "auth_required": false,
       "authority": "official",
+      "id": "sn-109-academia-archives",
+      "kind": "data-artifact",
+      "name": "Academia Bittensor archives dataset",
+      "netuid": 109,
+      "notes": "Public Academia archives dataset repository for Bittensor historical subnet/archive data.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "academia",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/fx-integral/academia",
+        "https://github.com/fx-integral/academia-archives"
+      ],
+      "subnet_name": "Academia",
+      "subnet_slug": "sn-109",
+      "url": "https://github.com/fx-integral/academia-archives"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-109-academia-source",
       "kind": "source-repo",
       "name": "Academia source repository",

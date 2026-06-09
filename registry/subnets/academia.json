@@ -6,26 +6,26 @@
   "status": "active",
   "categories": [
     "baseline-curated",
+    "data-artifact",
     "identity-reviewed",
     "official-source-repo"
   ],
   "source_repo": "https://github.com/fx-integral/academia",
   "dashboard_url": "https://taomarketcap.com/subnets/109",
   "website_url": null,
-  "notes": "Reviewed overlay for SN109 using the live Academia source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "notes": "Reviewed overlay for SN109 using the live Academia source repository and public Academia archives dataset. No standalone website, docs site, API, OpenAPI, or SSE surface has been verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:50:00.000Z",
     "verified_at": "2026-06-08T10:50:00.000Z",
-    "source_count": 4,
+    "source_count": 5,
     "gap_notes": [
       "No verified standalone website yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ]
   },
   "surfaces": [
@@ -49,6 +49,27 @@
         "timeout_ms": 10000
       },
       "notes": "Public Academia source repository for SN109."
+    },
+    {
+      "id": "sn-109-academia-archives",
+      "name": "Academia Bittensor archives dataset",
+      "kind": "data-artifact",
+      "url": "https://github.com/fx-integral/academia-archives",
+      "provider": "academia",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/fx-integral/academia",
+        "https://github.com/fx-integral/academia-archives"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Academia archives dataset repository for Bittensor historical subnet/archive data."
     }
   ]
 }

@@ -5567,6 +5567,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Academia Bittensor archives dataset is a public data-artifact surface for SN109.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/fx-integral/academia",
+      "subject": "surface:sn-109-academia-archives",
+      "support_summary": "Listed in curated overlay for sn-109.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Academia source repository is a public source-repo surface for SN109.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16705,8 +16716,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1518,
+    "claim_count": 1519,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1139
+    "surface_claim_count": 1140
   }
 }

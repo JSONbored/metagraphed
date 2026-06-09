@@ -1,7 +1,64 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [],
+    "modified": [
+      {
+        "hash": "cac8041adf482531d56a57103a9aa80cb6961f7393dcd11c036c1c47ab10b75a",
+        "path": "coverage.json"
+      },
+      {
+        "hash": "0f73f6708516b1bd06be779dfed0cdab75f8d8a387881ca83701812edf4c0c92",
+        "path": "curation.json"
+      },
+      {
+        "hash": "a1fff98ff3c34c5c71db5e620b72265a37b1b03f0e9b71d9362f04051d184d6e",
+        "path": "evidence-ledger.json"
+      },
+      {
+        "hash": "6d9886cbf42c50522fc157b9c4558571e5090cbeffae445dd13fecb11156a63c",
+        "path": "freshness.json"
+      },
+      {
+        "hash": "5b251c892a9368fd971b5ca66301163d2fe84cd2452e26a0f8f589a113c2cf67",
+        "path": "gaps.json"
+      },
+      {
+        "hash": "a6f3a95566149d754a90abc5594f317e2535c3a8472fb7a10975150239082544",
+        "path": "profiles.json"
+      },
+      {
+        "hash": "c1b08f569e302af25f5959e3d59197b5e880b11386a2463d0fb75f15d037018f",
+        "path": "review/adapter-candidates.json"
+      },
+      {
+        "hash": "65f39d7bcbb4019338e4209ea5491cca02974ea29a328c0baf46b677145b697b",
+        "path": "review/curation.json"
+      },
+      {
+        "hash": "8424b4a8a7f82421ac57852b8d5edc16c618e44d6c02d34abf84175ae27573a2",
+        "path": "review/enrichment-queue.json"
+      },
+      {
+        "hash": "d70c604e30686fc807cc4534e390450e171c2606d6228f3179c5f29ccec72edf",
+        "path": "review/gap-priorities.json"
+      },
+      {
+        "hash": "bb7cd58b9e61d5ae698e55160343fdf74694c727da38610082cd2dd65f08a9de",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "b0aa97b9a16f903b49346babb810625598fa2dc3ed3e55019bdf6b16e5eb6706",
+        "path": "search.json"
+      },
+      {
+        "hash": "4fcafd270f88d8b0c443b15f4095c7266ecaac72cc9de0b633eb00b39e71b959",
+        "path": "subnets.json"
+      },
+      {
+        "hash": "1879194505c1489c0f6220783738ce39375fbfdf036f6091269ac2adf8dbca03",
+        "path": "surfaces.json"
+      }
+    ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -19,7 +76,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 0,
+    "artifact_modified_count": 14,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -39,9 +96,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1139,
+        "after": 1140,
         "before": 1139,
-        "delta": 0
+        "delta": 1
       }
     },
     "netuid_added_count": 0,

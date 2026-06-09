@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1358,
+  "document_count": 1359,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1375,12 +1375,14 @@
       "tokens": [
         "109",
         "academia",
+        "artifact",
         "augmented",
         "baseline",
         "become",
         "builders",
         "com",
         "curated",
+        "data",
         "discord",
         "fx",
         "gg",
@@ -6798,6 +6800,26 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/109-academia"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-109-academia-archives",
+      "netuid": 109,
+      "slug": "sn-109",
+      "subtitle": "data-artifact / academia",
+      "title": "Academia Bittensor archives dataset",
+      "tokens": [
+        "109",
+        "academia",
+        "archives",
+        "artifact",
+        "bittensor",
+        "data",
+        "dataset",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://github.com/fx-integral/academia-archives"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

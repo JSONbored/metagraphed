@@ -5663,6 +5663,77 @@
       "verified_candidate_count": 15
     },
     {
+      "adapter_score": 27,
+      "candidate_count": 7,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 48,
+      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "website"
+      ],
+      "endpoint_count": 7,
+      "evidence_action": "submit-new-evidence",
+      "identity_level": "partial",
+      "identity_surface_count": 2,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [
+        "website"
+      ],
+      "missing_kinds": [
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "Academia",
+      "netuid": 109,
+      "operational_interface_count": 1,
+      "priority_score": 105,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-website"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-109-backprop-dashboard",
+        "sn-109-native-chain-github",
+        "sn-109-subnetradar-dashboard",
+        "sn-109-taomarketcap-dashboard",
+        "sn-109-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "sn-109",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/109",
+        "https://backprop.finance/dtao/subnets/109-academia",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
+        "https://github.com/fx-integral/academia",
+        "https://github.com/fx-integral/academia-archives",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
+        "https://subnetradar.com/subnet/109",
+        "https://taomarketcap.com/subnets/109"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 7,
+      "verified_candidate_count": 7
+    },
+    {
       "adapter_score": 9,
       "candidate_count": 24,
       "candidate_evidence_summary": {
@@ -7033,76 +7104,6 @@
       "stale_candidate_count": 5,
       "surface_count": 9,
       "verified_candidate_count": 16
-    },
-    {
-      "adapter_score": 0,
-      "candidate_count": 7,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 40,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 6,
-      "evidence_action": "submit-new-evidence",
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [
-        "website"
-      ],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Academia",
-      "netuid": 109,
-      "operational_interface_count": 0,
-      "priority_score": 101,
-      "profile_level": "identity-partial",
-      "reason_codes": [
-        "missing-website"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-109-backprop-dashboard",
-        "sn-109-native-chain-github",
-        "sn-109-subnetradar-dashboard",
-        "sn-109-taomarketcap-dashboard",
-        "sn-109-taopedia-article"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "sn-109",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/109",
-        "https://backprop.finance/dtao/subnets/109-academia",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
-        "https://github.com/fx-integral/academia",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
-        "https://subnetradar.com/subnet/109",
-        "https://taomarketcap.com/subnets/109"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 6,
-      "verified_candidate_count": 7
     },
     {
       "adapter_score": 0,

@@ -983,6 +983,28 @@
       "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
     },
     {
+      "candidate_api_count": 0,
+      "candidate_api_ids": [],
+      "candidate_api_kinds": [],
+      "curation_level": "maintainer-reviewed",
+      "name": "Academia",
+      "netuid": 109,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "operational_surface_ids": [
+        "sn-109-academia-archives"
+      ],
+      "priority_score": 27,
+      "reason_codes": [
+        "data-artifact-surface"
+      ],
+      "recommended_adapter_kind": "data-artifact-adapter",
+      "slug": "sn-109",
+      "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
+    },
+    {
       "candidate_api_count": 6,
       "candidate_api_ids": [
         "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
@@ -2884,11 +2906,11 @@
     "by_curation_level": {
       "adapter-backed": 2,
       "machine-verified": 38,
-      "maintainer-reviewed": 58
+      "maintainer-reviewed": 59
     },
     "by_recommended_adapter_kind": {
       "custom-adapter": 77,
-      "data-artifact-adapter": 13,
+      "data-artifact-adapter": 14,
       "generic-openapi-or-custom": 8
     },
     "candidate_api_kind_counts": {
@@ -2896,11 +2918,11 @@
       "openapi": 93,
       "subnet-api": 96
     },
-    "candidate_count": 98,
-    "data_artifact_backed_count": 15,
+    "candidate_count": 99,
+    "data_artifact_backed_count": 16,
     "openapi_backed_count": 10,
     "operational_kind_counts": {
-      "data-artifact": 15,
+      "data-artifact": 16,
       "openapi": 10,
       "sse": 1,
       "subnet-api": 14

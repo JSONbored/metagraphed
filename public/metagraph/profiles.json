@@ -15949,6 +15949,7 @@
       "categories": [
         "baseline-augmented",
         "baseline-curated",
+        "data-artifact",
         "identity-reviewed",
         "official-source-repo"
       ],
@@ -15958,37 +15959,34 @@
           "missing-website",
           "missing-openapi",
           "missing-subnet-api",
-          "missing-sse",
-          "missing-data-artifact"
+          "missing-sse"
         ],
         "identity_level": "partial",
         "identity_surface_count": 2,
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_identity": [
           "website"
         ],
         "missing_operational": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "missing_required": [
           "website"
         ],
-        "profile_level": "identity-partial",
-        "score": 40
+        "profile_level": "operational",
+        "score": 48
       },
-      "completeness_score": 40,
+      "completeness_score": 48,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 6,
+      "endpoint_count": 7,
       "gap_reasons": [
         "missing-website",
         "missing-openapi",
         "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
+        "missing-sse"
       ],
       "identity_evidence": {
         "candidate_identity_count": 3,
@@ -16013,21 +16011,20 @@
       },
       "identity_level": "partial",
       "identity_surface_count": 2,
-      "interface_count": 3,
-      "missing_critical_count": 5,
+      "interface_count": 4,
+      "missing_critical_count": 4,
       "missing_identity": [
         "website"
       ],
       "missing_operational": [
         "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "missing_required": [
         "website"
       ],
-      "monitored_endpoint_count": 6,
+      "monitored_endpoint_count": 7,
       "name": "Academia",
       "native_identity": {
         "additional": null,
@@ -16043,14 +16040,16 @@
       "native_name": "Academia",
       "native_name_quality": "chain",
       "netuid": 109,
-      "operational_interface_count": 0,
-      "operational_interface_kinds": [],
+      "operational_interface_count": 1,
+      "operational_interface_kinds": [
+        "data-artifact"
+      ],
       "primary_app_surface": {
-        "id": "sn-109-taopedia-article",
-        "kind": "docs",
-        "name": "Academia Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx"
+        "id": "sn-109-academia-archives",
+        "kind": "data-artifact",
+        "name": "Academia Bittensor archives dataset",
+        "provider": "academia",
+        "url": "https://github.com/fx-integral/academia-archives"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/109",
@@ -16058,12 +16057,12 @@
         "source_repo": "https://github.com/fx-integral/academia",
         "website_url": null
       },
-      "profile_level": "identity-partial",
+      "profile_level": "operational",
       "project_name": "Academia",
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:50:00.000Z",
         "source_urls": [
@@ -16071,6 +16070,7 @@
           "https://backprop.finance/dtao/subnets/109-academia",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
           "https://github.com/fx-integral/academia",
+          "https://github.com/fx-integral/academia-archives",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
           "https://subnetradar.com/subnet/109",
           "https://taomarketcap.com/subnets/109"
@@ -16085,10 +16085,11 @@
       ],
       "supported_interface_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
         "source-repo"
       ],
-      "surface_count": 6,
+      "surface_count": 7,
       "symbol": "՞",
       "team": null
     },
@@ -18881,8 +18882,8 @@
     "by_profile_level": {
       "adapter-backed": 2,
       "identity-complete": 76,
-      "identity-partial": 24,
-      "operational": 27
+      "identity-partial": 23,
+      "operational": 28
     },
     "identity_promotion_candidate_count": 1,
     "native_identity_count": 120,

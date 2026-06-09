@@ -983,6 +983,28 @@
       "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
     },
     {
+      "candidate_api_count": 0,
+      "candidate_api_ids": [],
+      "candidate_api_kinds": [],
+      "curation_level": "maintainer-reviewed",
+      "name": "Academia",
+      "netuid": 109,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "operational_surface_ids": [
+        "sn-109-academia-archives"
+      ],
+      "priority_score": 27,
+      "reason_codes": [
+        "data-artifact-surface"
+      ],
+      "recommended_adapter_kind": "data-artifact-adapter",
+      "slug": "sn-109",
+      "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
+    },
+    {
       "candidate_api_count": 6,
       "candidate_api_ids": [
         "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
@@ -4045,6 +4067,24 @@
       "verified_candidate_count": 8
     },
     {
+      "candidate_count": 7,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "name": "Academia",
+      "netuid": 109,
+      "priority_score": 26,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-109",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 7,
+      "verified_candidate_count": 7
+    },
+    {
       "candidate_count": 26,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -4586,25 +4626,6 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 7,
       "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 7,
-      "curation_level": "maintainer-reviewed",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Academia",
-      "netuid": 109,
-      "priority_score": 18,
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-109",
-      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 6,
-      "verified_candidate_count": 7
     },
     {
       "candidate_count": 7,
@@ -5240,9 +5261,9 @@
   ],
   "schema_version": 1,
   "summary": {
-    "adapter_candidate_count": 98,
+    "adapter_candidate_count": 99,
     "gap_kind_counts": {
-      "data-artifact": 114,
+      "data-artifact": 113,
       "openapi": 119,
       "source-repo": 20,
       "sse": 128,

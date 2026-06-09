@@ -3051,18 +3051,17 @@
           "No verified docs site yet.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
-          "No verified SSE/event stream yet.",
-          "No verified standalone static data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo"
         ]
