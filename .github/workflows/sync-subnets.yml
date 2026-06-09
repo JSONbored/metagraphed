@@ -46,6 +46,13 @@ jobs:
           # fail loudly instead of silently shipping degraded adapter data.
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
+      # Belt-and-suspenders for Finding 1: refuse to commit adapter snapshots that
+      # degraded to broken auth / all-HTML-fallback during the refresh above.
+      - name: Validate adapter data quality
+        run: npm run validate:adapters
+        env:
+          METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
+
       - name: Generate sync summary
         run: |
           mkdir -p "$RUNNER_TEMP/sync-output"

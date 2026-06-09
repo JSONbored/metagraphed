@@ -105,6 +105,40 @@ Write mode verifies downloaded SHA-256 hashes against `public/metagraph/r2-manif
 METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download
 ```
 
+## Health & Freshness Monitoring
+
+`GET /health` is the readiness + freshness probe (no auth, lightweight, edge-cached
+60s). It reports binding wiring and the age of the published data:
+
+```json
+{
+  "status": "ok",
+  "bindings": { "assets": true, "r2": true, "kv": true },
+  "freshness": {
+    "published_at": "…",
+    "age_hours": 1.2,
+    "max_age_hours": 12,
+    "stale": false
+  }
+}
+```
+
+- `published_at` comes from the KV `metagraph:latest` pointer, which the scheduled
+  refresh advances every ~6h.
+- When the data is older than `max_age_hours` (default 12 — two missed 6h refreshes;
+  override with `METAGRAPH_HEALTH_MAX_AGE_HOURS`), `status` becomes `degraded` and the
+  route returns **HTTP 503**. Point an uptime monitor at `https://metagraph.sh/health`
+  so a silently-broken data-refresh pages instead of serving stale data unnoticed.
+- A present-but-stale pointer trips it; a missing pointer (local/dev) stays `ok`.
+
+## Adapter Data-Quality Guard
+
+`npm run validate:adapters` rejects an adapter snapshot that degraded to broken
+GitHub auth / all-HTML-fallback (Finding 1). It **warns** in ordinary PR validation
+and **fails** (exit 1) when `METAGRAPH_PRODUCTION_BUILD=1` or
+`METAGRAPH_REQUIRE_ADAPTER_AUTH=1` — so the scheduled publish and `sync-subnets` runs
+refuse to ship degraded adapter data after a token break.
+
 ## Rollback
 
 Rollback is pointer-first:
