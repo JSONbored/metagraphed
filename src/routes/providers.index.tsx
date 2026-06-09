@@ -94,15 +94,11 @@ function authorityTone(a?: string): string {
 type SortKey = "name" | "surfaces" | "endpoints" | "subnets";
 
 function ProvidersGrid() {
-  const { data, meta } = useSuspenseQuery(providersQuery()).data
-    ? useSuspenseQuery(providersQuery()).data && useSuspenseQuery(providersQuery())
-    : useSuspenseQuery(providersQuery());
-  void data;
-  // simplified above caused issue — use directly:
-  const res = useSuspenseQuery(providersQuery());
+  const { data: providersRes } = useSuspenseQuery(providersQuery());
   const { data: counts } = useSuspenseQuery(providerCountsQuery());
-  const rows = (res.data.data ?? []) as Provider[];
-  const stale = isStaleFreshness(res.data.meta?.generated_at);
+  const rows = (providersRes.data ?? []) as Provider[];
+  const generatedAt = providersRes.meta?.generated_at;
+  const stale = isStaleFreshness(generatedAt);
 
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("");
