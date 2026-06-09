@@ -3358,7 +3358,11 @@ function buildFreshnessArtifact({
       lane: "adapter-snapshot",
       pathValue: "registry/adapters/latest",
       requiredForPublish: true,
-      staleAfterHours: 12,
+      // Aligned with the other publish-blocking sources (candidate-discovery,
+      // candidate-verification, native-subnets all 24h). The publish re-snapshots
+      // adapters, so this is a safety buffer for the carry-forward path rather
+      // than the primary freshness mechanism.
+      staleAfterHours: 24,
       timestampField: "adapter_snapshot_as_of",
     }),
     freshnessSource({

@@ -69,6 +69,14 @@ function localSteps() {
 function productionSteps() {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    // Re-snapshot adapters from live GitHub metadata so the publish is
+    // self-sufficient for freshness: adapter-snapshots are then fresh by
+    // construction at publish time (the publish already re-probes health),
+    // so the freshness gate never depends on a recently-merged sync PR.
+    // Auth posture (METAGRAPH_REQUIRE_ADAPTER_AUTH) + token are supplied by
+    // the caller (publish-cloudflare.yml); without a token this carries
+    // forward committed adapter data rather than failing.
+    nodeStep("adapters-snapshot", "scripts/snapshot-adapters.mjs", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
     nodeStep("probes-smoke", "scripts/probes-smoke.mjs", {
       METAGRAPH_WRITE_PROBE_RESULTS: "1",
