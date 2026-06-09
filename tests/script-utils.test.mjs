@@ -107,6 +107,24 @@ describe("script utility contracts", () => {
     );
   });
 
+  test("classifies redirect-limit probes with unsafe targets as unsafe", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          redirect_target: "http://169.254.169.254/latest/meta-data/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsafe",
+    );
+  });
+
   test("preserves previous GitHub metadata when source-repo API enrichment degrades", () => {
     const current = {
       candidate_id: "sn-1-native-chain-github",
@@ -767,10 +785,7 @@ describe("script utility contracts", () => {
       overlaySet.manualOverlays[0].categories.includes("baseline-augmented"),
       true,
     );
-    assert.equal(
-      overlaySet.manualOverlays[0].dashboard_url,
-      "https://taostats.io/subnets/25/metagraph",
-    );
+    assert.equal(overlaySet.manualOverlays[0].dashboard_url, undefined);
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 

@@ -1250,7 +1250,7 @@
       "profile_level": "identity-partial",
       "review_state": "maintainer-reviewed",
       "slug": "sn-92",
-      "source_count": 7,
+      "source_count": 8,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
@@ -3339,7 +3339,7 @@
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-13",
-      "source_count": 13,
+      "source_count": 14,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -5679,7 +5679,7 @@
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-8",
-      "source_count": 8,
+      "source_count": 9,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [

@@ -118,12 +118,11 @@ export function augmentManualOverlaysWithBaseline(
         return manualOverlay;
       }
 
+      const manualSurfaces = manualOverlay.surfaces || [];
       const excludedSurfaceIds = new Set(
         manualOverlay.baseline_excluded_surface_ids || [],
       );
-      const existingKeys = new Set(
-        (manualOverlay.surfaces || []).map(registrySurfaceKey),
-      );
+      const existingKeys = new Set(manualSurfaces.map(registrySurfaceKey));
       const additions = baselineSurfaces.filter((surface) => {
         if (excludedSurfaceIds.has(surface.id)) {
           return false;
@@ -140,7 +139,7 @@ export function augmentManualOverlaysWithBaseline(
         return manualOverlay;
       }
 
-      const surfaces = [...(manualOverlay.surfaces || []), ...additions].sort(
+      const surfaces = [...manualSurfaces, ...additions].sort(
         (a, b) =>
           surfaceRank(a.kind) - surfaceRank(b.kind) || a.id.localeCompare(b.id),
       );
@@ -154,11 +153,12 @@ export function augmentManualOverlaysWithBaseline(
         ...manualOverlay,
         categories: [...categories].sort(),
         dashboard_url:
-          manualOverlay.dashboard_url || firstUrl(surfaces, "dashboard"),
-        docs_url: manualOverlay.docs_url || firstUrl(surfaces, "docs"),
+          manualOverlay.dashboard_url || firstUrl(manualSurfaces, "dashboard"),
+        docs_url: manualOverlay.docs_url || firstUrl(manualSurfaces, "docs"),
         source_repo:
-          manualOverlay.source_repo || firstUrl(surfaces, "source-repo"),
-        website_url: manualOverlay.website_url || firstUrl(surfaces, "website"),
+          manualOverlay.source_repo || firstUrl(manualSurfaces, "source-repo"),
+        website_url:
+          manualOverlay.website_url || firstUrl(manualSurfaces, "website"),
         curation: {
           ...(manualOverlay.curation || {}),
           source_count: Math.max(

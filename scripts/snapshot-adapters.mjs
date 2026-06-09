@@ -1,4 +1,5 @@
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   buildTimestamp,
   hashJson,
@@ -27,33 +28,42 @@ const OPENAPI_METHODS = new Set([
   "trace",
 ]);
 
-const [allways, gittensor] = await Promise.all([
-  snapshotAllways(),
-  snapshotGittensor(),
-]);
-const genericSnapshots = await snapshotGenericOpenApiAdapters(
-  new Set([allways.slug, gittensor.slug]),
-);
-const snapshots = [allways, gittensor, ...genericSnapshots].sort(
-  (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
-);
-
-if (!dryRun) {
-  for (const snapshot of snapshots) {
-    await writeJson(path.join(outputRoot, `${snapshot.slug}.json`), snapshot);
-  }
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  await main();
 }
 
-console.log(
-  stableStringify({
-    mode: dryRun ? "dry-run" : "write",
-    snapshots: snapshots.map((snapshot) => ({
-      slug: snapshot.slug,
-      status: snapshot.status,
-      dimensions: Object.keys(snapshot.dimensions || {}).length,
-    })),
-  }),
-);
+async function main() {
+  const [allways, gittensor] = await Promise.all([
+    snapshotAllways(),
+    snapshotGittensor(),
+  ]);
+  const genericSnapshots = await snapshotGenericOpenApiAdapters(
+    new Set([allways.slug, gittensor.slug]),
+  );
+  const snapshots = [allways, gittensor, ...genericSnapshots].sort(
+    (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
+  );
+
+  if (!dryRun) {
+    for (const snapshot of snapshots) {
+      await writeJson(path.join(outputRoot, `${snapshot.slug}.json`), snapshot);
+    }
+  }
+
+  console.log(
+    stableStringify({
+      mode: dryRun ? "dry-run" : "write",
+      snapshots: snapshots.map((snapshot) => ({
+        slug: snapshot.slug,
+        status: snapshot.status,
+        dimensions: Object.keys(snapshot.dimensions || {}).length,
+      })),
+    }),
+  );
+}
 
 async function snapshotAllways() {
   const endpoints = [
@@ -406,7 +416,7 @@ async function fetchJsonSummary(url) {
   };
 }
 
-async function fetchJson(url) {
+export async function fetchJson(url, redirectCount = 0) {
   if (await isUnsafeResolvedUrl(url)) {
     return {
       ok: false,
@@ -425,8 +435,31 @@ async function fetchJson(url) {
         accept: "application/json",
         "user-agent": "metagraphed-adapter-snapshot/0.0",
       },
+      redirect: "manual",
       signal: controller.signal,
     });
+    const location = response.headers.get("location");
+    if (
+      [301, 302, 303, 307, 308].includes(response.status) &&
+      location &&
+      redirectCount < 5
+    ) {
+      const redirectTarget = new URL(location, url).toString();
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
+        await response.body?.cancel();
+        return {
+          ok: false,
+          status: "unsafe",
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          status_code: response.status,
+          latency_ms: Math.round(performance.now() - started),
+          captured_at: new Date().toISOString(),
+        };
+      }
+      await response.body?.cancel();
+      return fetchJson(redirectTarget, redirectCount + 1);
+    }
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
     if (!response.ok) {
