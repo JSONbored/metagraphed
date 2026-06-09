@@ -923,6 +923,8 @@ describe("script utility contracts", () => {
     assert.equal(normalizePublicUrl(null), null);
     assert.equal(normalizePublicUrl("notaurl"), null);
     assert.equal(normalizePublicUrl("http://10.0.0.1"), null);
+    assert.equal(normalizePublicUrl("https://user:pass@metagraph.sh"), null);
+    assert.equal(normalizePublicUrl("https://user@metagraph.sh"), null);
     assert.equal(isJsonContentType("application/openapi+json"), true);
     assert.equal(isHtmlContentType("text/html; charset=utf-8"), true);
     assert.equal(sha256Hex("metagraphed").length, 64);

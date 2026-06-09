@@ -110,6 +110,31 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
+  test("blocks credentialed direct provider profile URLs", () => {
+    const document = structuredClone(validProviderDocument);
+    document.submission.submitted_by = "jsonbored";
+    document.submission.submitted_by_url = "https://github.com/jsonbored";
+    document.provider.website_url = "https://user:pass@example.com";
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/providers/community/credentialed-provider.json"],
+      providerDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.errors.includes(
+        "provider website_url is missing, invalid, or unsafe",
+      ),
+      true,
+    );
+  });
+
   test("blocks unsafe direct provider profile PRs", () => {
     const document = structuredClone(validProviderDocument);
     document.submission.submitted_by = "jsonbored";
@@ -415,6 +440,44 @@ describe("Metagraphed submission gate policy", () => {
       "https://github.com/Ent-Rho/allways-subnet",
     );
     assert.equal(report.next_action, "manual-review");
+  });
+
+  test("rejects credentialed provider profile issue URLs", () => {
+    const body = [
+      "### Provider slug",
+      "credentialed",
+      "### Provider name",
+      "Credentialed Provider",
+      "### Provider kind",
+      "subnet-team",
+      "### Website URL",
+      "https://user:pass@example.com",
+      "### Docs URL",
+      "https://docs.example.com",
+      "### Public notes",
+      "Public subnet team profile update.",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 51,
+        title: "provider: credentialed",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.providerSubmission }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.source, "github-provider-intake");
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.provider, null);
+    assert.equal(
+      report.errors.includes("website URL is missing, invalid, or unsafe"),
+      true,
+    );
   });
 
   test("rejects malformed provider profile issue submissions", () => {
