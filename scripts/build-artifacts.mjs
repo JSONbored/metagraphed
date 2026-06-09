@@ -2516,7 +2516,12 @@ function buildSurfaceHealthRow(surface, previous) {
   ) {
     row.method_results = previous.method_results;
   }
-  if (Array.isArray(previous.methods_supported)) {
+  if (
+    Array.isArray(previous.methods_supported) ||
+    (previous.methods_supported &&
+      typeof previous.methods_supported === "object" &&
+      !Array.isArray(previous.methods_supported))
+  ) {
     row.methods_supported = previous.methods_supported;
   }
   return row;

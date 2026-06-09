@@ -740,10 +740,7 @@ describe("script utility contracts", () => {
       overlaySet.manualOverlays[0].categories.includes("baseline-augmented"),
       true,
     );
-    assert.equal(
-      overlaySet.manualOverlays[0].dashboard_url,
-      "https://taostats.io/subnets/25/metagraph",
-    );
+    assert.equal(overlaySet.manualOverlays[0].dashboard_url, undefined);
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 

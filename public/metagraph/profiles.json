@@ -1255,7 +1255,7 @@
       },
       "primary_links": {
         "dashboard_url": "https://www.vantanetwork.io/dashboard",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx",
+        "docs_url": "https://www.vantanetwork.io/tokenomics",
         "source_repo": "https://github.com/taoshidev/vanta-network",
         "website_url": "https://www.vantanetwork.io/"
       },
@@ -1264,7 +1264,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
+        "interface_source_count": 9,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
@@ -1275,7 +1275,8 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json",
           "https://subnetradar.com/subnet/8",
           "https://www.vantanetwork.io/",
-          "https://www.vantanetwork.io/dashboard"
+          "https://www.vantanetwork.io/dashboard",
+          "https://www.vantanetwork.io/tokenomics"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2002,7 +2003,7 @@
         "url": "https://datauniverse.macrocosmos.ai/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/13-data-universe",
+        "dashboard_url": "https://taomarketcap.com/subnets/13",
         "docs_url": "https://docs.macrocosmos.ai/product-and-services/gravity",
         "source_repo": "https://github.com/macrocosm-os/data-universe",
         "website_url": "https://datauniverse.macrocosmos.ai/"
@@ -2012,7 +2013,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 13,
+        "interface_source_count": 14,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T08:35:00.000Z",
         "source_urls": [
@@ -2028,6 +2029,7 @@
           "https://github.com/macrocosm-os/scrapers",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json",
           "https://subnetradar.com/subnet/13",
+          "https://taomarketcap.com/subnets/13",
           "https://www.macrocosmos.ai/gravity"
         ]
       },
@@ -13592,7 +13594,7 @@
       },
       "primary_links": {
         "dashboard_url": "https://www.tensorclaw.ai/dashboard",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
+        "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
         "source_repo": null,
         "website_url": "https://www.tensorclaw.ai/"
       },
@@ -13601,7 +13603,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T20:15:00.000Z",
         "source_urls": [
@@ -13609,6 +13611,7 @@
           "https://backprop.finance/dtao/subnets/92-luis",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
+          "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
           "https://subnetradar.com/subnet/92",
           "https://www.tensorclaw.ai/",
           "https://www.tensorclaw.ai/dashboard"
