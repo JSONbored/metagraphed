@@ -2948,15 +2948,28 @@ function reusableSchemaDriftArtifact(surfaces, previous) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
-    !schemaSnapshotTimestamp(previous)
+    !schemaSnapshotTimestamp(previous) ||
+    !Array.isArray(previous.surfaces)
   ) {
     return null;
   }
-  const currentIds = openApiSurfaceIds(surfaces);
-  const previousIds = (previous.surfaces || [])
-    .map((surface) => surface.surface_id)
-    .sort();
-  if (!sameStringSet(currentIds, previousIds)) {
+  const currentSurfaces = openApiSurfacesById(surfaces);
+  if (
+    !sameStringSet(
+      [...currentSurfaces.keys()].sort(),
+      previousSurfaceIds(previous.surfaces),
+    )
+  ) {
+    return null;
+  }
+  if (
+    !previous.surfaces.every((entry) =>
+      schemaSurfaceEntryMatchesSurface(
+        entry,
+        currentSurfaces.get(entry.surface_id),
+      ),
+    )
+  ) {
     return null;
   }
   return previous;
@@ -2966,15 +2979,28 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
-    !schemaSnapshotTimestamp(previous)
+    !schemaSnapshotTimestamp(previous) ||
+    !Array.isArray(previous.schemas)
   ) {
     return null;
   }
-  const currentIds = openApiSurfaceIds(surfaces);
-  const previousIds = (previous.schemas || [])
-    .map((schema) => schema.surface_id)
-    .sort();
-  if (!sameStringSet(currentIds, previousIds)) {
+  const currentSurfaces = openApiSurfacesById(surfaces);
+  if (
+    !sameStringSet(
+      [...currentSurfaces.keys()].sort(),
+      previousSurfaceIds(previous.schemas),
+    )
+  ) {
+    return null;
+  }
+  if (
+    !previous.schemas.every((entry) =>
+      schemaIndexEntryMatchesSurface(
+        entry,
+        currentSurfaces.get(entry.surface_id),
+      ),
+    )
+  ) {
     return null;
   }
   return previous;
@@ -2992,11 +3018,86 @@ function buildSchemaIndexPlaceholder() {
   };
 }
 
-function openApiSurfaceIds(surfaces) {
-  return surfaces
-    .filter((surface) => surface.kind === "openapi")
-    .map((surface) => surface.id)
-    .sort();
+function openApiSurfacesById(surfaces) {
+  return new Map(
+    surfaces
+      .filter((surface) => surface.kind === "openapi" && surface.public_safe)
+      .map((surface) => [surface.id, surface]),
+  );
+}
+
+function previousSurfaceIds(entries) {
+  return entries.map((entry) => entry.surface_id).sort();
+}
+
+function schemaSurfaceEntryMatchesSurface(entry, surface) {
+  return (
+    Boolean(surface) &&
+    entry.surface_id === surface.id &&
+    entry.netuid === surface.netuid &&
+    entry.subnet_slug === surface.subnet_slug &&
+    entry.url === surface.url &&
+    candidateSchemaUrlsForSurface(surface).includes(entry.schema_url || null)
+  );
+}
+
+function schemaIndexEntryMatchesSurface(entry, surface) {
+  if (!schemaSurfaceEntryMatchesSurface(entry, surface)) {
+    return false;
+  }
+  if (entry.status !== "captured") {
+    return (
+      (entry.path || null) === null &&
+      (entry.hash || null) === null &&
+      (!entry.snapshot || typeof entry.snapshot !== "object")
+    );
+  }
+
+  return (
+    entry.path === `/metagraph/schemas/${surface.id}.json` &&
+    typeof entry.content_type === "string" &&
+    entry.content_type.toLowerCase().split(";")[0].trim() ===
+      "application/json" &&
+    entry.snapshot &&
+    typeof entry.snapshot === "object" &&
+    entry.snapshot.surface_id === surface.id &&
+    entry.snapshot.netuid === surface.netuid &&
+    entry.snapshot.subnet_slug === surface.subnet_slug &&
+    entry.snapshot.subnet_name === surface.subnet_name &&
+    entry.snapshot.surface_url === surface.url &&
+    entry.snapshot.schema_url === entry.schema_url &&
+    entry.snapshot.hash === entry.hash &&
+    (entry.snapshot.previous_hash || null) === (entry.previous_hash || null) &&
+    entry.snapshot.drift_status === entry.drift_status
+  );
+}
+
+function candidateSchemaUrlsForSurface(surface) {
+  const urls = [];
+  if (surface.schema_url) {
+    urls.push(surface.schema_url);
+  }
+
+  try {
+    const parsed = new URL(surface.url);
+    if (parsed.pathname.toLowerCase().endsWith(".json")) {
+      urls.push(surface.url);
+    }
+    for (const suffix of [
+      "/openapi.json",
+      "/swagger.json",
+      "/swagger-json",
+      "/api-json",
+      "/docs-json",
+      "/swagger/v1/swagger.json",
+    ]) {
+      urls.push(`${parsed.origin}${suffix}`);
+    }
+  } catch {
+    // Ignore invalid URLs; validation catches them elsewhere.
+  }
+
+  return [...new Set(urls)];
 }
 
 function sameStringSet(a, b) {

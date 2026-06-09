@@ -327,6 +327,90 @@ test("artifact build does not preserve forged endpoint index health", () => {
   }
 }, 30_000);
 
+test("artifact build does not preserve forged schema snapshot metadata", () => {
+  const schemaDriftPath = artifactFilePath("schema-drift.json");
+  const schemaIndexPath = artifactFilePath("schemas/index.json");
+  const originalSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const supportArtifacts = snapshotSupportArtifacts();
+  const schemaDrift = JSON.parse(originalSchemaDrift);
+  const schemaIndex = JSON.parse(originalSchemaIndex);
+  const driftTarget = schemaDrift.surfaces?.[0];
+  const indexTarget = schemaIndex.schemas?.find(
+    (schema) => schema.surface_id === driftTarget?.surface_id,
+  );
+  assert(driftTarget, "expected a schema drift surface entry to tamper");
+  assert(indexTarget, "expected a schema index entry to tamper");
+
+  const forgedMarker = "AUTOVALIDATOR_FORGED_METADATA_SHOULD_NOT_SURVIVE_BUILD";
+  driftTarget.netuid = 999999;
+  driftTarget.subnet_slug = forgedMarker;
+  driftTarget.url = "https://attacker.invalid/openapi";
+  driftTarget.schema_url = "https://attacker.invalid/openapi.json";
+  driftTarget.hash = "forged-hash";
+  indexTarget.netuid = 999999;
+  indexTarget.subnet_slug = forgedMarker;
+  indexTarget.url = "https://attacker.invalid/openapi";
+  indexTarget.schema_url = "https://attacker.invalid/openapi.json";
+  indexTarget.hash = "forged-hash";
+  indexTarget.path = "/metagraph/schemas/forged-by-autovalidator.json";
+  indexTarget.snapshot = {
+    ...indexTarget.snapshot,
+    netuid: 999999,
+    subnet_slug: forgedMarker,
+    surface_url: "https://attacker.invalid/openapi",
+    schema_url: "https://attacker.invalid/openapi.json",
+    hash: "forged-hash",
+    title: forgedMarker,
+  };
+
+  try {
+    writeFileSync(schemaDriftPath, `${JSON.stringify(schemaDrift, null, 2)}\n`);
+    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    const rebuiltSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+    assert.equal(rebuiltSchemaDrift.includes(forgedMarker), false);
+    assert.equal(rebuiltSchemaIndex.includes(forgedMarker), false);
+    assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
+    assert.equal(JSON.parse(rebuiltSchemaIndex).source, "artifact-build");
+  } finally {
+    writeFileSync(schemaDriftPath, originalSchemaDrift);
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    restoreSupportArtifacts(supportArtifacts);
+  }
+}, 30_000);
+
 test("public artifacts are internally consistent", () => {
   const native = JSON.parse(
     readFileSync("registry/native/finney-subnets.json", "utf8"),
