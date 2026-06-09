@@ -175,7 +175,7 @@ function ProvidersGrid() {
 
   return (
     <div className="space-y-3">
-      {stale ? <StaleBanner generatedAt={res.data.meta?.generated_at} /> : null}
+      {stale ? <StaleBanner generatedAt={generatedAt} /> : null}
 
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
