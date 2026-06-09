@@ -3,7 +3,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { repoRoot, stableStringify } from "./lib.mjs";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  schemaDetailArtifactRelativePath,
+} from "../src/artifact-storage.mjs";
 
 const trackedPublicArtifacts = execFileSync(
   "git",
@@ -80,10 +83,8 @@ async function loadSchemaSnapshotDetails() {
   const index = JSON.parse(await readFile(indexPath, "utf8"));
   const details = new Map();
   for (const entry of index.schemas || []) {
-    const relativePath = String(entry.path || "")
-      .replace(/^\/+metagraph\//, "")
-      .replace(/^\/+/, "");
-    if (!relativePath || relativePath === "schemas/index.json") {
+    const relativePath = schemaDetailArtifactRelativePath(entry.path || "");
+    if (!relativePath) {
       continue;
     }
     const filePath = path.join(

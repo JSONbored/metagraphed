@@ -7,11 +7,7 @@ import {
 const options = parseArgs(process.argv.slice(2));
 const changedFiles = await readChangedFiles(options.changedFiles);
 const classification = classifyPrScope(changedFiles);
-const mode =
-  ["direct-candidate", "direct-provider"].includes(classification.scope) &&
-  classification.errors.length === 0
-    ? "ugc"
-    : "full";
+const mode = classification.scope === "normal-pr" ? "full" : "ugc";
 
 const report = {
   schema_version: 1,
