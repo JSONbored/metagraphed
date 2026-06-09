@@ -1,6 +1,6 @@
 {
   "artifact_count": 23,
-  "artifact_size_bytes": 5361160,
+  "artifact_size_bytes": 5356778,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "9b9c927259e685489784e34a99eb28f5c131e5354be00e7780e8400703763e3a",
-      "size_bytes": 1349,
+      "sha256": "f36f2ceb00afb05b7e6ee65f026417e8c43d8f902de7cd595e5b6b2355bdb555",
+      "size_bytes": 1780,
       "storage_tier": "dual"
     },
     {
@@ -88,8 +88,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/profiles.json",
       "latest_key": "latest/profiles.json",
       "path": "/metagraph/profiles.json",
-      "sha256": "a6f3a95566149d754a90abc5594f317e2535c3a8472fb7a10975150239082544",
-      "size_bytes": 605579,
+      "sha256": "b11176131600564f580306d1d166135df33da69a8c75a0a3385c4e0a657f6c72",
+      "size_bytes": 605660,
       "storage_tier": "dual"
     },
     {
@@ -124,8 +124,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-queue.json",
       "latest_key": "latest/review/enrichment-queue.json",
       "path": "/metagraph/review/enrichment-queue.json",
-      "sha256": "3af9494dc39ee00e4d7a3d6d50eed382e4cdd77107f7e2d57da233aef48722ef",
-      "size_bytes": 366207,
+      "sha256": "187803271b76aecdde48762ed3c74bef468d20889f9a7b77ad1b9096301c1e05",
+      "size_bytes": 366283,
       "storage_tier": "dual"
     },
     {
@@ -151,7 +151,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/profile-completeness.json",
       "latest_key": "latest/review/profile-completeness.json",
       "path": "/metagraph/review/profile-completeness.json",
-      "sha256": "bb7cd58b9e61d5ae698e55160343fdf74694c727da38610082cd2dd65f08a9de",
+      "sha256": "251a5891665ab12a06917d8c99fb7377db83b053f57f3e38fa5517707c16afc2",
       "size_bytes": 258960,
       "storage_tier": "git"
     },
@@ -187,8 +187,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/subnets.json",
       "latest_key": "latest/subnets.json",
       "path": "/metagraph/subnets.json",
-      "sha256": "4fcafd270f88d8b0c443b15f4095c7266ecaac72cc9de0b633eb00b39e71b959",
-      "size_bytes": 128979,
+      "sha256": "98a8ddde177be85e0a69d0c46f4f7f0527edc07e552fbddec307c4b65a8e0fc9",
+      "size_bytes": 124009,
       "storage_tier": "dual"
     },
     {
@@ -214,7 +214,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1273,
-  "full_artifact_size_bytes": 49159278,
+  "full_artifact_size_bytes": 35052669,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -238,8 +238,8 @@
     "r2": 1250
   },
   "storage_tier_size_bytes": {
-    "dual": 5102200,
+    "dual": 5097818,
     "git": 258960,
-    "r2": 43798118
+    "r2": 29695891
   }
 }
