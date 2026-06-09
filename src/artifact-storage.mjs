@@ -35,32 +35,50 @@ const R2_ONLY_PATTERNS = [
   /^surfaces\/(?:\d+|\{netuid\})\.json$/,
   /^verification\/latest\.json$/,
   /^verification\/subnets\/(?:\d+|\{netuid\})\.json$/,
-];
-
-const DUAL_PATTERNS = [
-  /^api-index\.json$/,
-  /^build-summary\.json$/,
-  /^changelog\.json$/,
-  /^contracts\.json$/,
-  /^coverage\.json$/,
+  // High-churn data with NO hardcoded public-path readers, moved out of git
+  // (ADR 0001): derived from committed inputs + live enrichment, built to dist/,
+  // served from R2 + edge cache, never committed. ~3.1 MB of per-refresh churn
+  // eliminated. (surfaces/freshness/schema-drift stay dual below — they have
+  // hardcoded readers in sync-summary/kv-publish; moving them needs a tier-aware
+  // read, a follow-up. Likewise the small digests build-summary/changelog/
+  // r2-manifest and subnets/coverage.)
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
-  /^freshness\.json$/,
   /^gaps\.json$/,
-  /^openapi\.json$/,
   /^profiles\.json$/,
   /^providers\.json$/,
-  /^r2-manifest\.json$/,
   /^review\/adapter-candidates\.json$/,
   /^review\/curation\.json$/,
   /^review\/enrichment-queue\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
-  /^schema-drift\.json$/,
-  /^schemas\/index\.json$/,
   /^search\.json$/,
-  /^subnets\.json$/,
+];
+
+// Committed to git (and mirrored to R2): the low-churn, consumer-facing API
+// contract plus the small coverage "shop window". These only change when the
+// API/schema changes — exactly what belongs in version control.
+const DUAL_PATTERNS = [
+  /^api-index\.json$/,
+  // Small digests with hardcoded public-path readers (ci-verify, validate,
+  // tests). Kept committed for now (~18 KB total); routing them to R2 is a
+  // follow-up. The ~5 MB of high-churn data artifacts are R2-only above.
+  /^build-summary\.json$/,
+  /^changelog\.json$/,
+  /^r2-manifest\.json$/,
+  /^contracts\.json$/,
+  /^coverage\.json$/,
+  // Hardcoded public-path readers keep these dual for now (follow-up to route
+  // them to R2 via a tier-aware read): surfaces + freshness (sync-summary.mjs,
+  // kv-publish-pointer.mjs), schema-drift (sync-summary.mjs).
+  /^freshness\.json$/,
+  /^schema-drift\.json$/,
   /^surfaces\.json$/,
+  /^openapi\.json$/,
+  /^schemas\/index\.json$/,
+  // subnets.json (124 KB) stays committed: the changelog diffs it against the
+  // committed HEAD version to produce the "what changed between publishes" feed.
+  /^subnets\.json$/,
   /^types\.d\.ts$/,
 ];
 

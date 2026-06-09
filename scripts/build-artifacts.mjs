@@ -4049,7 +4049,15 @@ async function gitBuffer(args) {
     });
     return stdout;
   } catch (error) {
-    if (error.code === "ENOENT" || error.status === 128) {
+    // git missing (ENOENT) or a "path not in HEAD"/bad-revision error (exit 128,
+    // e.g. an R2-only artifact with no committed baseline). execFileAsync exposes
+    // the exit code as error.code (number); execFileSync uses error.status —
+    // handle both so a missing HEAD path returns null instead of throwing.
+    if (
+      error.code === "ENOENT" ||
+      error.code === 128 ||
+      error.status === 128
+    ) {
       return null;
     }
     throw error;

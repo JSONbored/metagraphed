@@ -30,11 +30,14 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
+          # --diff-filter=d excludes deletions: removing a public artifact (e.g.
+          # moving it to R2-only, ADR 0001) is not a "submitted" artifact and
+          # must not be flagged by the submitted-artifact verification below.
           if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
-            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+            git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
           else
             git fetch origin "$BASE_REF"
-            git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+            git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > changed-files.txt
           fi
 
       - name: Capture changed files for full validation

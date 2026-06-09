@@ -128,6 +128,18 @@ public/metagraph/metagraph/latest.json
 public/metagraph/rpc-endpoints.json
 public/metagraph/rpc/pools.json
 public/metagraph/source-health.json
+# Data artifacts moved to R2-only (ADR 0001) — derived, served from R2
+public/metagraph/curation.json
+public/metagraph/evidence-ledger.json
+public/metagraph/gaps.json
+public/metagraph/profiles.json
+public/metagraph/providers.json
+public/metagraph/search.json
+public/metagraph/review/adapter-candidates.json
+public/metagraph/review/curation.json
+public/metagraph/review/enrichment-queue.json
+public/metagraph/review/gap-priorities.json
+public/metagraph/review/maintainer-decisions.json
 
 # Local/private automation implementation details
 private/

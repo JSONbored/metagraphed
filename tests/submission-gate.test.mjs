@@ -232,35 +232,9 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
-  // The publish workflow runs `npm test` against freshly *production-built*
-  // artifacts (real `generated_at` timestamps + live probe/adapter data), which
-  // by design differ from the committed copies. This diff-check validates the
-  // reproducibility of *committed* artifacts for contributor PRs, so it is
-  // meaningless — and always fails — in the production-build context. It is
-  // removed entirely once data artifacts move to R2-only (see docs/adr/0001).
-  test.skipIf(process.env.METAGRAPH_PRODUCTION_BUILD === "1")(
-    "diff-checks submitted public artifacts from the generated indexes",
-    () => {
-    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-artifacts-"));
-    try {
-      const changedFiles = path.join(tmp, "changed-files.txt");
-      writeFileSync(changedFiles, "public/metagraph/surfaces.json\n");
-
-      const output = execFileSync(
-        process.execPath,
-        [
-          "scripts/ci-verify-submitted-artifacts.mjs",
-          "--changed-files",
-          changedFiles,
-        ],
-        { encoding: "utf8", stdio: "pipe" },
-      );
-
-      assert.match(output, /Submitted public artifacts are reproducible/);
-    } finally {
-      rmSync(tmp, { force: true, recursive: true });
-    }
-  });
+  // The committed-artifact reproducibility diff-check was removed here: data
+  // artifacts are now R2-only (ADR 0001), so there is nothing committed to diff.
+  // The reject-arbitrary-artifact safety checks above still guard contributor PRs.
 
   test("routes direct provider profile PRs to manual review", () => {
     const document = structuredClone(validProviderDocument);
