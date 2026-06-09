@@ -55,6 +55,14 @@ jobs:
         run: |
           npm run build
           npm run r2:manifest
+        env:
+          # The production build re-snapshots adapters from live GitHub metadata
+          # so the publish is fresh by construction. A token is always present
+          # here, so a 401 means the token is broken; fail loudly instead of
+          # shipping degraded adapter data (mirrors sync-subnets.yml).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       - name: Stage reviewed publish artifacts
         run: |
