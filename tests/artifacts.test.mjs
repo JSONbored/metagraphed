@@ -1402,6 +1402,28 @@ test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
   );
 });
 
+test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
+  const queue = readArtifact("review/enrichment-queue.json");
+  const colosseum = queue.queue.find((entry) => entry.netuid === 38);
+
+  assert(colosseum, "expected SN38 colosseum enrichment queue entry");
+  assert.equal(colosseum.evidence_action, "submit-new-evidence");
+  assert.equal(
+    colosseum.sample_target_candidate_ids.includes(
+      "sn-38-native-chain-website",
+    ),
+    false,
+  );
+  assert.equal(
+    colosseum.sample_live_candidate_ids.includes("sn-38-native-chain-website"),
+    false,
+  );
+  assert.equal(
+    colosseum.candidate_evidence_summary.live_kinds.includes("website"),
+    false,
+  );
+});
+
 test("Worker API serves public artifact envelopes", async () => {
   const env = createLocalArtifactEnv();
 

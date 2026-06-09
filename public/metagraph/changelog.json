@@ -1,64 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "df67ec41708977a3ff5fc541deebda5b53a031f19a01e07a77ed5acd30ac8464",
-        "path": "coverage.json"
-      },
-      {
-        "hash": "45f406f5ac4f2dfbfd7838c79faab1f2b42314587656221769fc2075619699cf",
-        "path": "curation.json"
-      },
-      {
-        "hash": "877ca3c1819e7575f060da54980fb863c247fcf0574cd9b572fd7008f3763b8c",
-        "path": "evidence-ledger.json"
-      },
-      {
-        "hash": "89f9b80ab4dac8c371c8160c43749ab688203349fe0900e33d9ab2dbd5067b2a",
-        "path": "freshness.json"
-      },
-      {
-        "hash": "cab93c91b6280f736e7bc33986da4d018e4e1731a31b17888099f3afeaa4e48a",
-        "path": "gaps.json"
-      },
-      {
-        "hash": "395d687ca50d9924f4668087b7acb04085a8cb21d7b4544f3c2410d2a845f8c6",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "d64ceae8cbeb562efb79581d99a2f44b502e95240cb72a83fa41a550bacce1ca",
-        "path": "review/adapter-candidates.json"
-      },
-      {
-        "hash": "00cf98a6bcf8fbfe5d1d84d461745de1925e90a772efce666b03e67e8d7afda0",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "c68d4d2c0a2089f00bd28d99b3600c55753abc548ebf7e8bd402e2a648625dc3",
-        "path": "review/enrichment-queue.json"
-      },
-      {
-        "hash": "f766400768949f3d4a6d72a64eaa22356ac7633835617f79ba71e6b2c0af62c6",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "033f9155cd1455fb6dacccbf0d0e61345c2119c05b03ca5f9d7838484dd84879",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "7e8da0fa3df7a0708842f8a40fa3021ea176284560aa6bb781c0199f2649c07d",
-        "path": "search.json"
-      },
-      {
-        "hash": "4d0d78b579529353f8c6daa982f8f9844e097ad8610a9b6bc744827c35283d41",
-        "path": "subnets.json"
-      },
-      {
-        "hash": "aee6c595e9270dbf965d230e04cb2c219a619eb888b1dd50b474a440de933c70",
-        "path": "surfaces.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -76,7 +19,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 14,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -97,8 +40,8 @@
       "provider_count": null,
       "surface_count": {
         "after": 1139,
-        "before": 1140,
-        "delta": -1
+        "before": 1139,
+        "delta": 0
       }
     },
     "netuid_added_count": 0,

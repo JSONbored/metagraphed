@@ -4358,17 +4358,14 @@
       "adapter_score": 6,
       "candidate_count": 15,
       "candidate_evidence_summary": {
-        "candidate_count": 6,
+        "candidate_count": 5,
         "kinds_with_candidates": [
           "openapi",
-          "subnet-api",
-          "website"
+          "subnet-api"
         ],
-        "live_kinds": [
-          "website"
-        ],
-        "live_or_redirected_count": 1,
-        "reviewable_count": 6,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
         "stale_kinds": [
           "openapi",
           "subnet-api"
@@ -4384,7 +4381,7 @@
         "website"
       ],
       "endpoint_count": 6,
-      "evidence_action": "review-existing-evidence",
+      "evidence_action": "submit-new-evidence",
       "identity_level": "partial",
       "identity_surface_count": 2,
       "lane": "direct-submission",
@@ -4412,17 +4409,13 @@
       "sample_candidate_ids": [
         "sn-38-backprop-dashboard",
         "sn-38-native-chain-github",
-        "sn-38-native-chain-website",
         "sn-38-subnetradar-dashboard",
-        "sn-38-taomarketcap-dashboard"
+        "sn-38-taomarketcap-dashboard",
+        "sn-38-taopedia-article"
       ],
-      "sample_live_candidate_ids": [
-        "sn-38-native-chain-website"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-38-native-chain-website"
-      ],
+      "sample_target_candidate_ids": [],
       "slug": "colosseum",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/38",
@@ -10505,8 +10498,7 @@
       "maintainer-review-existing-evidence": 17,
       "monitor": 1,
       "replace-stale-evidence": 72,
-      "review-existing-evidence": 1,
-      "submit-new-evidence": 37,
+      "submit-new-evidence": 38,
       "verify-existing-evidence": 1
     },
     "identity_level_counts": {

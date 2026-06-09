@@ -1112,6 +1112,16 @@ function buildEnrichmentQueueArtifacts({
       new Set(subnet.baseline_excluded_surface_ids || []),
     ]),
   );
+  const excludedCandidateUrlsByNetuid = new Map(
+    subnets.map((subnet) => [
+      subnet.netuid,
+      new Set(
+        (subnet.baseline_excluded_surface_urls || [])
+          .map((url) => normalizePublicUrl(url))
+          .filter(Boolean),
+      ),
+    ]),
+  );
   const candidatesByNetuid = groupByNetuid(candidates);
 
   const fullQueue = profiles
@@ -1123,6 +1133,7 @@ function buildEnrichmentQueueArtifacts({
         reviewProfile: reviewProfileByNetuid.get(profile.netuid),
         subnetCandidates: enrichmentCandidatesForSubnet({
           excludedIds: excludedCandidateIdsByNetuid.get(profile.netuid),
+          excludedUrls: excludedCandidateUrlsByNetuid.get(profile.netuid),
           subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
         }),
         verificationByCandidate,
@@ -1200,11 +1211,26 @@ function buildEnrichmentQueueArtifacts({
   return { evidenceArtifact, queueArtifact, targetArtifact };
 }
 
-function enrichmentCandidatesForSubnet({ excludedIds, subnetCandidates }) {
-  if (!excludedIds || excludedIds.size === 0) {
+function enrichmentCandidatesForSubnet({
+  excludedIds,
+  excludedUrls,
+  subnetCandidates,
+}) {
+  const hasExcludedIds = excludedIds && excludedIds.size > 0;
+  const hasExcludedUrls = excludedUrls && excludedUrls.size > 0;
+  if (!hasExcludedIds && !hasExcludedUrls) {
     return subnetCandidates;
   }
-  return subnetCandidates.filter((candidate) => !excludedIds.has(candidate.id));
+  return subnetCandidates.filter((candidate) => {
+    if (hasExcludedIds && excludedIds.has(candidate.id)) {
+      return false;
+    }
+    if (!hasExcludedUrls) {
+      return true;
+    }
+    const candidateUrl = normalizePublicUrl(candidate.url);
+    return !candidateUrl || !excludedUrls.has(candidateUrl);
+  });
 }
 
 function buildEnrichmentTargetsArtifact({ evidenceEntries, queue }) {
