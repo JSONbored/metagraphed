@@ -83,11 +83,15 @@ subnets and demonstrate the product to the broader ecosystem.
 
 ### P1 — Beta launch readiness
 
-3. **Prove the live API end-to-end.** The publish pipeline is wired
-   (`.github/workflows/publish-cloudflare.yml`: KV pointer, R2 history,
-   `smoke:live` against `metagraph.sh`). Confirm a green production publish and a
-   passing `npm run smoke:live` (envelopes, CORS, ETags, R2 fallback, RPC-disabled
-   contract).
+3. **Prove the live API end-to-end.** _Re-architected (see `docs/adr/0001`)._
+   The deploy pipeline was decoupled: **Worker code deploys via Cloudflare
+   Workers Builds on every push to `main`** (connected; native R2/KV/deploy creds,
+   no GitHub secrets; `wrangler.jsonc` carries 100% logs+traces + Smart
+   Placement), and **data refreshes on a 6h schedule** (`publish-cloudflare.yml`
+   repurposed: build → validate → `r2:upload` + `kv:publish` → `smoke:live`).
+   _Remaining verification:_ dispatch the scheduled data-refresh once
+   (`workflow_dispatch publish_mode=publish`) to confirm the real `r2:upload`/
+   `kv:publish`/`smoke` path end-to-end.
 4. **Ship a frontend integration handoff.** `generated/metagraphed-client.ts`,
    `generated/metagraphed-api.d.ts`, and `openapi.json` exist but are not packaged
    or documented for the UI team: envelope shape (`ok`/`schema_version`/`data`/
