@@ -94,6 +94,22 @@ for (const workflow of workflows) {
       workflow,
       "intake import must use the checked-in import script",
     );
+    check(
+      !content.includes("--issue-json issue.json") &&
+        !content.includes("--out intake-report.json"),
+      workflow,
+      "intake import must keep transient issue and report files outside the repository workspace",
+    );
+    check(
+      content.includes("add-paths:") &&
+        content.includes("registry/**") &&
+        content.includes("public/**") &&
+        content.includes("dist/metagraph-r2/**") &&
+        content.includes("schemas/**") &&
+        content.includes("generated/**"),
+      workflow,
+      "intake import pull request must allowlist generated registry artifact paths",
+    );
   }
   if (workflow === "submission-gate.yml") {
     check(
@@ -102,9 +118,25 @@ for (const workflow of workflows) {
       "submission gate workflow must expose the metagraphed-submission-gate job",
     );
     check(
-      content.includes("npm run submission:pr"),
+      content.includes("Checkout trusted base worktree") &&
+        content.includes("path: trusted") &&
+        content.includes(
+          "ref: ${{ github.event.pull_request.base.sha || github.sha }}",
+        ),
       workflow,
-      "submission gate workflow must use the checked-in PR classifier",
+      "submission gate workflow must checkout trusted base code",
+    );
+    check(
+      content.includes("working-directory: trusted") &&
+        content.includes("node scripts/submission-pr.mjs") &&
+        content.includes("--input-root ../pr"),
+      workflow,
+      "submission gate workflow must run trusted classifier against PR input",
+    );
+    check(
+      !content.includes("npm run submission:pr"),
+      workflow,
+      "submission gate workflow must not execute PR-controlled npm scripts",
     );
     check(
       !content.includes("contents: write") &&
@@ -133,6 +165,38 @@ for (const workflow of workflows) {
   }
   if (workflow === "publish-cloudflare.yml") {
     check(
+      !content.includes("npm run pipeline:refresh"),
+      workflow,
+      "publish workflow must not refresh live registry data during deployment",
+    );
+    check(
+      !content.includes('METAGRAPH_WRITE_PROBE_RESULTS: "1"'),
+      workflow,
+      "publish workflow must not write live probe results during deployment",
+    );
+    check(
+      content.includes("npm run artifacts:prepare-local") &&
+        content.includes("npm run r2:manifest"),
+      workflow,
+      "publish workflow must prepare R2 artifacts from reviewed repository inputs",
+    );
+    check(
+      /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),
+      workflow,
+      "publish workflow must isolate refresh tooling from Cloudflare publishing secrets",
+    );
+    check(
+      !/python3\s+-m\s+pip\s+install[\s\S]*\buv==/.test(content),
+      workflow,
+      "publish workflow must not install uv from PyPI in a secret-bearing path",
+    );
+    check(
+      content.includes("astral-sh/setup-uv@") &&
+        content.includes("cloudflare-publish-artifacts"),
+      workflow,
+      "publish workflow must pass refreshed artifacts from the isolated refresh job",
+    );
+    check(
       content.includes('METAGRAPH_R2_UPLOAD_HISTORY: "1"'),
       workflow,
       "publish workflow must upload versioned R2 history objects",
@@ -149,6 +213,16 @@ for (const workflow of workflows) {
       ),
       workflow,
       "publish workflow must fail closed when Cloudflare publishing secrets are missing",
+    );
+    check(
+      content.includes('METAGRAPH_PRODUCTION_BUILD: "1"'),
+      workflow,
+      "publish workflow must explicitly use the production build path",
+    );
+    check(
+      content.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
+      workflow,
+      "publish workflow must explicitly require probe-derived health",
     );
     check(
       content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
