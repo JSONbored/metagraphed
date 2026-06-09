@@ -56,6 +56,7 @@ const candidateIds = new Set();
 const warnings = [];
 const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
 const restoredProviders = new Set();
+const TAOPEDIA_ARTICLE_PROBE_MAX_BYTES = 64 * 1024;
 
 await discoverFromNativeChainIdentity();
 await discoverFromTaoMarketCap();
@@ -474,6 +475,7 @@ async function fetchTaopediaArticlePath(pathValue) {
   const rawUrl = `https://raw.githubusercontent.com/e35ventura/taopedia-articles/main/${pathValue}`;
   const response = await fetchText(rawUrl, {
     accept: "text/plain",
+    maxBytes: TAOPEDIA_ARTICLE_PROBE_MAX_BYTES,
     warn: false,
   });
   if (!response || response.status_code !== 200 || !response.text.trim()) {
@@ -1355,7 +1357,9 @@ async function fetchText(url, options = {}) {
     if (!response.ok && options.warn !== false) {
       warnings.push(`${url}: HTTP ${response.status}`);
     }
-    const text = response.ok ? await response.text() : "";
+    const text = response.ok
+      ? await readResponseText(response, options.maxBytes)
+      : "";
     return {
       status_code: response.status,
       text,
@@ -1367,6 +1371,45 @@ async function fetchText(url, options = {}) {
     return null;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function readResponseText(response, maxBytes) {
+  if (!Number.isFinite(maxBytes) || maxBytes <= 0) {
+    return await response.text();
+  }
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = "";
+
+  try {
+    while (bytesRead < maxBytes) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return text + decoder.decode();
+      }
+
+      const remainingBytes = maxBytes - bytesRead;
+      const chunk =
+        value.byteLength > remainingBytes
+          ? value.slice(0, remainingBytes)
+          : value;
+      bytesRead += chunk.byteLength;
+      text += decoder.decode(chunk, { stream: bytesRead < maxBytes });
+
+      if (value.byteLength > remainingBytes) {
+        return text + decoder.decode();
+      }
+    }
+
+    return text + decoder.decode();
+  } finally {
+    await reader.cancel().catch(() => {});
   }
 }
 
