@@ -28,7 +28,7 @@
   },
   "vars": {
     "METAGRAPH_CONTRACT_VERSION": "2026-06-06.1",
-    "METAGRAPH_ENABLE_RPC_PROXY": "false",
+    "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
   },
   "routes": [

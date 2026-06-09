@@ -49,8 +49,8 @@ check(
   "public/.assetsignore must block OS metadata uploads",
 );
 check(
-  config.vars?.METAGRAPH_ENABLE_RPC_PROXY === "false",
-  "RPC proxy must be disabled by default",
+  ["true", "false"].includes(config.vars?.METAGRAPH_ENABLE_RPC_PROXY),
+  "RPC proxy enable flag must be explicitly 'true' or 'false'",
 );
 check(
   config.vars?.METAGRAPH_R2_LATEST_PREFIX === "latest/",

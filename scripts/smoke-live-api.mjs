@@ -81,7 +81,12 @@ assert.equal(
   "invalid query should return invalid_query error",
 );
 
-const disabledRpcProxy = await fetchJson(`${baseUrl}/rpc/v1/finney`, {
+// RPC proxy is enabled in production: a non-allowlisted method must be refused
+// (proves the proxy is live and the read-only allowlist holds, with no
+// dependency on a live upstream), and a safe read method must not report
+// "disabled". (The enable gate runs before the method check, so a disabled
+// proxy would 501 here rather than 403.)
+const blockedRpcProxy = await fetchJson(`${baseUrl}/rpc/v1/finney`, {
   method: "POST",
   headers: {
     "content-type": "application/json",
@@ -89,19 +94,37 @@ const disabledRpcProxy = await fetchJson(`${baseUrl}/rpc/v1/finney`, {
   body: JSON.stringify({
     jsonrpc: "2.0",
     id: 1,
-    method: "chain_getHeader",
+    method: "author_submitExtrinsic",
     params: [],
   }),
 });
 assert.equal(
-  disabledRpcProxy.status,
-  501,
-  "RPC proxy should remain disabled in v1 production",
+  blockedRpcProxy.status,
+  403,
+  "enabled RPC proxy must refuse non-allowlisted methods",
 );
 assert.equal(
-  disabledRpcProxy.body?.error?.code,
-  "rpc_proxy_disabled",
-  "disabled RPC proxy should return rpc_proxy_disabled",
+  blockedRpcProxy.body?.error?.code,
+  "rpc_method_blocked",
+  "blocked RPC method should return rpc_method_blocked",
+);
+
+const safeRpcProxy = await fetchJson(`${baseUrl}/rpc/v1/finney`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "system_health",
+    params: [],
+  }),
+});
+assert.notEqual(
+  safeRpcProxy.status,
+  501,
+  "enabled RPC proxy must not report rpc_proxy_disabled",
 );
 
 console.log(
