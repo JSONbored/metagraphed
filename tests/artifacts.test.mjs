@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
+  chmodSync,
   existsSync,
+  mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "vitest";
 import {
   artifactDirectoryPath,
@@ -1148,6 +1152,91 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
     );
   }
 });
+
+test(
+  "R2 history upload writes every planned run-prefix artifact",
+  () => {
+    const temporaryDirectory = mkdtempSync(
+      path.join(tmpdir(), "metagraphed-r2-upload-"),
+    );
+    const wranglerPath = path.join(temporaryDirectory, "wrangler");
+    const putLogPath = path.join(temporaryDirectory, "put-log.jsonl");
+    const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    writeFileSync(
+      wranglerPath,
+      String.raw`#!/usr/bin/env node
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+if (args[0] !== "r2" || args[1] !== "object") {
+  process.exit(2);
+}
+if (args[2] === "get") {
+  writeFileSync(1, readFileSync(process.env.FAKE_REMOTE_MANIFEST));
+  process.exit(0);
+}
+if (args[2] === "put") {
+  appendFileSync(
+    process.env.FAKE_PUT_LOG,
+    JSON.stringify({ key: args[3].slice(args[3].indexOf("/") + 1) }) + "\n",
+  );
+  process.exit(0);
+}
+process.exit(2);
+`,
+    );
+    chmodSync(wranglerPath, 0o755);
+
+    try {
+      const output = execFileSync(
+        process.execPath,
+        ["scripts/r2-upload.mjs", "--write"],
+        {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            FAKE_PUT_LOG: putLogPath,
+            FAKE_REMOTE_MANIFEST: manifestPath,
+            METAGRAPH_ALLOW_R2_UPLOAD: "1",
+            METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
+            METAGRAPH_R2_UPLOAD_HISTORY: "1",
+            METAGRAPH_WRANGLER_BIN: wranglerPath,
+          },
+          stdio: "pipe",
+        },
+      );
+      const summary = JSON.parse(output);
+      const putKeys = readFileSync(putLogPath, "utf8")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line).key);
+
+      assert.equal(summary.remote_manifest_status, "found");
+      assert.equal(summary.changed_artifact_count, 0);
+      assert.equal(summary.skipped_artifact_count, manifest.artifacts.length);
+      assert.equal(summary.uploaded_latest_count, 0);
+      assert.equal(summary.uploaded_control_count, 3);
+      assert.equal(
+        summary.uploaded_history_count,
+        manifest.artifacts.length + summary.uploaded_control_count,
+      );
+      assert.equal(
+        putKeys.filter((key) => key.startsWith(manifest.run_prefix)).length,
+        manifest.artifacts.length + summary.uploaded_control_count,
+      );
+      assert(
+        putKeys.includes(manifest.artifacts.at(-1).key),
+        "expected history upload to include artifacts unchanged in latest",
+      );
+    } finally {
+      rmSync(temporaryDirectory, { force: true, recursive: true });
+    }
+  },
+  30_000,
+);
 
 test("limited R2 upload dry run skips control manifests", () => {
   const output = execFileSync(
