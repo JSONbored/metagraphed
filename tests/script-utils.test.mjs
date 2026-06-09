@@ -424,6 +424,7 @@ describe("script utility contracts", () => {
       "utf8",
     );
 
+    assert.match(source, /METAGRAPH_BUILD_TIMESTAMP:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_DISCOVERY_OBSERVED_AT:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT:\s*"1"/);
   });
