@@ -66,6 +66,10 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
   };
 }
 
+export function optionalHttpStatus(statusCode) {
+  return Number.isInteger(statusCode) ? statusCode : undefined;
+}
+
 function isRetryableFailure(result) {
   return ["rate-limited", "timeout", "transient"].includes(
     result?.classification,

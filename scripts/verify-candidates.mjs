@@ -16,7 +16,10 @@ import {
   classifyHttpProbe,
   isContentMismatch,
 } from "./http-probe-classification.mjs";
-import { preservePreviousGithubMetadata } from "./verification-quality.mjs";
+import {
+  optionalHttpStatus,
+  preservePreviousGithubMetadata,
+} from "./verification-quality.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
@@ -240,7 +243,7 @@ async function verifyGithubRepo(base, repo) {
     if (redirectApi.ok) {
       return githubMetadataResult(base, redirectApiUrl, redirectApi.body, {
         api_error: api.error || null,
-        api_status: api.status_code || null,
+        api_status: optionalHttpStatus(api.status_code),
         classification: "redirected",
         latency_ms: fallback.latency_ms,
         method_tested: fallback.method_tested,
@@ -259,7 +262,7 @@ async function verifyGithubRepo(base, repo) {
     ),
     error: api.error || fallback.error || null,
     github_api_url: apiUrl,
-    github_api_status: api.status_code || null,
+    github_api_status: optionalHttpStatus(api.status_code),
     latency_ms: fallback.latency_ms,
     method_tested: fallback.method_tested,
     private_redirect_blocked: fallback.private_redirect_blocked || false,

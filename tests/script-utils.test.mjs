@@ -66,7 +66,10 @@ import {
 } from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
 import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
-import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
+import {
+  optionalHttpStatus,
+  preservePreviousGithubMetadata,
+} from "../scripts/verification-quality.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -174,6 +177,13 @@ describe("script utility contracts", () => {
       public_safe: true,
       source_tier: "native-chain",
     });
+  });
+
+  test("omits missing optional HTTP statuses from verification metadata", () => {
+    assert.equal(optionalHttpStatus(null), undefined);
+    assert.equal(optionalHttpStatus(undefined), undefined);
+    assert.equal(optionalHttpStatus(200), 200);
+    assert.equal(optionalHttpStatus(404), 404);
   });
 
   test("preserves previous healthy verification when a candidate probe is retryable", () => {
