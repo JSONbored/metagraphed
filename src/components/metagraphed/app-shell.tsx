@@ -177,19 +177,74 @@ function GlobalSearch() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [debounced, setDebounced] = useState("");
+  const [active, setActive] = useState(0);
+  const [recent, setRecent] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Lazy-load recents on mount only.
+    import("@/lib/metagraphed/search-history").then((m) => setRecent(m.loadRecent()));
+  }, []);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(q.trim()), 180);
     return () => window.clearTimeout(t);
   }, [q]);
 
-  const { data, isFetching } = useQuery({
-    ...searchQuery(debounced, 12),
-    retry: 0,
-  });
+  const { data, isFetching } = useQuery({ ...searchQuery(debounced, 16), retry: 0 });
   const hits = (data?.data ?? []) as SearchHit[];
+
+  // Group hits by kind. Order = Subnets, Surfaces, Endpoints, Providers, Other.
+  const groups = useMemo(() => {
+    const order = ["subnet", "surface", "endpoint", "provider"];
+    const buckets = new Map<string, SearchHit[]>();
+    for (const h of hits) {
+      const k = (h.kind ?? "other").toLowerCase();
+      const list = buckets.get(k) ?? [];
+      list.push(h);
+      buckets.set(k, list);
+    }
+    const ordered: Array<{ kind: string; items: SearchHit[] }> = [];
+    for (const k of order) {
+      const items = buckets.get(k);
+      if (items && items.length) ordered.push({ kind: k, items });
+    }
+    for (const [k, items] of buckets) {
+      if (!order.includes(k)) ordered.push({ kind: k, items });
+    }
+    return ordered;
+  }, [hits]);
+
+  const flatHits = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+
+  // Reset active highlight when result set changes.
+  useEffect(() => setActive(0), [debounced, flatHits.length]);
+
+  // Global ⌘K / Ctrl+K / "/" focus.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tgt = e.target as HTMLElement | null;
+      const inField =
+        tgt &&
+        (tgt.tagName === "INPUT" ||
+          tgt.tagName === "TEXTAREA" ||
+          tgt.isContentEditable);
+      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+        return;
+      }
+      if (e.key === "/" && !inField) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Close on outside click and on Esc.
   useEffect(() => {
@@ -209,15 +264,20 @@ function GlobalSearch() {
     };
   }, []);
 
-  // Close popover on route change.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  useEffect(() => setOpen(false), [pathname]);
+
+  function persistRecent(value: string) {
+    import("@/lib/metagraphed/search-history").then((m) => {
+      m.pushRecent(value);
+      setRecent(m.loadRecent());
+    });
+  }
 
   function go(hit: SearchHit) {
     const r = resolveHref(hit);
     setOpen(false);
+    if (debounced) persistRecent(debounced);
     setQ("");
     if ("external" in r) {
       window.open(r.external, "_blank", "noopener,noreferrer");
@@ -226,20 +286,35 @@ function GlobalSearch() {
     router.navigate({ to: r.to, params: r.params as never });
   }
 
+  function pickRecent(value: string) {
+    setQ(value);
+    inputRef.current?.focus();
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (hits.length > 0) {
-          go(hits[0]);
+        if (flatHits.length > 0) {
+          go(flatHits[Math.min(active, flatHits.length - 1)]!);
           return;
         }
         const value = q.trim();
         if (!value) return;
+        persistRecent(value);
         navigate({ to: "/subnets", search: { q: value } as never });
         setOpen(false);
       }}
-      className="relative flex-1 max-w-md"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setActive((i) => Math.min(flatHits.length - 1, i + 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setActive((i) => Math.max(0, i - 1));
+        }
+      }}
+      className="relative flex-1 max-w-xl"
       role="search"
     >
       <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
@@ -254,48 +329,184 @@ function GlobalSearch() {
         aria-label="Search registry"
         aria-expanded={open}
         aria-controls="mg-search-results"
+        aria-autocomplete="list"
+        role="combobox"
         placeholder="Search subnets, surfaces, providers, URLs…"
-        className="w-full rounded border border-border bg-card pl-8 pr-3 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30 transition-colors min-h-9"
+        className="w-full rounded border border-border bg-card pl-8 pr-14 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30 transition-colors min-h-9"
       />
-      {open && debounced ? (
+      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5">
+        <Kbd>⌘</Kbd>
+        <Kbd>K</Kbd>
+      </span>
+
+      {open ? (
         <div
           id="mg-search-results"
           ref={popRef}
           role="listbox"
-          className="absolute left-0 right-0 top-full mt-1 max-h-[60vh] overflow-y-auto rounded border border-border bg-paper shadow-lg z-40"
+          className="absolute left-0 right-0 top-full mt-1 max-h-[70vh] overflow-y-auto rounded border border-border bg-paper shadow-lg z-40"
         >
-          {isFetching && hits.length === 0 ? (
+          {isFetching ? (
+            <div
+              className="h-0.5 w-full overflow-hidden bg-surface"
+              aria-hidden
+            >
+              <div className="h-full w-1/3 bg-accent animate-[mg-loader_1.1s_ease-in-out_infinite]" />
+            </div>
+          ) : null}
+
+          {!debounced ? (
+            <div className="p-3 space-y-3">
+              {recent.length > 0 ? (
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
+                    Recent
+                  </div>
+                  <ul className="flex flex-wrap gap-1">
+                    {recent.map((r) => (
+                      <li key={r}>
+                        <button
+                          type="button"
+                          onClick={() => pickRecent(r)}
+                          className="rounded border border-border bg-card px-2 py-1 text-[11px] text-ink hover:border-ink/30"
+                        >
+                          {r}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
+                  Try
+                </div>
+                <ul className="flex flex-wrap gap-1">
+                  {["bittensor", "taostats", "rpc", "openapi", "sn7"].map((s) => (
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onClick={() => pickRecent(s)}
+                        className="rounded border border-dashed border-ink-subtle bg-paper px-2 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30"
+                      >
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="border-t border-border pt-2 text-[10px] font-mono text-ink-muted flex items-center gap-2">
+                <Kbd>↑</Kbd>
+                <Kbd>↓</Kbd> navigate <Kbd>⏎</Kbd> open <Kbd>Esc</Kbd> close
+              </div>
+            </div>
+          ) : isFetching && flatHits.length === 0 ? (
             <div className="p-3 text-xs text-ink-muted">Searching…</div>
-          ) : hits.length === 0 ? (
-            <div className="p-3 text-xs text-ink-muted">
-              No results. Press enter to filter /subnets by “{debounced}”.
+          ) : flatHits.length === 0 ? (
+            <div className="p-3 text-xs text-ink-muted space-y-2">
+              <div>
+                No matches. Press <Kbd>⏎</Kbd> to filter /subnets by "{debounced}".
+              </div>
+              <div className="flex flex-wrap gap-1">
+                <Link
+                  to="/providers"
+                  className="rounded border border-border bg-card px-2 py-1 text-[11px] hover:border-ink/30"
+                >
+                  Search providers
+                </Link>
+                <Link
+                  to="/endpoints"
+                  className="rounded border border-border bg-card px-2 py-1 text-[11px] hover:border-ink/30"
+                >
+                  Search endpoints
+                </Link>
+              </div>
             </div>
           ) : (
-            <ul className="divide-y divide-border">
-              {hits.map((h) => (
-                <li key={h.id}>
-                  <button
-                    type="button"
-                    onClick={() => go(h)}
-                    className="w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-2"
-                  >
-                    <KindBadge kind={h.kind} />
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate text-sm text-ink-strong">
-                        {h.title ?? h.url ?? h.id}
+            <div>
+              {groups.map((g) => {
+                const baseIndex = flatHits.indexOf(g.items[0]!);
+                return (
+                  <div key={g.kind} className="border-b border-border last:border-b-0">
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-surface/30">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                        {g.kind === "subnet"
+                          ? "Subnets"
+                          : g.kind === "surface"
+                            ? "Surfaces"
+                            : g.kind === "endpoint"
+                              ? "Endpoints"
+                              : g.kind === "provider"
+                                ? "Providers"
+                                : g.kind}
                       </span>
-                      {h.url ? (
-                        <span className="block truncate font-mono text-[10px] text-ink-muted">{h.url}</span>
-                      ) : null}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                      <SeeAllLink kind={g.kind} q={debounced} />
+                    </div>
+                    <ul>
+                      {g.items.map((h, i) => {
+                        const idx = baseIndex + i;
+                        const isActive = idx === active;
+                        return (
+                          <li key={h.id}>
+                            <button
+                              type="button"
+                              onMouseEnter={() => setActive(idx)}
+                              onClick={() => go(h)}
+                              className={classNames(
+                                "w-full text-left px-3 py-2 flex items-center gap-2 transition-colors",
+                                isActive ? "bg-surface" : "hover:bg-surface/60",
+                              )}
+                              role="option"
+                              aria-selected={isActive}
+                            >
+                              <KindBadge kind={h.kind} />
+                              <span className="flex-1 min-w-0">
+                                <span className="block truncate text-sm text-ink-strong">
+                                  {h.title ?? h.url ?? h.id}
+                                </span>
+                                {h.url ? (
+                                  <span className="block truncate font-mono text-[10px] text-ink-muted">
+                                    {h.url}
+                                  </span>
+                                ) : h.netuid != null ? (
+                                  <span className="block font-mono text-[10px] text-ink-muted">
+                                    netuid {h.netuid}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       ) : null}
     </form>
+  );
+}
+
+function SeeAllLink({ kind, q }: { kind: string; q: string }) {
+  const map: Record<string, string> = {
+    subnet: "/subnets",
+    surface: "/surfaces",
+    endpoint: "/endpoints",
+    provider: "/providers",
+  };
+  const to = map[kind];
+  if (!to) return null;
+  return (
+    <Link
+      to={to}
+      search={{ q } as never}
+      className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+    >
+      see all →
+    </Link>
   );
 }
 
@@ -312,7 +523,7 @@ function KindBadge({ kind }: { kind?: string }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest shrink-0",
+        "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest shrink-0 w-[5.5rem]",
         entry.cls,
       )}
     >
