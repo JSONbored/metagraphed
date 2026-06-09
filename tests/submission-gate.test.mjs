@@ -69,6 +69,38 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.candidate.id, "community-sn-7-docs-example");
   });
 
+  test("blocks direct candidates with malformed schema metadata", () => {
+    const document = structuredClone(validCandidateDocument);
+    delete document.candidates[0].state;
+    delete document.candidates[0].name;
+    document.candidates[0].auth_required = "false";
+    document.candidates[0].unexpected_extra_property = true;
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/malformed-metadata.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(report.errors.includes("candidate state is required"), true);
+    assert.equal(report.errors.includes("candidate name is required"), true);
+    assert.equal(
+      report.errors.includes("candidate auth_required must be boolean"),
+      true,
+    );
+    assert.equal(
+      report.errors.includes(
+        "candidate unexpected_extra_property is not allowed",
+      ),
+      true,
+    );
+  });
+
   test("blocks direct candidates that edit unrelated files", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",
