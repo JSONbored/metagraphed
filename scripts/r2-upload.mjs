@@ -87,20 +87,20 @@ for (const artifact of plannedArtifacts) {
     forceUpload ||
     remoteManifestResult.status !== "found" ||
     remoteManifestByPath.get(artifact.path) !== artifact.sha256;
-  if (!changed) {
+  if (changed) {
+    changedArtifactCount += 1;
+    artifactUploadJobs.push(
+      uploadJob(
+        localPath,
+        artifact.latest_key,
+        manifest.bucket_name,
+        artifact.content_type,
+        "latest",
+      ),
+    );
+  } else {
     skippedArtifactCount += 1;
-    continue;
   }
-  changedArtifactCount += 1;
-  artifactUploadJobs.push(
-    uploadJob(
-      localPath,
-      artifact.latest_key,
-      manifest.bucket_name,
-      artifact.content_type,
-      "latest",
-    ),
-  );
   if (uploadHistory) {
     artifactUploadJobs.push(
       uploadJob(
@@ -404,10 +404,13 @@ function summarizeError(error) {
 }
 
 function wranglerBin() {
-  return path.join(
-    repoRoot,
-    "node_modules",
-    ".bin",
-    process.platform === "win32" ? "wrangler.cmd" : "wrangler",
+  return (
+    process.env.METAGRAPH_WRANGLER_BIN ||
+    path.join(
+      repoRoot,
+      "node_modules",
+      ".bin",
+      process.platform === "win32" ? "wrangler.cmd" : "wrangler",
+    )
   );
 }

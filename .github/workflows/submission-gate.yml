@@ -21,21 +21,32 @@ jobs:
   metagraphed-submission-gate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout pull request worktree
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
+          path: pr
+
+      - name: Checkout trusted base worktree
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          path: trusted
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: trusted/package-lock.json
 
-      - name: Install
+      - name: Install trusted dependencies
+        working-directory: trusted
         run: npm ci
 
       - name: Capture changed files
+        working-directory: pr
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
@@ -50,19 +61,22 @@ jobs:
 
       - name: Classify submission route
         id: route
-        run: node scripts/ci-validate-route.mjs --changed-files changed-files.txt --out submission-route.json
+        working-directory: trusted
+        run: node scripts/ci-validate-route.mjs --changed-files ../pr/changed-files.txt --out ../pr/submission-route.json
 
       - name: Run public submission preflight
         if: steps.route.outputs.mode == 'ugc'
+        working-directory: trusted
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-        run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json
+        run: node scripts/submission-pr.mjs --changed-files ../pr/changed-files.txt --input-root ../pr --out ../pr/submission-report.json
 
       - name: Show public preflight report
         if: steps.route.outputs.mode == 'ugc'
+        working-directory: trusted
         run: |
-          npm run submission:comment -- --report submission-report.json --out submission-comment.md
-          cat submission-comment.md >> "$GITHUB_STEP_SUMMARY"
+          node scripts/submission-comment.mjs --report ../pr/submission-report.json --out ../pr/submission-comment.md
+          cat ../pr/submission-comment.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Skip normal PR
         if: steps.route.outputs.mode != 'ugc'

@@ -93,8 +93,13 @@ export function buildSubmissionDiscordPayload(decision = {}) {
   }
 
   const meta = VERDICT_META[decision.verdict];
-  const number = decision.pr_number || decision.issue_number || "submission";
-  const targetUrl = decision.pr_url || decision.issue_url || undefined;
+  const number = sanitizeNotificationText(
+    decision.pr_number || decision.issue_number || "submission",
+    "submission",
+  );
+  const targetUrl = sanitizeNotificationUrl(
+    decision.pr_url || decision.issue_url || undefined,
+  );
   const candidate = decision.candidate || {};
   const sourceUrl =
     candidate.source_url ||
@@ -129,7 +134,7 @@ export function buildSubmissionDiscordPayload(decision = {}) {
           `#${number} ${meta.action} · ${compactSubject(decision.title, subjectSource)}`,
           DISCORD_MAX_TITLE_LENGTH,
         ),
-        url: targetUrl,
+        ...(targetUrl ? { url: targetUrl } : {}),
         color: meta.color,
         description:
           sanitizeNotificationSummary(decision.summary) ||
@@ -145,23 +150,47 @@ export function buildSubmissionDiscordPayload(decision = {}) {
 }
 
 export function sanitizeNotificationSummary(value) {
-  const lines = String(value || "")
+  const lines = publicNotificationLines(value).filter(
+    (line) => !SECTION_HEADING_PATTERN.test(line),
+  );
+
+  return truncate(lines.slice(0, 2).join(" "), DISCORD_MAX_DESCRIPTION_LENGTH);
+}
+
+function sanitizeNotificationText(value, fallback = "n/a", limit) {
+  const text = publicNotificationLines(value).join(" ");
+  return truncate(text || fallback, limit ?? DISCORD_MAX_FIELD_LENGTH);
+}
+
+function sanitizeNotificationUrl(value) {
+  const text = publicNotificationLines(value).join(" ");
+  if (!text) {
+    return undefined;
+  }
+  try {
+    return new URL(text).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function publicNotificationLines(value) {
+  return String(value || "")
     .split(/\r?\n/)
-    .map((line) =>
-      stripHtmlComments(line)
-        .replace(/^#{1,6}\s*/, "")
-        .replace(/^[-*]\s*/, "")
-        .replace(/\*\*/g, "")
-        .replace(/`/g, "")
-        .trim(),
-    )
+    .map(normalizeNotificationLine)
     .filter(Boolean)
-    .filter((line) => !SECTION_HEADING_PATTERN.test(line))
     .filter(
       (line) => !SENSITIVE_LINE_PATTERNS.some((pattern) => pattern.test(line)),
     );
+}
 
-  return truncate(lines.slice(0, 2).join(" "), DISCORD_MAX_DESCRIPTION_LENGTH);
+function normalizeNotificationLine(line) {
+  return stripHtmlComments(String(line || ""))
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^[-*]\s*/, "")
+    .replace(/\*\*/g, "")
+    .replace(/`/g, "")
+    .trim();
 }
 
 export function truncate(value, limit) {
@@ -200,19 +229,18 @@ export function validateDiscordWebhookUrl(value) {
 function field(name, value, inline = true) {
   return {
     name,
-    value: truncate(value || "n/a", DISCORD_MAX_FIELD_LENGTH),
+    value: sanitizeNotificationText(value, "n/a", DISCORD_MAX_FIELD_LENGTH),
     inline,
   };
 }
 
 function compactSubject(title, candidate = {}) {
-  const fromCandidate = [
-    candidate.netuid ? `SN${candidate.netuid}` : "",
-    candidate.kind,
-  ]
+  const safeNetuid = sanitizeNotificationText(candidate.netuid, "");
+  const safeKind = sanitizeNotificationText(candidate.kind, "");
+  const fromCandidate = [safeNetuid ? `SN${safeNetuid}` : "", safeKind]
     .filter(Boolean)
     .join(" ");
-  const text = String(title || fromCandidate || "submission")
+  const text = sanitizeNotificationText(title, "", 120)
     .replace(/^[a-z]+(?:\([^)]+\))?:\s*/i, "")
     .replace(/^(add|create|submit|update)\s+/i, "")
     .trim();
@@ -220,11 +248,10 @@ function compactSubject(title, candidate = {}) {
 }
 
 function fallbackNotificationSummary(meta, candidate = {}) {
-  const kind = candidate.kind ? `${candidate.kind} ` : "";
-  const netuid =
-    candidate.netuid !== undefined && candidate.netuid !== null
-      ? `for SN${candidate.netuid}`
-      : "for the registry";
+  const safeKind = sanitizeNotificationText(candidate.kind, "");
+  const safeNetuid = sanitizeNotificationText(candidate.netuid, "");
+  const kind = safeKind ? `${safeKind} ` : "";
+  const netuid = safeNetuid ? `for SN${safeNetuid}` : "for the registry";
   return truncate(
     `Metagraphed ${meta.action} this ${kind}submission ${netuid}.`,
     DISCORD_MAX_DESCRIPTION_LENGTH,

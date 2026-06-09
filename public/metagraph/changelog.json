@@ -3,20 +3,20 @@
     "added": [],
     "modified": [
       {
-        "hash": "f3efe62128910a2c9b6e24a67e54ccab48d8731422f2854e94ff80d33eb330a5",
-        "path": "freshness.json"
+        "hash": "b11176131600564f580306d1d166135df33da69a8c75a0a3385c4e0a657f6c72",
+        "path": "profiles.json"
       },
       {
-        "hash": "32126ce80d66dadf7772d0bf5b53a1d2dabd4cbeb47e21c4965d08ac2ce07ccb",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "3af9494dc39ee00e4d7a3d6d50eed382e4cdd77107f7e2d57da233aef48722ef",
+        "hash": "187803271b76aecdde48762ed3c74bef468d20889f9a7b77ad1b9096301c1e05",
         "path": "review/enrichment-queue.json"
       },
       {
-        "hash": "279ae4df8bc25ccab0acc8811e3d0c962b044a31a22fae6a9f32c7d1eab4fa8a",
-        "path": "review/gap-priorities.json"
+        "hash": "251a5891665ab12a06917d8c99fb7377db83b053f57f3e38fa5517707c16afc2",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "98a8ddde177be85e0a69d0c46f4f7f0527edc07e552fbddec307c4b65a8e0fc9",
+        "path": "subnets.json"
       }
     ],
     "removed": []

@@ -395,6 +395,18 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
 
     if ([301, 302, 303, 307, 308].includes(response.status) && location) {
       const redirectTarget = new URL(location, url).toString();
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
+        await response.body?.cancel();
+        return {
+          ok: false,
+          error: "redirect target is unsafe",
+          latency_ms: latencyMs,
+          method_tested: method,
+          private_redirect_blocked: true,
+          redirect_target: redactCredentialedUrl(redirectTarget),
+          status_code: response.status,
+        };
+      }
       await response.body?.cancel();
       return {
         ok: false,
