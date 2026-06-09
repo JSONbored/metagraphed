@@ -643,6 +643,52 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(serialized.includes("private prompt"), false);
   });
 
+  test("sanitizes Discord payload fields beyond the summary", () => {
+    const payload = buildSubmissionDiscordPayload({
+      verdict: "closed",
+      status: "closed",
+      pr_number: 77,
+      pr_url:
+        "https://github.com/JSONbored/metagraphed/pull/77?token=ghp_should_not_leak",
+      title:
+        "feat(intake): https://discord.com/api/webhooks/redacted github_pat_should_not_leak",
+      submitter: "wallet private key should not leak",
+      candidate: {
+        netuid: 7,
+        kind: "docs",
+        source_url: "https://discord.com/api/webhooks/redacted",
+      },
+      summary: [
+        "Summary:",
+        "- Public review completed.",
+        "- private threshold github_pat_should_not_leak",
+      ].join("\n"),
+      now: "1970-01-01T00:00:00.000Z",
+    });
+
+    const serialized = JSON.stringify(payload);
+    assert.equal(payload.embeds[0].title, "#77 closed · SN7 docs");
+    assert.equal(payload.embeds[0].url, undefined);
+    assert.equal(
+      payload.embeds[0].fields.find((field) => field.name === "Source").value,
+      "n/a",
+    );
+    assert.equal(
+      payload.embeds[0].fields.some((field) => field.name === "GitHub"),
+      false,
+    );
+    assert.equal(
+      payload.embeds[0].fields.find((field) => field.name === "Submitter")
+        .value,
+      "n/a",
+    );
+    assert.equal(serialized.includes("discord.com/api/webhooks"), false);
+    assert.equal(serialized.includes("github_pat"), false);
+    assert.equal(serialized.includes("ghp_should"), false);
+    assert.equal(serialized.includes("private threshold"), false);
+    assert.equal(serialized.includes("private key"), false);
+  });
+
   test("sanitizes notification summaries and preserves code points", () => {
     assert.equal(
       sanitizeNotificationSummary(
