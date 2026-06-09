@@ -1,8 +1,9 @@
 # ADR 0001 — R2-only data artifacts, committed inputs + contract, self-sufficient publish
 
-- **Status:** Accepted — phased migration in progress.
+- **Status:** Accepted — implemented (see "Outcome" below).
 - **Date:** 2026-06-09
-- **Supersedes:** the implicit "dual-tier everything" model.
+- **Supersedes:** the implicit "dual-tier everything" model and the
+  push-triggered `publish-cloudflare.yml` full-publish.
 
 ## Context
 
@@ -83,16 +84,41 @@ the published, versioned R2 evidence-ledger** — a cleaner provenance story.
 
 ## Phased migration
 
-1. **Self-sufficient publish** — re-snapshot adapters in `productionSteps`; pass
-   token + `METAGRAPH_REQUIRE_ADAPTER_AUTH`; align adapter freshness 12h→24h.
-   *(Closes the publish blocker; no churn change.)*
-2. **R2-only data** — reclassify in `artifact-storage.mjs`; `git rm` the
-   committed copies; make R2 primary in the Worker; shift the R2 delta-upload
-   baseline to R2 state; retarget the reproducibility gate to the contract set.
-   *(Gated on Phase 1 populating R2.)*
-3. **Decouple UGC + sync** — import bot and sync commit inputs only; drop
-   `npm test` from the commit path; fix the test-order bug.
-4. **Docs/provenance** — this ADR; update `backend-artifact-contracts.md`,
-   README serving notes, and the roadmap.
-5. **Optional** — collapse the two-job publish into one `build → validate →
-   deploy`.
+1. ✅ **Self-sufficient publish** (#203) — re-snapshot adapters in
+   `productionSteps`; pass token + `METAGRAPH_REQUIRE_ADAPTER_AUTH`; align adapter
+   freshness 12h→24h. Freshness is fresh by construction at publish time.
+2. ✅ **R2-only data** (#206, #209) — reclassified ~4.3 MB of high-churn data
+   (`surfaces`, `evidence-ledger`, `search`, `profiles`, `curation`, `gaps`,
+   `providers`, `freshness`, `schema-drift`, `review/*`) from dual → r2 in
+   `artifact-storage.mjs`; `git rm`'d the committed copies; the Worker serves
+   them R2-first via the existing tier system. Blocking readers made tier-aware
+   (`kv-publish-pointer` via `artifactFilePath`); `validate.yml` excludes
+   deletions from ci-verify (`--diff-filter=d`); the `gitBuffer` exit-128 crash
+   fixed. **Kept committed:** the API contract (`api-index`, `contracts`,
+   `openapi`, `schemas/index`, `types.d.ts`), `coverage`, `subnets` (changelog
+   baseline), and the small digests (`build-summary`, `changelog`, `r2-manifest`).
+3. ✅ **Decouple deploy from data** (#207, #208) — this is the bigger structural
+   win than the originally-planned "collapse the two-job publish". See "Outcome".
+4. ✅ **Docs/provenance** — this ADR + the roadmap. Follow-up: refresh
+   `backend-artifact-contracts.md` + README serving notes.
+
+## Outcome — deploy architecture
+
+The push-triggered, all-in-one `publish-cloudflare.yml` is replaced by two
+decoupled mechanisms, because code is change-driven while data freshness is
+time-driven (and the Worker reads data from R2/KV at request time, so it does
+not need redeploying when data changes):
+
+- **Worker code + committed assets → Cloudflare Workers Builds.** The repo is
+  connected to the Worker; every push to `main` runs `npm run build` then
+  `npx wrangler deploy` in Cloudflare's environment (native R2/KV/deploy creds —
+  no GitHub secrets). `wrangler.jsonc` carries 100% logs+traces observability and
+  Smart Placement.
+- **Data → scheduled refresh** (`publish-cloudflare.yml`, repurposed). On a 6h
+  cron (and `workflow_dispatch`): production build (probes + adapters) → validate
+  (freshness/probe-health gate) → `r2:upload` (versioned + `latest/`) →
+  `kv:publish` (the `metagraph:latest` pointer) → `smoke:live`. No worker deploy
+  (Cloudflare Builds owns it); the redundant Cloudflare dry-runs removed.
+
+Net: a docs commit no longer re-probes 1k+ surfaces; data refreshes on its own
+cadence; git size tracks curation effort, not data volume.
