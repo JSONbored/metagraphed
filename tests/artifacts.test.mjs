@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
+  cpSync,
   existsSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { test } from "vitest";
 import {
   artifactDirectoryPath,
@@ -326,6 +329,53 @@ test("artifact build does not preserve forged endpoint index health", () => {
     restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
+
+test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
+  const timestamp = "2026-06-08T12:34:56.789Z";
+  const expectedRunPrefix = "runs/2026-06-08T12-34-56-789Z/";
+  const originalManifest = readFileSync(
+    "public/metagraph/r2-manifest.json",
+    "utf8",
+  );
+  const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-r2-manifest-`);
+  const stagingBackup = `${backupDir}/metagraph-r2`;
+  const hadStagingRoot = existsSync(r2StagingRoot);
+  if (hadStagingRoot) {
+    cpSync(r2StagingRoot, stagingBackup, { recursive: true });
+  }
+
+  try {
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        METAGRAPH_BUILD_TIMESTAMP: timestamp,
+      },
+      stdio: "pipe",
+    });
+
+    const dryRunEnv = { ...process.env };
+    delete dryRunEnv.METAGRAPH_BUILD_TIMESTAMP;
+    const output = execFileSync(process.execPath, ["scripts/r2-manifest.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: dryRunEnv,
+      stdio: "pipe",
+    });
+    const summary = JSON.parse(output);
+
+    assert.equal(summary.run_prefix, expectedRunPrefix);
+  } finally {
+    writeFileSync("public/metagraph/r2-manifest.json", originalManifest);
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    if (hadStagingRoot) {
+      cpSync(stagingBackup, r2StagingRoot, { recursive: true });
+    }
+    rmSync(backupDir, { recursive: true, force: true });
+  }
+});
 
 test("public artifacts are internally consistent", () => {
   const native = JSON.parse(
