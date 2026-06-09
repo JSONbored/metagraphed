@@ -255,3 +255,8 @@ html[data-density="compact"] .bg-card > table td {
   html.theme-transition,
   html.theme-transition * { transition: none; }
 }
+
+@keyframes mg-loader {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
