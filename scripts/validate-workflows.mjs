@@ -151,6 +151,16 @@ for (const workflow of workflows) {
       "publish workflow must fail closed when Cloudflare publishing secrets are missing",
     );
     check(
+      content.includes('METAGRAPH_PRODUCTION_BUILD: "1"'),
+      workflow,
+      "publish workflow must explicitly use the production build path",
+    );
+    check(
+      content.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
+      workflow,
+      "publish workflow must explicitly require probe-derived health",
+    );
+    check(
       content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
       workflow,
       "publish workflow must skip deploy/upload steps only in explicit dry-run mode",
