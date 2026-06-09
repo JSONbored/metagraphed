@@ -60,6 +60,7 @@ import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
+import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
 import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
 import {
   buildIssueIntakeReport,
@@ -88,6 +89,23 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("classifies redirect-limit probes as unsupported", () => {
+    assert.equal(
+      classifyHttpProbe(
+        {
+          ok: false,
+          error: "redirect limit exceeded",
+          redirect_target: "https://example.com/api/",
+          status_code: 308,
+        },
+        {
+          kind: "subnet-api",
+        },
+      ),
+      "unsupported",
+    );
+  });
+
   test("preserves previous GitHub metadata when source-repo API enrichment degrades", () => {
     const current = {
       candidate_id: "sn-1-native-chain-github",
@@ -825,6 +843,13 @@ describe("script utility contracts", () => {
       7,
       false,
     ]);
+    const oauthRedirect =
+      "https://accounts.google.com/v3/signin/identifier?client_id=abc&state=volatile&nonce=random";
+    assert.equal(isCredentialedUrl(oauthRedirect), true);
+    assert.equal(
+      redactCredentialedUrl(oauthRedirect),
+      "https://accounts.google.com/v3/signin/identifier",
+    );
     assert.equal(redactCredentialedUrl("not a url"), "not a url");
     assert.equal(
       redactCredentialedUrl("https://example.com/download?file=1"),

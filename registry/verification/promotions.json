@@ -2,7 +2,7 @@
   "candidate_count": 2021,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-09T05:36:53.950Z",
+  "observed_at": "2026-06-09T06:18:31.409Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -14090,7 +14090,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S521455352%3A1780983306825226&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=rE6aTdrgbC5yPAg4h9Zd_FAPxaKUnNBg3bagfswUHfk&code_challenge_method=S256&nonce=VEFqVIOygx8We8cszoEpsnUAOIM3PNFi09kg8lBKXt4&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=7eKc4FyGRdGZz-gl50ilFCO395rousomGr5OmS-S44w&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hANbGyJkGr3r2K7TXXPKmSBqV0cxOVZtSri7BAkmnMQvoIdrzbUlrEh8gK4UyrMzaqaaRGeMuSllcfKoc2kdcxiSAGcYrSiNOjb6GdXwhRZN6o9cJTpJwQa_yPawcLevktAoe6_-jQXsAlmkyCseqlFbtXG8NMvKVsnydUiS0NqS7lRtqNxOSJKFT64t38jGb3CvUymP8z7PdPdxovGueA4RfPULNZOXlZaztiQ3AOK00-HF38aQoeiqR9CTbWuvlZcwxHdDD-c0ygwP7E1hJFxUuG1NHAk5M9xaLQTHrUHnXSWWACTwNqYip_1XHWELeHWM8UrmL1q25MfjZ89b_VNjEngJhXMbWMj4tFZUxY1Qs1bIfmnzpWdcpvgTsw2lUoEXytQM2-gb0UnwIQbgQ59u6bAHZpQ7E6PsyTlMNOJmB2zcN137R4zKISGVQxZHm2uNmoy411aKibf0nNT2HDH-fOS3cA%26flowName%3DGeneralOAuthFlow%26as%3DS521455352%253A1780983306825226%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcfCMkSh7WKT2p5dsk2-NsqyawYx4ejGH1xHhaH2lqX0yYEf6a_Xy3BMpaVCdHC_z9xyWq5qxW5A3U6Dne-WiNXxVV12QoAwh7PtHfQ3lzJyXOw056A",
+      "redirect_target": "https://accounts.google.com/v3/signin/identifier",
       "status": "ok"
     },
     {
@@ -30407,7 +30407,7 @@
     },
     {
       "candidate_id": "sn-100-tensorplex-source-repo-1",
-      "classification": "live",
+      "classification": "redirected",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -30420,6 +30420,7 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
+      "redirect_target": "https://github.com/PlatformNetwork/platform",
       "status": "ok"
     },
     {
@@ -34609,10 +34610,10 @@
     },
     {
       "candidate_id": "sn-114-website-common-api",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "unsupported",
+      "confidence_score": 18,
       "content_type": null,
-      "error": null,
+      "error": "probe-failed",
       "kind": "subnet-api",
       "netuid": 114,
       "provider": "soma",
@@ -34624,7 +34625,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://thesoma.ai/api/",
+      "redirect_target": "https://thesoma.ai/api",
       "status": "failed"
     },
     {
@@ -35135,7 +35136,7 @@
     },
     {
       "candidate_id": "sn-117-native-chain-github",
-      "classification": "live",
+      "classification": "redirected",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -35148,6 +35149,7 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
+      "redirect_target": "https://github.com/smallsmilesmith/Chi",
       "status": "ok"
     },
     {
@@ -35926,7 +35928,7 @@
     },
     {
       "candidate_id": "sn-120-native-chain-github",
-      "classification": "live",
+      "classification": "redirected",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -35939,6 +35941,7 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
+      "redirect_target": "https://github.com/AffineFoundation/affine-cortex",
       "status": "ok"
     },
     {
@@ -38245,12 +38248,12 @@
       "auth-required": 9,
       "content-mismatch": 132,
       "dead": 397,
-      "live": 1296,
+      "live": 1293,
       "rate-limited": 7,
-      "redirected": 146,
+      "redirected": 148,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 28
+      "unsupported": 29
     },
     "by_kind": {
       "dashboard": 564,
@@ -38336,7 +38339,7 @@
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1442
+    "promotable_count": 1441
   },
   "verification_finished_at": null,
   "verification_started_at": null

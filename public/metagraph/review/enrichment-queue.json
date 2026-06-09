@@ -6462,16 +6462,14 @@
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
         "reviewable_count": 6,
         "stale_kinds": [
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
@@ -6513,19 +6511,17 @@
         "sn-114-subnetradar-dashboard",
         "sn-114-taomarketcap-dashboard"
       ],
-      "sample_live_candidate_ids": [
-        "sn-114-website-common-api"
-      ],
+      "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
         "sn-114-website-link-thesoma-ai-subnet-api-7",
+        "sn-114-website-common-api",
         "sn-114-website-common-openapi-json",
         "sn-114-website-common-swagger",
-        "sn-114-website-common-swagger-json",
-        "sn-114-website-common-health"
+        "sn-114-website-common-swagger-json"
       ],
       "sample_target_candidate_ids": [
-        "sn-114-website-common-api",
         "sn-114-website-link-thesoma-ai-subnet-api-7",
+        "sn-114-website-common-api",
         "sn-114-website-common-openapi-json",
         "sn-114-website-common-swagger",
         "sn-114-website-common-swagger-json"
@@ -6541,9 +6537,9 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114",
         "https://subnetradar.com/subnet/114"
       ],
-      "stale_candidate_count": 5,
+      "stale_candidate_count": 6,
       "surface_count": 11,
-      "verified_candidate_count": 16
+      "verified_candidate_count": 15
     },
     {
       "adapter_score": 7,

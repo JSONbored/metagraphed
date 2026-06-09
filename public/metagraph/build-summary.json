@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 22,
-  "artifact_size_bytes": 5159045,
+  "artifact_size_bytes": 5157166,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -17,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "294e5902f3a17ece7bf42a7232be9676561a6470e5ae4bceef0e8ad816097d6b",
-      "size_bytes": 3150,
+      "sha256": "9b9c927259e685489784e34a99eb28f5c131e5354be00e7780e8400703763e3a",
+      "size_bytes": 1349,
       "storage_tier": "dual"
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "path": "freshness.json",
-      "sha256": "6d9886cbf42c50522fc157b9c4558571e5090cbeffae445dd13fecb11156a63c",
+      "sha256": "f3efe62128910a2c9b6e24a67e54ccab48d8731422f2854e94ff80d33eb330a5",
       "size_bytes": 7549,
       "storage_tier": "dual"
     },
@@ -83,19 +83,19 @@
     },
     {
       "path": "review/curation.json",
-      "sha256": "65f39d7bcbb4019338e4209ea5491cca02974ea29a328c0baf46b677145b697b",
+      "sha256": "32126ce80d66dadf7772d0bf5b53a1d2dabd4cbeb47e21c4965d08ac2ce07ccb",
       "size_bytes": 157066,
       "storage_tier": "dual"
     },
     {
       "path": "review/enrichment-queue.json",
-      "sha256": "8424b4a8a7f82421ac57852b8d5edc16c618e44d6c02d34abf84175ae27573a2",
-      "size_bytes": 366285,
+      "sha256": "3af9494dc39ee00e4d7a3d6d50eed382e4cdd77107f7e2d57da233aef48722ef",
+      "size_bytes": 366207,
       "storage_tier": "dual"
     },
     {
       "path": "review/gap-priorities.json",
-      "sha256": "d70c604e30686fc807cc4534e390450e171c2606d6228f3179c5f29ccec72edf",
+      "sha256": "279ae4df8bc25ccab0acc8811e3d0c962b044a31a22fae6a9f32c7d1eab4fa8a",
       "size_bytes": 65469,
       "storage_tier": "dual"
     },
@@ -182,7 +182,7 @@
   },
   "endpoint_count": 1140,
   "full_artifact_count": 1272,
-  "full_artifact_size_bytes": 48954177,
+  "full_artifact_size_bytes": 48955284,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 90,
@@ -197,9 +197,9 @@
     "r2": 1250
   },
   "storage_tier_size_bytes": {
-    "dual": 4900085,
+    "dual": 4898206,
     "git": 258960,
-    "r2": 43795132
+    "r2": 43798118
   },
   "subnet_count": 129,
   "surface_count": 1140
