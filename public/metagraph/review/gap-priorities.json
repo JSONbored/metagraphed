@@ -209,7 +209,7 @@
       "review_state": "needs-review",
       "slug": "sn-81",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
+      "surface_count": 10,
       "verified_candidate_count": 7
     },
     {
@@ -1258,7 +1258,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-89",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 6,
+      "surface_count": 7,
       "verified_candidate_count": 7
     },
     {

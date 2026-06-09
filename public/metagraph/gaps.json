@@ -2256,7 +2256,7 @@
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -2480,7 +2480,7 @@
       "gaps": {
         "gap_notes": [
           "Project homepage currently returns HTTP 402.",
-          "No verified docs site yet.",
+          "The subnet auction incentive mechanism is documented in the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",

@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1355,
+  "document_count": 1357,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -3441,6 +3441,7 @@
         "curated",
         "decentralized",
         "deprecated",
+        "docs",
         "drift",
         "github",
         "grail",
@@ -3778,6 +3779,7 @@
         "curated",
         "deltacompute24",
         "developers",
+        "docs",
         "github",
         "githubusercontent",
         "https",
@@ -15622,6 +15624,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-81-grail-docs",
+      "netuid": 81,
+      "slug": "sn-81",
+      "subtitle": "docs / one-covenant",
+      "title": "Grail repository documentation",
+      "tokens": [
+        "81",
+        "covenant",
+        "docs",
+        "documentation",
+        "grail",
+        "one",
+        "repository",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://github.com/one-covenant/grail/tree/main/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-81-grail-source",
       "netuid": 81,
       "slug": "sn-81",
@@ -17041,6 +17063,25 @@
       ],
       "type": "surface",
       "url": "https://www.hone.training/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-89-infinitehash-auction-docs",
+      "netuid": 89,
+      "slug": "sn-89",
+      "subtitle": "docs / infinitehash",
+      "title": "InfiniteHash auction incentive documentation",
+      "tokens": [
+        "89",
+        "auction",
+        "docs",
+        "documentation",
+        "incentive",
+        "infinitehash",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

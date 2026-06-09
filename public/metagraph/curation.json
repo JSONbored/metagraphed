@@ -3530,7 +3530,7 @@
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3539,7 +3539,7 @@
         "level": "maintainer-reviewed",
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:05:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T11:05:00.000Z"
       },
       "gap_count": 5,
@@ -3547,7 +3547,7 @@
         "gap_notes": [
           "Native chain name currently reports as deprecated.",
           "No verified standalone website yet.",
-          "No verified docs site yet.",
+          "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3569,7 +3569,7 @@
       "name": "Grail",
       "netuid": 81,
       "slug": "sn-81",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
       "candidate_count": 26,
@@ -3883,7 +3883,7 @@
       "curation": {
         "gap_notes": [
           "Project homepage currently returns HTTP 402.",
-          "No verified docs site yet.",
+          "The subnet auction incentive mechanism is documented in the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3892,14 +3892,14 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "Project homepage currently returns HTTP 402.",
-          "No verified docs site yet.",
+          "The subnet auction incentive mechanism is documented in the public source repository.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
@@ -3921,7 +3921,7 @@
       "name": "InfiniteHash",
       "netuid": 89,
       "slug": "sn-89",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
       "candidate_count": 6,

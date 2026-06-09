@@ -11884,6 +11884,7 @@
         "decentralized-training",
         "identity-drift",
         "identity-reviewed",
+        "official-docs",
         "official-source-repo"
       ],
       "completeness": {
@@ -11916,7 +11917,7 @@
       "completeness_score": 40,
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 9,
+      "endpoint_count": 10,
       "gap_reasons": [
         "missing-website",
         "missing-openapi",
@@ -11961,7 +11962,7 @@
       "missing_required": [
         "website"
       ],
-      "monitored_endpoint_count": 9,
+      "monitored_endpoint_count": 10,
       "name": "Grail",
       "native_identity": {
         "additional": null,
@@ -11980,15 +11981,15 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-81-taopedia-article",
+        "id": "sn-81-grail-docs",
         "kind": "docs",
-        "name": "deprecated Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
+        "name": "Grail repository documentation",
+        "provider": "one-covenant",
+        "url": "https://github.com/one-covenant/grail/tree/main/docs"
       },
       "primary_links": {
         "dashboard_url": "https://grail-grafana.tplr.ai/",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx",
+        "docs_url": "https://github.com/one-covenant/grail/tree/main/docs",
         "source_repo": "https://github.com/one-covenant/grail",
         "website_url": null
       },
@@ -11997,7 +11998,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "needs-review",
         "reviewed_at": "2026-06-08T11:05:00.000Z",
         "source_urls": [
@@ -12005,6 +12006,7 @@
           "https://backprop.finance/dtao/subnets/81-deprecated",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx",
           "https://github.com/one-covenant/grail",
+          "https://github.com/one-covenant/grail/tree/main/docs",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json",
           "https://grail-grafana.tplr.ai/",
           "https://subnetradar.com/subnet/81"
@@ -12022,7 +12024,7 @@
         "docs",
         "source-repo"
       ],
-      "surface_count": 9,
+      "surface_count": 10,
       "symbol": "ᚠ",
       "team": null
     },
@@ -13053,6 +13055,7 @@
         "baseline-augmented",
         "baseline-curated",
         "identity-reviewed",
+        "official-docs",
         "official-source-repo"
       ],
       "completeness": {
@@ -13085,7 +13088,7 @@
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 6,
+      "endpoint_count": 7,
       "gap_reasons": [
         "missing-website",
         "missing-openapi",
@@ -13134,7 +13137,7 @@
       "missing_required": [
         "website"
       ],
-      "monitored_endpoint_count": 6,
+      "monitored_endpoint_count": 7,
       "name": "InfiniteHash",
       "native_identity": {
         "additional": "The Last Bitcoin Mining Pool, made by Bittensor",
@@ -13153,15 +13156,15 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-89-taopedia-article",
+        "id": "sn-89-infinitehash-auction-docs",
         "kind": "docs",
-        "name": "InfiniteHash Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
+        "name": "InfiniteHash auction incentive documentation",
+        "provider": "infinitehash",
+        "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/89",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx",
+        "docs_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
         "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
         "website_url": null
       },
@@ -13170,13 +13173,14 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/89",
           "https://backprop.finance/dtao/subnets/89-infinitehash",
           "https://github.com/backend-developers-ltd/InfiniteHash",
+          "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json",
           "https://subnetradar.com/subnet/89",
@@ -13195,7 +13199,7 @@
         "docs",
         "source-repo"
       ],
-      "surface_count": 6,
+      "surface_count": 7,
       "symbol": "ᛒ",
       "team": null
     },

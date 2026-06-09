@@ -2689,6 +2689,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-89-website-common-api",
+        "sn-89-website-common-health",
+        "sn-89-website-common-openapi-json",
+        "sn-89-website-common-swagger",
+        "sn-89-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "InfiniteHash",
+      "netuid": 89,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 7,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-89",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-108-website-common-api",
         "sn-108-website-common-health",
         "sn-108-website-common-openapi-json",
@@ -2846,33 +2873,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-76",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-89-website-common-api",
-        "sn-89-website-common-health",
-        "sn-89-website-common-openapi-json",
-        "sn-89-website-common-swagger",
-        "sn-89-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "maintainer-reviewed",
-      "name": "InfiniteHash",
-      "netuid": 89,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 6,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-89",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     }
   ],
@@ -3085,7 +3085,7 @@
       "review_state": "needs-review",
       "slug": "sn-81",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 9,
+      "surface_count": 10,
       "verified_candidate_count": 7
     },
     {
@@ -4134,7 +4134,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-89",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 6,
+      "surface_count": 7,
       "verified_candidate_count": 7
     },
     {

@@ -9,22 +9,24 @@
     "decentralized-training",
     "identity-drift",
     "identity-reviewed",
+    "official-docs",
     "official-source-repo"
   ],
   "source_repo": "https://github.com/one-covenant/grail",
+  "docs_url": "https://github.com/one-covenant/grail/tree/main/docs",
   "dashboard_url": "https://grail-grafana.tplr.ai/",
   "website_url": null,
-  "notes": "Reviewed overlay for SN81 using the live One Covenant Grail repository and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "notes": "Reviewed overlay for SN81 using the live One Covenant Grail repository, repository documentation, and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "needs-review",
     "reviewed_at": "2026-06-08T11:05:00.000Z",
     "verified_at": "2026-06-08T11:05:00.000Z",
-    "source_count": 5,
+    "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as deprecated.",
       "No verified standalone website yet.",
-      "No verified docs site yet.",
+      "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
@@ -52,6 +54,27 @@
         "timeout_ms": 10000
       },
       "notes": "Public Grail source repository."
+    },
+    {
+      "id": "sn-81-grail-docs",
+      "name": "Grail repository documentation",
+      "kind": "docs",
+      "url": "https://github.com/one-covenant/grail/tree/main/docs",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/grail/tree/main/docs",
+        "https://github.com/one-covenant/grail"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Grail docs directory with miner, validator, FAQ, incentive, and operational setup documentation."
     },
     {
       "id": "sn-81-grail-grafana",
