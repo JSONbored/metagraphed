@@ -23,6 +23,7 @@ import {
 import { API_BASE } from "@/lib/metagraphed/config";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
+import { Kbd } from "./kbd";
 import { classNames } from "@/lib/metagraphed/format";
 import { searchQuery } from "@/lib/metagraphed/queries";
 
