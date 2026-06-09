@@ -73,12 +73,17 @@ export function artifactRelativePath(artifactPath = "") {
   return normalized;
 }
 
+export function isGeneratedPublicArtifactRelativePath(relativePath = "") {
+  const normalized = artifactRelativePath(relativePath);
+  return DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export function artifactStorageTierForRelativePath(relativePath = "") {
   const normalized = artifactRelativePath(relativePath);
   if (R2_ONLY_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return ARTIFACT_STORAGE_TIERS.r2;
   }
-  if (DUAL_PATTERNS.some((pattern) => pattern.test(normalized))) {
+  if (isGeneratedPublicArtifactRelativePath(normalized)) {
     return ARTIFACT_STORAGE_TIERS.dual;
   }
   return ARTIFACT_STORAGE_TIERS.git;

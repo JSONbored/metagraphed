@@ -198,6 +198,40 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
+  test("rejects arbitrary submitted public artifacts even when self-indexed", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-artifacts-"));
+    try {
+      const changedFiles = path.join(tmp, "changed-files.txt");
+      writeFileSync(changedFiles, "public/metagraph/evil.json\n");
+      writeFileSync(
+        path.join(tmp, "build-summary.json"),
+        JSON.stringify({ artifacts: [{ path: "evil.json" }] }),
+      );
+      writeFileSync(
+        path.join(tmp, "r2-manifest.json"),
+        JSON.stringify({ artifacts: [{ path: "/metagraph/evil.json" }] }),
+      );
+
+      assert.throws(
+        () =>
+          execFileSync(
+            process.execPath,
+            [
+              "scripts/ci-verify-submitted-artifacts.mjs",
+              "--changed-files",
+              changedFiles,
+              "--artifact-root",
+              tmp,
+            ],
+            { encoding: "utf8", stdio: "pipe" },
+          ),
+        /Unexpected submitted artifact/,
+      );
+    } finally {
+      rmSync(tmp, { force: true, recursive: true });
+    }
+  });
+
   test("diff-checks submitted public artifacts from the generated indexes", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-artifacts-"));
     try {
