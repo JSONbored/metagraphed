@@ -205,6 +205,16 @@ Freshness is exposed in `/metagraph/freshness.json` and `/api/v1/freshness`.
 Required publish lanes include native subnet data, candidate discovery,
 candidate verification, probe-derived health, and adapter snapshots.
 
+### Publish timing
+
+When your change merges, Cloudflare Workers Builds deploys the Worker and the
+compact contract artifacts in `public/metagraph` immediately. The high-churn data
+— `search`, `profiles`, `surfaces`, `evidence-ledger`, `freshness`, `curation` —
+is **R2-only** and republished on a ~6h schedule, so a newly imported subnet can
+take up to ~6 hours to appear in those indexes and in the completeness
+leaderboard (`/api/v1/profiles?sort=completeness_score`). The compact
+`subnets`/`coverage` digests refresh with the build.
+
 ## Pull Requests
 
 - Use short, focused PRs with Conventional Commit-style titles.

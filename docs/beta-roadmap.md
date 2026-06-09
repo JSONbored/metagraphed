@@ -69,6 +69,13 @@ subnets and demonstrate the product to the broader ecosystem.
    repository metadata ships. Note `publish-cloudflare.yml` does not re-snapshot
    adapters; it publishes whatever is committed, so a guard there (or a validator
    that rejects an all-`html-fallback` adapter) is the optional belt-and-suspenders.
+   _Update:_ that validator now exists — `npm run validate:adapters`
+   (`scripts/validate-adapters.mjs`) flags broken-auth / all-`html-fallback`
+   adapters; it warns on ordinary PRs and fails closed under
+   `METAGRAPH_PRODUCTION_BUILD` / `METAGRAPH_REQUIRE_ADAPTER_AUTH`, and is wired
+   into the `publish-cloudflare.yml` refresh job and `sync-subnets.yml` so degraded
+   adapter data cannot ship. Regenerating the committed snapshot via a tokened sync
+   run remains the operational follow-up.
 2. **Epoch-zero timestamps in published artifacts.** _Done._ Builds stamp
    `1970-01-01T00:00:00.000Z` into `generated_at` via `buildTimestamp()`
    deliberately — byte-identical artifacts let R2 delta-upload skip unchanged
@@ -108,15 +115,18 @@ subnets and demonstrate the product to the broader ecosystem.
 
 ### P1/P2 — RPC proxy (beta differentiator)
 
-7. **Enable the read-only Subtensor RPC proxy.** The Worker logic already exists
-   (`handleRpcProxyRequest` in `workers/api.mjs`: method allowlist, denied
-   prefixes, body cap, SSRF guards, trusted upstream origins, pool selection).
-   Prerequisites before flipping `METAGRAPH_ENABLE_RPC_PROXY=true`:
-   - live probe-derived `/metagraph/rpc/pools.json` with `pool_eligible` endpoints
-     in R2 (not currently generated/committed);
-   - Cloudflare WAF + Rate Limiting rules;
-   - an expanded `SAFE_RPC_METHODS` read set;
-   - a live smoke pass.
+7. **Enable the read-only Subtensor RPC proxy.** _Hardened; gated on WAF + flip._
+   The Worker logic (`handleRpcProxyRequest`) keeps the method allowlist, denied
+   prefixes, body cap, SSRF guards, and trusted upstream origins, and now adds
+   weighted-random **load balancing** across eligible+safe endpoints, an expanded
+   read-only `SAFE_RPC_METHODS` set, and an in-Worker **rate limiter**
+   (`RPC_RATE_LIMITER`, 100 req/60s per IP). The probe-derived
+   `/metagraph/rpc/pools.json` is now generated and published to R2. Remaining
+   before flipping `METAGRAPH_ENABLE_RPC_PROXY=true` (see the "Enabling the RPC
+   Proxy" runbook in `docs/operations.md`):
+   - **Cloudflare WAF** zone rules on `/rpc/*` (dashboard — the one manual step);
+   - confirm at least one `pool_eligible` endpoint per pool is live;
+   - flip the flag and run the live smoke.
      This is the one hosted-infra feature that separates Metagraphed from a
      pure-registry product.
 
@@ -130,7 +140,10 @@ subnets and demonstrate the product to the broader ecosystem.
    and consider a slimmer search-index payload.
 9. **KV pointer / rollback discipline.** Confirm `metagraph:latest` is published
    each run so the Worker reads versioned R2 rather than only `latest/`; the
-   pointer-first rollback is documented in `docs/operations.md`.
+   pointer-first rollback is documented in `docs/operations.md`. _Added:_ `GET
+/health` is now freshness-aware — it reads the pointer's `published_at` and
+   returns `degraded` + HTTP 503 past `METAGRAPH_HEALTH_MAX_AGE_HOURS` (default 12),
+   so an uptime monitor catches a silently-broken data-refresh.
 
 ### P2/P3 — Coverage-completeness flywheel (the moat, made visible)
 
@@ -138,7 +151,13 @@ subnets and demonstrate the product to the broader ecosystem.
     (`/api/v1/coverage`) now carries a `completeness` aggregate — scored count,
     average/median, fully-complete count, a score histogram, per-dimension
     coverage, and a methodology pointer — promoted from the internal review
-    queue and typed in `CoverageArtifact`.
+    queue and typed in `CoverageArtifact`. **Freshness auto-demotion** now feeds
+    the score: an operational surface not probed healthy within
+    `METAGRAPH_FRESHNESS_STALE_AFTER_DAYS` (default 7) of the probe run contributes
+    half its points and is flagged `stale-<kind>` in `gap_reasons`, so "complete"
+    tracks _current_ liveness. It is computed from captured probe timestamps (no
+    wall-clock), so committed artifacts stay byte-stable and the demotion only
+    manifests in probe-backed production refreshes.
 11. **Public coverage leaderboard / "what's missing" view.** _Mostly done:_ the
     per-subnet leaderboard is queryable at
     `/api/v1/profiles?sort=completeness_score&order=asc` and the gaps live in
