@@ -1446,4 +1446,13 @@ function restoreSupportArtifacts(snapshot) {
   for (const [filePath, content] of snapshot) {
     writeFileSync(filePath, content);
   }
+  execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: process.env,
+    stdio: "pipe",
+  });
+  for (const [filePath, content] of snapshot) {
+    writeFileSync(filePath, content);
+  }
 }

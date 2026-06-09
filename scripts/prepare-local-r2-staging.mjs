@@ -40,16 +40,7 @@ const result = spawnSync(process.execPath, ["scripts/build-artifacts.mjs"], {
   stdio: "pipe",
 });
 
-for (const [relativePath, original] of originals) {
-  const filePath = path.join(repoRoot, relativePath);
-  if (!original.existed) {
-    await rm(filePath, { force: true });
-    continue;
-  }
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, original.content);
-}
-
+await restorePublicArtifacts();
 for (const [relativePath, content] of schemaSnapshotDetails) {
   const filePath = stagedSnapshotPath(relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -61,6 +52,25 @@ process.stderr.write(result.stderr || "");
 
 if (result.status !== 0) {
   process.exit(result.status || 1);
+}
+
+const manifestResult = spawnSync(
+  process.execPath,
+  ["scripts/r2-manifest.mjs", "--write"],
+  {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: "pipe",
+  },
+);
+
+await restorePublicArtifacts();
+
+process.stdout.write(manifestResult.stdout || "");
+process.stderr.write(manifestResult.stderr || "");
+
+if (manifestResult.status !== 0) {
+  process.exit(manifestResult.status || 1);
 }
 
 console.log(
@@ -88,6 +98,18 @@ function stagedSnapshotPath(relativePath) {
     );
   }
   return filePath;
+}
+
+async function restorePublicArtifacts() {
+  for (const [relativePath, original] of originals) {
+    const filePath = path.join(repoRoot, relativePath);
+    if (!original.existed) {
+      await rm(filePath, { force: true });
+      continue;
+    }
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, original.content);
+  }
 }
 
 async function loadSchemaSnapshotDetails() {
