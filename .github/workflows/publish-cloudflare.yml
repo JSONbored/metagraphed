@@ -212,6 +212,18 @@ jobs:
       # the new KV pointer + R2 on its next origin miss.
       - name: Smoke live API
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
-        run: npm run smoke:live
+        run: |
+          # Smoke runs immediately after kv:publish, during the edge-cache
+          # revalidation window (routes are 300s-cached + stale-while-revalidate),
+          # so it can briefly see in-transition responses. The data publish
+          # (r2:upload + kv:publish) has already succeeded by here; retry through
+          # the window before failing the run.
+          for attempt in 1 2 3 4; do
+            if npm run smoke:live; then exit 0; fi
+            echo "::warning::smoke:live attempt $attempt failed; edge cache may still be revalidating after kv:publish — retrying in 90s"
+            sleep 90
+          done
+          echo "::error::smoke:live still failing after retries"
+          exit 1
         env:
           METAGRAPH_LIVE_BASE_URL: https://metagraph.sh
