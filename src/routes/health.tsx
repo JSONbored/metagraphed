@@ -196,9 +196,12 @@ function AutoRefreshControl({
         )}
       </button>
 
-      <span
-        className="inline-flex items-center gap-1 px-2 py-1 font-mono uppercase tracking-widest text-[10px] text-ink-muted"
-        title={fetching ? "Refreshing…" : "Idle"}
+      <button
+        type="button"
+        onClick={() => qc.invalidateQueries({ queryKey: ["metagraphed"] })}
+        className="inline-flex items-center gap-1 px-2 py-1 font-mono uppercase tracking-widest text-[10px] text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
+        title={fetching ? "Refreshing…" : "Refresh now"}
+        aria-label="Refresh now"
       >
         <RefreshCw
           className={classNames(
@@ -206,8 +209,8 @@ function AutoRefreshControl({
             fetching ? "animate-spin text-ink-strong" : "text-ink-muted",
           )}
         />
-        {fetching ? "sync" : "idle"}
-      </span>
+        {fetching ? "sync" : "refresh"}
+      </button>
       <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </span>
