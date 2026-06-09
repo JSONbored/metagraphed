@@ -25,6 +25,7 @@ import {
   repoRoot,
   sha256Hex,
   slugify,
+  staleOperationalKinds,
   writeJson,
 } from "./lib.mjs";
 import {
@@ -44,6 +45,13 @@ import {
 } from "../src/artifact-storage.mjs";
 
 const execFileAsync = promisify(execFile);
+
+// Freshness auto-demotion (Finding 9): an operational surface not probed healthy
+// within this many days is treated as stale and contributes a reduced share of
+// the completeness score (and is flagged via gap_reasons `stale-<kind>`).
+const FRESHNESS_STALE_AFTER_DAYS =
+  Number(process.env.METAGRAPH_FRESHNESS_STALE_AFTER_DAYS) || 7;
+const FRESHNESS_DEMOTION_FACTOR = 0.5;
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -321,12 +329,14 @@ const canonicalCandidateIndex = candidates.map((candidate) => ({
 const profileArtifacts = buildSubnetProfileArtifacts({
   candidates: canonicalCandidateIndex,
   endpoints: endpointResources.endpoints,
+  healthSurfaces: healthArtifacts.latest.surfaces,
   nativeIdentitiesByNetuid: new Map(
     chainSubnets.map((subnet) => [
       subnet.netuid,
       subnet.chain_identity || null,
     ]),
   ),
+  probeFinishedAt: healthArtifacts.latest.probe_finished_at || null,
   subnets: mergedSubnets,
   surfaces,
 });
@@ -969,22 +979,45 @@ function endpointSummary(endpoints) {
   };
 }
 
+// Group probed health rows into netuid -> (surface kind -> rows[]) so the
+// profile builder can check, per subnet, whether each operational surface kind
+// is currently verified healthy-and-fresh.
+function groupHealthByNetuidAndKind(healthSurfaces) {
+  const byNetuid = new Map();
+  for (const row of healthSurfaces || []) {
+    if (!byNetuid.has(row.netuid)) {
+      byNetuid.set(row.netuid, new Map());
+    }
+    const byKind = byNetuid.get(row.netuid);
+    if (!byKind.has(row.kind)) {
+      byKind.set(row.kind, []);
+    }
+    byKind.get(row.kind).push(row);
+  }
+  return byNetuid;
+}
+
 function buildSubnetProfileArtifacts({
   subnets,
   surfaces,
   endpoints,
   candidates,
   nativeIdentitiesByNetuid = new Map(),
+  healthSurfaces = [],
+  probeFinishedAt = null,
 }) {
   const surfacesByNetuid = groupByNetuid(surfaces);
   const endpointsByNetuid = groupByNetuid(endpoints);
   const candidatesByNetuid = groupByNetuid(candidates);
+  const healthByNetuidAndKind = groupHealthByNetuidAndKind(healthSurfaces);
   const profiles = subnets
     .map((subnet) =>
       buildSubnetProfile({
         candidates: candidatesByNetuid.get(subnet.netuid) || [],
         endpoints: endpointsByNetuid.get(subnet.netuid) || [],
+        healthByKind: healthByNetuidAndKind.get(subnet.netuid) || new Map(),
         nativeIdentity: nativeIdentitiesByNetuid.get(subnet.netuid) || null,
+        probeFinishedAt,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
       }),
@@ -2065,6 +2098,8 @@ function buildSubnetProfile({
   endpoints,
   candidates,
   nativeIdentity,
+  healthByKind = new Map(),
+  probeFinishedAt = null,
 }) {
   const archiveSupported = surfaces.some(surfaceHasArchiveSupport);
   const supportedKinds = [
@@ -2076,6 +2111,12 @@ function buildSubnetProfile({
   const operationalKinds = supportedKinds.filter((kind) =>
     operationalKindsForSubnetType(subnet.subnet_type).includes(kind),
   );
+  const staleKinds = staleOperationalKinds({
+    operationalKinds,
+    healthByKind,
+    probeFinishedAt,
+    staleAfterDays: FRESHNESS_STALE_AFTER_DAYS,
+  });
   const primaryLinks = {
     website_url: subnet.website_url || firstSurfaceUrl(surfaces, "website"),
     docs_url: subnet.docs_url || firstSurfaceUrl(surfaces, "docs"),
@@ -2086,6 +2127,7 @@ function buildSubnetProfile({
   const completeness = subnetProfileCompleteness({
     curationLevel: subnet.curation.level,
     primaryLinks,
+    staleOperationalKinds: staleKinds,
     subnetType: subnet.subnet_type,
     supportedKinds,
   });
@@ -2257,10 +2299,21 @@ function cleanProfileText(value) {
 function subnetProfileCompleteness({
   curationLevel,
   primaryLinks,
+  staleOperationalKinds: staleKinds = new Set(),
   subnetType,
   supportedKinds,
 }) {
   const kindSet = new Set(supportedKinds);
+  const staleSet = staleKinds instanceof Set ? staleKinds : new Set(staleKinds);
+  // Operational surfaces that exist but are not currently verified healthy-and-
+  // fresh contribute reduced points (freshness auto-demotion, Finding 9): an
+  // unverifiable surface should not read as "complete".
+  const operationalKindPoints = (kind, points) => {
+    if (!kindSet.has(kind)) return 0;
+    return staleSet.has(kind)
+      ? Math.round(points * FRESHNESS_DEMOTION_FACTOR)
+      : points;
+  };
   const identityEntries = [
     ["docs", primaryLinks.docs_url || kindSet.has("docs")],
     ["source-repo", primaryLinks.source_repo || kindSet.has("source-repo")],
@@ -2298,13 +2351,16 @@ function subnetProfileCompleteness({
   const operationalCount = operationalKinds.length - missingOperational.length;
   const operationalScore =
     subnetType === "root"
-      ? (kindSet.has("subtensor-rpc") ? 20 : 0) +
-        (kindSet.has("subtensor-wss") ? 15 : 0) +
-        (kindSet.has("archive") ? 10 : 0)
-      : (kindSet.has("openapi") ? 15 : 0) +
-        (kindSet.has("subnet-api") ? 15 : 0) +
-        (kindSet.has("sse") ? 7 : 0) +
-        (kindSet.has("data-artifact") ? 8 : 0);
+      ? operationalKindPoints("subtensor-rpc", 20) +
+        operationalKindPoints("subtensor-wss", 15) +
+        operationalKindPoints("archive", 10)
+      : operationalKindPoints("openapi", 15) +
+        operationalKindPoints("subnet-api", 15) +
+        operationalKindPoints("sse", 7) +
+        operationalKindPoints("data-artifact", 8);
+  const staleOperational = [...staleSet]
+    .filter((kind) => kindSet.has(kind))
+    .sort();
   const score = Math.min(
     100,
     (primaryLinks.docs_url || kindSet.has("docs") ? 15 : 0) +
@@ -2329,6 +2385,7 @@ function subnetProfileCompleteness({
     ...missingRequired.map((kind) => `missing-${kind}`),
     ...missingRecommended.map((kind) => `missing-${kind}`),
     ...missingOperational.map((kind) => `missing-${kind}`),
+    ...staleOperational.map((kind) => `stale-${kind}`),
   ];
 
   return {
@@ -4053,11 +4110,7 @@ async function gitBuffer(args) {
     // e.g. an R2-only artifact with no committed baseline). execFileAsync exposes
     // the exit code as error.code (number); execFileSync uses error.status —
     // handle both so a missing HEAD path returns null instead of throwing.
-    if (
-      error.code === "ENOENT" ||
-      error.code === 128 ||
-      error.status === 128
-    ) {
+    if (error.code === "ENOENT" || error.code === 128 || error.status === 128) {
       return null;
     }
     throw error;

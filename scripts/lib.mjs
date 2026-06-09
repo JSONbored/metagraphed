@@ -569,6 +569,53 @@ export function publishedAt() {
   return value || null;
 }
 
+// Freshness auto-demotion (beta-roadmap Finding 9). Given a subnet's probed
+// health rows grouped by surface kind and the probe run's reference time,
+// returns the set of operational kinds that are present but NOT currently
+// verified healthy-and-fresh (status "ok" with a last_ok within
+// `staleAfterDays` of the probe run). Such kinds are demoted in the
+// completeness score and flagged, so "complete" reflects *current* liveness
+// rather than a one-time observation.
+//
+// Determinism: when there is no probe reference time (a committed / non-probe
+// build, like CI's artifact-verify checkout with no probe cache), this returns
+// an empty set — so the demotion only manifests in probe-backed production
+// builds and never churns the committed "shop window" artifacts. A kind with no
+// health rows is treated as unverified (not stale), so subnets whose surfaces
+// simply were not probed are never penalised.
+export function staleOperationalKinds({
+  operationalKinds,
+  healthByKind,
+  probeFinishedAt,
+  staleAfterDays = 7,
+}) {
+  const stale = new Set();
+  const referenceMs = probeFinishedAt ? Date.parse(probeFinishedAt) : NaN;
+  if (!Number.isFinite(referenceMs)) {
+    return stale;
+  }
+  const staleAfterMs = staleAfterDays * 24 * 60 * 60 * 1000;
+  const lookup = (kind) =>
+    healthByKind && typeof healthByKind.get === "function"
+      ? healthByKind.get(kind)
+      : healthByKind?.[kind];
+  for (const kind of operationalKinds || []) {
+    const rows = lookup(kind);
+    if (!rows || !rows.length) {
+      continue;
+    }
+    const verifiedFresh = rows.some((row) => {
+      if (!row || row.status !== "ok") return false;
+      const okMs = row.last_ok ? Date.parse(row.last_ok) : NaN;
+      return Number.isFinite(okMs) && referenceMs - okMs <= staleAfterMs;
+    });
+    if (!verifiedFresh) {
+      stale.add(kind);
+    }
+  }
+  return stale;
+}
+
 export const README_LINK_LIMIT = 5;
 
 export const README_KIND_LIMITS = {
