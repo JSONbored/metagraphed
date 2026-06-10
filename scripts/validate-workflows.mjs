@@ -111,6 +111,17 @@ for (const workflow of workflows) {
       "intake import pull request must allowlist generated registry artifact paths",
     );
   }
+  if (workflow === "validate.yml") {
+    check(
+      content.includes("git diff --name-only ") &&
+        content.includes("> changed-files.txt") &&
+        content.includes("--diff-filter=d") &&
+        content.includes("> submitted-artifact-files.txt") &&
+        content.includes("--changed-files submitted-artifact-files.txt"),
+      workflow,
+      "validate workflow must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
+    );
+  }
   if (workflow === "submission-gate.yml") {
     check(
       content.includes("metagraphed-submission-gate:"),

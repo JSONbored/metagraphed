@@ -30,19 +30,25 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
-          # --diff-filter=d excludes deletions: removing a public artifact (e.g.
-          # moving it to R2-only, ADR 0001) is not a "submitted" artifact and
-          # must not be flagged by the submitted-artifact verification below.
+          # Keep the global changed-files list unfiltered so PR routing and
+          # policy checks still see deletions. Only the submitted-artifact
+          # verifier receives a deletion-filtered list, because removing a
+          # public artifact (for example moving it to R2-only, ADR 0001) is not
+          # a submitted artifact.
           if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
-            git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+            git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" > submitted-artifact-files.txt
           else
             git fetch origin "$BASE_REF"
-            git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > changed-files.txt
+            git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+            git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > submitted-artifact-files.txt
           fi
 
       - name: Capture changed files for full validation
         if: github.event_name != 'pull_request'
-        run: ": > changed-files.txt"
+        run: |
+          : > changed-files.txt
+          : > submitted-artifact-files.txt
 
       - name: Classify validation route
         id: route
@@ -144,7 +150,7 @@ jobs:
 
       - name: Verify submitted public artifacts are reproducible
         if: steps.route.outputs.mode == 'full' && github.event_name == 'pull_request'
-        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files changed-files.txt
+        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files submitted-artifact-files.txt
 
       - name: Validate registry
         if: steps.route.outputs.mode == 'full'
