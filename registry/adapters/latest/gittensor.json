@@ -12,11 +12,11 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-10T19:17:53.508Z",
+      "captured_at": "2026-06-10T19:48:05.375Z",
       "config_hash": "b01218e778bbe3ca0cb432e87470c8c10c47e23ec9682bf6b6ec5d29944b9fe5",
       "content_type": "text/plain; charset=utf-8",
       "issue_discovery_enabled_count": 3,
-      "latency_ms": 236,
+      "latency_ms": 122,
       "maintainer_cut_repo_count": 9,
       "max_maintainer_cut": 0.6,
       "repository_count": 19,
@@ -90,12 +90,12 @@
     },
     "mirror_freshness": {
       "archived": false,
-      "captured_at": "2026-06-10T19:17:54.281Z",
+      "captured_at": "2026-06-10T19:48:05.968Z",
       "default_branch": "test",
       "disabled": false,
       "full_name": "entrius/das-github-mirror",
       "html_url": "https://github.com/entrius/das-github-mirror",
-      "latency_ms": 265,
+      "latency_ms": 214,
       "open_issues_count": 6,
       "pushed_at": "2026-06-08T21:54:26Z",
       "status": "captured",
@@ -105,11 +105,11 @@
     "repository_metadata": {
       "archived_count": 0,
       "auth_status": "ok",
-      "captured_at": "2026-06-10T19:17:54.740Z",
+      "captured_at": "2026-06-10T19:48:06.397Z",
       "captured_count": 19,
       "carried_forward_count": 0,
       "html_fallback_count": 0,
-      "latest_push_at": "2026-06-10T19:14:12Z",
+      "latest_push_at": "2026-06-10T19:45:22Z",
       "rate_limited_or_forbidden_count": 0,
       "repositories": [
         {
@@ -139,7 +139,7 @@
           "html_url": "https://github.com/e35ventura/taopedia",
           "metadata_level": "github-api",
           "open_issues_count": 2,
-          "pushed_at": "2026-06-10T19:08:01Z",
+          "pushed_at": "2026-06-10T19:39:40Z",
           "topic_count": 5
         },
         {
@@ -238,7 +238,7 @@
           "full_name": "JSONbored/gittensory",
           "html_url": "https://github.com/JSONbored/gittensory",
           "metadata_level": "github-api",
-          "open_issues_count": 54,
+          "open_issues_count": 79,
           "pushed_at": "2026-06-10T18:14:59Z",
           "topic_count": 0
         },
@@ -258,8 +258,8 @@
           "full_name": "phase-rs/phase",
           "html_url": "https://github.com/phase-rs/phase",
           "metadata_level": "github-api",
-          "open_issues_count": 514,
-          "pushed_at": "2026-06-10T19:06:33Z",
+          "open_issues_count": 513,
+          "pushed_at": "2026-06-10T19:35:57Z",
           "topic_count": 8
         },
         {
@@ -298,8 +298,8 @@
           "full_name": "we-promise/sure",
           "html_url": "https://github.com/we-promise/sure",
           "metadata_level": "github-api",
-          "open_issues_count": 391,
-          "pushed_at": "2026-06-10T19:14:12Z",
+          "open_issues_count": 392,
+          "pushed_at": "2026-06-10T19:45:22Z",
           "topic_count": 0
         }
       ],
@@ -313,7 +313,7 @@
     "private_dashboards",
     "wallet_data"
   ],
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-10T19:45:54.526Z",
   "netuid": 74,
   "notes": [
     "Gittensor adapter publishes public repository/config aggregates only.",

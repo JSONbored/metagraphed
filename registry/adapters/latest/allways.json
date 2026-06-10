@@ -2,10 +2,10 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "crown": {
-      "captured_at": "2026-06-08T22:54:32.044Z",
+      "captured_at": "2026-06-10T19:48:05.625Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "da0ddb592f280e3691b1ffc661d32e27b2787e0fc5be7744dc6bdba70105dcbe",
-      "latency_ms": 53,
+      "hash": "a10b29c9970852a417105733f157b81ae70659e35e6e10557a2dabc5b5d46ae1",
+      "latency_ms": 84,
       "shape": {
         "array_fields": [],
         "object_fields": [
@@ -31,10 +31,10 @@
       "url": "https://api.all-ways.io/crown"
     },
     "events_latest": {
-      "captured_at": "2026-06-08T22:54:32.040Z",
+      "captured_at": "2026-06-10T19:48:05.586Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "dcaf845e60a896bc2ef210e85dbee0b3f011add74571928b9eb50b5ef0802cc8",
-      "latency_ms": 208,
+      "hash": "c105c133018f230800ac28aeac77d6887bbbfa6cbb077bd0735f77a4a446b0c8",
+      "latency_ms": 85,
       "shape": {
         "first_item_keys": [
           "amountRaw",
@@ -66,10 +66,10 @@
       "url": "https://api.all-ways.io/events/latest"
     },
     "health": {
-      "captured_at": "2026-06-08T22:54:31.823Z",
+      "captured_at": "2026-06-10T19:48:05.481Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "61ac5857feb130a1dc475db36bbe21604fddf30024110bb2bea9d8b23e8b1b44",
-      "latency_ms": 173,
+      "latency_ms": 234,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -85,10 +85,10 @@
       "url": "https://api.all-ways.io/health"
     },
     "leaderboard": {
-      "captured_at": "2026-06-08T22:54:32.273Z",
+      "captured_at": "2026-06-10T19:48:06.106Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "96444bf6b256a3c2c20a33c9080e5e7b15194b7407a4d680e4565c376c451079",
-      "latency_ms": 590,
+      "hash": "c9c3d7a64295f3ec2d5cbbfef9033e8938ba8516df97db90381fa602705ed3f6",
+      "latency_ms": 854,
       "shape": {
         "first_item_keys": [
           "collateralRao",
@@ -101,7 +101,7 @@
           "uid",
           "volumeTao"
         ],
-        "item_count": 58,
+        "item_count": 71,
         "redacted_key_count": 1,
         "type": "array"
       },
@@ -110,10 +110,10 @@
       "url": "https://api.all-ways.io/miners/leaderboard"
     },
     "miners": {
-      "captured_at": "2026-06-08T22:54:31.989Z",
+      "captured_at": "2026-06-10T19:48:05.537Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "dfdfa5a3f9eb5d7472743820f22a9ef4cbdf176f3571939d108821ed746d69e1",
-      "latency_ms": 307,
+      "hash": "e792b1eb8450ebd8eb927663c0350c2eaf45259871e28cc80eda40a46cc58d6c",
+      "latency_ms": 286,
       "shape": {
         "first_item_keys": [
           "collateralRao",
@@ -129,7 +129,7 @@
           "uid",
           "updatedAt"
         ],
-        "item_count": 58,
+        "item_count": 71,
         "redacted_key_count": 3,
         "type": "array"
       },
@@ -138,10 +138,10 @@
       "url": "https://api.all-ways.io/miners"
     },
     "network_overview": {
-      "captured_at": "2026-06-08T22:54:31.992Z",
+      "captured_at": "2026-06-10T19:48:05.588Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "5bd16d36b588310bc986c34f737bac10489d43cbd741db56e1d7df3fadf88d3a",
-      "latency_ms": 311,
+      "hash": "4c09c50481bc417cc6eafc1da548a8c3ac2080f64a2364229917945fa50814c9",
+      "latency_ms": 338,
       "shape": {
         "array_fields": [
           {
@@ -168,10 +168,10 @@
       "url": "https://api.all-ways.io/network/overview"
     },
     "protocol_chain_state": {
-      "captured_at": "2026-06-08T22:54:31.991Z",
+      "captured_at": "2026-06-10T19:48:05.558Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "75caa3fde0e4f2896c8747f4de9e07ba2052ad0a1ce3574f3cfa34e069ca802d",
-      "latency_ms": 310,
+      "hash": "852534a08f8b3818bec38844e717cec6dae7447f131a416ad503d22dd392851e",
+      "latency_ms": 309,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -187,10 +187,10 @@
       "url": "https://api.all-ways.io/protocol/chain-state"
     },
     "protocol_constants": {
-      "captured_at": "2026-06-08T22:54:31.825Z",
+      "captured_at": "2026-06-10T19:48:05.499Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "7a49de612a186c2614a967e6b4705402d512f0a3a1bed2159e91547032b00583",
-      "latency_ms": 145,
+      "latency_ms": 278,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -209,10 +209,10 @@
       "url": "https://api.all-ways.io/protocol/constants"
     },
     "reliability": {
-      "captured_at": "2026-06-08T22:54:32.041Z",
+      "captured_at": "2026-06-10T19:48:05.694Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "013e9a2b41b1ea7ea0ad87d6b90a8c46ca98b445a5c960a8183bcbabab4e3a3d",
-      "latency_ms": 211,
+      "hash": "73ad6e16a1b9c6201559bcc2d788921e23f12737ebeeee3d2ecd57e96996ab47",
+      "latency_ms": 212,
       "shape": {
         "first_item_keys": [
           "completed",
@@ -220,7 +220,7 @@
           "sourceChain",
           "total"
         ],
-        "item_count": 97,
+        "item_count": 115,
         "redacted_key_count": 1,
         "type": "array"
       },
@@ -229,16 +229,16 @@
       "url": "https://api.all-ways.io/miners/reliability"
     },
     "sse": {
-      "captured_at": "2026-06-08T22:54:32.329Z",
+      "captured_at": "2026-06-10T19:48:06.197Z",
       "content_type": "text/event-stream",
       "first_chunk_bytes": 25,
-      "latency_ms": 54,
+      "latency_ms": 88,
       "status": "captured",
       "status_code": 200,
       "url": "https://api.all-ways.io/sse"
     }
   },
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-10T19:45:54.526Z",
   "netuid": 7,
   "notes": [
     "Allways adapter publishes response-shape, count, hash, and freshness metadata only.",

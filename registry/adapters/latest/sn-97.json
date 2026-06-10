@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-08T22:54:35.607Z",
+      "captured_at": "2026-06-10T19:48:07.754Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-08T22:54:35.607Z",
+          "captured_at": "2026-06-10T19:48:07.754Z",
           "content_type": "application/json",
           "hash": "61b026a793721514ba0a4a018c746c575858b0058cc671ecd9aaeca638dc10ba",
-          "latency_ms": 672,
+          "latency_ms": 704,
           "name": "Albedo OpenAPI JSON",
           "provider": "opentensor",
           "schema_url": "https://us-east-1.hippius.com/openapi.json",
@@ -59,13 +59,13 @@
       "total_path_count": 12
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-08T22:54:35.607Z",
+      "captured_at": "2026-06-10T19:48:07.754Z",
       "status": "captured",
       "surface_count": 0,
       "surfaces": []
     }
   },
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-10T19:45:54.526Z",
   "netuid": 97,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

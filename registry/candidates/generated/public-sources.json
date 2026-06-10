@@ -8376,6 +8376,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-docs-4",
+      "kind": "docs",
+      "name": "Desearch docs",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/docs/guide"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-22-website-common-openapi-json",
       "kind": "openapi",
       "name": "Desearch OpenAPI JSON",
@@ -8503,6 +8524,132 @@
     },
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-10",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/web-crawl-api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-3",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://console.desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-6",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/docs/api-reference"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-7",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/ai-search-api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-8",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/twitter-api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-subnet-api-9",
+      "kind": "subnet-api",
+      "name": "Desearch API surface",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/web-search-api"
+    },
+    {
+      "auth_required": false,
       "confidence": "high",
       "id": "sn-22-native-chain-website",
       "kind": "website",
@@ -8522,6 +8669,69 @@
       ],
       "state": "schema-valid",
       "url": "https://desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-website-1",
+      "kind": "website",
+      "name": "Desearch website page",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/pricing"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-website-2",
+      "kind": "website",
+      "name": "Desearch website page",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/case-studies"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-22-website-link-desearch-ai-website-5",
+      "kind": "website",
+      "name": "Desearch website page",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://desearch.ai/community-voices"
     },
     {
       "auth_required": false,
@@ -11379,27 +11589,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
-      "kind": "docs",
-      "name": "ItsAI docs subdomain",
-      "netuid": 32,
-      "provider": "its-ai",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://its-ai.org/en",
-      "source_urls": [
-        "https://its-ai.org/en"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.its-ai.org/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-32-website-common-openapi-json",
       "kind": "openapi",
       "name": "ItsAI OpenAPI JSON",
@@ -12243,27 +12432,6 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
-      "kind": "docs",
-      "name": "OxMarkets docs subdomain",
-      "netuid": 35,
-      "provider": "opentensor",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://www.0xmarkets.io/",
-      "source_urls": [
-        "https://www.0xmarkets.io/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -20866,27 +21034,6 @@
       ],
       "state": "schema-valid",
       "url": "https://www.ridges.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
-      "kind": "docs",
-      "name": "Ridges docs subdomain",
-      "netuid": 62,
-      "provider": "ridges",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://www.ridges.ai/",
-      "source_urls": [
-        "https://www.ridges.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.ridges.ai/"
     },
     {
       "auth_required": false,
@@ -30718,7 +30865,7 @@
       "kind": "docs",
       "name": "Bitstarter #1 docs",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30739,7 +30886,7 @@
       "kind": "openapi",
       "name": "Bitstarter #1 OpenAPI JSON",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30760,7 +30907,7 @@
       "kind": "openapi",
       "name": "Bitstarter #1 Swagger UI",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30781,7 +30928,7 @@
       "kind": "openapi",
       "name": "Bitstarter #1 Swagger JSON",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30802,7 +30949,7 @@
       "kind": "subnet-api",
       "name": "Bitstarter #1 API",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30823,7 +30970,7 @@
       "kind": "subnet-api",
       "name": "Bitstarter #1 health endpoint",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
@@ -30844,7 +30991,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
@@ -30866,7 +31013,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website page",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
@@ -30887,7 +31034,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website page",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
@@ -30908,7 +31055,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website page",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
@@ -30929,7 +31076,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website page",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
@@ -30950,7 +31097,7 @@
       "kind": "website",
       "name": "Bitstarter #1 website page",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
@@ -34492,48 +34639,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-102-website-link-connito-ai-docs-1",
-      "kind": "docs",
-      "name": "ConnitoAI docs",
-      "netuid": 102,
-      "provider": "connito",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://connito.ai/",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://connito.ai/docs/miner/prerequisites"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-102-website-link-connito-ai-docs-3",
-      "kind": "docs",
-      "name": "ConnitoAI docs",
-      "netuid": 102,
-      "provider": "connito",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://connito.ai/",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://connito.ai/whitepaper"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-102-website-common-openapi-json",
       "kind": "openapi",
       "name": "ConnitoAI OpenAPI JSON",
@@ -34679,48 +34784,6 @@
       ],
       "state": "schema-valid",
       "url": "https://connito.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-102-website-link-connito-ai-website-2",
-      "kind": "website",
-      "name": "ConnitoAI website page",
-      "netuid": 102,
-      "provider": "connito",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://connito.ai/",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://connito.ai/connito-explained/the-connito-story"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-102-website-link-connito-ai-website-4",
-      "kind": "website",
-      "name": "ConnitoAI website page",
-      "netuid": 102,
-      "provider": "connito",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://connito.ai/",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://connito.ai/blog"
     },
     {
       "auth_required": false,
@@ -35654,7 +35717,7 @@
       "confidence": "medium",
       "id": "sn-106-backprop-dashboard",
       "kind": "dashboard",
-      "name": "VoidAI Backprop Finance dashboard",
+      "name": "Nodexo Backprop Finance dashboard",
       "netuid": 106,
       "provider": "backprop-finance",
       "public_safe": true,
@@ -35663,19 +35726,19 @@
       "schema_version": 1,
       "source_tier": "third-party-index",
       "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/106-voidai",
+      "source_url": "https://backprop.finance/dtao/subnets/106-nodexo",
       "source_urls": [
-        "https://backprop.finance/dtao/subnets/106-voidai"
+        "https://backprop.finance/dtao/subnets/106-nodexo"
       ],
       "state": "schema-valid",
-      "url": "https://backprop.finance/dtao/subnets/106-voidai"
+      "url": "https://backprop.finance/dtao/subnets/106-nodexo"
     },
     {
       "auth_required": false,
       "confidence": "medium",
       "id": "sn-106-subnetradar-dashboard",
       "kind": "dashboard",
-      "name": "VoidAI SubnetRadar dashboard",
+      "name": "Nodexo SubnetRadar dashboard",
       "netuid": 106,
       "provider": "subnetradar",
       "public_safe": true,
@@ -35696,7 +35759,7 @@
       "confidence": "medium",
       "id": "sn-106-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "VoidAI TaoMarketCap dashboard",
+      "name": "Nodexo TaoMarketCap dashboard",
       "netuid": 106,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -35717,7 +35780,7 @@
       "confidence": "medium",
       "id": "sn-106-taostats-metagraph",
       "kind": "dashboard",
-      "name": "VoidAI Taostats metagraph",
+      "name": "Nodexo Taostats metagraph",
       "netuid": 106,
       "provider": "taostats",
       "public_safe": true,
@@ -35738,7 +35801,7 @@
       "confidence": "low",
       "id": "sn-106-taopedia-article",
       "kind": "docs",
-      "name": "VoidAI Taopedia article",
+      "name": "Nodexo Taopedia article",
       "netuid": 106,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -35759,7 +35822,7 @@
       "confidence": "medium",
       "id": "sn-106-tensorplex-docs",
       "kind": "docs",
-      "name": "VoidAI Tensorplex subnet docs",
+      "name": "Nodexo Tensorplex subnet docs",
       "netuid": 106,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -35780,7 +35843,7 @@
       "confidence": "low",
       "id": "sn-106-website-common-docs",
       "kind": "docs",
-      "name": "VoidAI docs",
+      "name": "Nodexo docs",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35789,19 +35852,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/docs"
+      "url": "https://nodexo.ai/docs"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-106-website-common-openapi-json",
       "kind": "openapi",
-      "name": "VoidAI OpenAPI JSON",
+      "name": "Nodexo OpenAPI JSON",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35810,19 +35873,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/openapi.json"
+      "url": "https://nodexo.ai/openapi.json"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-106-website-common-swagger",
       "kind": "openapi",
-      "name": "VoidAI Swagger UI",
+      "name": "Nodexo Swagger UI",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35831,19 +35894,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/swagger"
+      "url": "https://nodexo.ai/swagger"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-106-website-common-swagger-json",
       "kind": "openapi",
-      "name": "VoidAI Swagger JSON",
+      "name": "Nodexo Swagger JSON",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35852,19 +35915,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/swagger.json"
+      "url": "https://nodexo.ai/swagger.json"
     },
     {
       "auth_required": false,
       "confidence": "high",
       "id": "sn-106-native-chain-github",
       "kind": "source-repo",
-      "name": "VoidAI GitHub source repository",
+      "name": "Nodexo GitHub source repository",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35879,14 +35942,14 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/v0idai/SN106"
+      "url": "https://github.com/neuralinternet/SN27"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-106-website-common-api",
       "kind": "subnet-api",
-      "name": "VoidAI API",
+      "name": "Nodexo API",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35895,19 +35958,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/api"
+      "url": "https://nodexo.ai/api"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-106-website-common-health",
       "kind": "subnet-api",
-      "name": "VoidAI health endpoint",
+      "name": "Nodexo health endpoint",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35916,19 +35979,19 @@
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://voidai.com/",
+      "source_url": "https://nodexo.ai/",
       "source_urls": [
-        "https://voidai.com/"
+        "https://nodexo.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/health"
+      "url": "https://nodexo.ai/health"
     },
     {
       "auth_required": false,
       "confidence": "high",
       "id": "sn-106-native-chain-website",
       "kind": "website",
-      "name": "VoidAI website",
+      "name": "Nodexo website",
       "netuid": 106,
       "provider": "opentensor",
       "public_safe": true,
@@ -35943,7 +36006,7 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "state": "schema-valid",
-      "url": "https://voidai.com/"
+      "url": "https://nodexo.ai/"
     },
     {
       "auth_required": false,
@@ -39452,6 +39515,48 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-118-website-link-heyditto-ai-dashboard-2",
+      "kind": "dashboard",
+      "name": "Ditto dashboard",
+      "netuid": 118,
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://heyditto.ai/",
+      "source_urls": [
+        "https://heyditto.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://heyditto.ai/dashboard"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-118-website-link-heyditto-ai-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Ditto data artifact",
+      "netuid": 118,
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://heyditto.ai/",
+      "source_urls": [
+        "https://heyditto.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://heyditto.ai/ditto-vs-frontier-open-models"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-118-taopedia-article",
       "kind": "docs",
       "name": "Ditto Taopedia article",
@@ -39515,48 +39620,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-118-website-link-heyditto-ai-docs-5",
-      "kind": "docs",
-      "name": "Ditto docs",
-      "netuid": 118,
-      "provider": "ditto-assistant",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://heyditto.ai/",
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://heyditto.ai/docs/openclaw"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-118-website-link-heyditto-ai-docs-6",
-      "kind": "docs",
-      "name": "Ditto docs",
-      "netuid": 118,
-      "provider": "ditto-assistant",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://heyditto.ai/",
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://heyditto.ai/docs/hermes-agent"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-118-website-link-heyditto-ai-docs-7",
       "kind": "docs",
       "name": "Ditto docs",
@@ -39578,6 +39641,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-118-website-link-heyditto-ai-docs-8",
+      "kind": "docs",
+      "name": "Ditto docs",
+      "netuid": 118,
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://heyditto.ai/",
+      "source_urls": [
+        "https://heyditto.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://heyditto.ai/docs/openclaw"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-118-website-link-heyditto-ai-docs-9",
       "kind": "docs",
       "name": "Ditto docs",
@@ -39594,7 +39678,7 @@
         "https://heyditto.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://heyditto.ai/docs/agent-integrations"
+      "url": "https://heyditto.ai/docs/hermes"
     },
     {
       "auth_required": false,
@@ -39826,28 +39910,7 @@
         "https://heyditto.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://heyditto.ai/support"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-118-website-link-heyditto-ai-website-2",
-      "kind": "website",
-      "name": "Ditto website page",
-      "netuid": 118,
-      "provider": "ditto-assistant",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://heyditto.ai/",
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://heyditto.ai/blog"
+      "url": "https://heyditto.ai/testimonials/jonathan-d"
     },
     {
       "auth_required": false,
@@ -39868,12 +39931,12 @@
         "https://heyditto.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://assistant.heyditto.ai/"
+      "url": "https://heyditto.ai/blog"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-118-website-link-heyditto-ai-website-8",
+      "id": "sn-118-website-link-heyditto-ai-website-6",
       "kind": "website",
       "name": "Ditto website page",
       "netuid": 118,
@@ -39889,7 +39952,7 @@
         "https://heyditto.ai/"
       ],
       "state": "schema-valid",
-      "url": "https://heyditto.ai/testimonials/jonathan-d"
+      "url": "https://assistant.heyditto.ai/"
     },
     {
       "auth_required": false,
@@ -42661,11 +42724,11 @@
       "url": "https://byteleap.ai/"
     }
   ],
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-10T19:45:54.526Z",
   "generated_by": "metagraphed-discover-candidates",
-  "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
+  "native_snapshot_captured_at": "2026-06-10T19:46:19Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-08T22:52:53.437Z",
+  "observed_at": "2026-06-10T19:45:54.526Z",
   "schema_version": 1,
   "sources": [
     {
