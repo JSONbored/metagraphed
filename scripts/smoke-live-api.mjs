@@ -81,6 +81,19 @@ assert.equal(
   "invalid query should return invalid_query error",
 );
 
+// Subnet slug aliases resolve to the netuid (e.g. allways → 7).
+const slugAlias = await fetchJson(`${baseUrl}/api/v1/subnets/allways`);
+assert.equal(
+  slugAlias.status,
+  200,
+  "slug alias /api/v1/subnets/allways should resolve",
+);
+assert.equal(
+  slugAlias.body?.data?.subnet?.netuid,
+  7,
+  "allways slug should resolve to netuid 7",
+);
+
 // RPC proxy is enabled in production: a non-allowlisted method must be refused
 // (proves the proxy is live and the read-only allowlist holds, with no
 // dependency on a live upstream), and a safe read method must not report

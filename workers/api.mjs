@@ -98,7 +98,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
 
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
-    return handleApiRequest(request, env, url);
+    const resolved = await resolveSubnetSlugRoute(env, url);
+    if (resolved.notFound) {
+      return errorResponse(
+        "subnet_not_found",
+        `No subnet matches the slug "${resolved.slug}".`,
+        404,
+        { slug: resolved.slug },
+      );
+    }
+    return handleApiRequest(request, env, resolved.url);
   }
 
   if (BADGE_SVG_PATTERN.test(url.pathname)) {
@@ -246,6 +255,56 @@ function renderBadgeSvg(rawLabel, rawMessage, color) {
   const labelLen = badgeTextWidth(rawLabel) * 10;
   const messageLen = badgeTextWidth(rawMessage) * 10;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${message}"><title>${label}: ${message}</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="${totalWidth}" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="${labelWidth}" height="20" fill="#555"/><rect x="${labelWidth}" width="${messageWidth}" height="20" fill="${hex}"/><rect width="${totalWidth}" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="${labelMid}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${labelLen}">${label}</text><text x="${labelMid}" y="140" transform="scale(.1)" textLength="${labelLen}">${label}</text><text aria-hidden="true" x="${messageMid}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${messageLen}">${message}</text><text x="${messageMid}" y="140" transform="scale(.1)" textLength="${messageLen}">${message}</text></g></svg>`;
+}
+
+// Friendly per-subnet routes: /api/v1/subnets/<slug>/... resolves to the netuid
+// (e.g. /api/v1/subnets/allways → /api/v1/subnets/7). Worker-only — the slug→
+// netuid map is read from the served subnets.json and cached per isolate; no new
+// committed artifact or route contract.
+const SUBNET_SLUG_ROUTE_PATTERN = /^\/api\/v1\/subnets\/([^/]+)(\/.*)?$/;
+const SUBNET_SLUG_INDEX_TTL_MS = 300_000;
+let subnetSlugIndex = null; // { map: Map<slug, netuid>, builtAt }
+
+async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
+  const match = SUBNET_SLUG_ROUTE_PATTERN.exec(url.pathname);
+  // Not a per-subnet route, or already a numeric netuid → pass through.
+  if (!match || /^\d+$/.test(match[1])) {
+    return { url };
+  }
+  const slug = decodeURIComponent(match[1]);
+  const netuid = await lookupSubnetNetuid(env, slug, now);
+  if (netuid === null) {
+    return { notFound: true, slug };
+  }
+  const rewritten = new URL(url);
+  rewritten.pathname = `/api/v1/subnets/${netuid}${match[2] || ""}`;
+  return { url: rewritten };
+}
+
+async function lookupSubnetNetuid(env, slug, now = Date.now()) {
+  if (
+    !subnetSlugIndex ||
+    now - subnetSlugIndex.builtAt > SUBNET_SLUG_INDEX_TTL_MS
+  ) {
+    const artifact = await readArtifact(env, "/metagraph/subnets.json");
+    if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
+      const map = new Map();
+      for (const subnet of artifact.data.subnets) {
+        if (
+          typeof subnet.slug === "string" &&
+          Number.isInteger(subnet.netuid)
+        ) {
+          map.set(subnet.slug.toLowerCase(), subnet.netuid);
+        }
+      }
+      subnetSlugIndex = { map, builtAt: now };
+    } else if (!subnetSlugIndex) {
+      // Could not load the index and have no prior copy — leave unresolved.
+      return null;
+    }
+  }
+  const netuid = subnetSlugIndex.map.get(slug.toLowerCase());
+  return Number.isInteger(netuid) ? netuid : null;
 }
 
 async function handleApiRequest(request, env, url) {
