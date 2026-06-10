@@ -56,8 +56,11 @@ const DENIED_RPC_PREFIXES = [
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
 const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
+  "https://archive.chain.opentensor.ai",
   "https://bittensor-finney.api.onfinality.io",
   "https://bittensor-public.nodies.app",
+  "https://entrypoint-finney.opentensor.ai",
+  "https://lite.chain.opentensor.ai",
   "wss://archive.chain.opentensor.ai",
   "wss://bittensor-finney.api.onfinality.io",
   "wss://entrypoint-finney.opentensor.ai",

@@ -203,6 +203,68 @@
       }
     },
     {
+      "id": "opentensor-finney-rpc",
+      "name": "OpenTensor Finney HTTPS RPC",
+      "kind": "subtensor-rpc",
+      "url": "https://entrypoint-finney.opentensor.ai",
+      "provider": "opentensor",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.learnbittensor.org/concepts/bittensor-networks"
+      ],
+      "rate_limit_notes": "Official public chain host also serving HTTPS JSON-RPC. Public endpoints can rate-limit and should not be treated as SLA-backed infrastructure.",
+      "probe": {
+        "enabled": true,
+        "method": "JSON-RPC",
+        "expect": "json",
+        "timeout_ms": 12000
+      }
+    },
+    {
+      "id": "opentensor-lite-rpc",
+      "name": "OpenTensor lite HTTPS RPC",
+      "kind": "subtensor-rpc",
+      "url": "https://lite.chain.opentensor.ai",
+      "provider": "opentensor",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.learnbittensor.org/concepts/bittensor-networks",
+        "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
+      ],
+      "rate_limit_notes": "Official lite host also serving HTTPS JSON-RPC. Lite endpoints are not assumed to support deep historical archive queries.",
+      "probe": {
+        "enabled": true,
+        "method": "JSON-RPC",
+        "expect": "json",
+        "timeout_ms": 12000
+      }
+    },
+    {
+      "id": "opentensor-archive-rpc",
+      "name": "OpenTensor archive HTTPS RPC",
+      "kind": "subtensor-rpc",
+      "url": "https://archive.chain.opentensor.ai",
+      "provider": "opentensor",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.learnbittensor.org/concepts/bittensor-networks",
+        "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
+      ],
+      "rate_limit_notes": "Official archive host also serving HTTPS JSON-RPC. Archive support is verified through read-only historical RPC probes.",
+      "probe": {
+        "enabled": true,
+        "method": "JSON-RPC",
+        "expect": "json",
+        "timeout_ms": 12000
+      }
+    },
+    {
       "id": "sn-0-tensorplex-docs",
       "name": "root Tensorplex subnet docs",
       "kind": "docs",
