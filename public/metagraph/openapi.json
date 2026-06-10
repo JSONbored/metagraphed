@@ -2883,6 +2883,103 @@
         ],
         "type": "object"
       },
+      "RegistrySummaryArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "counts": {
+                "additionalProperties": true,
+                "properties": {
+                  "candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "endpoints": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "providers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "surfaces",
+                  "endpoints",
+                  "providers",
+                  "candidates"
+                ],
+                "type": "object"
+              },
+              "coverage": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "curation_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "profile_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "recent_changes": {
+                "type": "object"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "top_subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "completeness_score": {
+                      "type": "number"
+                    },
+                    "curation_level": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "profile_level": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "completeness_score"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "subnet_count",
+              "counts",
+              "top_subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
         "properties": {
@@ -5861,6 +5958,96 @@
           "surface_count"
         ],
         "type": "object"
+      },
+      "SubnetOverviewArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "counts": {
+                "additionalProperties": true,
+                "properties": {
+                  "candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "endpoints": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "surfaces",
+                  "endpoints",
+                  "candidates"
+                ],
+                "type": "object"
+              },
+              "curation": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "gap_priorities": {
+                "type": "array"
+              },
+              "gaps": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Gaps"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "health": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "profile": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SubnetProfile"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "netuid",
+              "profile",
+              "health",
+              "counts"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "SubnetProfile": {
         "additionalProperties": false,
@@ -10174,6 +10361,94 @@
         ]
       }
     },
+    "/api/v1/registry/summary": {
+      "get": {
+        "operationId": "registrySummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RegistrySummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
     "/api/v1/review/adapter-candidates": {
       "get": {
         "operationId": "reviewAdapterCandidates",
@@ -13754,6 +14029,106 @@
         "tags": [
           "health",
           "subnets"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/overview": {
+      "get": {
+        "operationId": "subnetOverview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetOverviewArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.",
+        "tags": [
+          "subnets",
+          "profiles",
+          "health"
         ]
       }
     },

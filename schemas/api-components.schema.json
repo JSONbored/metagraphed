@@ -2861,6 +2861,103 @@
         ],
         "type": "object"
       },
+      "RegistrySummaryArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "counts": {
+                "additionalProperties": true,
+                "properties": {
+                  "candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "endpoints": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "providers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "surfaces",
+                  "endpoints",
+                  "providers",
+                  "candidates"
+                ],
+                "type": "object"
+              },
+              "coverage": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "curation_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "profile_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "recent_changes": {
+                "type": "object"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "top_subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "completeness_score": {
+                      "type": "number"
+                    },
+                    "curation_level": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "profile_level": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "completeness_score"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "subnet_count",
+              "counts",
+              "top_subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
         "properties": {
@@ -5839,6 +5936,96 @@
           "surface_count"
         ],
         "type": "object"
+      },
+      "SubnetOverviewArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "counts": {
+                "additionalProperties": true,
+                "properties": {
+                  "candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "endpoints": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "surfaces",
+                  "endpoints",
+                  "candidates"
+                ],
+                "type": "object"
+              },
+              "curation": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "gap_priorities": {
+                "type": "array"
+              },
+              "gaps": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Gaps"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "health": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "profile": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SubnetProfile"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "netuid",
+              "profile",
+              "health",
+              "counts"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "SubnetProfile": {
         "additionalProperties": false,

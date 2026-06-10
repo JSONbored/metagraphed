@@ -50,6 +50,14 @@ const checks = [
     (body) => assert.equal(body.data.profile.netuid, 7),
   ],
   [
+    "/api/v1/subnets/7/overview",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.counts, "object");
+      assert.equal(typeof body.data.profile, "object");
+    },
+  ],
+  [
     "/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
     (body) =>
       assert.equal(
@@ -147,6 +155,13 @@ const checks = [
       ),
   ],
   ["/api/v1/gaps", (body) => assert.equal(Array.isArray(body.data.gaps), true)],
+  [
+    "/api/v1/registry/summary",
+    (body) => {
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.top_subnets), true);
+    },
+  ],
   [
     "/api/v1/review/gaps?limit=3",
     (body) => assert.equal(body.data.priorities.length <= 3, true),

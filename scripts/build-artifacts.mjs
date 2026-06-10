@@ -618,6 +618,46 @@ for (const [netuid, badge] of healthArtifacts.badges) {
 }
 coverage.completeness = buildCompletenessSummary(profileArtifacts.profiles);
 await writeJson(artifactFile("coverage.json"), coverage);
+// Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
+// curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
+const overviewHealthByNetuid = new Map(
+  (healthArtifacts.summary.subnets || []).map((entry) => [entry.netuid, entry]),
+);
+const overviewCurationByNetuid = new Map(
+  curationIndex.map((entry) => [entry.netuid, entry]),
+);
+const overviewGapsByNetuid = new Map(
+  gapsIndex.map((entry) => [entry.netuid, entry]),
+);
+const overviewGapPriorities = groupByNetuid(
+  curationReview.gap_priorities || [],
+);
+const overviewSurfacesByNetuid = groupByNetuid(surfaces);
+const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
+const overviewCandidatesByNetuid = groupByNetuid(candidateIndex);
+await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
+for (const subnet of mergedSubnets) {
+  const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
+  await writeJson(artifactFile(`overview/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    status: subnet.status,
+    profile: profileArtifacts.byNetuid.get(subnet.netuid) || null,
+    health: overviewHealthByNetuid.get(subnet.netuid) || null,
+    curation: curationEntry ? curationEntry.curation : null,
+    gaps: overviewGapsByNetuid.get(subnet.netuid)?.gaps || null,
+    counts: {
+      surfaces: (overviewSurfacesByNetuid.get(subnet.netuid) || []).length,
+      endpoints: (overviewEndpointsByNetuid.get(subnet.netuid) || []).length,
+      candidates: (overviewCandidatesByNetuid.get(subnet.netuid) || []).length,
+    },
+    gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
+  });
+}
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(
   artifactFile("api-index.json"),
@@ -797,18 +837,58 @@ const currentArtifactDigests = await collectArtifactDigests({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
-await writeJson(
-  artifactFile("changelog.json"),
-  buildChangelog({
-    currentArtifacts: currentArtifactDigests,
-    currentCoverage: coverage,
-    currentSubnets: { subnets: subnetIndex },
-    generatedAt,
-    previousArtifacts: previousArtifactDigests,
-    previousCoverage: previousCoverageArtifact,
-    previousSubnets: previousSubnetsArtifact,
-  }),
-);
+const changelogArtifact = buildChangelog({
+  currentArtifacts: currentArtifactDigests,
+  currentCoverage: coverage,
+  currentSubnets: { subnets: subnetIndex },
+  generatedAt,
+  previousArtifacts: previousArtifactDigests,
+  previousCoverage: previousCoverageArtifact,
+  previousSubnets: previousSubnetsArtifact,
+});
+await writeJson(artifactFile("changelog.json"), changelogArtifact);
+// Registry-wide summary (R2-tier): homepage/leaderboard stats in one call —
+// completeness rollup, top subnets, level counts, and the latest change feed.
+const registryTopSubnets = [...profileArtifacts.profiles]
+  .sort((a, b) => (b.completeness_score || 0) - (a.completeness_score || 0))
+  .slice(0, 10)
+  .map((profile) => ({
+    netuid: profile.netuid,
+    slug: profile.slug,
+    name: profile.name,
+    completeness_score: profile.completeness_score,
+    profile_level: profile.profile_level,
+    curation_level: profile.curation_level,
+  }));
+await writeJson(artifactFile("registry-summary.json"), {
+  schema_version: 1,
+  contract_version: contractVersion,
+  generated_at: generatedAt,
+  subnet_count: mergedSubnets.length,
+  coverage: coverage.completeness,
+  counts: {
+    surfaces: surfaces.length,
+    endpoints: endpointResources.endpoints.length,
+    providers: providers.length,
+    candidates: candidateIndex.length,
+  },
+  curation_level_counts: countBy(profileArtifacts.profiles, "curation_level"),
+  profile_level_counts: countBy(profileArtifacts.profiles, "profile_level"),
+  top_subnets: registryTopSubnets,
+  recent_changes: {
+    generated_at: changelogArtifact.generated_at || generatedAt,
+    artifacts: {
+      added: (changelogArtifact.artifacts?.added || []).length,
+      modified: (changelogArtifact.artifacts?.modified || []).length,
+      removed: (changelogArtifact.artifacts?.removed || []).length,
+    },
+    subnets: {
+      added: (changelogArtifact.subnets?.added || []).length,
+      removed: (changelogArtifact.subnets?.removed || []).length,
+      renamed: (changelogArtifact.subnets?.renamed || []).length,
+    },
+  },
+});
 
 const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,

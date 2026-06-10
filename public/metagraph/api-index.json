@@ -79,6 +79,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-overview",
+      "path": "/metagraph/overview/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetOverviewArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "profiles",
       "path": "/metagraph/profiles.json",
       "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
@@ -153,6 +160,13 @@
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
       "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "registry-summary",
+      "path": "/metagraph/registry-summary.json",
+      "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -678,6 +692,18 @@
       "id": "subnet-profile",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/profile",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/overview/{netuid}.json",
+      "cache": "standard",
+      "description": "Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.",
+      "id": "subnet-overview",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/overview",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
@@ -1583,6 +1609,18 @@
       "id": "coverage",
       "method": "GET",
       "path": "/api/v1/coverage",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/registry-summary.json",
+      "cache": "standard",
+      "description": "Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).",
+      "id": "registry-summary",
+      "method": "GET",
+      "path": "/api/v1/registry/summary",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

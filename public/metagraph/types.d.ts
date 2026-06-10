@@ -361,6 +361,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/registry/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes). */
+        get: operations["registrySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review/adapter-candidates": {
         parameters: {
             query?: never;
@@ -676,6 +693,23 @@ export interface paths {
         };
         /** Fetch health detail for one subnet. */
         get: operations["subnetHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet. */
+        get: operations["subnetOverview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1448,6 +1482,33 @@ export interface components {
             /** @enum {unknown} */
             storage_tier: "dual" | "git" | "r2";
         };
+        RegistrySummaryArtifact: components["schemas"]["ArtifactBase"] & ({
+            counts: {
+                candidates: number;
+                endpoints: number;
+                providers: number;
+                surfaces: number;
+            } & {
+                [key: string]: unknown;
+            };
+            coverage?: Record<string, never> | null;
+            curation_level_counts?: components["schemas"]["CountMap"];
+            profile_level_counts?: components["schemas"]["CountMap"];
+            recent_changes?: Record<string, never>;
+            subnet_count: number;
+            top_subnets: ({
+                completeness_score: number;
+                curation_level?: string;
+                name?: string;
+                netuid: number;
+                profile_level?: string;
+                slug?: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        });
         ResponseEnvelopeContract: {
             /** @constant */
             error_schema_ref: "#/components/schemas/ErrorEnvelope";
@@ -2110,6 +2171,26 @@ export interface components {
             /** Format: uri */
             website_url?: string | null;
         };
+        SubnetOverviewArtifact: components["schemas"]["ArtifactBase"] & ({
+            counts: {
+                candidates: number;
+                endpoints: number;
+                surfaces: number;
+            } & {
+                [key: string]: unknown;
+            };
+            curation?: Record<string, never> | null;
+            gap_priorities?: unknown[];
+            gaps?: components["schemas"]["Gaps"] | null;
+            health: Record<string, never> | null;
+            name?: string;
+            netuid: number;
+            profile: components["schemas"]["SubnetProfile"] | null;
+            slug?: string;
+            status?: string;
+        } & {
+            [key: string]: unknown;
+        });
         SubnetProfile: {
             candidate_count: number;
             categories: string[];
@@ -3951,6 +4032,74 @@ export interface operations {
             };
         };
     };
+    registrySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RegistrySummaryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     reviewAdapterCandidates: {
         parameters: {
             query?: {
@@ -5359,6 +5508,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSubnetArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetOverviewArtifact"];
                     };
                 };
             };

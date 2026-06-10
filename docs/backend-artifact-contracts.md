@@ -52,6 +52,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/source-snapshots.json`: compact hashes and counts for canonical source inputs. R2-backed.
 - `/metagraph/evidence-ledger.json`: public evidence ledger for material registry claims.
 - `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
+- `/metagraph/overview/{netuid}.json`: composed per-subnet overview (profile + health + curation + gaps + counts). R2-backed.
+- `/metagraph/registry-summary.json`: registry-wide summary (completeness, top subnets, level counts, latest changes). R2-backed.
 - `/metagraph/health/latest.json`: latest live or build-time surface health snapshot. R2-backed.
 - `/metagraph/health/summary.json`: global and per-subnet health rollup.
 - `/metagraph/health/history/{date}.json`: compact daily health-history snapshot. R2-backed.
@@ -84,6 +86,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}`: fetch per-subnet detail.
 - `/api/v1/profiles`: list public-safe subnet profiles and completeness scores.
 - `/api/v1/subnets/{netuid}/profile`: fetch public-safe profile detail for one subnet.
+- `/api/v1/subnets/{netuid}/overview`: fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.
+- `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
 - `/api/v1/endpoints`: list generalized endpoint resources and monitored public surfaces.
