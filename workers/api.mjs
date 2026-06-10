@@ -274,7 +274,10 @@ async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
   if (!match || /^\d+$/.test(match[1])) {
     return { url };
   }
-  const slug = decodeURIComponent(match[1]);
+  const slug = decodeSlugPathSegment(match[1]);
+  if (slug === null) {
+    return { notFound: true, slug: match[1] };
+  }
   const netuid = await lookupSubnetNetuid(env, slug, now);
   if (netuid === null) {
     return { notFound: true, slug };
@@ -282,6 +285,17 @@ async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
   const rewritten = new URL(url);
   rewritten.pathname = `/api/v1/subnets/${netuid}${match[2] || ""}`;
   return { url: rewritten };
+}
+
+function decodeSlugPathSegment(segment) {
+  try {
+    return decodeURIComponent(segment);
+  } catch (error) {
+    if (error instanceof URIError) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function lookupSubnetNetuid(env, slug, now = Date.now()) {

@@ -40,6 +40,14 @@ describe("subnet slug aliases", () => {
     assert.equal((await res.json()).error.code, "subnet_not_found");
   });
 
+  test("a malformed percent-encoded slug returns 404 subnet_not_found", async () => {
+    for (const path of ["/api/v1/subnets/%E0%A4%A", "/api/v1/subnets/%"]) {
+      const res = await get(path);
+      assert.equal(res.status, 404);
+      assert.equal((await res.json()).error.code, "subnet_not_found");
+    }
+  });
+
   test("the subnets list route is unaffected", async () => {
     const res = await get("/api/v1/subnets?limit=2");
     assert.equal(res.status, 200);
