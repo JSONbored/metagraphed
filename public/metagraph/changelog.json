@@ -3,18 +3,38 @@
     "added": [],
     "modified": [
       {
-        "hash": "f163ae776a05c5f20185aaa7d249dc403f3e4bd5458dde282c5dfa1d10682133",
+        "hash": "b15e5e31bfaa2b33873a5cd2f3c77bb6f569678cfc42caf241534f2a03a87cf3",
+        "path": "api-index.json"
+      },
+      {
+        "hash": "116d5bc2c9d75075b9fe5272df9b71094ecafa057f1234d180fdcbb3306d7f8a",
+        "path": "contracts.json"
+      },
+      {
+        "hash": "c9288ecb8151e86a459fee0c233fb2049b89906416f913cf810d5f93abe3af32",
         "path": "coverage.json"
       },
       {
-        "hash": "49ea2e9fb82ac6880755381c06c1e0d2632c5cc8d87709e3fdfc8db259cfc5fc",
+        "hash": "5d84e18dee75c8cb44c14dda90e434de05364d8bc015eb9cf9594cfd1311fb67",
         "path": "openapi.json"
+      },
+      {
+        "hash": "5b89d1a0a7b50665a0ce180f442b872a97e5185c0729022a04a7dbbaff1f7bd9",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "55d61845d2599b8be7f5beb112cf927f28b335b8d4f25398643f43ecdd76c612",
+        "path": "schemas/index.json"
+      },
+      {
+        "hash": "84349e6e96dd6f6a1ea77c5e3fe5cc8c83f0104b3b4fb8a6392ac29c14d0a981",
+        "path": "subnets.json"
       }
     ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-10T09:02:22.925Z",
   "notes": [
     "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
     "Long-term historical runs are expected to live in R2 under versioned prefixes."
@@ -28,13 +48,13 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 2,
+    "artifact_modified_count": 7,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 2021,
+        "after": 2014,
         "before": 2021,
-        "delta": 0
+        "delta": -7
       },
       "curated_overlay_count": {
         "after": 129,
@@ -48,9 +68,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1140,
+        "after": 1136,
         "before": 1140,
-        "delta": 0
+        "delta": -4
       }
     },
     "netuid_added_count": 0,

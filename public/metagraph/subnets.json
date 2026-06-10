@@ -1,6 +1,6 @@
 {
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
+  "native_snapshot_captured_at": "2026-06-10T09:02:32Z",
   "network": "finney",
   "schema_version": 1,
   "source": {
@@ -13,7 +13,7 @@
   },
   "subnets": [
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 5,
       "categories": [
         "baseline-augmented",
@@ -44,7 +44,7 @@
       "website_url": "https://bittensor.com"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 21,
       "categories": [
         "baseline-augmented",
@@ -78,7 +78,7 @@
       "website_url": "https://apex.macrocosmos.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -113,7 +113,7 @@
       "website_url": "https://subnet2.inferencelabs.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -146,7 +146,7 @@
       "website_url": "https://www.tplr.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -179,7 +179,7 @@
       "website_url": "https://targon.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -211,7 +211,7 @@
       "website_url": "https://www.hone.training/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -246,7 +246,7 @@
       "website_url": "https://numinouslabs.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -277,7 +277,7 @@
       "website_url": "https://all-ways.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -309,7 +309,7 @@
       "website_url": "https://www.vantanetwork.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -343,7 +343,7 @@
       "website_url": "https://iota.macrocosmos.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -376,7 +376,7 @@
       "website_url": "https://www.taofi.com/pool"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -409,7 +409,7 @@
       "website_url": "https://trajrl.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -443,7 +443,7 @@
       "website_url": "https://computehorde.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 23,
       "categories": [
         "baseline-augmented",
@@ -478,7 +478,7 @@
       "website_url": "https://datauniverse.macrocosmos.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-augmented",
@@ -512,7 +512,7 @@
       "website_url": "https://cacheon.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -545,7 +545,7 @@
       "website_url": "https://oroagents.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -578,7 +578,7 @@
       "website_url": "https://bitads.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -606,7 +606,7 @@
       "website_url": "https://www.404.xyz/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -634,7 +634,7 @@
       "website_url": "https://www.zeussubnet.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -667,7 +667,7 @@
       "website_url": "https://blockmachine.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -698,7 +698,7 @@
       "website_url": "https://www.groundlayer.xyz/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "advertising",
@@ -731,7 +731,7 @@
       "website_url": "https://adtao.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -768,7 +768,7 @@
       "website_url": "https://www.desearch.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -801,7 +801,7 @@
       "website_url": "https://trishool.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -836,7 +836,7 @@
       "website_url": "https://silxinc.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -869,7 +869,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -897,7 +897,7 @@
       "website_url": "https://www.perturbai.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -931,7 +931,7 @@
       "website_url": "https://nodexo.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -964,7 +964,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -999,7 +999,7 @@
       "website_url": "https://coldint.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -1033,7 +1033,7 @@
       "website_url": "https://endure.network/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -1066,8 +1066,8 @@
       "website_url": null
     },
     {
-      "block": 8365061,
-      "candidate_count": 25,
+      "block": 8375306,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1086,19 +1086,19 @@
       "native_name_quality": "chain",
       "netuid": 32,
       "participant_count": 256,
-      "probed_surface_count": 8,
+      "probed_surface_count": 7,
       "registered_at_block": 2515294,
       "slug": "sn-32",
       "source_repo": "https://github.com/It-s-AI/llm-detection",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "ח",
       "tempo": 360,
       "website_url": "https://its-ai.org/en"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 9,
       "categories": [
         "baseline-augmented",
@@ -1133,7 +1133,7 @@
       "website_url": "https://readyai.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1168,8 +1168,8 @@
       "website_url": "https://bitmind.ai/"
     },
     {
-      "block": 8365061,
-      "candidate_count": 16,
+      "block": 8375306,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -1184,19 +1184,19 @@
       "native_name_quality": "chain",
       "netuid": 35,
       "participant_count": 256,
-      "probed_surface_count": 9,
+      "probed_surface_count": 8,
       "registered_at_block": 3037158,
       "slug": "sn-35",
       "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ך",
       "tempo": 360,
       "website_url": "https://www.0xmarkets.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -1224,7 +1224,7 @@
       "website_url": "https://eirel.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -1252,7 +1252,7 @@
       "website_url": "https://aureliusaligned.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -1283,7 +1283,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1316,7 +1316,7 @@
       "website_url": "https://www.basilica.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1349,7 +1349,7 @@
       "website_url": "https://subnet.chunking.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -1377,7 +1377,7 @@
       "website_url": "https://almanac.market/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -1413,7 +1413,7 @@
       "website_url": "https://developers.gopher-ai.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1447,7 +1447,7 @@
       "website_url": "https://graphite-ai.net/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -1475,7 +1475,7 @@
       "website_url": "https://www.wearescore.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -1507,7 +1507,7 @@
       "website_url": "https://ai.talisman.xyz/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-curated"
@@ -1535,7 +1535,7 @@
       "website_url": "https://zipcode.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 9,
       "categories": [
         "baseline-augmented",
@@ -1567,7 +1567,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -1601,7 +1601,7 @@
       "website_url": "https://www.qbittensorlabs.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -1638,7 +1638,7 @@
       "website_url": "https://nepher.ai"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -1666,7 +1666,7 @@
       "website_url": "https://synthdata.co/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 25,
       "categories": [
         "baseline-curated"
@@ -1694,7 +1694,7 @@
       "website_url": "https://lium.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 11,
       "categories": [
         "baseline-augmented",
@@ -1728,7 +1728,7 @@
       "website_url": "https://www.tensorplex.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1762,7 +1762,7 @@
       "website_url": "https://www.signalplus.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -1790,7 +1790,7 @@
       "website_url": "https://www.yanez.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -1818,7 +1818,7 @@
       "website_url": "https://niome.genomes.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 25,
       "categories": [
         "ai-training",
@@ -1853,7 +1853,7 @@
       "website_url": "https://www.gradients.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1887,7 +1887,7 @@
       "website_url": "https://sparket.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 9,
       "categories": [
         "ai-marketplace",
@@ -1923,7 +1923,7 @@
       "website_url": "https://handshake58.com"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -1951,7 +1951,7 @@
       "website_url": "https://babelbit.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -1979,7 +1979,7 @@
       "website_url": "https://bitsec.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -2014,8 +2014,8 @@
       "website_url": "https://www.theredteam.io/"
     },
     {
-      "block": 8365061,
-      "candidate_count": 15,
+      "block": 8375306,
+      "candidate_count": 14,
       "categories": [
         "agents",
         "baseline-augmented",
@@ -2034,19 +2034,19 @@
       "native_name_quality": "chain",
       "netuid": 62,
       "participant_count": 256,
-      "probed_surface_count": 7,
+      "probed_surface_count": 6,
       "registered_at_block": 4474225,
       "slug": "sn-62",
       "source_repo": "https://github.com/ridgesai/ridges",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 7,
+      "surface_count": 6,
       "symbol": "ز",
       "tempo": 360,
       "website_url": "https://www.ridges.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -2079,7 +2079,7 @@
       "website_url": "https://www.qbittensorlabs.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 29,
       "categories": [
         "baseline-augmented",
@@ -2115,7 +2115,7 @@
       "website_url": "https://chutes.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -2143,7 +2143,7 @@
       "website_url": "https://tpn.taofu.xyz/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -2179,7 +2179,7 @@
       "website_url": "https://ninja.arbos.life/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -2207,7 +2207,7 @@
       "website_url": "https://harnyx.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -2235,7 +2235,7 @@
       "website_url": "https://www.metanova-labs.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -2265,7 +2265,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -2280,7 +2280,7 @@
       "native_name": "NexisGen",
       "native_name_quality": "chain",
       "netuid": 70,
-      "participant_count": 239,
+      "participant_count": 244,
       "probed_surface_count": 9,
       "registered_at_block": 7787562,
       "slug": "sn-70",
@@ -2293,7 +2293,7 @@
       "website_url": "https://nexisgen.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2321,7 +2321,7 @@
       "website_url": "https://leadpoet.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -2357,7 +2357,7 @@
       "website_url": "https://www.natix.network/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2390,7 +2390,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -2421,7 +2421,7 @@
       "website_url": "https://gittensor.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 26,
       "categories": [
         "baseline-augmented",
@@ -2456,7 +2456,7 @@
       "website_url": "https://hippius.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -2487,7 +2487,7 @@
       "website_url": "https://www.byzantiumai.net/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2515,7 +2515,7 @@
       "website_url": "https://sn77.xyz/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -2543,7 +2543,7 @@
       "website_url": "https://www.vocence.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -2575,7 +2575,7 @@
       "website_url": "https://taos.im/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -2603,7 +2603,7 @@
       "website_url": "https://dogelayer.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2637,7 +2637,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 26,
       "categories": [
         "baseline-augmented",
@@ -2669,7 +2669,7 @@
       "website_url": "https://compelle.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2697,7 +2697,7 @@
       "website_url": "https://cliqueai.toptensor.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -2732,7 +2732,7 @@
       "website_url": "https://www.chipforge.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -2763,7 +2763,7 @@
       "website_url": "https://vidaio.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -2794,7 +2794,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -2828,7 +2828,7 @@
       "website_url": "https://luminar.network/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -2863,7 +2863,7 @@
       "website_url": "https://investing88.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -2895,7 +2895,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -2928,7 +2928,7 @@
       "website_url": "https://subnet90.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -2960,7 +2960,7 @@
       "website_url": "https://bitstarter.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2982,7 +2982,7 @@
       "native_name": "luis",
       "native_name_quality": "chain",
       "netuid": 92,
-      "participant_count": 2,
+      "participant_count": 3,
       "probed_surface_count": 8,
       "registered_at_block": 8352006,
       "slug": "sn-92",
@@ -2995,7 +2995,7 @@
       "website_url": "https://www.tensorclaw.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -3023,7 +3023,7 @@
       "website_url": "https://stats.bitcast.network/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -3051,7 +3051,7 @@
       "website_url": "https://bitsota.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -3084,7 +3084,7 @@
       "website_url": "https://actual.inc/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -3121,7 +3121,7 @@
       "website_url": "https://verathos.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -3149,7 +3149,7 @@
       "website_url": "https://us-east-1.hippius.com/albedo/index.html"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -3182,7 +3182,7 @@
       "website_url": "https://forevermoney.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -3210,7 +3210,7 @@
       "website_url": "https://leoma.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "ai-research",
@@ -3244,7 +3244,7 @@
       "website_url": "https://www.platform.network/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3274,8 +3274,8 @@
       "website_url": null
     },
     {
-      "block": 8365061,
-      "candidate_count": 19,
+      "block": 8375306,
+      "candidate_count": 15,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3294,19 +3294,19 @@
       "native_name_quality": "chain",
       "netuid": 102,
       "participant_count": 256,
-      "probed_surface_count": 9,
+      "probed_surface_count": 8,
       "registered_at_block": 7840965,
       "slug": "sn-102",
       "source_repo": "https://github.com/Connito-AI/Connito",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ვ",
       "tempo": 360,
       "website_url": "https://connito.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 23,
       "categories": [
         "baseline-augmented",
@@ -3338,7 +3338,7 @@
       "website_url": "https://www.djinn.gg/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3369,7 +3369,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -3397,7 +3397,7 @@
       "website_url": "https://b1m.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -3425,7 +3425,7 @@
       "website_url": "https://voidai.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 21,
       "categories": [
         "baseline-curated"
@@ -3453,7 +3453,7 @@
       "website_url": "https://theminos.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -3481,7 +3481,7 @@
       "website_url": "https://www.talkhead.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3513,7 +3513,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -3546,7 +3546,7 @@
       "website_url": "https://www.green-compute.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3580,7 +3580,7 @@
       "website_url": "https://oneoneone.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -3608,7 +3608,7 @@
       "website_url": "https://minotaursubnet.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 20,
       "categories": [
         "baseline-augmented",
@@ -3642,7 +3642,7 @@
       "website_url": "https://tensorusd.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -3675,7 +3675,7 @@
       "website_url": "https://thesoma.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3706,7 +3706,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3739,7 +3739,7 @@
       "website_url": "https://taolend.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -3771,7 +3771,7 @@
       "website_url": "https://play.shiftlayer.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 26,
       "categories": [
         "agent-memory",
@@ -3804,7 +3804,7 @@
       "website_url": "https://heyditto.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3835,7 +3835,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -3863,7 +3863,7 @@
       "website_url": "https://www.affine.io/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -3895,7 +3895,7 @@
       "website_url": "https://www.sundaebar.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3929,7 +3929,7 @@
       "website_url": "https://www.bitrecs.ai/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3961,7 +3961,7 @@
       "website_url": null
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -3989,7 +3989,7 @@
       "website_url": "https://www.swarm124.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -4022,7 +4022,7 @@
       "website_url": "https://8ball125.com/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -4050,7 +4050,7 @@
       "website_url": "https://poker44.net/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -4078,7 +4078,7 @@
       "website_url": "https://www.astrid.global/"
     },
     {
-      "block": 8365061,
+      "block": 8375306,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"

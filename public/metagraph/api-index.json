@@ -12,7 +12,7 @@
       "id": "providers",
       "path": "/metagraph/providers.json",
       "schema_ref": "#/components/schemas/ProvidersArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -82,7 +82,7 @@
       "id": "profiles",
       "path": "/metagraph/profiles.json",
       "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -96,7 +96,7 @@
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -145,7 +145,7 @@
       "id": "search",
       "path": "/metagraph/search.json",
       "schema_ref": "#/components/schemas/SearchArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -159,14 +159,14 @@
       "id": "curation",
       "path": "/metagraph/curation.json",
       "schema_ref": "#/components/schemas/CurationArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "gaps",
       "path": "/metagraph/gaps.json",
       "schema_ref": "#/components/schemas/GapsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -187,7 +187,7 @@
       "id": "freshness",
       "path": "/metagraph/freshness.json",
       "schema_ref": "#/components/schemas/FreshnessArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -208,7 +208,7 @@
       "id": "evidence-ledger",
       "path": "/metagraph/evidence-ledger.json",
       "schema_ref": "#/components/schemas/EvidenceLedgerArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -278,7 +278,7 @@
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
       "schema_ref": "#/components/schemas/SchemaDriftArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -313,14 +313,14 @@
       "id": "review-curation",
       "path": "/metagraph/review/curation.json",
       "schema_ref": "#/components/schemas/ReviewCurationArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
       "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -334,14 +334,14 @@
       "id": "review-adapter-candidates",
       "path": "/metagraph/review/adapter-candidates.json",
       "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "review-enrichment-queue",
       "path": "/metagraph/review/enrichment-queue.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentQueueArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -362,7 +362,7 @@
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
       "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",

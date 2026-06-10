@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2021,
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "candidate_count": 2014,
+  "generated_at": "2026-06-10T09:02:22.925Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-09T06:18:31.409Z",
+  "observed_at": "2026-06-10T09:02:22.925Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -939,7 +939,7 @@
     },
     {
       "candidate_id": "sn-3-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -952,7 +952,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/one-covenant/templar",
       "status": "ok"
     },
     {
@@ -3175,9 +3174,9 @@
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-6",
-      "classification": "dead",
-      "confidence_score": 0,
-      "content_type": "text/plain; charset=UTF-8",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "binary/octet-stream",
       "error": null,
       "kind": "website",
       "netuid": 9,
@@ -3186,11 +3185,12 @@
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "failed"
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.6-arm64.dmg",
+      "status": "ok"
     },
     {
       "candidate_id": "sn-10-backprop-dashboard",
@@ -7429,7 +7429,7 @@
     },
     {
       "candidate_id": "sn-22-native-chain-github",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -7442,7 +7442,6 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "redirect_target": "https://github.com/Desearch-ai/subnet-22",
       "status": "ok"
     },
     {
@@ -10561,25 +10560,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 32,
-      "provider": "its-ai",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11159,25 +11139,6 @@
         "transient_failure": false
       },
       "status": "failed"
-    },
-    {
-      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 35,
-      "provider": "opentensor",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
     },
     {
       "candidate_id": "sn-36-backprop-dashboard",
@@ -11902,17 +11863,20 @@
     },
     {
       "candidate_id": "sn-38-native-chain-github",
-      "classification": "live",
-      "confidence_score": 45,
+      "classification": "unsupported",
+      "confidence_score": 20,
       "error": null,
       "kind": "source-repo",
       "netuid": 38,
       "provider": "tao-colosseum",
       "quality_signals": {
+        "archived": true,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-38-native-chain-website",
@@ -12277,7 +12241,7 @@
     },
     {
       "candidate_id": "sn-39-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -12290,7 +12254,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/one-covenant/basilica",
       "status": "ok"
     },
     {
@@ -14171,7 +14134,7 @@
     },
     {
       "candidate_id": "sn-47-native-chain-github",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -14184,7 +14147,6 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "redirect_target": "https://github.com/openevolai/evolai",
       "status": "ok"
     },
     {
@@ -15090,7 +15052,7 @@
     },
     {
       "candidate_id": "sn-50-native-chain-github",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -15103,7 +15065,6 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "redirect_target": "https://github.com/synthdataco/synth-subnet",
       "status": "ok"
     },
     {
@@ -16948,7 +16909,7 @@
     },
     {
       "candidate_id": "sn-56-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -16961,7 +16922,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/gradients-ai/G.O.D",
       "status": "ok"
     },
     {
@@ -18803,25 +18763,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 62,
-      "provider": "ridges",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -19479,7 +19420,7 @@
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -19492,12 +19433,11 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/chutesai/chutes-miner",
       "status": "ok"
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-2",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -19510,7 +19450,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/chutesai/chutes",
       "status": "ok"
     },
     {
@@ -25093,7 +25032,7 @@
     },
     {
       "candidate_id": "sn-81-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -25106,7 +25045,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/one-covenant/grail",
       "status": "ok"
     },
     {
@@ -27427,7 +27365,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27542,7 +27480,7 @@
       "error": null,
       "kind": "subnet-api",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27562,7 +27500,7 @@
       "error": null,
       "kind": "docs",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27582,7 +27520,7 @@
       "error": null,
       "kind": "subnet-api",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27602,7 +27540,7 @@
       "error": null,
       "kind": "openapi",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27622,7 +27560,7 @@
       "error": null,
       "kind": "openapi",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27642,7 +27580,7 @@
       "error": null,
       "kind": "openapi",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27662,7 +27600,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27681,7 +27619,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27700,7 +27638,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27720,7 +27658,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27740,7 +27678,7 @@
       "error": null,
       "kind": "website",
       "netuid": 91,
-      "provider": "bitstarter",
+      "provider": "alphacore",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -30407,7 +30345,7 @@
     },
     {
       "candidate_id": "sn-100-tensorplex-source-repo-1",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -30420,7 +30358,6 @@
         "public_safe": true,
         "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/PlatformNetwork/platform",
       "status": "ok"
     },
     {
@@ -31035,82 +30972,6 @@
         "transient_failure": false
       },
       "status": "failed"
-    },
-    {
-      "candidate_id": "sn-102-website-link-connito-ai-docs-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 102,
-      "provider": "connito",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-102-website-link-connito-ai-docs-3",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 102,
-      "provider": "connito",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-102-website-link-connito-ai-website-2",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 102,
-      "provider": "connito",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-102-website-link-connito-ai-website-4",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 102,
-      "provider": "connito",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
     },
     {
       "candidate_id": "sn-103-backprop-dashboard",
@@ -35136,7 +34997,7 @@
     },
     {
       "candidate_id": "sn-117-native-chain-github",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -35149,7 +35010,6 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "redirect_target": "https://github.com/smallsmilesmith/Chi",
       "status": "ok"
     },
     {
@@ -35928,7 +35788,7 @@
     },
     {
       "candidate_id": "sn-120-native-chain-github",
-      "classification": "redirected",
+      "classification": "live",
       "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
@@ -35941,7 +35801,6 @@
         "public_safe": true,
         "source_tier": "native-chain"
       },
-      "redirect_target": "https://github.com/AffineFoundation/affine-cortex",
       "status": "ok"
     },
     {
@@ -37825,10 +37684,10 @@
     },
     {
       "candidate_id": "sn-127-website-common-health",
-      "classification": "dead",
-      "confidence_score": 0,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
       "kind": "subnet-api",
       "netuid": 127,
       "provider": "opentensor",
@@ -37836,11 +37695,10 @@
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": true,
+        "redirected": false,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://astrid.global/health",
       "status": "failed"
     },
     {
@@ -38247,33 +38105,33 @@
     "by_classification": {
       "auth-required": 9,
       "content-mismatch": 132,
-      "dead": 397,
-      "live": 1293,
+      "dead": 395,
+      "live": 1297,
       "rate-limited": 7,
-      "redirected": 148,
+      "redirected": 137,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 29
+      "unsupported": 31
     },
     "by_kind": {
       "dashboard": 564,
       "data-artifact": 14,
-      "docs": 425,
+      "docs": 420,
       "openapi": 280,
       "repo-registry": 2,
       "source-repo": 154,
       "subnet-api": 215,
-      "website": 367
+      "website": 365
     },
     "by_provider": {
       "academia": 1,
       "actual-computer": 10,
       "adtao": 18,
       "allways": 9,
+      "alphacore": 12,
       "backprop-finance": 129,
       "bitads": 8,
       "bitmind": 1,
-      "bitstarter": 12,
       "blockmachine": 18,
       "byzantium": 8,
       "cacheon": 12,
@@ -38281,7 +38139,7 @@
       "coldint": 1,
       "compelle": 19,
       "compute-horde": 2,
-      "connito": 13,
+      "connito": 9,
       "desearch": 8,
       "ditto-assistant": 17,
       "djinn": 17,
@@ -38298,7 +38156,7 @@
       "hone": 12,
       "inference-labs": 11,
       "infinitehash": 8,
-      "its-ai": 19,
+      "its-ai": 18,
       "macrocosmos": 67,
       "mantis": 1,
       "mobiusfund": 13,
@@ -38307,13 +38165,13 @@
       "nodexo": 8,
       "numinous": 13,
       "oneoneone": 1,
-      "opentensor": 415,
+      "opentensor": 414,
       "oro": 16,
       "platform-network": 12,
       "qbittensor-labs": 34,
       "readyai": 3,
       "redteam": 10,
-      "ridges": 9,
+      "ridges": 8,
       "shiftlayer": 1,
       "signalplus": 1,
       "silx-labs": 12,
@@ -38339,7 +38197,7 @@
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1441
+    "promotable_count": 1434
   },
   "verification_finished_at": null,
   "verification_started_at": null
