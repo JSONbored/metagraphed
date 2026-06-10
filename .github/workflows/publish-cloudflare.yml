@@ -168,9 +168,10 @@ jobs:
       # become the 1970 epoch placeholder + all "unknown"). r2:upload/kv:publish
       # below would then publish that unprobed dataset — leaving every RPC pool
       # with zero eligible endpoints. Re-restore the immutable reviewed artifacts
-      # so we publish exactly what was reviewed, then assert they carry live
-      # probe health so an all-"unknown" dataset can never ship silently.
-      - name: Re-restore reviewed artifacts and assert probe health
+      # so we publish exactly what was reviewed, then re-run publish-critical
+      # guards on that final tree. This keeps probe-health assurance while
+      # ensuring no unscanned network-derived metadata reaches R2/KV.
+      - name: Re-restore reviewed artifacts and run final publish guards
         run: |
           set -euo pipefail
           rm -rf public/metagraph dist/metagraph-r2
@@ -180,6 +181,8 @@ jobs:
             cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
           fi
           npm run assert:probe-health
+          npm run scan:public-safety
+          npm run validate:private-boundary
 
       - name: Check Cloudflare publishing secrets
         id: cloudflare-secrets

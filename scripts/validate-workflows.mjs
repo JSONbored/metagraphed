@@ -232,6 +232,30 @@ for (const workflow of workflows) {
       workflow,
       "publish workflow must skip deploy/upload steps only in explicit dry-run mode",
     );
+    const finalPublishGuard = stepBlock(
+      content,
+      "Re-restore reviewed artifacts and run final publish guards",
+    );
+    check(
+      finalPublishGuard.includes("npm run assert:probe-health") &&
+        finalPublishGuard.includes("npm run scan:public-safety") &&
+        finalPublishGuard.includes("npm run validate:private-boundary"),
+      workflow,
+      "publish workflow must run final probe-health and safety guards after restoring reviewed artifacts",
+    );
+    const finalGuardIndex = content.indexOf(
+      "- name: Re-restore reviewed artifacts and run final publish guards",
+    );
+    const cloudflareSecretsIndex = content.indexOf(
+      "- name: Check Cloudflare publishing secrets",
+    );
+    check(
+      finalGuardIndex !== -1 &&
+        cloudflareSecretsIndex !== -1 &&
+        finalGuardIndex < cloudflareSecretsIndex,
+      workflow,
+      "publish workflow must run final publish guards before Cloudflare upload decisions",
+    );
   }
 }
 
@@ -255,6 +279,16 @@ function workflowJobBlock(content, jobName) {
   const match = content.match(
     new RegExp(
       String.raw`^  ${escapeRegExp(jobName)}:\n[\s\S]*?(?=^  [A-Za-z0-9_-]+:\n|(?![\s\S]))`,
+      "m",
+    ),
+  );
+  return match?.[0] || "";
+}
+
+function stepBlock(content, stepName) {
+  const match = content.match(
+    new RegExp(
+      String.raw`^      - name: ${escapeRegExp(stepName)}\n[\s\S]*?(?=^      - name: |(?![\s\S]))`,
       "m",
     ),
   );
