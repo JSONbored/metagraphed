@@ -7,7 +7,9 @@ import {
   eventMatchesFilters,
   generateSecret,
   generateSubscriptionId,
+  isPublicWebhookAddress,
   isPublicWebhookUrl,
+  isResolvedPublicWebhookUrl,
   isValidSubscriptionId,
   normalizeFilters,
   publicSubscriptionView,
@@ -55,6 +57,35 @@ describe("isPublicWebhookUrl", () => {
   test("accepts a public IPv4/IPv6 literal", () => {
     assert.equal(isPublicWebhookUrl("https://8.8.8.8/x"), true);
     assert.equal(isPublicWebhookUrl("https://[2606:4700:4700::1111]/x"), true);
+  });
+
+  test("classifies resolved addresses and rejects private DNS answers", async () => {
+    assert.equal(isPublicWebhookAddress("8.8.8.8"), true);
+    assert.equal(isPublicWebhookAddress("10.0.0.1"), false);
+    assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
+    assert.equal(isPublicWebhookAddress("fd00::1"), false);
+
+    assert.equal(
+      await isResolvedPublicWebhookUrl(
+        "https://hooks.example.com/mg",
+        async () => ["93.184.216.34"],
+      ),
+      true,
+    );
+    assert.equal(
+      await isResolvedPublicWebhookUrl(
+        "https://hooks.example.com/mg",
+        async () => ["93.184.216.34", "127.0.0.1"],
+      ),
+      false,
+    );
+    assert.equal(
+      await isResolvedPublicWebhookUrl(
+        "https://hooks.example.com/mg",
+        async () => [],
+      ),
+      false,
+    );
   });
 });
 
@@ -264,6 +295,44 @@ describe("deliverChangeEvent", () => {
     assert.equal(res.status, "skipped");
     assert.equal(res.reason, "unsafe-url");
     assert.equal(called, false);
+  });
+
+  test("skips DNS-resolved private destinations without fetching", async () => {
+    let called = false;
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn: async () => {
+        called = true;
+        return new Response("", { status: 200 });
+      },
+      resolveHostnames: async () => ["169.254.169.254"],
+      now,
+    });
+    assert.equal(res.status, "skipped");
+    assert.equal(res.reason, "unsafe-url");
+    assert.equal(called, false);
+  });
+
+  test("does not follow redirects", async () => {
+    const calls = [];
+    const fetchFn = async (url, init) => {
+      calls.push({ url, init });
+      return new Response("", {
+        status: 302,
+        headers: { location: "http://127.0.0.1/admin" },
+      });
+    };
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+    });
+    assert.equal(res.status, "failed");
+    assert.equal(res.status_code, 302);
+    assert.equal(res.reason, "redirect-not-followed");
+    assert.equal(calls[0].init.redirect, "manual");
   });
 
   test("filters out a non-matching subscription", async () => {

@@ -23,11 +23,9 @@ export function subscriptionStorageKey(id) {
 }
 
 // --- URL safety: best-effort SSRF guard ---------------------------------------
-// Blocks the obvious foot-guns (non-https, embedded credentials, non-standard
-// ports, localhost, and literal private/loopback/link-local IPs). It cannot stop
-// DNS rebinding (a public hostname resolving to a private address at delivery
-// time); the dispatcher runs on GitHub-hosted runners with no access to our
-// network, which bounds that residual risk. Documented as a known limitation.
+// Blocks non-https URLs, embedded credentials, non-standard ports, localhost-like
+// names, literal private/loopback/link-local IPs, unsafe DNS answers when a
+// resolver is injected, and redirects at delivery time.
 const PRIVATE_IPV4_PATTERNS = [
   /^0\./,
   /^10\./,
@@ -41,25 +39,28 @@ const PRIVATE_IPV4_PATTERNS = [
   /^255\./,
 ];
 
-export function isPublicWebhookUrl(value) {
-  let url;
-  try {
-    url = new URL(String(value));
-  } catch {
-    return false;
-  }
-  if (url.protocol !== "https:") return false;
-  if (url.username || url.password) return false;
-  if (url.port && url.port !== "443") return false;
+function normalizedHostname(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+}
 
-  // URL keeps the brackets on an IPv6 literal hostname; strip them so the
-  // private-range prefix checks below see the bare address.
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+function isIpv4Literal(host) {
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
+  return host.split(".").every((part) => {
+    const value = Number(part);
+    return Number.isInteger(value) && value >= 0 && value <= 255;
+  });
+}
+
+function isLiteralIp(host) {
+  return isIpv4Literal(host) || host.includes(":");
+}
+
+export function isPublicWebhookAddress(value) {
+  const host = normalizedHostname(value);
   if (!host) return false;
-  if (host === "localhost" || host.endsWith(".localhost")) return false;
-  if (host.endsWith(".internal") || host.endsWith(".local")) return false;
 
-  // Literal IPv6 (URL strips the brackets from hostname).
   if (host.includes(":")) {
     if (
       host === "::1" ||
@@ -74,14 +75,61 @@ export function isPublicWebhookUrl(value) {
     return true;
   }
 
-  // Literal IPv4.
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+  if (isIpv4Literal(host)) {
     return !PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host));
   }
+
+  return false;
+}
+
+export function isPublicWebhookUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value));
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  if (url.username || url.password) return false;
+  if (url.port && url.port !== "443") return false;
+
+  // URL keeps the brackets on an IPv6 literal hostname; strip them so the
+  // private-range prefix checks below see the bare address.
+  const host = normalizedHostname(url.hostname);
+  if (!host) return false;
+  if (host === "localhost" || host.endsWith(".localhost")) return false;
+  if (host.endsWith(".internal") || host.endsWith(".local")) return false;
+
+  if (isLiteralIp(host)) return isPublicWebhookAddress(host);
 
   // Registrable hostname: require at least one dot so bare labels ("router")
   // that may resolve to LAN hosts are rejected.
   return host.includes(".");
+}
+
+export async function isResolvedPublicWebhookUrl(value, resolveHostnames) {
+  if (!isPublicWebhookUrl(value)) return false;
+  if (typeof resolveHostnames !== "function") return true;
+
+  let host;
+  try {
+    host = normalizedHostname(new URL(String(value)).hostname);
+  } catch {
+    return false;
+  }
+  if (isLiteralIp(host)) return isPublicWebhookAddress(host);
+
+  let addresses;
+  try {
+    addresses = await resolveHostnames(host);
+  } catch {
+    return false;
+  }
+  return (
+    Array.isArray(addresses) &&
+    addresses.length > 0 &&
+    addresses.every((address) => isPublicWebhookAddress(address))
+  );
 }
 
 // --- subscription validation --------------------------------------------------
@@ -329,6 +377,7 @@ export async function deliverChangeEvent({
   now,
   timeoutMs = 8000,
   maxAttempts = 3,
+  resolveHostnames,
 }) {
   if (!subscription || typeof subscription.url !== "string") {
     return {
@@ -345,6 +394,9 @@ export async function deliverChangeEvent({
   }
   if (typeof subscription.secret !== "string" || !subscription.secret) {
     return { id: subscription.id, status: "skipped", reason: "no-secret" };
+  }
+  if (!(await isResolvedPublicWebhookUrl(subscription.url, resolveHostnames))) {
+    return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
   }
 
   const bodyText = JSON.stringify(event);
@@ -366,6 +418,7 @@ export async function deliverChangeEvent({
         method: "POST",
         headers,
         body: bodyText,
+        redirect: "manual",
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
@@ -382,6 +435,15 @@ export async function deliverChangeEvent({
       };
     }
     lastReason = `http-${status}`;
+    if (status >= 300 && status < 400) {
+      return {
+        id: subscription.id,
+        status: "failed",
+        status_code: status,
+        reason: "redirect-not-followed",
+        attempts: attempt,
+      };
+    }
     // 4xx (except 429) is a deterministic rejection — do not retry.
     if (status >= 400 && status < 500 && status !== 429) {
       return {
@@ -412,6 +474,7 @@ export async function dispatchChangeEvent({
   now,
   timeoutMs,
   maxAttempts,
+  resolveHostnames,
   concurrency = 8,
 }) {
   const queue = [...(subscriptions || [])];
@@ -426,6 +489,7 @@ export async function dispatchChangeEvent({
         now,
         timeoutMs,
         maxAttempts,
+        resolveHostnames,
       });
       results.push(result);
     }
