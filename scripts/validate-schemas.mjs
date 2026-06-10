@@ -175,10 +175,12 @@ function netuidArtifactDirectories() {
   return {
     "candidates-subnet": "candidates",
     "endpoints-subnet": "endpoints",
+    "evidence-subnet": "evidence",
     "health-badge": "health/badges",
     "health-subnet": "health/subnets",
     "profile-detail": "profiles",
     "subnet-detail": "subnets",
+    "subnet-gaps": "review/gaps",
     "surfaces-subnet": "surfaces",
     "verification-subnet": "verification/subnets",
   };

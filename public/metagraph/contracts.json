@@ -273,6 +273,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Public evidence ledger claims for one subnet.",
+      "id": "evidence-subnet",
+      "path": "/metagraph/evidence/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Latest surface health snapshot.",
       "id": "health-latest",
       "path": "/metagraph/health/latest.json",
@@ -412,6 +421,15 @@
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
       "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Interface gap priorities and enrichment queue for one subnet.",
+      "id": "subnet-gaps",
+      "path": "/metagraph/review/gaps/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetGapsArtifact",
       "storage_tier": "r2"
     },
     {

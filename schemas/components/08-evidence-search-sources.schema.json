@@ -500,6 +500,9 @@
             "additionalProperties": true
           }
         ]
+      },
+      "SubnetEvidenceArtifact": {
+        "$ref": "#/components/schemas/EvidenceLedgerArtifact"
       }
     }
   }

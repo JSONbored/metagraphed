@@ -656,15 +656,38 @@ await writeJson(
     verification,
   }),
 );
-await writeJson(
-  artifactFile("evidence-ledger.json"),
-  buildEvidenceLedger({
-    candidates,
-    generatedAt,
-    subnets: mergedSubnets,
-    surfaces,
-  }),
-);
+const evidenceLedger = buildEvidenceLedger({
+  candidates,
+  generatedAt,
+  subnets: mergedSubnets,
+  surfaces,
+});
+await writeJson(artifactFile("evidence-ledger.json"), evidenceLedger);
+// Per-subnet evidence split (R2-tier; powers /api/v1/subnets/{netuid}/evidence).
+// Claims carry no netuid field, so derive it from the structured subject id
+// (`surface:...sn-7-...`, `candidate:...sn-7-...`, or `subnet:7`).
+const claimsByNetuid = new Map();
+for (const claim of evidenceLedger.claims || []) {
+  const netuid = netuidFromEvidenceSubject(claim.subject);
+  if (netuid === null) {
+    continue;
+  }
+  const bucket = claimsByNetuid.get(netuid) || [];
+  bucket.push(claim);
+  claimsByNetuid.set(netuid, bucket);
+}
+await fs.rm(r2ArtifactDir("evidence"), { recursive: true, force: true });
+for (const subnet of mergedSubnets) {
+  await writeJson(artifactFile(`evidence/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    claims: claimsByNetuid.get(subnet.netuid) || [],
+  });
+}
 await writeJson(
   artifactFile("rpc/pools.json"),
   buildEndpointPoolArtifact({
@@ -727,6 +750,27 @@ await writeJson(artifactFile("review/adapter-candidates.json"), {
   candidates: curationReview.adapter_candidates,
 });
 await writeJson(artifactFile("review/enrichment-queue.json"), enrichmentQueue);
+// Per-subnet gap + enrichment split (R2-tier; the contribution-flywheel data
+// behind /api/v1/subnets/{netuid}/gaps). `priorities` is the queryable
+// collection; `enrichment_queue` rides along with the richer "where to help"
+// context (missing_kinds, recommended_action, contribution_hint, sample ids).
+const gapPrioritiesByNetuid = groupByNetuid(
+  curationReview.gap_priorities || [],
+);
+const enrichmentQueueByNetuid = groupByNetuid(enrichmentQueue.queue || []);
+await fs.rm(r2ArtifactDir("review/gaps"), { recursive: true, force: true });
+for (const subnet of mergedSubnets) {
+  await writeJson(artifactFile(`review/gaps/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    priorities: gapPrioritiesByNetuid.get(subnet.netuid) || [],
+    enrichment_queue: enrichmentQueueByNetuid.get(subnet.netuid) || [],
+  });
+}
 await writeJson(
   artifactFile("review/enrichment-evidence.json"),
   enrichmentArtifacts.evidenceArtifact,
@@ -2522,6 +2566,22 @@ function averageScore(profiles) {
 
 function groupByNetuid(items) {
   return groupBy(items, "netuid");
+}
+
+// Evidence claims have no netuid field. Derive it from the structured subject
+// id: `subnet:7`, or any `...sn-7-...` form (`surface:sn-7-...`,
+// `candidate:community-sn-7-...`). Returns null when no netuid is encoded.
+function netuidFromEvidenceSubject(subject) {
+  const value = String(subject || "");
+  const subnetMatch = value.match(/^subnet:(\d+)\b/);
+  if (subnetMatch) {
+    return Number(subnetMatch[1]);
+  }
+  const snMatch = value.match(/sn-(\d+)/);
+  if (snMatch) {
+    return Number(snMatch[1]);
+  }
+  return null;
 }
 
 function groupBy(items, key) {

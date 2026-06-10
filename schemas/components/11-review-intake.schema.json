@@ -1130,6 +1130,42 @@
           }
         ]
       },
+      "SubnetGapsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["netuid", "priorities", "enrichment_queue"],
+            "properties": {
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              },
+              "enrichment_queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
       "ReviewAdapterCandidatesArtifact": {
         "allOf": [
           {

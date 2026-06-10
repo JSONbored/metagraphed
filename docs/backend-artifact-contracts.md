@@ -51,6 +51,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/source-health.json`: source/provider health summary.
 - `/metagraph/source-snapshots.json`: compact hashes and counts for canonical source inputs. R2-backed.
 - `/metagraph/evidence-ledger.json`: public evidence ledger for material registry claims.
+- `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
 - `/metagraph/health/latest.json`: latest live or build-time surface health snapshot. R2-backed.
 - `/metagraph/health/summary.json`: global and per-subnet health rollup.
 - `/metagraph/health/history/{date}.json`: compact daily health-history snapshot. R2-backed.
@@ -67,6 +68,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/r2-manifest.json`: compact committed Cloudflare R2 upload manifest. The full upload manifest is generated under `dist/metagraph-r2/metagraph/r2-manifest.json`.
 - `/metagraph/review/curation.json`: maintainer review and adapter candidate report.
 - `/metagraph/review/gap-priorities.json`: prioritized backend curation gaps.
+- `/metagraph/review/gaps/{netuid}.json`: interface gap priorities and enrichment queue for one subnet. R2-backed.
 - `/metagraph/review/profile-completeness.json`: profile completeness and contributor targeting report.
 - `/metagraph/review/adapter-candidates.json`: subnets likely worth custom adapters.
 - `/metagraph/review/enrichment-queue.json`: prioritized all-subnet enrichment queue with direct-submission, maintainer-review, adapter, and monitoring lanes.
@@ -95,6 +97,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
 - `/api/v1/review/gaps`: fetch contributor-targeted subnet gap priorities.
+- `/api/v1/subnets/{netuid}/gaps`: fetch interface gap priorities and enrichment queue for one subnet.
 - `/api/v1/review/profile-completeness`: fetch profile completeness gaps for contributor targeting.
 - `/api/v1/review/adapter-candidates`: fetch subnets worth deeper adapter work.
 - `/api/v1/review/enrichment-queue`: fetch the prioritized all-subnet enrichment queue.
@@ -106,6 +109,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/freshness`: fetch freshness and staleness state.
 - `/api/v1/source-health`: fetch upstream source health.
 - `/api/v1/evidence`: fetch public evidence ledger.
+- `/api/v1/subnets/{netuid}/evidence`: fetch public evidence ledger claims for one subnet.
 - `/api/v1/changelog`: fetch latest generated change summary.
 - `/api/v1/source-snapshots`: fetch source input hashes and counts.
 - `/api/v1/rpc/endpoints`: fetch Bittensor RPC endpoint status.

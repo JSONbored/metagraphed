@@ -5670,6 +5670,49 @@
           }
         ]
       },
+      "SubnetEvidenceArtifact": {
+        "$ref": "#/components/schemas/EvidenceLedgerArtifact"
+      },
+      "SubnetGapsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "enrichment_queue": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                },
+                "type": "array"
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "priorities": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                },
+                "type": "array"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "netuid",
+              "priorities",
+              "enrichment_queue"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "SubnetIndexEntry": {
         "additionalProperties": false,
         "properties": {

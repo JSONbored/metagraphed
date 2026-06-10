@@ -212,6 +212,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "evidence-subnet",
+      "path": "/metagraph/evidence/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "health-latest",
       "path": "/metagraph/health/latest.json",
       "schema_ref": "#/components/schemas/HealthLatestArtifact",
@@ -320,6 +327,13 @@
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
       "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-gaps",
+      "path": "/metagraph/review/gaps/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetGapsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -1813,6 +1827,81 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/review/gaps/{netuid}.json",
+      "cache": "standard",
+      "description": "Fetch interface gap priorities and enrichment queue for one subnet.",
+      "id": "subnet-gaps",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/gaps",
+      "public": true,
+      "query_collection": "review-gap-priorities",
+      "query_filter_names": [
+        "curation_level",
+        "review_state"
+      ],
+      "query_parameters": [
+        {
+          "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "candidate_count",
+              "curation_level",
+              "missing_kinds",
+              "name",
+              "netuid",
+              "priority_score",
+              "surface_count",
+              "verified_candidate_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/review/profile-completeness.json",
       "cache": "standard",
       "description": "Fetch profile completeness gaps for contributor targeting.",
@@ -3057,6 +3146,61 @@
       "id": "evidence",
       "method": "GET",
       "path": "/api/v1/evidence",
+      "public": true,
+      "query_collection": "claims",
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "claim",
+              "source_url",
+              "subject",
+              "verified_at"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/evidence/{netuid}.json",
+      "cache": "standard",
+      "description": "Fetch public evidence ledger claims for one subnet.",
+      "id": "subnet-evidence",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/evidence",
       "public": true,
       "query_collection": "claims",
       "query_filter_names": [],

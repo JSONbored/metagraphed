@@ -698,6 +698,12 @@ export const PUBLIC_ARTIFACTS = [
     "EvidenceLedgerArtifact",
   ),
   artifact(
+    "evidence-subnet",
+    "/metagraph/evidence/{netuid}.json",
+    "Public evidence ledger claims for one subnet.",
+    "SubnetEvidenceArtifact",
+  ),
+  artifact(
     "health-latest",
     "/metagraph/health/latest.json",
     "Latest surface health snapshot.",
@@ -792,6 +798,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/review/gap-priorities.json",
     "Subnet interface gap priorities.",
     "ReviewGapPrioritiesArtifact",
+  ),
+  artifact(
+    "subnet-gaps",
+    "/metagraph/review/gaps/{netuid}.json",
+    "Interface gap priorities and enrichment queue for one subnet.",
+    "SubnetGapsArtifact",
   ),
   artifact(
     "review-profile-completeness",
@@ -1024,6 +1036,17 @@ export const API_ROUTES = [
     listQuery("review-gap-priorities"),
   ),
   route(
+    "subnet-gaps",
+    "GET",
+    "/api/v1/subnets/{netuid}/gaps",
+    "/metagraph/review/gaps/{netuid}.json",
+    "Fetch interface gap priorities and enrichment queue for one subnet.",
+    "standard",
+    ["registry", "review", "subnets"],
+    listQuery("review-gap-priorities", { exclude: ["netuid"] }),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "review-profile-completeness",
     "GET",
     "/api/v1/review/profile-completeness",
@@ -1137,6 +1160,17 @@ export const API_ROUTES = [
     "standard",
     ["evidence"],
     listQuery("claims"),
+  ),
+  route(
+    "subnet-evidence",
+    "GET",
+    "/api/v1/subnets/{netuid}/evidence",
+    "/metagraph/evidence/{netuid}.json",
+    "Fetch public evidence ledger claims for one subnet.",
+    "standard",
+    ["evidence", "subnets"],
+    listQuery("claims"),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "changelog",

@@ -152,6 +152,18 @@ const checks = [
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],
   [
+    "/api/v1/subnets/7/gaps",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.priorities), true);
+      assert.equal(Array.isArray(body.data.enrichment_queue), true);
+      assert.equal(
+        body.data.priorities.every((priority) => priority.netuid === 7),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
     (body) => {
       assert.equal(body.data.profiles.length > 0, true);
@@ -236,6 +248,13 @@ const checks = [
   [
     "/api/v1/evidence?q=allways",
     (body) => assert.equal(Array.isArray(body.data.claims), true),
+  ],
+  [
+    "/api/v1/subnets/7/evidence?limit=3",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.claims.length <= 3, true);
+    },
   ],
   [
     "/api/v1/changelog",
