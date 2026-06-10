@@ -11,6 +11,18 @@ import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
 } from "../src/artifact-storage.mjs";
+import {
+  buildChangeEvent,
+  generateSecret,
+  generateSubscriptionId,
+  isValidSubscriptionId,
+  publicSubscriptionView,
+  subscriptionStorageKey,
+  timingSafeEqual,
+  validateSubscriptionInput,
+  WEBHOOK_SECRET_HEADER,
+  WEBHOOK_SIGNATURE_HEADER,
+} from "../src/webhooks.mjs";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
@@ -55,6 +67,10 @@ const DENIED_RPC_PREFIXES = [
 ];
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
+const MAX_WEBHOOK_BODY_BYTES = 8192;
+// Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
+// refreshes the TTL on each successful delivery.
+const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;
 const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "https://archive.chain.opentensor.ai",
   "https://bittensor-finney.api.onfinality.io",
@@ -84,6 +100,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
 
+  // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
+  // must run before the read-only method gate below (like the RPC proxy).
+  if (url.pathname.startsWith("/api/v1/webhooks/")) {
+    return handleWebhookRequest(request, env, url);
+  }
+
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -98,6 +120,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   if (url.pathname === "/health") {
     return handleHealthRequest(request, env);
+  }
+
+  if (url.pathname === "/api/v1/events") {
+    return handleEventsRequest(request, env);
   }
 
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
@@ -946,6 +972,243 @@ async function latestR2Key(artifactPath, env) {
   return `${prefix}${artifactPath.replace(/^\/metagraph\//, "")}`;
 }
 
+// --- Change-feed webhooks -----------------------------------------------------
+// Subscription management for the ~6h publish change feed. Subscriptions live in
+// the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
+// publish-time dispatcher (scripts/dispatch-webhooks.mjs) reads them and fires
+// HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
+async function handleWebhookRequest(request, env, url) {
+  if (!env.METAGRAPH_CONTROL?.get || !env.METAGRAPH_CONTROL?.put) {
+    return errorResponse(
+      "webhooks_unavailable",
+      "The webhook subscription store is not configured.",
+      503,
+    );
+  }
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  // ["api", "v1", "webhooks", "subscriptions", <id?>]
+  if (segments[3] !== "subscriptions") {
+    return errorResponse("not_found", "Unknown webhook route.", 404, {
+      path: url.pathname,
+    });
+  }
+  const id = segments[4];
+
+  if (!id && request.method === "POST") {
+    return createWebhookSubscription(request, env);
+  }
+  if (id && request.method === "GET") {
+    return getWebhookSubscription(env, id);
+  }
+  if (id && request.method === "DELETE") {
+    return deleteWebhookSubscription(request, env, id);
+  }
+  return errorResponse(
+    "method_not_allowed",
+    "Use POST /api/v1/webhooks/subscriptions, or GET/DELETE /api/v1/webhooks/subscriptions/{id}.",
+    405,
+    {},
+    { allow: "POST, GET, DELETE, OPTIONS" },
+  );
+}
+
+async function createWebhookSubscription(request, env) {
+  if (
+    Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
+  ) {
+    return errorResponse(
+      "payload_too_large",
+      "Subscription body exceeds the size limit.",
+      413,
+    );
+  }
+  let body;
+  try {
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > MAX_WEBHOOK_BODY_BYTES) {
+      return errorResponse(
+        "payload_too_large",
+        "Subscription body exceeds the size limit.",
+        413,
+      );
+    }
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    return errorResponse(
+      "invalid_json",
+      "Request body must be valid JSON.",
+      400,
+    );
+  }
+
+  const validated = validateSubscriptionInput(body);
+  if (!validated.ok) {
+    return errorResponse("invalid_subscription", validated.error, 400);
+  }
+
+  const id = generateSubscriptionId();
+  const secret = validated.value.secret || generateSecret();
+  const record = {
+    id,
+    url: validated.value.url,
+    filters: validated.value.filters,
+    secret,
+    created_at: new Date().toISOString(),
+    active: true,
+  };
+  try {
+    await env.METAGRAPH_CONTROL.put(
+      subscriptionStorageKey(id),
+      JSON.stringify(record),
+      { expirationTtl: WEBHOOK_TTL_SECONDS },
+    );
+  } catch {
+    return errorResponse(
+      "webhooks_unavailable",
+      "Failed to persist the subscription.",
+      503,
+    );
+  }
+
+  return dataResponse(
+    env,
+    {
+      id,
+      url: record.url,
+      filters: record.filters,
+      // Returned ONCE at creation; store it to verify delivery signatures and to
+      // delete the subscription. It is never echoed back on GET.
+      secret,
+      active: true,
+      created_at: record.created_at,
+      delivery: {
+        method: "POST",
+        content_type: JSON_CONTENT_TYPE,
+        signature_header: WEBHOOK_SIGNATURE_HEADER,
+        signature_algorithm: "hmac-sha256-hex",
+        note: "HMAC-SHA256 of the raw request body, hex-encoded, keyed by your secret.",
+      },
+    },
+    201,
+  );
+}
+
+async function getWebhookSubscription(env, id) {
+  if (!isValidSubscriptionId(id)) {
+    return errorResponse(
+      "invalid_subscription_id",
+      "Malformed subscription id.",
+      400,
+    );
+  }
+  const record = await readWebhookSubscription(env, id);
+  if (!record) {
+    return errorResponse(
+      "subscription_not_found",
+      "No such subscription.",
+      404,
+      {
+        id,
+      },
+    );
+  }
+  return dataResponse(env, publicSubscriptionView(record));
+}
+
+async function deleteWebhookSubscription(request, env, id) {
+  if (!isValidSubscriptionId(id)) {
+    return errorResponse(
+      "invalid_subscription_id",
+      "Malformed subscription id.",
+      400,
+    );
+  }
+  const record = await readWebhookSubscription(env, id);
+  if (!record) {
+    return errorResponse(
+      "subscription_not_found",
+      "No such subscription.",
+      404,
+      {
+        id,
+      },
+    );
+  }
+  const provided = request.headers.get(WEBHOOK_SECRET_HEADER) || "";
+  if (!record.secret || !timingSafeEqual(provided, record.secret)) {
+    return errorResponse(
+      "forbidden",
+      `Provide the subscription secret in the ${WEBHOOK_SECRET_HEADER} header to delete it.`,
+      403,
+    );
+  }
+  try {
+    await env.METAGRAPH_CONTROL.delete(subscriptionStorageKey(id));
+  } catch {
+    return errorResponse(
+      "webhooks_unavailable",
+      "Failed to delete the subscription.",
+      503,
+    );
+  }
+  return dataResponse(env, { id, deleted: true });
+}
+
+async function readWebhookSubscription(env, id) {
+  try {
+    return await env.METAGRAPH_CONTROL.get(subscriptionStorageKey(id), {
+      type: "json",
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Thin SSE change feed. Given the ~6h cadence there is no value in holding a
+// long-lived connection, so we emit the current change snapshot as one SSE event
+// and advise a 5-minute reconnect via `retry:`. EventSource clients reconnect on
+// that interval and re-read; `id:` is the publish timestamp for dedupe.
+async function handleEventsRequest(request, env) {
+  const [pointer, changelogArtifact] = await Promise.all([
+    latestPointer(env),
+    readArtifact(env, "/metagraph/changelog.json"),
+  ]);
+  const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
+  const event = buildChangeEvent({ changelog, pointer });
+  const frame =
+    [
+      "retry: 300000",
+      `id: ${event.published_at || event.generated_at || "0"}`,
+      "event: snapshot",
+      `data: ${JSON.stringify(event)}`,
+    ].join("\n") + "\n\n";
+
+  const headers = new Headers();
+  headers.set("content-type", "text/event-stream; charset=utf-8");
+  headers.set("cache-control", "no-store");
+  headers.set("access-control-allow-origin", "*");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-metagraph-contract-version", contractVersion(env));
+  return new Response(frame, { status: 200, headers });
+}
+
+// Success envelope for non-cacheable (mutation / dynamic) JSON responses.
+function dataResponse(env, data, status = 200, extraMeta = {}) {
+  const headers = apiHeaders("short");
+  headers.set("cache-control", "no-store");
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      schema_version: 1,
+      data,
+      error: null,
+      meta: { contract_version: contractVersion(env), ...extraMeta },
+    }),
+    { status, headers },
+  );
+}
+
 async function latestPointer(env) {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
@@ -1225,11 +1488,17 @@ function errorResponse(
 function corsPreflight(request) {
   const url = new URL(request.url);
   const headers = apiHeaders("short");
+  let methods = "GET, HEAD, OPTIONS";
+  if (url.pathname.startsWith("/rpc/")) {
+    methods = "POST, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
+    methods = "POST, GET, DELETE, OPTIONS";
+  }
+  headers.set("access-control-allow-methods", methods);
   headers.set(
-    "access-control-allow-methods",
-    url.pathname.startsWith("/rpc/") ? "POST, OPTIONS" : "GET, HEAD, OPTIONS",
+    "access-control-allow-headers",
+    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}`,
   );
-  headers.set("access-control-allow-headers", "content-type, if-none-match");
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
 }
