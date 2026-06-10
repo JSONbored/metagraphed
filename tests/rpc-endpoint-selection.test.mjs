@@ -9,6 +9,7 @@ import {
 const SAFE_A = "https://bittensor-finney.api.onfinality.io/public";
 const SAFE_B = "https://bittensor-public.nodies.app/rpc";
 const UNSAFE = "https://evil.example.com/rpc";
+const WSS_UPSTREAM = "wss://lite.chain.opentensor.ai:443";
 
 const ep = (id, url, extra = {}) => ({
   id,
@@ -42,6 +43,14 @@ describe("selectSafeRpcEndpoint", () => {
     });
     assert.equal(endpoint, null);
     assert.equal(unsafeEndpoint.id, "u");
+  });
+
+  test("treats WebSocket endpoints as unsafe for the HTTP POST proxy", () => {
+    const { endpoint, unsafeEndpoint } = selectSafeRpcEndpoint({
+      endpoints: [ep("wss", WSS_UPSTREAM)],
+    });
+    assert.equal(endpoint, null);
+    assert.equal(unsafeEndpoint.id, "wss");
   });
 
   test("returns null endpoint (503) when none are eligible", () => {

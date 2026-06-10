@@ -58,10 +58,6 @@ const METAGRAPH_LATEST_KEY = "metagraph:latest";
 const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "https://bittensor-finney.api.onfinality.io",
   "https://bittensor-public.nodies.app",
-  "wss://archive.chain.opentensor.ai",
-  "wss://bittensor-finney.api.onfinality.io",
-  "wss://entrypoint-finney.opentensor.ai",
-  "wss://lite.chain.opentensor.ai",
 ]);
 
 export default {
@@ -388,6 +384,25 @@ async function handleRpcProxyRequest(request, env, url) {
     );
   }
 
+  const poolId = rpcPoolIdForPath(url.pathname);
+  if (!poolId) {
+    return errorResponse(
+      "rpc_route_not_found",
+      "No public RPC proxy route matched this path.",
+      404,
+      { rpc_path: url.pathname },
+    );
+  }
+
+  if (poolId === "finney-wss") {
+    return errorResponse(
+      "rpc_wss_proxy_unsupported",
+      "The HTTP JSON-RPC proxy does not support WebSocket upstream pools.",
+      501,
+      { pool_id: poolId },
+    );
+  }
+
   const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
   if (!poolArtifact.ok) {
     return errorResponse(
@@ -400,7 +415,6 @@ async function handleRpcProxyRequest(request, env, url) {
     );
   }
 
-  const poolId = url.pathname.includes("/wss") ? "finney-wss" : "finney-rpc";
   const pool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
@@ -428,14 +442,27 @@ async function handleRpcProxyRequest(request, env, url) {
   }
 
   const endpoint = endpointSelection.endpoint;
-  const upstream = await fetch(endpoint.url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: bodyText,
-    signal: AbortSignal.timeout(10000),
-  });
+  let upstream;
+  try {
+    upstream = await fetch(endpoint.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: bodyText,
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    return errorResponse(
+      "rpc_upstream_fetch_failed",
+      "The selected RPC upstream could not be reached by the proxy.",
+      502,
+      {
+        endpoint_id: endpoint.id || null,
+        pool_id: poolId,
+      },
+    );
+  }
   const headers = apiHeaders("short");
   headers.set("cache-control", "no-store");
   headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
@@ -444,6 +471,16 @@ async function handleRpcProxyRequest(request, env, url) {
     status: upstream.status,
     headers,
   });
+}
+
+function rpcPoolIdForPath(pathname) {
+  if (pathname === "/rpc/v1/finney") {
+    return "finney-rpc";
+  }
+  if (pathname === "/rpc/v1/wss") {
+    return "finney-wss";
+  }
+  return null;
 }
 
 function matchRawArtifact(pathname) {
@@ -1052,7 +1089,7 @@ function isSafeRpcEndpointUrl(value) {
     return false;
   }
 
-  if (!["https:", "wss:"].includes(parsed.protocol)) {
+  if (parsed.protocol !== "https:") {
     return false;
   }
 

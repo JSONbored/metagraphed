@@ -919,6 +919,59 @@ describe("Worker runtime", () => {
     }
   });
 
+  test("returns a controlled error when an RPC upstream fetch fails", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new TypeError("fetch failed");
+    };
+
+    try {
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/rpc/v1/finney", {
+          method: "POST",
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "chain_getHeader",
+            params: [],
+          }),
+        }),
+        {
+          METAGRAPH_ENABLE_RPC_PROXY: "true",
+          METAGRAPH_ARCHIVE: r2ArchiveFixture({
+            "rpc/pools.json": {
+              schema_version: 1,
+              generated_at: "1970-01-01T00:00:00.000Z",
+              pools: [
+                {
+                  id: "finney-rpc",
+                  endpoints: [
+                    {
+                      id: "fixture-rpc",
+                      pool_eligible: true,
+                      provider: "fixture",
+                      status: "ok",
+                      url: "https://bittensor-finney.api.onfinality.io/public",
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        },
+        {},
+      );
+
+      assert.equal(response.status, 502);
+      assert.equal(
+        (await response.json()).error.code,
+        "rpc_upstream_fetch_failed",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("proxies explicitly enabled safe RPC methods through eligible pools", async () => {
     const originalFetch = globalThis.fetch;
     let called = false;
@@ -1021,7 +1074,30 @@ describe("Worker runtime", () => {
         proxyEnv,
         {},
       );
-      assert.equal(wssResponse.status, 200);
+      assert.equal(wssResponse.status, 501);
+      assert.equal(
+        (await wssResponse.json()).error.code,
+        "rpc_wss_proxy_unsupported",
+      );
+
+      const nestedWssResponse = await handleRequest(
+        new Request("https://metagraph.sh/rpc/v1/finney/wss", {
+          method: "POST",
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 3,
+            method: "system_health",
+            params: [],
+          }),
+        }),
+        proxyEnv,
+        {},
+      );
+      assert.equal(nestedWssResponse.status, 404);
+      assert.equal(
+        (await nestedWssResponse.json()).error.code,
+        "rpc_route_not_found",
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
