@@ -180,9 +180,20 @@ describe("proxyWithFailover", () => {
     assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
   });
 
-  test("fails over on HTTP 5xx", async () => {
+  test("fails over on HTTP 5xx without reading its response body", async () => {
+    let reads = 0;
+    let canceled = false;
+    const transientBody = new globalThis.ReadableStream({
+      pull(controller) {
+        reads += 1;
+        controller.enqueue(new TextEncoder().encode("large upstream error"));
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
     const fetchFn = scriptedFetch(
-      jsonResponse(503, ""),
+      new Response(transientBody, { status: 503 }),
       jsonResponse(200, { result: 1 }),
     );
     const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
@@ -191,6 +202,8 @@ describe("proxyWithFailover", () => {
     });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
+    assert.ok(reads <= 1);
+    assert.equal(canceled, true);
   });
 
   test("fails over on a node-internal JSON-RPC error", async () => {
@@ -203,6 +216,34 @@ describe("proxyWithFailover", () => {
       fetchFn,
     });
     assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
+  });
+
+  test("streams oversized successful responses instead of buffering them", async () => {
+    const chunk = new TextEncoder().encode("x".repeat(70 * 1024));
+    let pulls = 0;
+    const body = new globalThis.ReadableStream({
+      pull(controller) {
+        pulls += 1;
+        if (pulls <= 2) {
+          controller.enqueue(chunk);
+          return;
+        }
+        controller.close();
+      },
+    });
+    const fetchFn = scriptedFetch(
+      new Response(body, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const res = await proxyWithFailover([ep("a", SAFE_A)], {
+      ...base,
+      fetchFn,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "a");
+    assert.equal((await res.arrayBuffer()).byteLength, chunk.byteLength * 2);
   });
 
   test("returns an application JSON-RPC error immediately (no failover)", async () => {

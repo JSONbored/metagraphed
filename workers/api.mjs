@@ -515,19 +515,27 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   if (!cacheKey) {
     return response;
   }
+  const headers = new Headers(response.headers);
+  headers.set("x-metagraph-rpc-cache", "miss");
+  if (response.status !== 200) {
+    return new Response(response.body, { status: response.status, headers });
+  }
 
-  // Cacheable method, cache miss: read the body once, cache it if it is a
-  // genuine JSON-RPC result (never cache an error envelope), and return.
-  const text = await response.text();
-  if (response.status === 200) {
+  // Cacheable method, cache miss: inspect a bounded clone so oversized upstream
+  // results are streamed back to the client instead of buffered in the Worker.
+  const inspect = await readResponseTextWithLimit(
+    response.clone(),
+    RPC_CLASSIFY_BODY_LIMIT_BYTES,
+  );
+  if (!inspect.truncated) {
     let parsed = null;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(inspect.text);
     } catch {
       // body is not JSON; leave parsed null so it is not cached.
     }
     if (parsed && parsed.result !== undefined && parsed.error === undefined) {
-      const cached = new Response(text, {
+      const cached = new Response(inspect.text, {
         status: 200,
         headers: {
           "content-type": JSON_CONTENT_TYPE,
@@ -537,13 +545,13 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       ctx?.waitUntil?.(cache.put(cacheKey, cached));
     }
   }
-  const headers = new Headers(response.headers);
-  headers.set("x-metagraph-rpc-cache", "miss");
-  return new Response(text, { status: response.status, headers });
+  return new Response(response.body, { status: response.status, headers });
 }
 
 const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
+const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
+
 // JSON-RPC error codes that signal node trouble (retry another upstream) rather
 // than a client/application error (return immediately so we don't mask a real
 // error by trying every node).
@@ -637,10 +645,47 @@ export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
   return "success";
 }
 
+async function readResponseTextWithLimit(response, maxBytes) {
+  if (!response.body?.getReader) {
+    const text = await response.text();
+    return {
+      text: text.slice(0, maxBytes),
+      truncated: new TextEncoder().encode(text).byteLength > maxBytes,
+    };
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      reader.cancel().catch(() => {});
+      return { text, truncated: true };
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  text += decoder.decode();
+  return { text, truncated: false };
+}
+
+function streamRpcResponse(upstream, endpoint, attempts, status) {
+  const headers = apiHeaders("short");
+  headers.set("cache-control", "no-store");
+  headers.set("content-type", JSON_CONTENT_TYPE);
+  headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
+  headers.set("x-metagraph-rpc-provider", endpoint.provider);
+  headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
+  return new Response(upstream.body, { status: status || 502, headers });
+}
+
 // Try each ordered endpoint in turn; return the first success / non-transient
 // response, and a clean 502 only when every attempt is a transient failure.
-// Reads the body once (allowlisted read responses are small) so we can classify
-// JSON-RPC error envelopes. fetchFn injectable for tests.
+// Transient HTTP statuses are classified before reading bodies, and JSON-RPC
+// error-envelope inspection is bounded so large upstream responses can stream.
 export async function proxyWithFailover(
   orderedEndpoints,
   {
@@ -657,23 +702,17 @@ export async function proxyWithFailover(
   for (let index = 0; index < limit; index += 1) {
     const endpoint = orderedEndpoints[index];
     let status = 0;
-    let text = "";
+    let upstream = null;
     let parsedBody = null;
     let thrown = false;
     try {
-      const upstream = await fetchFn(endpoint.url, {
+      upstream = await fetchFn(endpoint.url, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: bodyText,
         signal: AbortSignal.timeout(timeoutMs),
       });
       status = upstream.status;
-      text = await upstream.text();
-      try {
-        parsedBody = JSON.parse(text);
-      } catch {
-        parsedBody = null;
-      }
     } catch {
       thrown = true;
     }
@@ -681,6 +720,7 @@ export async function proxyWithFailover(
     if (
       classifyUpstreamAttempt({ thrown, status, parsedBody }) === "transient"
     ) {
+      await upstream?.body?.cancel?.();
       recordRpcFailure(healthMap, endpoint.id, Date.now());
       attempts.push({
         endpoint_id: endpoint.id,
@@ -689,16 +729,71 @@ export async function proxyWithFailover(
       continue;
     }
 
+    if (upstream && status < 400) {
+      if (upstream.body?.tee) {
+        const [inspectBody, clientBody] = upstream.body.tee();
+        const inspect = await readResponseTextWithLimit(
+          new Response(inspectBody),
+          RPC_CLASSIFY_BODY_LIMIT_BYTES,
+        );
+        if (!inspect.truncated) {
+          try {
+            parsedBody = JSON.parse(inspect.text);
+          } catch {
+            parsedBody = null;
+          }
+          if (
+            classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
+            "transient"
+          ) {
+            await clientBody.cancel();
+            recordRpcFailure(healthMap, endpoint.id, Date.now());
+            attempts.push({
+              endpoint_id: endpoint.id,
+              reason: `status-${status}`,
+            });
+            continue;
+          }
+        }
+        upstream = new Response(clientBody, {
+          status: upstream.status,
+          statusText: upstream.statusText,
+          headers: upstream.headers,
+        });
+      } else {
+        const inspect = await readResponseTextWithLimit(
+          upstream,
+          RPC_CLASSIFY_BODY_LIMIT_BYTES,
+        );
+        if (!inspect.truncated) {
+          try {
+            parsedBody = JSON.parse(inspect.text);
+          } catch {
+            parsedBody = null;
+          }
+          if (
+            classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
+            "transient"
+          ) {
+            recordRpcFailure(healthMap, endpoint.id, Date.now());
+            attempts.push({
+              endpoint_id: endpoint.id,
+              reason: `status-${status}`,
+            });
+            continue;
+          }
+        }
+        upstream = new Response(inspect.text, {
+          status,
+          headers: upstream.headers,
+        });
+      }
+    }
+
     // The endpoint responded (success, or an application-level error) — it is
     // reachable, so clear any breaker state for it.
     recordRpcSuccess(healthMap, endpoint.id);
-    const headers = apiHeaders("short");
-    headers.set("cache-control", "no-store");
-    headers.set("content-type", JSON_CONTENT_TYPE);
-    headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
-    headers.set("x-metagraph-rpc-provider", endpoint.provider);
-    headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
-    return new Response(text, { status: status || 502, headers });
+    return streamRpcResponse(upstream, endpoint, attempts, status);
   }
 
   // Every attempt failed transiently. Return a fixed message — never echo an
