@@ -504,10 +504,22 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     cacheKey = await rpcCacheKey(rpcBody.method, rpcBody.params);
     const hit = await cache.match(cacheKey);
     if (hit) {
-      const headers = new Headers(hit.headers);
-      headers.set("cache-control", "no-store");
-      headers.set("x-metagraph-rpc-cache", "hit");
-      return new Response(hit.body, { status: 200, headers });
+      const cachedText = await hit.text();
+      let cachedPayload;
+      try {
+        cachedPayload = JSON.parse(cachedText);
+      } catch {
+        cachedPayload = null;
+      }
+      if (cachedPayload && cachedPayload.result !== undefined) {
+        const headers = new Headers(hit.headers);
+        headers.set("cache-control", "no-store");
+        headers.set("x-metagraph-rpc-cache", "hit");
+        return new Response(
+          JSON.stringify(rpcResultEnvelope(rpcBody, cachedPayload.result)),
+          { status: 200, headers },
+        );
+      }
     }
   }
 
@@ -527,7 +539,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       // body is not JSON; leave parsed null so it is not cached.
     }
     if (parsed && parsed.result !== undefined && parsed.error === undefined) {
-      const cached = new Response(text, {
+      const cached = new Response(JSON.stringify({ result: parsed.result }), {
         status: 200,
         headers: {
           "content-type": JSON_CONTENT_TYPE,
@@ -604,6 +616,15 @@ export function rpcCachePolicy(method, params) {
     default:
       return { cacheable: false, ttl: 0 };
   }
+}
+
+function rpcResultEnvelope(requestBody, result) {
+  const envelope = { jsonrpc: "2.0" };
+  if (Object.prototype.hasOwnProperty.call(requestBody, "id")) {
+    envelope.id = requestBody.id;
+  }
+  envelope.result = result;
+  return envelope;
 }
 
 async function rpcCacheKey(method, params) {
