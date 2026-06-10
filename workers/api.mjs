@@ -443,6 +443,32 @@ const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 // error by trying every node).
 const TRANSIENT_RPC_ERROR_CODES = new Set([-32603]); // internal error
 
+// In-isolate circuit breaker: count consecutive transient failures per endpoint
+// and temporarily eject (deprioritise) repeat offenders. Per-isolate only (no
+// global view, resets on cold start) — cheap and enough to ride out the burst
+// that matters. RPC_HEALTH is the module-default map; injectable for tests.
+const RPC_HEALTH = new Map(); // endpointId -> { fails, ejectedUntil }
+const RPC_EJECT_THRESHOLD = 3;
+const RPC_EJECT_COOLDOWN_MS = 30_000;
+
+export function recordRpcFailure(map, id, now) {
+  const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
+  entry.fails += 1;
+  if (entry.fails >= RPC_EJECT_THRESHOLD) {
+    entry.ejectedUntil = now + RPC_EJECT_COOLDOWN_MS;
+  }
+  map.set(id, entry);
+}
+
+export function recordRpcSuccess(map, id) {
+  map.delete(id);
+}
+
+export function isRpcEndpointEjected(map, id, now) {
+  const entry = map.get(id);
+  return Boolean(entry && entry.ejectedUntil > now);
+}
+
 // Decide how to treat one upstream attempt: "transient" (fail over to the next
 // endpoint), "success"/"fatal" (return this upstream's response to the client).
 export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
@@ -469,6 +495,7 @@ export async function proxyWithFailover(
     fetchFn = fetch,
     maxAttempts = RPC_MAX_ATTEMPTS,
     timeoutMs = RPC_ATTEMPT_TIMEOUT_MS,
+    healthMap = RPC_HEALTH,
   },
 ) {
   const attempts = [];
@@ -500,6 +527,7 @@ export async function proxyWithFailover(
     if (
       classifyUpstreamAttempt({ thrown, status, parsedBody }) === "transient"
     ) {
+      recordRpcFailure(healthMap, endpoint.id, Date.now());
       attempts.push({
         endpoint_id: endpoint.id,
         reason: thrown ? "unreachable" : `status-${status}`,
@@ -507,6 +535,9 @@ export async function proxyWithFailover(
       continue;
     }
 
+    // The endpoint responded (success, or an application-level error) — it is
+    // reachable, so clear any breaker state for it.
+    recordRpcSuccess(healthMap, endpoint.id);
     const headers = apiHeaders("short");
     headers.set("cache-control", "no-store");
     headers.set("content-type", JSON_CONTENT_TYPE);
@@ -1081,8 +1112,14 @@ function contractVersion(env) {
 // (favour higher score, keep load spread) so failover walks best→worst without
 // always hammering one upstream. wss:// endpoints are dropped (not HTTP-
 // proxyable); a genuinely unsafe URL is reported (for a 502) only when no safe
-// endpoint exists. randomFn injectable for tests.
-export function orderSafeRpcEndpoints(pool, randomFn = Math.random) {
+// endpoint exists. Circuit-breaker-ejected endpoints are deprioritised to the
+// back (never removed) so a fully-ejected pool still self-heals via half-open
+// retries. randomFn / healthMap / now injectable for tests.
+export function orderSafeRpcEndpoints(
+  pool,
+  randomFn = Math.random,
+  { healthMap = RPC_HEALTH, now = Date.now() } = {},
+) {
   const safe = [];
   let unsafeEndpoint = null;
   for (const endpoint of pool?.endpoints || []) {
@@ -1100,12 +1137,19 @@ export function orderSafeRpcEndpoints(pool, randomFn = Math.random) {
   }
 
   const remaining = [...safe];
-  const ordered = [];
+  const shuffled = [];
   while (remaining.length) {
     const pick = weightedPickEndpoint(remaining, randomFn);
-    ordered.push(pick);
+    shuffled.push(pick);
     remaining.splice(remaining.indexOf(pick), 1);
   }
+  const live = shuffled.filter(
+    (e) => !isRpcEndpointEjected(healthMap, e.id, now),
+  );
+  const ejected = shuffled.filter((e) =>
+    isRpcEndpointEjected(healthMap, e.id, now),
+  );
+  const ordered = [...live, ...ejected];
   return {
     endpoints: ordered,
     unsafeEndpoint: ordered.length ? null : unsafeEndpoint,

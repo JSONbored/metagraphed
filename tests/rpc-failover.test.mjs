@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   classifyUpstreamAttempt,
+  isRpcEndpointEjected,
   orderSafeRpcEndpoints,
   proxyWithFailover,
+  recordRpcFailure,
+  recordRpcSuccess,
 } from "../workers/api.mjs";
 
 const SAFE_A = "https://bittensor-finney.api.onfinality.io/public";
@@ -111,8 +114,54 @@ describe("orderSafeRpcEndpoints", () => {
   });
 });
 
+describe("circuit breaker", () => {
+  test("ejects after 3 consecutive failures, half-opens after cooldown", () => {
+    const map = new Map();
+    recordRpcFailure(map, "a", 1000);
+    recordRpcFailure(map, "a", 1000);
+    assert.equal(isRpcEndpointEjected(map, "a", 1000), false);
+    recordRpcFailure(map, "a", 1000);
+    assert.equal(isRpcEndpointEjected(map, "a", 1000), true);
+    assert.equal(isRpcEndpointEjected(map, "a", 1000 + 31_000), false);
+  });
+
+  test("success clears breaker state", () => {
+    const map = new Map();
+    for (let i = 0; i < 3; i += 1) recordRpcFailure(map, "a", 0);
+    assert.equal(isRpcEndpointEjected(map, "a", 0), true);
+    recordRpcSuccess(map, "a");
+    assert.equal(isRpcEndpointEjected(map, "a", 0), false);
+  });
+
+  test("ordering deprioritises an ejected endpoint to the back", () => {
+    const map = new Map();
+    for (let i = 0; i < 3; i += 1) recordRpcFailure(map, "a", 0);
+    const { endpoints } = orderSafeRpcEndpoints(
+      { endpoints: [ep("a", SAFE_A), ep("b", SAFE_B)] },
+      () => 0,
+      { healthMap: map, now: 0 },
+    );
+    assert.deepEqual(
+      endpoints.map((e) => e.id),
+      ["b", "a"],
+    );
+  });
+
+  test("a fully-ejected pool still returns all endpoints (half-open)", () => {
+    const map = new Map();
+    for (const id of ["a", "b"])
+      for (let i = 0; i < 3; i += 1) recordRpcFailure(map, id, 0);
+    const { endpoints } = orderSafeRpcEndpoints(
+      { endpoints: [ep("a", SAFE_A), ep("b", SAFE_B)] },
+      () => 0,
+      { healthMap: map, now: 0 },
+    );
+    assert.equal(endpoints.length, 2);
+  });
+});
+
 describe("proxyWithFailover", () => {
-  const base = { bodyText: "{}", poolId: "finney-rpc" };
+  const base = { bodyText: "{}", poolId: "finney-rpc", healthMap: new Map() };
 
   test("fails over from a network throw to the next endpoint", async () => {
     const fetchFn = scriptedFetch(
