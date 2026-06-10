@@ -36,12 +36,27 @@ jobs:
       - name: Validate release version
         run: bash scripts/validate-client-release.sh
 
-      - name: Build + pack dry-run
+      - name: Build package tarball
         working-directory: packages/client
         run: |
+          set -euo pipefail
           npm install --no-audit --no-fund
           npm run build
-          npm pack --dry-run
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tarball_count=$(find "$RUNNER_TEMP" -maxdepth 1 -type f -name "*.tgz" | wc -l | tr -d ' ')
+          if [ "$tarball_count" != "1" ]; then
+            echo "Expected exactly one package tarball, found $tarball_count" >&2
+            find "$RUNNER_TEMP" -maxdepth 1 -type f -name "*.tgz" -print >&2
+            exit 1
+          fi
+
+      - name: Upload package tarball
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: client-package-tarball
+          path: ${{ runner.temp }}/*.tgz
+          if-no-files-found: error
+          retention-days: 7
 
   publish:
     runs-on: ubuntu-latest
@@ -71,17 +86,25 @@ jobs:
         id: release
         run: bash scripts/validate-client-release.sh
 
-      - name: Build
-        working-directory: packages/client
-        run: |
-          npm install --no-audit --no-fund
-          npm run build
+      - name: Download package tarball
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: client-package-tarball
+          path: ${{ runner.temp }}/client-package
 
       - name: Publish to npm (OIDC trusted publishing)
-        working-directory: packages/client
         env:
           NPM_CONFIG_PROVENANCE: "true"
-        run: npm publish --access public --provenance --ignore-scripts
+        run: |
+          set -euo pipefail
+          tarball_count=$(find "$RUNNER_TEMP/client-package" -maxdepth 1 -type f -name "*.tgz" | wc -l | tr -d ' ')
+          if [ "$tarball_count" != "1" ]; then
+            echo "Expected exactly one package tarball, found $tarball_count" >&2
+            find "$RUNNER_TEMP/client-package" -maxdepth 1 -type f -name "*.tgz" -print >&2
+            exit 1
+          fi
+          tarball=$(find "$RUNNER_TEMP/client-package" -maxdepth 1 -type f -name "*.tgz" -print -quit)
+          npm publish "$tarball" --access public --provenance --ignore-scripts
 
       - name: Tag + GitHub release
         env:

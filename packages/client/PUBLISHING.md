@@ -37,8 +37,11 @@ Trusted Publisher, so a brand-new package needs one bootstrap step:
    `v` prefix) and merge.
 2. Run the **Publish client SDK** workflow (Actions → _Publish client SDK_ →
    _Run workflow_). It validates the version (tag + npm version must not already
-   exist), builds, `npm publish --provenance` via OIDC, then creates the
-   `client-v<version>` tag + a GitHub release.
+   exist), builds and packs the SDK in an unprivileged validation job, then the
+   `npm-production` job downloads that exact tarball and runs
+   `npm publish --provenance` via OIDC before creating the `client-v<version>`
+   tag + a GitHub release.
 
 Requirements (handled by the workflow): npm CLI ≥ 11.5.1, Node ≥ 22.14
-(workflow pins 24.16.0), `id-token: write`, `registry-url: https://registry.npmjs.org`.
+(workflow pins 24.16.0), `id-token: write` only on the tarball-publishing job,
+`registry-url: https://registry.npmjs.org`.
