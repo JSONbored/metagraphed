@@ -1,0 +1,118 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-10T19:03:53.966Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-10T19:03:53.966Z",
+          "content_type": "application/json",
+          "hash": "dcdf2ff24fb46cebfcd7f4fdaf01ffaec6ec05f4910a6586308c4af685d643fe",
+          "latency_ms": 1024,
+          "name": "Chutes OpenAPI schema",
+          "provider": "chutes",
+          "schema_url": "https://api.chutes.ai/openapi.json",
+          "shape": {
+            "component_schema_count": 95,
+            "has_global_security": false,
+            "method_counts": {
+              "delete": 14,
+              "get": 114,
+              "patch": 2,
+              "post": 52,
+              "put": 9
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 191,
+            "path_count": 166,
+            "sample_paths": [
+              "/.well-known/openid-configuration",
+              "/_metrics",
+              "/api_keys/",
+              "/api_keys/{api_key_id}",
+              "/audit/",
+              "/audit/download",
+              "/audit/miner_data",
+              "/bounties/",
+              "/bounties/{chute_id}/increase",
+              "/chutes/",
+              "/chutes/affine_available",
+              "/chutes/boosted",
+              "/chutes/code/{chute_id}",
+              "/chutes/diffusion",
+              "/chutes/gpu_count_history",
+              "/chutes/make_public",
+              "/chutes/miner_means",
+              "/chutes/miner_means/{chute_id}",
+              "/chutes/miner_means/{chute_id}.{ext}",
+              "/chutes/rolling_updates"
+            ],
+            "security_scheme_count": 1,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "FastAPI",
+            "version": "0.1.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-64-chutes-openapi",
+          "url": "https://api.chutes.ai/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 191,
+      "total_path_count": 166
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-10T19:03:53.966Z",
+      "status": "captured",
+      "surface_count": 3,
+      "surfaces": [
+        {
+          "auth_required": false,
+          "id": "sn-64-chutes-pricing-api",
+          "kind": "subnet-api",
+          "name": "Chutes pricing API",
+          "probe_enabled": true,
+          "provider": "chutes",
+          "schema_url": null,
+          "url": "https://api.chutes.ai/pricing"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-64-website-link-chutes-ai-data-artifact-5",
+          "kind": "data-artifact",
+          "name": "Chutes data artifact",
+          "probe_enabled": true,
+          "provider": "chutes",
+          "schema_url": null,
+          "url": "https://chutes.ai/app?type=llm"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-64-website-link-chutes-ai-data-artifact-6",
+          "kind": "data-artifact",
+          "name": "Chutes data artifact",
+          "probe_enabled": true,
+          "provider": "chutes",
+          "schema_url": null,
+          "url": "https://chutes.ai/app?type=diffusion"
+        }
+      ]
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 64,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-64",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

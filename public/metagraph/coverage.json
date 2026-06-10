@@ -15,8 +15,8 @@
         "present": 129
       },
       "openapi": {
-        "pct": 8,
-        "present": 10
+        "pct": 9,
+        "present": 12
       },
       "source-repo": {
         "pct": 85,
@@ -62,7 +62,7 @@
   "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
   "network": "finney",
   "probed_count": 129,
-  "probed_surface_count": 1136,
+  "probed_surface_count": 1138,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
@@ -77,5 +77,5 @@
     },
     "overlays": "registry/subnets"
   },
-  "surface_count": 1143
+  "surface_count": 1145
 }

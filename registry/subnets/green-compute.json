@@ -80,6 +80,28 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-110-green-compute-openapi",
+      "kind": "openapi",
+      "name": "Green Compute Gateway OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema served publicly by the Green Compute API gateway (api.green-compute.com). Captured for schema-shape metadata only; endpoints are not invoked and no response payloads are persisted.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://api.green-compute.com/openapi.json",
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://api.green-compute.com/openapi.json"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-110-tensorplex-source-repo-1",
       "kind": "source-repo",

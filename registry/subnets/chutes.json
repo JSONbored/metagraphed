@@ -201,6 +201,28 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-openapi",
+      "kind": "openapi",
+      "name": "Chutes OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema served publicly by the Chutes API gateway (api.chutes.ai). Captured for schema-shape metadata only; endpoints are not invoked and no response payloads are persisted.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://api.chutes.ai/openapi.json",
+        "https://github.com/chutesai/chutes"
+      ],
+      "url": "https://api.chutes.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-64-taopedia-article",
       "kind": "docs",
