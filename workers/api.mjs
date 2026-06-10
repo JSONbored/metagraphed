@@ -197,7 +197,7 @@ async function handleRawArtifactRequest(request, env, url) {
 }
 
 // Self-hosted SVG health badges for subnet READMEs, e.g.
-// ![](https://metagraph.sh/metagraph/health/badges/7.svg) — no shields.io
+// ![](https://api.metagraph.sh/metagraph/health/badges/7.svg) — no shields.io
 // dependency, which drives backlinks/adoption. Rendered from the badge JSON
 // artifact (label/message/color), degrading to a neutral "unavailable" badge.
 const BADGE_SVG_PATTERN = /^\/metagraph\/health\/badges\/(\d+)\.svg$/;

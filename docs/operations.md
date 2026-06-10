@@ -127,7 +127,7 @@ METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download
   refresh advances every ~6h.
 - When the data is older than `max_age_hours` (default 12 — two missed 6h refreshes;
   override with `METAGRAPH_HEALTH_MAX_AGE_HOURS`), `status` becomes `degraded` and the
-  route returns **HTTP 503**. Point an uptime monitor at `https://metagraph.sh/health`
+  route returns **HTTP 503**. Point an uptime monitor at `https://api.metagraph.sh/health`
   so a silently-broken data-refresh pages instead of serving stale data unnoticed.
 - A present-but-stale pointer trips it; a missing pointer (local/dev) stays `ok`.
 
@@ -164,7 +164,7 @@ Before flipping the flag:
      action: managed challenge/block) to absorb distributed abuse;
    - a **custom rule** to block non-`POST` methods and oversized bodies on `/rpc/*`;
    - ensure the zone's Managed Ruleset / Bot Fight Mode is on.
-2. **Verify the pool.** `curl https://metagraph.sh/metagraph/rpc/pools.json` and confirm
+2. **Verify the pool.** `curl https://api.metagraph.sh/metagraph/rpc/pools.json` and confirm
    at least one endpoint per pool has `"pool_eligible": true` (otherwise the proxy
    returns `503 rpc_endpoint_unavailable`).
 3. **Flip the flag.** Set `METAGRAPH_ENABLE_RPC_PROXY` to `"true"` in `wrangler.jsonc`;

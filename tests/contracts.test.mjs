@@ -107,7 +107,7 @@ describe("public contract registry", () => {
       await loadOpenApiComponentSchemas(generatedAt),
     );
 
-    assert.equal(contracts.primary_domain, "metagraph.sh");
+    assert.equal(contracts.primary_domain, "api.metagraph.sh");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");

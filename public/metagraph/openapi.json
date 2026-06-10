@@ -79,7 +79,7 @@
                 "const": "/api/v1/openapi.json"
               },
               "primary_domain": {
-                "const": "metagraph.sh"
+                "const": "api.metagraph.sh"
               },
               "response_envelope": {
                 "$ref": "#/components/schemas/ResponseEnvelopeContract"
@@ -694,7 +694,7 @@
                 "const": "/metagraph/openapi.json"
               },
               "primary_domain": {
-                "const": "metagraph.sh"
+                "const": "api.metagraph.sh"
               },
               "status_domain": {
                 "type": "null"
@@ -14595,7 +14595,7 @@
   "servers": [
     {
       "description": "Production",
-      "url": "https://metagraph.sh"
+      "url": "https://api.metagraph.sh"
     }
   ],
   "x-metagraphed": {

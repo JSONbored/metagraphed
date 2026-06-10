@@ -1,6 +1,6 @@
 # Metagraphed Backend Artifact Contracts
 
-Metagraphed v1 is backend-first. The public contract is static JSON under `https://metagraph.sh/metagraph/*`; UI work can consume these artifacts later without changing the registry pipeline.
+Metagraphed v1 is backend-first. The public contract is static JSON under `https://api.metagraph.sh/metagraph/*`; UI work can consume these artifacts later without changing the registry pipeline.
 
 ## Contract Rules
 

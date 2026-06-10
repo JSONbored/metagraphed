@@ -793,7 +793,7 @@ export interface components {
             /** @constant */
             openapi_url: "/api/v1/openapi.json";
             /** @constant */
-            primary_domain: "metagraph.sh";
+            primary_domain: "api.metagraph.sh";
             response_envelope: components["schemas"]["ResponseEnvelopeContract"];
             routes: components["schemas"]["ApiRoute"][];
             /** @constant */
@@ -944,7 +944,7 @@ export interface components {
             /** @constant */
             openapi_url: "/metagraph/openapi.json";
             /** @constant */
-            primary_domain: "metagraph.sh";
+            primary_domain: "api.metagraph.sh";
             status_domain: null;
             /** @constant */
             type_definitions_url: "/metagraph/types.d.ts";

@@ -268,4 +268,4 @@ jobs:
           echo "::error::smoke:live still failing after retries"
           exit 1
         env:
-          METAGRAPH_LIVE_BASE_URL: https://metagraph.sh
+          METAGRAPH_LIVE_BASE_URL: https://api.metagraph.sh

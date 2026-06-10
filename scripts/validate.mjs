@@ -1004,8 +1004,8 @@ async function validateGeneratedArtifacts(
     "type definitions artifact: public/metagraph/types.d.ts is required",
   );
   assert(
-    contractsArtifact.primary_domain === "metagraph.sh",
-    "contracts artifact: primary_domain must be metagraph.sh",
+    contractsArtifact.primary_domain === "api.metagraph.sh",
+    "contracts artifact: primary_domain must be api.metagraph.sh",
   );
   assert(
     contractsArtifact.status_domain === null,
@@ -1041,8 +1041,8 @@ async function validateGeneratedArtifacts(
     );
   }
   assert(
-    apiIndexArtifact.primary_domain === "metagraph.sh",
-    "api index: primary_domain must be metagraph.sh",
+    apiIndexArtifact.primary_domain === "api.metagraph.sh",
+    "api index: primary_domain must be api.metagraph.sh",
   );
   assert(
     Array.isArray(apiIndexArtifact.routes),

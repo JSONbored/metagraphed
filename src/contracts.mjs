@@ -2,7 +2,10 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
-export const PRIMARY_DOMAIN = "metagraph.sh";
+// The API + artifacts are served from the api subdomain; the bare apex
+// (metagraph.sh) is the metagraph-finder UI. PRIMARY_DOMAIN drives the OpenAPI
+// server URL and the consumer metadata in contracts.json / api-index.json.
+export const PRIMARY_DOMAIN = "api.metagraph.sh";
 export const API_BASE_PATH = "/api/v1";
 export const ARTIFACT_BASE_PATH = "/metagraph";
 export const TYPE_DEFINITIONS_PATH = "/metagraph/types.d.ts";

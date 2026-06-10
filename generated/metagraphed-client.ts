@@ -67,7 +67,7 @@ export async function metagraphedFetch<Path extends ApiPath>(
   path: Path,
   options: MetagraphedFetchOptions<Path> = {},
 ): Promise<JsonResponse<Path>> {
-  const { baseUrl = "https://metagraph.sh", pathParams, query, ...init } =
+  const { baseUrl = "https://api.metagraph.sh", pathParams, query, ...init } =
     options;
   const resolvedPath = interpolatePath(
     String(path),

@@ -404,7 +404,7 @@
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "openapi_url": "/api/v1/openapi.json",
-  "primary_domain": "metagraph.sh",
+  "primary_domain": "api.metagraph.sh",
   "response_envelope": {
     "error_schema_ref": "#/components/schemas/ErrorEnvelope",
     "fields": [

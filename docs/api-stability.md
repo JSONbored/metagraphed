@@ -1,7 +1,7 @@
 # Metagraphed API Stability Contract (`/api/v1`)
 
 This is the consumer-facing stability contract for the Worker API served from
-`https://metagraph.sh/api/v1/*`. It is the reference for the frontend
+`https://api.metagraph.sh/api/v1/*`. It is the reference for the frontend
 (`jsonbored/metagraph-finder`) and any external integrator. The canonical machine
 contract is `public/metagraph/openapi.json` plus the generated
 `generated/metagraphed-api.d.ts` and `generated/metagraphed-client.ts`; this doc
@@ -57,7 +57,7 @@ and only changes on a breaking envelope change.
 
 ## Raw Artifact Routes
 
-`https://metagraph.sh/metagraph/*.json` returns the raw artifact (no envelope) for
+`https://api.metagraph.sh/metagraph/*.json` returns the raw artifact (no envelope) for
 any path in the published artifact contract, with `x-metagraph-artifact-source` and
 `x-metagraph-storage-tier` headers. The enveloped `/api/v1/*` routes are preferred
 for app consumption; raw routes are convenient for static/diff tooling.
@@ -71,7 +71,7 @@ for app consumption; raw routes are convenient for static/diff tooling.
 
 ## Operational Route: `/health`
 
-`GET https://metagraph.sh/health` is a no-I/O readiness probe (not part of the
+`GET https://api.metagraph.sh/health` is a no-I/O readiness probe (not part of the
 versioned `/api/v1` contract). It returns `200` with
 `{ status, service, contract_version, rpc_proxy_enabled, bindings: { assets, r2,
 kv } }` so uptime checks and load balancers can confirm the Worker is live and
@@ -149,22 +149,22 @@ Copy-paste against the live beta (`https://metagraph.sh`):
 
 ```bash
 # Registry-wide coverage + the completeness scoreboard (the headline metric)
-curl -s https://metagraph.sh/api/v1/coverage | jq '.data.completeness'
+curl -s https://api.metagraph.sh/api/v1/coverage | jq '.data.completeness'
 
 # Completeness leaderboard — subnets that most need contributions first
-curl -s 'https://metagraph.sh/api/v1/profiles?sort=completeness_score&order=asc&limit=10' \
+curl -s 'https://api.metagraph.sh/api/v1/profiles?sort=completeness_score&order=asc&limit=10' \
   | jq '.data.profiles[] | {netuid, name, completeness_score}'
 
 # One subnet's full profile (identity, surfaces, gaps)
-curl -s https://metagraph.sh/api/v1/subnets/7/profile | jq '.data'
+curl -s https://api.metagraph.sh/api/v1/subnets/7/profile | jq '.data'
 
 # Search across the registry
-curl -s 'https://metagraph.sh/api/v1/search?q=gittensor' | jq '.data'
+curl -s 'https://api.metagraph.sh/api/v1/search?q=gittensor' | jq '.data'
 
 # Probe-derived health for a subnet + its embeddable badge
-curl -s https://metagraph.sh/api/v1/subnets/7/health | jq '.data'
-#   <img src="https://metagraph.sh/metagraph/health/badges/7.svg">
+curl -s https://api.metagraph.sh/api/v1/subnets/7/health | jq '.data'
+#   <img src="https://api.metagraph.sh/metagraph/health/badges/7.svg">
 
 # Worker readiness (not part of /api/v1)
-curl -s https://metagraph.sh/health | jq
+curl -s https://api.metagraph.sh/health | jq
 ```

@@ -32,10 +32,7 @@
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
   },
   "routes": [
-    {
-      "pattern": "metagraph.sh",
-      "custom_domain": true,
-    },
+    { "pattern": "api.metagraph.sh", "custom_domain": true },
   ],
   "kv_namespaces": [
     {

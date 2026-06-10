@@ -315,7 +315,7 @@ const checks = [
   ],
   [
     "/api/v1/contracts",
-    (body) => assert.equal(body.data.primary_domain, "metagraph.sh"),
+    (body) => assert.equal(body.data.primary_domain, "api.metagraph.sh"),
   ],
   ["/api/v1/openapi.json", (body) => assert.equal(body.data.openapi, "3.1.0")],
   [

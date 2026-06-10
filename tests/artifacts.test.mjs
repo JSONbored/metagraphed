@@ -816,7 +816,7 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(reviewQueue.count, reviewQueue.candidates.length);
-  assert.equal(contracts.primary_domain, "metagraph.sh");
+  assert.equal(contracts.primary_domain, "api.metagraph.sh");
   assert.equal(contracts.status_domain, null);
   assert.equal(
     contracts.artifacts.some(

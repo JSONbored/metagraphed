@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { API_ROUTES } from "../src/contracts.mjs";
 
-const DEFAULT_BASE_URL = "https://metagraph.sh";
+const DEFAULT_BASE_URL = "https://api.metagraph.sh";
 const baseUrl = normalizeBaseUrl(
   process.env.METAGRAPH_LIVE_BASE_URL || DEFAULT_BASE_URL,
 );

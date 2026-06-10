@@ -14,9 +14,9 @@ The native Bittensor metagraph tells you what is happening at the subnet protoco
 Example routes:
 
 - `https://metagraph.sh/subnets/7`
-- `https://metagraph.sh/metagraph/subnets.json`
-- `https://metagraph.sh/metagraph/health/subnets/7.json`
-- `https://metagraph.sh/metagraph/health/badges/7.json`
+- `https://api.metagraph.sh/metagraph/subnets.json`
+- `https://api.metagraph.sh/metagraph/health/subnets/7.json`
+- `https://api.metagraph.sh/metagraph/health/badges/7.json`
 
 ## What This Is
 
@@ -125,7 +125,7 @@ The generated files are deterministic and suitable for static hosting, R2-backed
 Every subnet has a self-hosted SVG health badge (no third-party badge service):
 
 ```markdown
-![Allways SN7 health](https://metagraph.sh/metagraph/health/badges/7.svg)
+![Allways SN7 health](https://api.metagraph.sh/metagraph/health/badges/7.svg)
 ```
 
 Badges render from the published `/metagraph/health/badges/{netuid}.json`

@@ -525,7 +525,7 @@
     "Health and schema artifacts are operational observations, not protocol authority."
   ],
   "openapi_url": "/metagraph/openapi.json",
-  "primary_domain": "metagraph.sh",
+  "primary_domain": "api.metagraph.sh",
   "schema_version": 1,
   "status_domain": null,
   "type_definitions_url": "/metagraph/types.d.ts"
