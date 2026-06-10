@@ -34,7 +34,6 @@ const ROUTES = API_ROUTES.map((entry) => ({
 // state_getStorage) and anything mutating — those stay blocked by the allowlist
 // plus DENIED_RPC_PREFIXES.
 const SAFE_RPC_METHODS = new Set([
-  "chain_getBlock",
   "chain_getBlockHash",
   "chain_getFinalizedHead",
   "chain_getHeader",

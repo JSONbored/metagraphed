@@ -694,6 +694,27 @@ describe("Worker runtime", () => {
     assert.equal(blocked.status, 403);
     assert.equal((await blocked.json()).error.code, "rpc_method_blocked");
 
+    const fullBlockRead = await handleRequest(
+      new Request("https://metagraph.sh/rpc/v1/finney", {
+        method: "POST",
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "chain_getBlock",
+          params: [
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+          ],
+        }),
+      }),
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      {},
+    );
+    assert.equal(fullBlockRead.status, 403);
+    assert.equal(
+      (await fullBlockRead.json()).error.code,
+      "rpc_method_blocked",
+    );
+
     const tooLargeByHeader = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", {
         method: "POST",
