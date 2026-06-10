@@ -1,43 +1,101 @@
 name: Publish client SDK
 
-# Publishes @metagraphed/client (packages/client) to npm. Triggered by a GitHub
-# Release (or manual dispatch). The package syncs the committed generated client
-# + API types at build time, so it always tracks the live /api/v1 contract.
-# Requires the NPM_TOKEN secret; provenance is attached via OIDC.
+# Publishes @metagraphed/client (packages/client) to npm via OIDC trusted
+# publishing — no NPM_TOKEN. Manual trigger; the version is read from
+# packages/client/package.json. Requires a one-time npm-side setup (see
+# packages/client/PUBLISHING.md): the @metagraphed org, a first bootstrap
+# publish, and a Trusted Publisher pointing at this repo + workflow + the
+# `npm-production` environment.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-client-${{ github.ref }}
+  group: client-package-release
   cancel-in-progress: false
 
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 22
+          node-version: 24.16.0
           registry-url: https://registry.npmjs.org
 
-      - name: Build and publish @metagraphed/client
+      - name: Validate release version
+        run: bash scripts/validate-client-release.sh
+
+      - name: Build + pack dry-run
         working-directory: packages/client
         run: |
           npm install --no-audit --no-fund
-          npm publish --access public --provenance
+          npm run build
+          npm pack --dry-run
+
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: validate
+    environment: npm-production
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: client-package-release
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24.16.0
+          registry-url: https://registry.npmjs.org
+
+      - name: Validate release version
+        id: release
+        run: bash scripts/validate-client-release.sh
+
+      - name: Build
+        working-directory: packages/client
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Publish to npm (OIDC trusted publishing)
+        working-directory: packages/client
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: npm publish --access public --provenance --ignore-scripts
+
+      - name: Tag + GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "@metagraphed/client v$RELEASE_VERSION"
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          gh auth setup-git
+          git push origin "$RELEASE_TAG"
+          gh release create "$RELEASE_TAG" \
+            --title "@metagraphed/client v$RELEASE_VERSION" \
+            --notes "Published \`@metagraphed/client@$RELEASE_VERSION\` to npm with provenance via OIDC trusted publishing. https://www.npmjs.com/package/@metagraphed/client/v/$RELEASE_VERSION"
