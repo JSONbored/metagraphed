@@ -206,6 +206,28 @@ describe("proxyWithFailover", () => {
     assert.equal(canceled, true);
   });
 
+  test("fails over when a 2xx upstream body errors during inspection", async () => {
+    const healthMap = new Map();
+    const brokenBody = new globalThis.ReadableStream({
+      pull(controller) {
+        controller.error(new Error("upstream reset"));
+      },
+    });
+    const fetchFn = scriptedFetch(
+      new Response(brokenBody, { status: 200 }),
+      jsonResponse(200, { result: 1 }),
+    );
+    const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
+      ...base,
+      fetchFn,
+      healthMap,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
+    assert.equal(res.headers.get("x-metagraph-rpc-attempts"), "2");
+    assert.equal(healthMap.get("a").fails, 1);
+  });
+
   test("fails over on a node-internal JSON-RPC error", async () => {
     const fetchFn = scriptedFetch(
       jsonResponse(200, { error: { code: -32603, message: "internal" } }),

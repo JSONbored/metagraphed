@@ -578,10 +578,17 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
 
   // Cacheable method, cache miss: inspect a bounded clone so oversized upstream
   // results are streamed back to the client instead of buffered in the Worker.
-  const inspect = await readResponseTextWithLimit(
-    response.clone(),
-    RPC_CLASSIFY_BODY_LIMIT_BYTES,
-  );
+  let inspect;
+  try {
+    inspect = await readResponseTextWithLimit(
+      response.clone(),
+      RPC_CLASSIFY_BODY_LIMIT_BYTES,
+    );
+  } catch {
+    // Classification is best-effort: a flaky upstream body should not turn a
+    // proxied response into a Worker exception while cache inspection is active.
+    return new Response(response.body, { status: response.status, headers });
+  }
   if (!inspect.truncated) {
     let parsed = null;
     try {
@@ -800,63 +807,76 @@ export async function proxyWithFailover(
     }
 
     if (upstream && status < 400) {
-      if (upstream.body?.tee) {
-        const [inspectBody, clientBody] = upstream.body.tee();
-        const inspect = await readResponseTextWithLimit(
-          new Response(inspectBody),
-          RPC_CLASSIFY_BODY_LIMIT_BYTES,
-        );
-        if (!inspect.truncated) {
-          try {
-            parsedBody = JSON.parse(inspect.text);
-          } catch {
-            parsedBody = null;
+      let clientBodyToCancel = null;
+      try {
+        if (upstream.body?.tee) {
+          const [inspectBody, clientBody] = upstream.body.tee();
+          clientBodyToCancel = clientBody;
+          const inspect = await readResponseTextWithLimit(
+            new Response(inspectBody),
+            RPC_CLASSIFY_BODY_LIMIT_BYTES,
+          );
+          if (!inspect.truncated) {
+            try {
+              parsedBody = JSON.parse(inspect.text);
+            } catch {
+              parsedBody = null;
+            }
+            if (
+              classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
+              "transient"
+            ) {
+              await clientBody.cancel();
+              recordRpcFailure(healthMap, endpoint.id, Date.now());
+              attempts.push({
+                endpoint_id: endpoint.id,
+                reason: `status-${status}`,
+              });
+              continue;
+            }
           }
-          if (
-            classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
-            "transient"
-          ) {
-            await clientBody.cancel();
-            recordRpcFailure(healthMap, endpoint.id, Date.now());
-            attempts.push({
-              endpoint_id: endpoint.id,
-              reason: `status-${status}`,
-            });
-            continue;
+          upstream = new Response(clientBody, {
+            status: upstream.status,
+            statusText: upstream.statusText,
+            headers: upstream.headers,
+          });
+        } else {
+          const inspect = await readResponseTextWithLimit(
+            upstream,
+            RPC_CLASSIFY_BODY_LIMIT_BYTES,
+          );
+          if (!inspect.truncated) {
+            try {
+              parsedBody = JSON.parse(inspect.text);
+            } catch {
+              parsedBody = null;
+            }
+            if (
+              classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
+              "transient"
+            ) {
+              recordRpcFailure(healthMap, endpoint.id, Date.now());
+              attempts.push({
+                endpoint_id: endpoint.id,
+                reason: `status-${status}`,
+              });
+              continue;
+            }
           }
+          upstream = new Response(inspect.text, {
+            status,
+            headers: upstream.headers,
+          });
         }
-        upstream = new Response(clientBody, {
-          status: upstream.status,
-          statusText: upstream.statusText,
-          headers: upstream.headers,
+      } catch {
+        await clientBodyToCancel?.cancel?.().catch(() => {});
+        await upstream?.body?.cancel?.().catch(() => {});
+        recordRpcFailure(healthMap, endpoint.id, Date.now());
+        attempts.push({
+          endpoint_id: endpoint.id,
+          reason: "body-read-error",
         });
-      } else {
-        const inspect = await readResponseTextWithLimit(
-          upstream,
-          RPC_CLASSIFY_BODY_LIMIT_BYTES,
-        );
-        if (!inspect.truncated) {
-          try {
-            parsedBody = JSON.parse(inspect.text);
-          } catch {
-            parsedBody = null;
-          }
-          if (
-            classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
-            "transient"
-          ) {
-            recordRpcFailure(healthMap, endpoint.id, Date.now());
-            attempts.push({
-              endpoint_id: endpoint.id,
-              reason: `status-${status}`,
-            });
-            continue;
-          }
-        }
-        upstream = new Response(inspect.text, {
-          status,
-          headers: upstream.headers,
-        });
+        continue;
       }
     }
 
