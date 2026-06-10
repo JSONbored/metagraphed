@@ -1,0 +1,168 @@
+// Publish-time change-feed dispatcher (ADR 0001 webhooks).
+//
+// Runs after the data publish (r2:upload + kv:publish) in the scheduled refresh.
+// Reads the freshly-built changelog, derives the public change event, lists the
+// webhook subscriptions from the METAGRAPH_CONTROL KV namespace, and fires
+// HMAC-SHA256-signed POSTs to each matching subscriber (bounded fan-out, retries,
+// delivery-time URL re-validation). Individual delivery failures are logged but
+// NEVER fail the publish — a bad subscriber must not block the data pipeline.
+//
+// Safe by default: --dry-run (the default without --write) prints the event and
+// makes no network/KV calls. A real dispatch additionally requires
+// METAGRAPH_ALLOW_WEBHOOK_DISPATCH=1 + METAGRAPH_KV_NAMESPACE_ID.
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { readJson, repoRoot, stableStringify } from "./lib.mjs";
+import {
+  buildChangeEvent,
+  dispatchChangeEvent,
+  WEBHOOK_KV_PREFIX,
+} from "../src/webhooks.mjs";
+
+const args = new Set(process.argv.slice(2));
+const write = args.has("--write");
+const dryRun = args.has("--dry-run") || !write;
+
+const changelog = await readJson(
+  path.join(repoRoot, "public/metagraph/changelog.json"),
+);
+const buildSummary = await readJson(
+  path.join(repoRoot, "public/metagraph/build-summary.json"),
+);
+const pointer = {
+  published_at: buildSummary.published_at || null,
+  contract_version:
+    changelog.contract_version || buildSummary.contract_version || null,
+};
+const event = buildChangeEvent({ changelog, pointer });
+
+if (dryRun) {
+  console.log(
+    stableStringify({
+      mode: "dry-run",
+      event: {
+        type: event.type,
+        published_at: event.published_at,
+        change_kinds: event.change_kinds,
+        affected_netuids: event.affected_netuids,
+        summary: event.summary,
+      },
+    }),
+  );
+  process.exit(0);
+}
+
+if (process.env.METAGRAPH_ALLOW_WEBHOOK_DISPATCH !== "1") {
+  console.error(
+    "Refusing to dispatch without METAGRAPH_ALLOW_WEBHOOK_DISPATCH=1.",
+  );
+  process.exit(1);
+}
+const namespaceId = process.env.METAGRAPH_KV_NAMESPACE_ID;
+if (!namespaceId) {
+  console.error("METAGRAPH_KV_NAMESPACE_ID is required to dispatch webhooks.");
+  process.exit(1);
+}
+
+const keys = listKvKeys(namespaceId, WEBHOOK_KV_PREFIX);
+if (keys.length === 0) {
+  console.log("No webhook subscriptions registered; nothing to dispatch.");
+  process.exit(0);
+}
+
+const subscriptions = [];
+for (const key of keys) {
+  const raw = getKvValue(namespaceId, key);
+  if (!raw) continue;
+  try {
+    subscriptions.push(JSON.parse(raw));
+  } catch {
+    console.error(`::warning::skipping malformed subscription at ${key}`);
+  }
+}
+
+const results = await dispatchChangeEvent({
+  subscriptions,
+  event,
+  fetchFn: fetch,
+  now: () => new Date().toISOString(),
+  concurrency: 8,
+  timeoutMs: 8000,
+  maxAttempts: 3,
+});
+
+const tally = results.reduce((acc, result) => {
+  acc[result.status] = (acc[result.status] || 0) + 1;
+  return acc;
+}, {});
+for (const failure of results.filter((result) => result.status === "failed")) {
+  console.error(
+    `::warning::webhook ${failure.id} failed after ${failure.attempts} attempt(s): ${failure.reason} (status ${failure.status_code ?? "-"})`,
+  );
+}
+console.log(
+  stableStringify({
+    mode: "dispatch",
+    subscription_count: subscriptions.length,
+    results: tally,
+  }),
+);
+// Exit 0 regardless of per-subscriber failures: the data publish already
+// succeeded, and one broken endpoint must not fail the run.
+
+function listKvKeys(nsId, prefix) {
+  const stdout = runWrangler([
+    "kv",
+    "key",
+    "list",
+    "--namespace-id",
+    nsId,
+    "--prefix",
+    prefix,
+    "--remote",
+  ]);
+  if (!stdout) return [];
+  try {
+    const entries = JSON.parse(stdout);
+    return Array.isArray(entries)
+      ? entries.map((entry) => entry.name).filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function getKvValue(nsId, key) {
+  return runWrangler([
+    "kv",
+    "key",
+    "get",
+    key,
+    "--namespace-id",
+    nsId,
+    "--remote",
+  ]);
+}
+
+// Best-effort: a KV/wrangler hiccup here must NOT fail the publish run (the data
+// is already live and the smoke step still needs to run). Log a warning and
+// return null so the caller degrades to "no subscriptions / skip".
+function runWrangler(wranglerArgs) {
+  const bin = path.join(
+    repoRoot,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "wrangler.cmd" : "wrangler",
+  );
+  const result = spawnSync(bin, wranglerArgs, {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  if (result.status !== 0) {
+    console.error(
+      `::warning::wrangler ${wranglerArgs[1] ?? ""} failed; skipping webhook dispatch. ${(result.stderr || result.stdout || "").trim()}`,
+    );
+    return null;
+  }
+  return result.stdout;
+}

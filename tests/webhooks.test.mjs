@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildChangeEvent,
+  deliverChangeEvent,
+  dispatchChangeEvent,
   eventMatchesFilters,
   generateSecret,
   generateSubscriptionId,
@@ -13,6 +15,7 @@ import {
   subscriptionStorageKey,
   timingSafeEqual,
   validateSubscriptionInput,
+  WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
 
 describe("isPublicWebhookUrl", () => {
@@ -209,5 +212,153 @@ describe("signing + identity helpers", () => {
     assert.equal(view.secret, undefined);
     assert.equal(view.url, "https://x.com");
     assert.deepEqual(view.filters, { netuids: [7] });
+  });
+});
+
+describe("deliverChangeEvent", () => {
+  const event = {
+    type: "metagraph.publish",
+    change_kinds: ["artifacts"],
+    affected_netuids: [7],
+  };
+  const sub = (over = {}) => ({
+    id: "s1",
+    url: "https://hooks.example.com/mg",
+    secret: "subscription-secret-value",
+    filters: {},
+    ...over,
+  });
+  const now = () => "2026-06-10T00:00:00.000Z";
+
+  test("delivers with a signed body on 2xx", async () => {
+    const calls = [];
+    const fetchFn = async (url, init) => {
+      calls.push({ url, init });
+      return new Response("ok", { status: 200 });
+    };
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+    });
+    assert.equal(res.status, "delivered");
+    assert.equal(res.attempts, 1);
+    assert.equal(calls.length, 1);
+    const sig = calls[0].init.headers[WEBHOOK_SIGNATURE_HEADER];
+    assert.equal(sig, await signPayload(sub().secret, JSON.stringify(event)));
+  });
+
+  test("skips an unsafe URL without fetching", async () => {
+    let called = false;
+    const fetchFn = async () => {
+      called = true;
+      return new Response("", { status: 200 });
+    };
+    const res = await deliverChangeEvent({
+      subscription: sub({ url: "https://127.0.0.1/x" }),
+      event,
+      fetchFn,
+      now,
+    });
+    assert.equal(res.status, "skipped");
+    assert.equal(res.reason, "unsafe-url");
+    assert.equal(called, false);
+  });
+
+  test("filters out a non-matching subscription", async () => {
+    const res = await deliverChangeEvent({
+      subscription: sub({ filters: { netuids: [999] } }),
+      event,
+      fetchFn: async () => new Response("", { status: 200 }),
+      now,
+    });
+    assert.equal(res.status, "filtered");
+  });
+
+  test("retries 5xx then succeeds", async () => {
+    let n = 0;
+    const fetchFn = async () => {
+      n += 1;
+      return new Response("", { status: n < 2 ? 503 : 200 });
+    };
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+    });
+    assert.equal(res.status, "delivered");
+    assert.equal(res.attempts, 2);
+  });
+
+  test("does NOT retry a 4xx rejection", async () => {
+    let n = 0;
+    const fetchFn = async () => {
+      n += 1;
+      return new Response("", { status: 400 });
+    };
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+    });
+    assert.equal(res.status, "failed");
+    assert.equal(res.status_code, 400);
+    assert.equal(n, 1);
+  });
+
+  test("fails after exhausting retries on persistent 5xx", async () => {
+    const fetchFn = async () => new Response("", { status: 502 });
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+      maxAttempts: 3,
+    });
+    assert.equal(res.status, "failed");
+    assert.equal(res.attempts, 3);
+    assert.equal(res.reason, "http-502");
+  });
+});
+
+describe("dispatchChangeEvent", () => {
+  test("returns one result per subscription and respects filters/safety", async () => {
+    const event = { change_kinds: ["subnets"], affected_netuids: [7, 9] };
+    const subs = [
+      {
+        id: "a",
+        url: "https://a.example.com/h",
+        secret: "secret-value-aaaaaa",
+        filters: { netuids: [7] },
+      },
+      {
+        id: "b",
+        url: "https://b.example.com/h",
+        secret: "secret-value-bbbbbb",
+        filters: { netuids: [100] },
+      },
+      {
+        id: "c",
+        url: "https://10.0.0.1/h",
+        secret: "secret-value-cccccc",
+        filters: {},
+      },
+    ];
+    const fetchFn = async () => new Response("", { status: 200 });
+    const results = await dispatchChangeEvent({
+      subscriptions: subs,
+      event,
+      fetchFn,
+      now: () => "t",
+      concurrency: 2,
+    });
+    const byId = Object.fromEntries(results.map((r) => [r.id, r.status]));
+    assert.equal(byId.a, "delivered");
+    assert.equal(byId.b, "filtered");
+    assert.equal(byId.c, "skipped");
+    assert.equal(results.length, 3);
   });
 });

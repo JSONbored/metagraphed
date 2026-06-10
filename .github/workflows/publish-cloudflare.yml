@@ -235,6 +235,20 @@ jobs:
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
 
+      # Change-feed webhooks: now that the new data is live in R2/KV, fire
+      # HMAC-signed POSTs to matching subscribers. No-ops when there are no
+      # subscriptions. The dispatcher always exits 0 — per-subscriber and KV
+      # hiccups are logged as warnings but never fail the run, so a broken
+      # endpoint can't block the data pipeline or the smoke step below.
+      - name: Dispatch change-feed webhooks
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run webhooks:dispatch
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_WEBHOOK_DISPATCH: "1"
+
       # Worker CODE is deployed by Cloudflare Workers Builds on push to main;
       # this workflow only refreshes the DATA in R2/KV. The live Worker reads
       # the new KV pointer + R2 on its next origin miss.

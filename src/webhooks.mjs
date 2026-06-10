@@ -315,3 +315,125 @@ export function publicSubscriptionView(record) {
     active: record.active !== false,
   };
 }
+
+// --- delivery (publish-time dispatch) -----------------------------------------
+// Deliver one change event to one subscription. Pure w.r.t. I/O: `fetchFn` and
+// `now` are injected so the dispatcher is fully unit-testable. Re-validates the
+// URL at delivery time (defense in depth vs. a record that slipped past intake),
+// skips on filter mismatch, signs with HMAC-SHA256, and retries transient
+// failures (network/timeout/5xx/429) but not deterministic 4xx rejections.
+export async function deliverChangeEvent({
+  subscription,
+  event,
+  fetchFn,
+  now,
+  timeoutMs = 8000,
+  maxAttempts = 3,
+}) {
+  if (!subscription || typeof subscription.url !== "string") {
+    return {
+      id: subscription?.id ?? null,
+      status: "skipped",
+      reason: "invalid",
+    };
+  }
+  if (!isPublicWebhookUrl(subscription.url)) {
+    return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
+  }
+  if (!eventMatchesFilters(event, subscription.filters)) {
+    return { id: subscription.id, status: "filtered" };
+  }
+  if (typeof subscription.secret !== "string" || !subscription.secret) {
+    return { id: subscription.id, status: "skipped", reason: "no-secret" };
+  }
+
+  const bodyText = JSON.stringify(event);
+  const timestamp =
+    typeof now === "function" ? now() : new Date(0).toISOString();
+  const signature = await signPayload(subscription.secret, bodyText);
+  const headers = {
+    "content-type": "application/json",
+    "user-agent": "metagraphed-webhook/1.0",
+    [WEBHOOK_SIGNATURE_HEADER]: signature,
+    [WEBHOOK_TIMESTAMP_HEADER]: timestamp,
+  };
+
+  let lastReason = "unknown";
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response;
+    try {
+      response = await fetchFn(subscription.url, {
+        method: "POST",
+        headers,
+        body: bodyText,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      lastReason = error?.name === "TimeoutError" ? "timeout" : "network-error";
+      continue; // transient — retry
+    }
+    const status = response.status;
+    if (status >= 200 && status < 300) {
+      return {
+        id: subscription.id,
+        status: "delivered",
+        status_code: status,
+        attempts: attempt,
+      };
+    }
+    lastReason = `http-${status}`;
+    // 4xx (except 429) is a deterministic rejection — do not retry.
+    if (status >= 400 && status < 500 && status !== 429) {
+      return {
+        id: subscription.id,
+        status: "failed",
+        status_code: status,
+        reason: lastReason,
+        attempts: attempt,
+      };
+    }
+    // 5xx / 429 — retry.
+  }
+  return {
+    id: subscription.id,
+    status: "failed",
+    reason: lastReason,
+    attempts: maxAttempts,
+  };
+}
+
+// Bounded fan-out over many subscriptions. Concurrency-capped; never rejects —
+// each subscription resolves to a result record (delivered/failed/filtered/
+// skipped) so one bad endpoint can't sink the batch.
+export async function dispatchChangeEvent({
+  subscriptions,
+  event,
+  fetchFn,
+  now,
+  timeoutMs,
+  maxAttempts,
+  concurrency = 8,
+}) {
+  const queue = [...(subscriptions || [])];
+  const results = [];
+  const worker = async () => {
+    while (queue.length > 0) {
+      const subscription = queue.shift();
+      const result = await deliverChangeEvent({
+        subscription,
+        event,
+        fetchFn,
+        now,
+        timeoutMs,
+        maxAttempts,
+      });
+      results.push(result);
+    }
+  };
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, queue.length)) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
