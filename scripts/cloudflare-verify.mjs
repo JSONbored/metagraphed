@@ -91,12 +91,12 @@ check(
   "R2 manifest artifacts must include sha256 and /metagraph paths",
 );
 check(
-  contracts.primary_domain === "metagraph.sh",
-  "contracts primary domain must be metagraph.sh",
+  contracts.primary_domain === "api.metagraph.sh",
+  "contracts primary domain must be api.metagraph.sh",
 );
 check(
-  apiIndex.primary_domain === "metagraph.sh",
-  "api index primary domain must be metagraph.sh",
+  apiIndex.primary_domain === "api.metagraph.sh",
+  "api index primary domain must be api.metagraph.sh",
 );
 
 if (!kvBinding && requireKvBinding) {
