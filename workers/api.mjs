@@ -415,66 +415,119 @@ async function handleRpcProxyRequest(request, env, url) {
   const pool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
-  const endpointSelection = selectSafeRpcEndpoint(pool);
-  if (endpointSelection.unsafeEndpoint) {
-    return errorResponse(
-      "rpc_endpoint_unsafe",
-      "Eligible RPC endpoint URL is not allowed by the Worker upstream safety policy.",
-      502,
-      {
-        endpoint_id: endpointSelection.unsafeEndpoint.id || null,
-        pool_id: poolId,
-      },
-    );
-  }
-  if (!endpointSelection.endpoint) {
+  const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
+  if (!candidates.length) {
+    if (unsafeEndpoint) {
+      return errorResponse(
+        "rpc_endpoint_unsafe",
+        "Eligible RPC endpoint URL is not allowed by the Worker upstream safety policy.",
+        502,
+        { endpoint_id: unsafeEndpoint.id || null, pool_id: poolId },
+      );
+    }
     return errorResponse(
       "rpc_endpoint_unavailable",
       "No eligible public RPC endpoint is available for proxy routing.",
       503,
-      {
-        pool_id: poolId,
-      },
-    );
-  }
-
-  const endpoint = endpointSelection.endpoint;
-  // Defense in depth: the proxy can only HTTP-POST to an https upstream. A wss://
-  // endpoint that somehow reached selection is not proxyable.
-  if (!endpoint.url.startsWith("https://")) {
-    return errorResponse(
-      "rpc_endpoint_unavailable",
-      "No eligible HTTP RPC upstream is available for proxy routing.",
-      503,
       { pool_id: poolId },
     );
   }
-  let upstream;
-  try {
-    upstream = await fetch(endpoint.url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: bodyText,
-      signal: AbortSignal.timeout(10000),
-    });
-  } catch {
-    return errorResponse(
-      "rpc_upstream_error",
-      "The selected RPC upstream could not be reached.",
-      502,
-      { endpoint_id: endpoint.id, pool_id: poolId },
-    );
+
+  return proxyWithFailover(candidates, { bodyText, poolId });
+}
+
+const RPC_MAX_ATTEMPTS = 3;
+const RPC_ATTEMPT_TIMEOUT_MS = 6000;
+// JSON-RPC error codes that signal node trouble (retry another upstream) rather
+// than a client/application error (return immediately so we don't mask a real
+// error by trying every node).
+const TRANSIENT_RPC_ERROR_CODES = new Set([-32603]); // internal error
+
+// Decide how to treat one upstream attempt: "transient" (fail over to the next
+// endpoint), "success"/"fatal" (return this upstream's response to the client).
+export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
+  if (thrown) return "transient"; // network error or AbortSignal timeout
+  if (status >= 500 || status === 429) return "transient";
+  if (status >= 400) return "fatal"; // upstream rejected the request itself
+  if (parsedBody && typeof parsedBody === "object" && parsedBody.error) {
+    if (TRANSIENT_RPC_ERROR_CODES.has(Number(parsedBody.error.code))) {
+      return "transient";
+    }
   }
-  const headers = apiHeaders("short");
-  headers.set("cache-control", "no-store");
-  headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
-  headers.set("x-metagraph-rpc-provider", endpoint.provider);
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers,
-  });
+  return "success";
+}
+
+// Try each ordered endpoint in turn; return the first success / non-transient
+// response, and a clean 502 only when every attempt is a transient failure.
+// Reads the body once (allowlisted read responses are small) so we can classify
+// JSON-RPC error envelopes. fetchFn injectable for tests.
+export async function proxyWithFailover(
+  orderedEndpoints,
+  {
+    bodyText,
+    poolId,
+    fetchFn = fetch,
+    maxAttempts = RPC_MAX_ATTEMPTS,
+    timeoutMs = RPC_ATTEMPT_TIMEOUT_MS,
+  },
+) {
+  const attempts = [];
+  const limit = Math.min(orderedEndpoints.length, maxAttempts);
+  for (let index = 0; index < limit; index += 1) {
+    const endpoint = orderedEndpoints[index];
+    let status = 0;
+    let text = "";
+    let parsedBody = null;
+    let thrown = false;
+    try {
+      const upstream = await fetchFn(endpoint.url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: bodyText,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      status = upstream.status;
+      text = await upstream.text();
+      try {
+        parsedBody = JSON.parse(text);
+      } catch {
+        parsedBody = null;
+      }
+    } catch {
+      thrown = true;
+    }
+
+    if (
+      classifyUpstreamAttempt({ thrown, status, parsedBody }) === "transient"
+    ) {
+      attempts.push({
+        endpoint_id: endpoint.id,
+        reason: thrown ? "unreachable" : `status-${status}`,
+      });
+      continue;
+    }
+
+    const headers = apiHeaders("short");
+    headers.set("cache-control", "no-store");
+    headers.set("content-type", JSON_CONTENT_TYPE);
+    headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
+    headers.set("x-metagraph-rpc-provider", endpoint.provider);
+    headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
+    return new Response(text, { status: status || 502, headers });
+  }
+
+  // Every attempt failed transiently. Return a fixed message — never echo an
+  // upstream error body (leak hygiene).
+  return errorResponse(
+    "rpc_upstream_unavailable",
+    "All eligible RPC upstreams failed; try again shortly.",
+    502,
+    {
+      pool_id: poolId,
+      attempts: attempts.map((a) => a.endpoint_id),
+      last_reason: attempts.at(-1)?.reason || null,
+    },
+  );
 }
 
 function matchRawArtifact(pathname) {
@@ -1023,31 +1076,47 @@ function contractVersion(env) {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
-// Load-balance across ALL eligible + upstream-safe endpoints rather than always
-// picking the highest-scored one, so no single upstream becomes a hotspot.
-// Returns an unsafe endpoint (for a 502) only when every eligible endpoint fails
-// the upstream safety policy, and a null endpoint when none are eligible (503).
-export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
+// Build the FULL ordered candidate list of eligible, upstream-safe, HTTP(S)
+// endpoints for the proxy to fail over across. Ordering is a weighted shuffle
+// (favour higher score, keep load spread) so failover walks best→worst without
+// always hammering one upstream. wss:// endpoints are dropped (not HTTP-
+// proxyable); a genuinely unsafe URL is reported (for a 502) only when no safe
+// endpoint exists. randomFn injectable for tests.
+export function orderSafeRpcEndpoints(pool, randomFn = Math.random) {
   const safe = [];
   let unsafeEndpoint = null;
   for (const endpoint of pool?.endpoints || []) {
     if (!endpoint?.pool_eligible) {
       continue;
     }
-    if (isSafeRpcEndpointUrl(endpoint.url)) {
-      safe.push(endpoint);
-    } else {
+    if (!isSafeRpcEndpointUrl(endpoint.url)) {
       unsafeEndpoint ||= endpoint;
+      continue;
+    }
+    // Safe origin but wss:// — not HTTP-POST-able; skip without flagging unsafe.
+    if (endpoint.url.startsWith("https://")) {
+      safe.push(endpoint);
     }
   }
 
-  if (!safe.length) {
-    return { endpoint: null, unsafeEndpoint };
+  const remaining = [...safe];
+  const ordered = [];
+  while (remaining.length) {
+    const pick = weightedPickEndpoint(remaining, randomFn);
+    ordered.push(pick);
+    remaining.splice(remaining.indexOf(pick), 1);
   }
   return {
-    endpoint: weightedPickEndpoint(safe, randomFn),
-    unsafeEndpoint: null,
+    endpoints: ordered,
+    unsafeEndpoint: ordered.length ? null : unsafeEndpoint,
   };
+}
+
+// Back-compat single-pick wrapper (still used by tests): the first of the
+// weighted-ordered list.
+export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
+  const { endpoints, unsafeEndpoint } = orderSafeRpcEndpoints(pool, randomFn);
+  return { endpoint: endpoints[0] ?? null, unsafeEndpoint };
 }
 
 // Weighted-random pick favouring higher-scored (healthier/faster) endpoints,
