@@ -70,7 +70,7 @@ export default {
   },
 };
 
-export async function handleRequest(request, env = {}, _ctx = {}) {
+export async function handleRequest(request, env = {}, ctx = {}) {
   const url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
@@ -78,7 +78,7 @@ export async function handleRequest(request, env = {}, _ctx = {}) {
   }
 
   if (url.pathname.startsWith("/rpc/v1/")) {
-    return handleRpcProxyRequest(request, env, url);
+    return handleRpcProxyRequest(request, env, url, ctx);
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {
@@ -294,7 +294,7 @@ async function handleApiRequest(request, env, url) {
   );
 }
 
-async function handleRpcProxyRequest(request, env, url) {
+async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -433,7 +433,51 @@ async function handleRpcProxyRequest(request, env, url) {
     );
   }
 
-  return proxyWithFailover(candidates, { bodyText, poolId });
+  // Response cache for idempotent reads (Cache API). Cache hit short-circuits
+  // the upstream call; a successful, cacheable response is stored async.
+  const cachePolicy = rpcCachePolicy(rpcBody.method, rpcBody.params);
+  const cache = cachePolicy.cacheable ? globalThis.caches?.default : null;
+  let cacheKey = null;
+  if (cache) {
+    cacheKey = await rpcCacheKey(rpcBody.method, rpcBody.params);
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const headers = new Headers(hit.headers);
+      headers.set("cache-control", "no-store");
+      headers.set("x-metagraph-rpc-cache", "hit");
+      return new Response(hit.body, { status: 200, headers });
+    }
+  }
+
+  const response = await proxyWithFailover(candidates, { bodyText, poolId });
+  if (!cacheKey) {
+    return response;
+  }
+
+  // Cacheable method, cache miss: read the body once, cache it if it is a
+  // genuine JSON-RPC result (never cache an error envelope), and return.
+  const text = await response.text();
+  if (response.status === 200) {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // body is not JSON; leave parsed null so it is not cached.
+    }
+    if (parsed && parsed.result !== undefined && parsed.error === undefined) {
+      const cached = new Response(text, {
+        status: 200,
+        headers: {
+          "content-type": JSON_CONTENT_TYPE,
+          "cache-control": `public, s-maxage=${cachePolicy.ttl}`,
+        },
+      });
+      ctx?.waitUntil?.(cache.put(cacheKey, cached));
+    }
+  }
+  const headers = new Headers(response.headers);
+  headers.set("x-metagraph-rpc-cache", "miss");
+  return new Response(text, { status: response.status, headers });
 }
 
 const RPC_MAX_ATTEMPTS = 3;
@@ -467,6 +511,54 @@ export function recordRpcSuccess(map, id) {
 export function isRpcEndpointEjected(map, id, now) {
   const entry = map.get(id);
   return Boolean(entry && entry.ejectedUntil > now);
+}
+
+// Per-method response-cache policy for idempotent reads. Default-deny: only
+// block-pinned (by an explicit block number/hash param) or quasi-static reads
+// are cacheable; head-moving forms (param-less block reads, finalized head,
+// system_health) are never cached.
+export function rpcCachePolicy(method, params) {
+  const args = Array.isArray(params) ? params : [];
+  switch (method) {
+    case "chain_getBlockHash":
+      return args.length &&
+        (typeof args[0] === "number" || /^\d+$/.test(String(args[0])))
+        ? { cacheable: true, ttl: 3600 }
+        : { cacheable: false, ttl: 0 };
+    case "chain_getBlock":
+    case "chain_getHeader":
+      return args.length &&
+        typeof args[0] === "string" &&
+        args[0].startsWith("0x")
+        ? { cacheable: true, ttl: 3600 }
+        : { cacheable: false, ttl: 0 };
+    case "state_getRuntimeVersion":
+    case "system_chain":
+    case "system_name":
+    case "system_version":
+    case "system_properties":
+    case "rpc_methods":
+      return { cacheable: true, ttl: 300 };
+    default:
+      return { cacheable: false, ttl: 0 };
+  }
+}
+
+async function rpcCacheKey(method, params) {
+  const normalized = JSON.stringify([
+    method,
+    Array.isArray(params) ? params : [],
+  ]);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(normalized),
+  );
+  const hash = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return new Request(
+    `https://rpc-cache.metagraph.internal/finney/${method}/${hash}`,
+  );
 }
 
 // Decide how to treat one upstream attempt: "transient" (fail over to the next
