@@ -31,11 +31,17 @@
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
   },
+  // Apex cutover (two-Worker routing): the backend takes only its API/artifact
+  // paths via zone routes; the metagraph-finder frontend Worker takes the
+  // catch-all `metagraph.sh/*`. Cloudflare matches more-specific routes first,
+  // so /api, /rpc, /metagraph, /health hit this Worker and everything else
+  // renders the UI. DO NOT deploy this until the frontend Worker + its
+  // `metagraph.sh/*` route are live, or the apex is orphaned (see the PR/runbook).
   "routes": [
-    {
-      "pattern": "metagraph.sh",
-      "custom_domain": true,
-    },
+    { "pattern": "metagraph.sh/api/*", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/rpc/*", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/metagraph/*", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/health", "zone_name": "metagraph.sh" },
   ],
   "kv_namespaces": [
     {
