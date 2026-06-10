@@ -296,6 +296,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "operational-surfaces",
+      "path": "/metagraph/operational-surfaces.json",
+      "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
       "schema_ref": "#/components/schemas/SchemaDriftArtifact",

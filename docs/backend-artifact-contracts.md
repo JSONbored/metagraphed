@@ -63,6 +63,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
+- `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/schemas/{surface_id}.json`: captured machine-readable OpenAPI/Swagger schema snapshot detail. R2-backed.

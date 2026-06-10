@@ -2567,6 +2567,103 @@
         ],
         "type": "object"
       },
+      "OperationalSurfacesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kinds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surfaces": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "authority": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "probe": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "expect": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string"
+                        },
+                        "timeout_ms": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "method",
+                        "expect"
+                      ],
+                      "type": "object"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "public_safe": {
+                      "type": "boolean"
+                    },
+                    "subnet_name": {
+                      "type": "string"
+                    },
+                    "subnet_slug": {
+                      "type": "string"
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "netuid",
+                    "kind",
+                    "url",
+                    "probe"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "surface_count",
+              "kinds",
+              "surfaces"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "PaginationMeta": {
         "additionalProperties": false,
         "properties": {

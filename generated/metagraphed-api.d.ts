@@ -1401,6 +1401,33 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        OperationalSurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
+            kinds: string[];
+            surface_count: number;
+            surfaces: ({
+                auth_required?: boolean;
+                authority?: string;
+                kind: string;
+                netuid: number;
+                probe: {
+                    expect: string;
+                    method: string;
+                    timeout_ms?: number | null;
+                } & {
+                    [key: string]: unknown;
+                };
+                provider?: string;
+                public_safe?: boolean;
+                subnet_name?: string;
+                subnet_slug?: string;
+                surface_id: string;
+                url: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        });
         PaginationMeta: {
             collection: string;
             cursor: number;

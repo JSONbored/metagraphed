@@ -775,6 +775,12 @@ export const PUBLIC_ARTIFACTS = [
     "EndpointIncidentsArtifact",
   ),
   artifact(
+    "operational-surfaces",
+    "/metagraph/operational-surfaces.json",
+    "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 2-minute scheduled prober.",
+    "OperationalSurfacesArtifact",
+  ),
+  artifact(
     "schema-drift",
     "/metagraph/schema-drift.json",
     "OpenAPI schema snapshot/drift status.",

@@ -74,6 +74,10 @@ const DUAL_PATTERNS = [
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^coverage\.json$/,
+  // Operational-surfaces list: low-churn (changes only when the registry gains
+  // operational surfaces), read by the Worker cron prober at runtime via ASSETS.
+  // Committed + mirrored to R2 like the other small contract digests.
+  /^operational-surfaces\.json$/,
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
   // subnets.json (124 KB) stays committed: the changelog diffs it against the

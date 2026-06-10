@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
 import {
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
@@ -895,6 +896,49 @@ await writeJson(artifactFile("registry-summary.json"), {
       renamed: (changelogArtifact.subnets?.renamed || []).length,
     },
   },
+});
+
+// Operational-surfaces list — the input for the 2-minute Cloudflare cron health
+// prober (src/health-prober.mjs). Deterministic, committed (git-tier), and read
+// by the Worker at runtime via the ASSETS binding. Only probe-enabled,
+// public-safe, operational-kind surfaces; everything else stays on this 6h build.
+const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
+const operationalSurfaces = surfaces
+  .filter(
+    (surface) =>
+      surface.probe?.enabled &&
+      surface.public_safe &&
+      operationalKindSet.has(surface.kind),
+  )
+  .map((surface) => ({
+    surface_id: surface.id,
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug,
+    subnet_name: surface.subnet_name,
+    kind: surface.kind,
+    provider: surface.provider,
+    authority: surface.authority,
+    url: surface.url,
+    auth_required: Boolean(surface.auth_required),
+    public_safe: Boolean(surface.public_safe),
+    probe: {
+      method: surface.probe.method,
+      expect: surface.probe.expect,
+      timeout_ms: Number.isInteger(surface.probe.timeout_ms)
+        ? surface.probe.timeout_ms
+        : null,
+    },
+  }))
+  .sort(
+    (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+  );
+await writeJson(artifactFile("operational-surfaces.json"), {
+  schema_version: 1,
+  contract_version: contractVersion,
+  generated_at: generatedAt,
+  surface_count: operationalSurfaces.length,
+  kinds: [...OPERATIONAL_SURFACE_KINDS].sort(),
+  surfaces: operationalSurfaces,
 });
 
 const artifactSizesBeforeR2 = await collectArtifactSizes({

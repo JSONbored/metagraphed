@@ -31,9 +31,7 @@
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
   },
-  "routes": [
-    { "pattern": "api.metagraph.sh", "custom_domain": true },
-  ],
+  "routes": [{ "pattern": "api.metagraph.sh", "custom_domain": true }],
   "kv_namespaces": [
     {
       "binding": "METAGRAPH_CONTROL",
@@ -44,6 +42,17 @@
     {
       "binding": "METAGRAPH_ARCHIVE",
       "bucket_name": "metagraphed-artifacts",
+    },
+  ],
+  // Live operational-health store. Written every 2 minutes by the cron prober
+  // (src/health-prober.mjs) and read live by the serving layer — decoupled from
+  // the 6h build so a stale structural snapshot never freezes health.
+  "d1_databases": [
+    {
+      "binding": "METAGRAPH_HEALTH_DB",
+      "database_name": "metagraphed-health",
+      "database_id": "fcb0b856-1829-46a3-a2f1-c1ba3a9a1915",
+      "migrations_dir": "migrations",
     },
   ],
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

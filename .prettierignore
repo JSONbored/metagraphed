@@ -11,4 +11,5 @@ registry/candidates/generated
 registry/subnets/generated
 registry/verification
 registry/adapters/latest
+migrations
 tmp
