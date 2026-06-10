@@ -22,13 +22,22 @@ function makeKv() {
   };
 }
 
-const envWith = (kv) => createLocalArtifactEnv({ METAGRAPH_CONTROL: kv });
+const SUBSCRIPTION_TOKEN = "test-webhook-subscription-token";
+const envWith = (kv, extra = {}) =>
+  createLocalArtifactEnv({
+    METAGRAPH_CONTROL: kv,
+    METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN: SUBSCRIPTION_TOKEN,
+    ...extra,
+  });
 const req = (path, init) => new Request(`https://metagraph.sh${path}`, init);
 const postSub = (env, body) =>
   handleRequest(
     req("/api/v1/webhooks/subscriptions", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+      },
       body: JSON.stringify(body),
     }),
     env,
@@ -75,7 +84,10 @@ describe("webhook subscription routes", () => {
     const res = await handleRequest(
       req("/api/v1/webhooks/subscriptions", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
         body: "{not json",
       }),
       envWith(makeKv()),
@@ -83,6 +95,42 @@ describe("webhook subscription routes", () => {
     );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error.code, "invalid_json");
+  });
+
+  test("rejects subscription creation without the subscription token", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).error.code, "unauthorized");
+  });
+
+  test("disables subscription creation when the subscription token is unconfigured", async () => {
+    const kv = makeKv();
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+      }),
+      envWith(kv, { METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN: "" }),
+      {},
+    );
+    assert.equal(res.status, 503);
+    assert.equal(
+      (await res.json()).error.code,
+      "webhook_subscriptions_disabled",
+    );
+    assert.equal(kv.store.size, 0);
   });
 
   test("returns 503 when the KV store is unbound", async () => {

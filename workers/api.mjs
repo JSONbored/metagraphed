@@ -68,6 +68,8 @@ const DENIED_RPC_PREFIXES = [
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
 const MAX_WEBHOOK_BODY_BYTES = 8192;
+const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
+  "x-metagraph-webhook-subscription-token";
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;
@@ -1186,6 +1188,11 @@ async function createWebhookSubscription(request, env) {
     return errorResponse("invalid_subscription", validated.error, 400);
   }
 
+  const authorized = validateWebhookSubscriptionToken(request, env);
+  if (!authorized.ok) {
+    return authorized.response;
+  }
+
   const id = generateSubscriptionId();
   // Short local name (`hookSecret`) keeps the public-safety scanner's
   // hardcoded-credential heuristic from false-positiving on `secret = <expr>`.
@@ -1233,6 +1240,34 @@ async function createWebhookSubscription(request, env) {
     },
     201,
   );
+}
+
+function validateWebhookSubscriptionToken(request, env) {
+  const configured = env.METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN;
+  if (typeof configured !== "string" || configured.length === 0) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "webhook_subscriptions_disabled",
+        "Webhook subscription creation requires METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN to be configured.",
+        503,
+      ),
+    };
+  }
+
+  const provided = request.headers.get(WEBHOOK_SUBSCRIPTION_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "unauthorized",
+        `Provide a valid ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER} header to create webhook subscriptions.`,
+        401,
+      ),
+    };
+  }
+
+  return { ok: true };
 }
 
 async function getWebhookSubscription(env, id) {
@@ -1638,7 +1673,7 @@ function corsPreflight(request) {
   headers.set("access-control-allow-methods", methods);
   headers.set(
     "access-control-allow-headers",
-    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}`,
+    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}`,
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
