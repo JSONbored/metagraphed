@@ -17,7 +17,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Install and build @metagraphed/client
+        working-directory: packages/client
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Upload client package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: metagraphed-client-package
+          path: |
+            packages/client/dist
+            packages/client/README.md
+            packages/client/package.json
+          if-no-files-found: error
+          retention-days: 1
+
   publish:
+    needs: build
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,10 +68,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      - name: Build and publish @metagraphed/client
+      - name: Download built client package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: metagraphed-client-package
+          path: packages/client
+
+      - name: Publish @metagraphed/client
         working-directory: packages/client
-        run: |
-          npm install --no-audit --no-fund
-          npm publish --access public --provenance
+        run: npm publish --access public --provenance --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
