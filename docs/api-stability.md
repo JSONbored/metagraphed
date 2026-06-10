@@ -132,7 +132,7 @@ Omitting all paging params returns the full collection (back-compatible).
 
 ## Recommended Client Usage
 
-- Install the typed client: `npm install @metagraphed/client` (published from
+- Install the typed client: `npm install @jsonbored/metagraphed` (published from
   `packages/client/`, generated from this contract). Example:
   `metagraphedFetch("/api/v1/subnets", { query: { limit: 10 } })`.
 - Or generate types/client from the published `openapi.json` (or consume the checked-in

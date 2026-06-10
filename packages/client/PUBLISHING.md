@@ -1,4 +1,4 @@
-# Publishing `@metagraphed/client`
+# Publishing `@jsonbored/metagraphed`
 
 Releases use **npm OIDC trusted publishing** — no `NPM_TOKEN` is stored. The
 `publish-client.yml` workflow authenticates to npm via GitHub's OIDC token and
@@ -6,28 +6,28 @@ publishes with provenance. Same pattern as `@heyclaude/mcp`.
 
 ## One-time setup (npm side — must be done once before the first OIDC release)
 
-npm requires a package to **exist** before you can attach a Trusted Publisher, so
-a brand-new package needs a bootstrap step:
+The package publishes under your existing **`@jsonbored`** npm user-scope — **no
+org to create**. But npm requires a package to **exist** before you can attach a
+Trusted Publisher, so a brand-new package needs one bootstrap step:
 
-1. **Create the `@metagraphed` org on npmjs.com** (free for public packages):
-   npmjs.com → your avatar → _Add organization_ → `metagraphed`.
-2. **Bootstrap the package so it exists** (pick one):
+1. **Bootstrap the package so it exists** (pick one):
    - Modern (npm 11.10.0+): `npm trust` to register the trusted publisher without
      a placeholder publish, **or**
    - Bootstrap publish from a clean checkout of `main`:
      ```sh
-     npm login                       # interactive; or use a granular token once
+     npm login                       # your existing account that owns @jsonbored
      cd packages/client && npm publish --access public
      ```
-     (One-time only; all later releases are tokenless via the workflow.)
-3. **Add the Trusted Publisher** at npmjs.com → package `@metagraphed/client` →
+     (One-time only; all later releases are tokenless via the workflow.
+     `--access public` is required for a scoped package's first publish.)
+2. **Add the Trusted Publisher** at npmjs.com → package `@jsonbored/metagraphed` →
    _Settings_ → _Trusted Publisher_ → **GitHub Actions**:
    - Organization or user: `JSONbored`
    - Repository: `metagraphed`
    - Workflow filename: `publish-client.yml`
    - Environment name: `npm-production`
    - Allowed action: `npm publish`
-4. **Create the `npm-production` GitHub Environment** (repo → Settings →
+3. **Create the `npm-production` GitHub Environment** (repo → Settings →
    Environments → `npm-production`; add required reviewers if you want a manual
    approval gate before each publish).
 

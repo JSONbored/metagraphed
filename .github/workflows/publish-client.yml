@@ -1,9 +1,9 @@
 name: Publish client SDK
 
-# Publishes @metagraphed/client (packages/client) to npm via OIDC trusted
+# Publishes @jsonbored/metagraphed (packages/client) to npm via OIDC trusted
 # publishing — no NPM_TOKEN. Manual trigger; the version is read from
 # packages/client/package.json. Requires a one-time npm-side setup (see
-# packages/client/PUBLISHING.md): the @metagraphed org, a first bootstrap
+# packages/client/PUBLISHING.md): a first bootstrap
 # publish, and a Trusted Publisher pointing at this repo + workflow + the
 # `npm-production` environment.
 on:
@@ -92,10 +92,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" -m "@metagraphed/client v$RELEASE_VERSION"
+          git tag -a "$RELEASE_TAG" -m "@jsonbored/metagraphed v$RELEASE_VERSION"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
           gh auth setup-git
           git push origin "$RELEASE_TAG"
           gh release create "$RELEASE_TAG" \
-            --title "@metagraphed/client v$RELEASE_VERSION" \
-            --notes "Published \`@metagraphed/client@$RELEASE_VERSION\` to npm with provenance via OIDC trusted publishing. https://www.npmjs.com/package/@metagraphed/client/v/$RELEASE_VERSION"
+            --title "@jsonbored/metagraphed v$RELEASE_VERSION" \
+            --notes "Published \`@jsonbored/metagraphed@$RELEASE_VERSION\` to npm with provenance via OIDC trusted publishing. https://www.npmjs.com/package/@jsonbored/metagraphed/v/$RELEASE_VERSION"

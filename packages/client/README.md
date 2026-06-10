@@ -1,4 +1,4 @@
-# @metagraphed/client
+# @jsonbored/metagraphed
 
 Typed TypeScript client for the [metagraph.sh](https://metagraph.sh) backend API —
 operational metadata, health, schemas, and public-interface discovery for
@@ -11,13 +11,13 @@ with the API contract.
 ## Install
 
 ```sh
-npm install @metagraphed/client
+npm install @jsonbored/metagraphed
 ```
 
 ## Usage
 
 ```ts
-import { metagraphedFetch } from "@metagraphed/client";
+import { metagraphedFetch } from "@jsonbored/metagraphed";
 
 // Fully typed path + query params + response envelope.
 const subnets = await metagraphedFetch("/api/v1/subnets", {
