@@ -400,7 +400,18 @@ async function handleRpcProxyRequest(request, env, url) {
     );
   }
 
-  const poolId = url.pathname.includes("/wss") ? "finney-wss" : "finney-rpc";
+  // The proxy forwards an HTTP JSON-RPC POST, so it can only reach HTTP(S)
+  // upstreams. The /wss route points at WebSocket-only endpoints that cannot be
+  // HTTP-POSTed, so reject it with a clear error instead of failing the upstream
+  // fetch (which would surface as a 500).
+  if (url.pathname.endsWith("/wss")) {
+    return errorResponse(
+      "rpc_websocket_unsupported",
+      "WebSocket JSON-RPC is not available through this HTTP proxy. POST to /rpc/v1/finney for HTTP JSON-RPC, or connect to a public WSS endpoint directly.",
+      400,
+    );
+  }
+  const poolId = "finney-rpc";
   const pool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
@@ -428,14 +439,34 @@ async function handleRpcProxyRequest(request, env, url) {
   }
 
   const endpoint = endpointSelection.endpoint;
-  const upstream = await fetch(endpoint.url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: bodyText,
-    signal: AbortSignal.timeout(10000),
-  });
+  // Defense in depth: the proxy can only HTTP-POST to an https upstream. A wss://
+  // endpoint that somehow reached selection is not proxyable.
+  if (!endpoint.url.startsWith("https://")) {
+    return errorResponse(
+      "rpc_endpoint_unavailable",
+      "No eligible HTTP RPC upstream is available for proxy routing.",
+      503,
+      { pool_id: poolId },
+    );
+  }
+  let upstream;
+  try {
+    upstream = await fetch(endpoint.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: bodyText,
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    return errorResponse(
+      "rpc_upstream_error",
+      "The selected RPC upstream could not be reached.",
+      502,
+      { endpoint_id: endpoint.id, pool_id: poolId },
+    );
+  }
   const headers = apiHeaders("short");
   headers.set("cache-control", "no-store");
   headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);

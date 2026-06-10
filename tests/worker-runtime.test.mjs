@@ -1008,6 +1008,8 @@ describe("Worker runtime", () => {
       assert.equal(called, true);
       assert.ok(response.headers.get("x-metagraph-rpc-provider"));
 
+      // The /wss route targets WebSocket-only endpoints that cannot be
+      // HTTP-POSTed, so it is rejected with a clean 400 rather than proxied.
       const wssResponse = await handleRequest(
         new Request("https://metagraph.sh/rpc/v1/wss", {
           method: "POST",
@@ -1021,7 +1023,11 @@ describe("Worker runtime", () => {
         proxyEnv,
         {},
       );
-      assert.equal(wssResponse.status, 200);
+      assert.equal(wssResponse.status, 400);
+      assert.equal(
+        (await wssResponse.json()).error.code,
+        "rpc_websocket_unsupported",
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }

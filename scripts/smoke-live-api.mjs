@@ -127,6 +127,31 @@ assert.notEqual(
   "enabled RPC proxy must not report rpc_proxy_disabled",
 );
 
+// The /wss route is WebSocket-only and cannot be HTTP-proxied; it must return a
+// clean client error, never a 500.
+const wssRpcProxy = await fetchJson(`${baseUrl}/rpc/v1/finney/wss`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "system_health",
+    params: [],
+  }),
+});
+assert.equal(
+  wssRpcProxy.status,
+  400,
+  "the /wss RPC route must be rejected with a clean 400, not 500",
+);
+assert.equal(
+  wssRpcProxy.body?.error?.code,
+  "rpc_websocket_unsupported",
+  "the /wss RPC route should return rpc_websocket_unsupported",
+);
+
 console.log(
   JSON.stringify(
     {

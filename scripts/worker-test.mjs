@@ -329,6 +329,29 @@ try {
     proxied.headers.get("x-metagraph-rpc-provider"),
     "proxied responses should expose provider metadata",
   );
+
+  const wssRejected = await handleRequest(
+    new Request("https://metagraph.sh/rpc/v1/finney/wss", {
+      method: "POST",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "system_health",
+        params: [],
+      }),
+    }),
+    proxyEnv,
+    {},
+  );
+  assert.equal(
+    wssRejected.status,
+    400,
+    "the /wss route is not HTTP-proxyable and must be rejected, not 500",
+  );
+  assert.equal(
+    (await wssRejected.json()).error.code,
+    "rpc_websocket_unsupported",
+  );
 } finally {
   globalThis.fetch = originalFetch;
 }
