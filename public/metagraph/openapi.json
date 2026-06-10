@@ -12777,6 +12777,15 @@
           },
           {
             "in": "query",
+            "name": "netuids",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d+(,\\d+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "coverage_level",
             "required": false,
             "schema": {

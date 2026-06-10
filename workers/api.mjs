@@ -432,7 +432,12 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
         "Too many RPC proxy requests from this client; slow down.",
         429,
         {},
-        { "retry-after": "60" },
+        {
+          "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
       );
     }
   }
@@ -558,6 +563,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
         const headers = new Headers(hit.headers);
         headers.set("cache-control", "no-store");
         headers.set("x-metagraph-rpc-cache", "hit");
+        setRpcRateLimitHeaders(headers);
         return new Response(
           JSON.stringify(rpcResultEnvelope(rpcBody, cachedPayload.result)),
           { status: 200, headers },
@@ -749,7 +755,21 @@ function streamRpcResponse(upstream, endpoint, attempts, status) {
   headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
   headers.set("x-metagraph-rpc-provider", endpoint.provider);
   headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
+  setRpcRateLimitHeaders(headers);
   return new Response(upstream.body, { status: status || 502, headers });
+}
+
+// Advisory rate-limit headers on RPC proxy responses. The Cloudflare rate-limit
+// binding (RPC_RATE_LIMITER) only returns {success}, so an exact remaining/reset
+// is unavailable — we surface the static policy (mirrors wrangler.jsonc:
+// 100 requests / 60s) plus Retry-After on a 429.
+const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+function setRpcRateLimitHeaders(headers) {
+  headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
+  headers.set(
+    "x-ratelimit-policy",
+    `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+  );
 }
 
 // Try each ordered endpoint in turn; return the first success / non-transient
@@ -1393,13 +1413,24 @@ function applyQueryFilters(data, url, queryCollection, queryFilterNames = []) {
   });
 }
 
-function filterRows(rows, params, keys) {
+function filterRows(rows, params, keys, csvFilters = {}) {
   return rows.filter((row) =>
     keys.every((key) => {
       if (!params.has(key)) {
         return true;
       }
       const expected = params.get(key);
+      // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid).
+      const csvField = csvFilters[key];
+      if (csvField) {
+        const wanted = new Set(
+          expected
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+        );
+        return wanted.has(String(row[csvField]));
+      }
       const value = row[key];
       if (Array.isArray(value)) {
         return value.map(String).includes(expected);
@@ -1420,6 +1451,7 @@ function applyListTransform(data, params, config) {
     searchRows(data[key], params, config.search_keys),
     params,
     filterKeys,
+    config.csv_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);
@@ -1551,6 +1583,12 @@ function validateListQuery(params, config) {
       return {
         parameter: key,
         message: `${key} is not supported for this route.`,
+      };
+    }
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+      return {
+        parameter: key,
+        message: `${key} is not in the expected format.`,
       };
     }
   }

@@ -5021,6 +5021,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
+                netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 status?: "active" | "inactive";

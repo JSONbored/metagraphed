@@ -441,6 +441,7 @@
       "query_collection": "subnets",
       "query_filter_names": [
         "netuid",
+        "netuids",
         "coverage_level",
         "curation_level",
         "status",
@@ -452,6 +453,13 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "name": "netuids",
+          "schema": {
+            "pattern": "^\\d+(,\\d+)*$",
+            "type": "string"
           }
         },
         {

@@ -491,8 +491,10 @@ export const API_QUERY_COLLECTIONS = {
     sort: ["id", "kind", "path", "record_count"],
   }),
   subnets: queryCollection("subnets", {
+    csvFilters: { netuids: "netuid" },
     filters: {
       netuid: integerSchema,
+      netuids: { type: "string", pattern: "^\\d+(,\\d+)*$" },
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       status: enumSchema(QUERY_ENUMS.subnetStatus),
@@ -1598,6 +1600,9 @@ function queryCollection(dataKey, options = {}) {
   return {
     data_key: dataKey,
     filters: options.filters || {},
+    // CSV membership filters: param name -> the row field it matches against.
+    // e.g. { netuids: "netuid" } makes `?netuids=1,7,74` return those rows.
+    csv_filters: options.csvFilters || {},
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
