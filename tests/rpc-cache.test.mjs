@@ -81,10 +81,10 @@ describe("RPC response cache flow", () => {
       },
     },
   };
-  const reqFor = (method, params) =>
+  const reqFor = (method, params, id = 1) =>
     new Request("https://metagraph.sh/rpc/v1/finney", {
       method: "POST",
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
     });
 
   function makeCache() {
@@ -144,6 +144,48 @@ describe("RPC response cache flow", () => {
       assert.equal(r2.headers.get("x-metagraph-rpc-cache"), "hit");
       assert.equal(fetchCount, 1, "cache hit must not call upstream");
       assert.equal((await r2.json()).result, "0xhash");
+    });
+  });
+
+  test("cache hits preserve the current request id (no cross-caller replay)", async () => {
+    const cache = makeCache();
+    let fetchCount = 0;
+    const fetchImpl = async (_url, init) => {
+      fetchCount += 1;
+      const upstreamRequest = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: upstreamRequest.id,
+          result: "0xhash",
+        }),
+        { status: 200 },
+      );
+    };
+    await withGlobals({ cache, fetchImpl }, async () => {
+      const waits = [];
+      const ctx = { waitUntil: (p) => waits.push(p) };
+      const primed = await handleRequest(
+        reqFor("chain_getBlockHash", [1], "attacker-prime-id"),
+        env,
+        ctx,
+      );
+      assert.equal(primed.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal((await primed.json()).id, "attacker-prime-id");
+      await Promise.all(waits);
+
+      const victim = await handleRequest(
+        reqFor("chain_getBlockHash", [1], "victim-expected-id"),
+        env,
+        ctx,
+      );
+      assert.equal(victim.headers.get("x-metagraph-rpc-cache"), "hit");
+      assert.equal(fetchCount, 1, "cache hit must not call upstream");
+      assert.deepEqual(await victim.json(), {
+        jsonrpc: "2.0",
+        id: "victim-expected-id",
+        result: "0xhash",
+      });
     });
   });
 

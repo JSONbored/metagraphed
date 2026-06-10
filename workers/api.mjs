@@ -544,10 +544,25 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     cacheKey = await rpcCacheKey(rpcBody.method, rpcBody.params);
     const hit = await cache.match(cacheKey);
     if (hit) {
-      const headers = new Headers(hit.headers);
-      headers.set("cache-control", "no-store");
-      headers.set("x-metagraph-rpc-cache", "hit");
-      return new Response(hit.body, { status: 200, headers });
+      // Only the JSON-RPC `result` is cached (never caller-controlled envelope
+      // fields like `id`), so rebuild the envelope with THIS request's id. This
+      // stops a cache entry primed by one caller from replaying that caller's id
+      // back to a later requester.
+      let cachedPayload = null;
+      try {
+        cachedPayload = JSON.parse(await hit.text());
+      } catch {
+        // Malformed cache entry; treat as a miss and re-fetch below.
+      }
+      if (cachedPayload && cachedPayload.result !== undefined) {
+        const headers = new Headers(hit.headers);
+        headers.set("cache-control", "no-store");
+        headers.set("x-metagraph-rpc-cache", "hit");
+        return new Response(
+          JSON.stringify(rpcResultEnvelope(rpcBody, cachedPayload.result)),
+          { status: 200, headers },
+        );
+      }
     }
   }
 
@@ -575,7 +590,10 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       // body is not JSON; leave parsed null so it is not cached.
     }
     if (parsed && parsed.result !== undefined && parsed.error === undefined) {
-      const cached = new Response(inspect.text, {
+      // Persist ONLY the cacheable `result` — not the upstream envelope, which
+      // carries the priming caller's `id`. The envelope is rebuilt per request
+      // on a cache hit above.
+      const cached = new Response(JSON.stringify({ result: parsed.result }), {
         status: 200,
         headers: {
           "content-type": JSON_CONTENT_TYPE,
@@ -652,6 +670,18 @@ export function rpcCachePolicy(method, params) {
     default:
       return { cacheable: false, ttl: 0 };
   }
+}
+
+// Build a minimal JSON-RPC success envelope around a cached `result`, echoing
+// the current request's `id` (when present) so cache hits never replay another
+// caller's id.
+function rpcResultEnvelope(requestBody, result) {
+  const envelope = { jsonrpc: "2.0" };
+  if (Object.prototype.hasOwnProperty.call(requestBody, "id")) {
+    envelope.id = requestBody.id;
+  }
+  envelope.result = result;
+  return envelope;
 }
 
 async function rpcCacheKey(method, params) {
