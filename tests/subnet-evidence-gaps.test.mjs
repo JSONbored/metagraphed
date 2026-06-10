@@ -16,11 +16,10 @@ describe("per-subnet evidence route", () => {
     assert.equal(body.data.netuid, 7);
     assert.equal(Array.isArray(body.data.claims), true);
     assert.equal(body.data.claims.length > 0, true);
-    // Every claim subject encodes netuid 7 (subnet:7 or ...sn-7-...).
+    // Every generated claim is scoped to SN7, even when a surface/candidate
+    // subject slug does not encode the authoritative netuid.
     assert.equal(
-      body.data.claims.every((claim) =>
-        /(^subnet:7\b|sn-7\b)/.test(String(claim.subject)),
-      ),
+      body.data.claims.every((claim) => /\bSN7\b/.test(String(claim.claim))),
       true,
     );
   });

@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import {
   buildEndpointResourceArtifact,
+  buildEvidenceSubjectNetuidIndex,
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
@@ -18,6 +19,7 @@ import {
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
+  netuidForEvidenceClaim,
   normalizePublicUrl,
   publishedAt,
   readJson,
@@ -664,11 +666,16 @@ const evidenceLedger = buildEvidenceLedger({
 });
 await writeJson(artifactFile("evidence-ledger.json"), evidenceLedger);
 // Per-subnet evidence split (R2-tier; powers /api/v1/subnets/{netuid}/evidence).
-// Claims carry no netuid field, so derive it from the structured subject id
-// (`surface:...sn-7-...`, `candidate:...sn-7-...`, or `subnet:7`).
+// Scope generated claims through the authoritative source rows instead of
+// reparsing user-controlled slugs such as candidate IDs.
+const evidenceSubjectNetuids = buildEvidenceSubjectNetuidIndex({
+  candidates,
+  subnets: mergedSubnets,
+  surfaces,
+});
 const claimsByNetuid = new Map();
 for (const claim of evidenceLedger.claims || []) {
-  const netuid = netuidFromEvidenceSubject(claim.subject);
+  const netuid = netuidForEvidenceClaim(claim, evidenceSubjectNetuids);
   if (netuid === null) {
     continue;
   }
@@ -2566,22 +2573,6 @@ function averageScore(profiles) {
 
 function groupByNetuid(items) {
   return groupBy(items, "netuid");
-}
-
-// Evidence claims have no netuid field. Derive it from the structured subject
-// id: `subnet:7`, or any `...sn-7-...` form (`surface:sn-7-...`,
-// `candidate:community-sn-7-...`). Returns null when no netuid is encoded.
-function netuidFromEvidenceSubject(subject) {
-  const value = String(subject || "");
-  const subnetMatch = value.match(/^subnet:(\d+)\b/);
-  if (subnetMatch) {
-    return Number(subnetMatch[1]);
-  }
-  const snMatch = value.match(/sn-(\d+)/);
-  if (snMatch) {
-    return Number(snMatch[1]);
-  }
-  return null;
 }
 
 function groupBy(items, key) {

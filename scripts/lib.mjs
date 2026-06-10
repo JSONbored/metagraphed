@@ -67,6 +67,56 @@ unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
 unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
 unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
+export function buildEvidenceSubjectNetuidIndex({
+  candidates = [],
+  subnets = [],
+  surfaces = [],
+} = {}) {
+  const index = new Map();
+  const setSubjectNetuid = (subject, netuid) => {
+    if (subject && Number.isInteger(netuid)) {
+      index.set(subject, netuid);
+    }
+  };
+
+  for (const subnet of subnets || []) {
+    setSubjectNetuid(`subnet:${subnet.netuid}`, subnet.netuid);
+  }
+  for (const surface of surfaces || []) {
+    setSubjectNetuid(`surface:${surface.id}`, surface.netuid);
+  }
+  for (const candidate of candidates || []) {
+    setSubjectNetuid(`candidate:${candidate.id}`, candidate.netuid);
+  }
+
+  return index;
+}
+
+export function netuidForEvidenceClaim(claim, subjectNetuids = new Map()) {
+  const subject = String(claim?.subject || "");
+  if (subjectNetuids.has(subject)) {
+    return subjectNetuids.get(subject);
+  }
+  return netuidFromEvidenceSubject(subject);
+}
+
+// Fallback for legacy/imported claims that are not generated from authoritative
+// subnet, surface, or candidate rows in this build. Generated claims should be
+// scoped through buildEvidenceSubjectNetuidIndex() instead of trusting
+// user-controlled subject slugs.
+export function netuidFromEvidenceSubject(subject) {
+  const value = String(subject || "");
+  const subnetMatch = value.match(/^subnet:(\d+)\b/);
+  if (subnetMatch) {
+    return Number(subnetMatch[1]);
+  }
+  const snMatch = value.match(/sn-(\d+)/);
+  if (snMatch) {
+    return Number(snMatch[1]);
+  }
+  return null;
+}
+
 export async function readJson(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);

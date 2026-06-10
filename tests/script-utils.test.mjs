@@ -13,6 +13,7 @@ import {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
+  buildEvidenceSubjectNetuidIndex,
   buildRpcEndpointArtifact,
   buildTimestamp,
   classifyNativeName,
@@ -35,6 +36,7 @@ import {
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
+  netuidForEvidenceClaim,
   normalizePublicUrl,
   readJson,
   redactCredentialedUrl,
@@ -969,6 +971,40 @@ describe("script utility contracts", () => {
     assert.equal(
       isCredentialedUrl("https://example.com/download?file=1"),
       false,
+    );
+  });
+
+  test("scopes evidence claims with authoritative source netuids before subject slugs", () => {
+    const subjectNetuids = buildEvidenceSubjectNetuidIndex({
+      candidates: [{ id: "community-sn-7-misplaced-vanta-example", netuid: 8 }],
+      subnets: [{ netuid: 7 }],
+      surfaces: [{ id: "sn-7-curated-surface", netuid: 7 }],
+    });
+
+    assert.equal(
+      netuidForEvidenceClaim(
+        { subject: "candidate:community-sn-7-misplaced-vanta-example" },
+        subjectNetuids,
+      ),
+      8,
+    );
+    assert.equal(
+      netuidForEvidenceClaim(
+        { subject: "surface:sn-7-curated-surface" },
+        subjectNetuids,
+      ),
+      7,
+    );
+    assert.equal(
+      netuidForEvidenceClaim({ subject: "subnet:7" }, subjectNetuids),
+      7,
+    );
+    assert.equal(
+      netuidForEvidenceClaim(
+        { subject: "legacy:community-sn-9-only-subject" },
+        subjectNetuids,
+      ),
+      9,
     );
   });
 
