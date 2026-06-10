@@ -132,7 +132,10 @@ Omitting all paging params returns the full collection (back-compatible).
 
 ## Recommended Client Usage
 
-- Generate types/client from the published `openapi.json` (or consume the checked-in
+- Install the typed client: `npm install @metagraphed/client` (published from
+  `packages/client/`, generated from this contract). Example:
+  `metagraphedFetch("/api/v1/subnets", { query: { limit: 10 } })`.
+- Or generate types/client from the published `openapi.json` (or consume the checked-in
   `generated/metagraphed-*.ts`).
 - Send `if-none-match` with stored ETags to get cheap `304`s.
 - Prefer per-subnet detail routes (`/api/v1/subnets/{netuid}`) and paginated list

@@ -4,6 +4,9 @@ export default [
   {
     ignores: [
       "node_modules/**",
+      "packages/*/node_modules/**",
+      "packages/*/dist/**",
+      "packages/*/src/metagraphed-*.ts",
       "public/metagraph/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",

@@ -1,0 +1,43 @@
+name: Publish client SDK
+
+# Publishes @metagraphed/client (packages/client) to npm. Triggered by a GitHub
+# Release (or manual dispatch). The package syncs the committed generated client
+# + API types at build time, so it always tracks the live /api/v1 contract.
+# Requires the NPM_TOKEN secret; provenance is attached via OIDC.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-client-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Build and publish @metagraphed/client
+        working-directory: packages/client
+        run: |
+          npm install --no-audit --no-fund
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

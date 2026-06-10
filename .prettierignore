@@ -1,4 +1,7 @@
 node_modules
+packages/*/dist
+packages/*/src/metagraphed-api.ts
+packages/*/src/metagraphed-client.ts
 public/metagraph
 public/.assetsignore
 generated
