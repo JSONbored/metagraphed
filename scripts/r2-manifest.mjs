@@ -79,6 +79,19 @@ for (const artifact of validationManifest.artifacts) {
     );
     process.exit(1);
   }
+
+  const expectedTier = artifactStorageTierForRelativePath(artifact.path);
+  if (artifact.storage_tier !== expectedTier) {
+    console.error(
+      stableStringify({
+        error: "r2 manifest artifact storage tier is stale",
+        path: artifact.path,
+        expected_storage_tier: expectedTier,
+        actual_storage_tier: artifact.storage_tier,
+      }),
+    );
+    process.exit(1);
+  }
 }
 
 console.log(stableStringify(summary));
