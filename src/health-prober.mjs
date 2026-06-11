@@ -28,8 +28,126 @@ export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 const PROBE_CONCURRENCY = 8;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
+const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
+const DNS_RECORD_TYPES = ["A", "AAAA"];
+const DNS_TIMEOUT_MS = 4000;
 
 const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+
+// --- DNS-aware SSRF guard for the Worker prober (codex #255) -------------------
+// The literal `isUnsafePublicUrl` guard can't see DNS rebinding (a public-looking
+// hostname that resolves to a private IP). Workers have no node:dns, so we verify
+// answers via Cloudflare DNS-over-HTTPS immediately before the probe. Policy:
+// block on a DETECTED private answer (real rebinding), but fail OPEN on a DoH
+// timeout/error/no-answer — operational surfaces are a curated, public_safe,
+// PR-reviewed allowlist that already passed the literal guard, so a DoH blip must
+// never falsely mark all health unsafe.
+function normalizedHostname(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\]$/, "$1")
+    .replace(/\.$/, "");
+}
+
+function ipv4Octets(value) {
+  const parts = String(value || "").split(".");
+  if (parts.length !== 4) return null;
+  const octets = parts.map((part) => {
+    if (!/^\d+$/.test(part)) return null;
+    const n = Number(part);
+    return Number.isInteger(n) && n >= 0 && n <= 255 ? n : null;
+  });
+  return octets.every((n) => n !== null) ? octets : null;
+}
+
+function isUnsafeIpAddress(value) {
+  const host = normalizedHostname(value);
+  const v4 = ipv4Octets(host);
+  if (v4) {
+    const [a, b, c, d] = v4;
+    return (
+      a === 0 ||
+      a === 10 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && c === 0) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224 ||
+      (a === 255 && b === 255 && c === 255 && d === 255)
+    );
+  }
+  return (
+    host === "::" ||
+    host === "::1" ||
+    host.startsWith("100:") ||
+    host.startsWith("64:ff9b:1:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
+    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    host.startsWith("ff")
+  );
+}
+
+function dnsAddressAnswers(body) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.Answer)) {
+    return [];
+  }
+  return body.Answer.map((answer) => String(answer?.data || "").trim()).filter(
+    (data) => ipv4Octets(data) || normalizedHostname(data).includes(":"),
+  );
+}
+
+async function resolveDnsJson(host, recordType, fetchImpl, endpoint) {
+  const query = new URL(endpoint);
+  query.searchParams.set("name", host);
+  query.searchParams.set("type", recordType);
+  const response = await fetchImpl(query.toString(), {
+    headers: { accept: "application/dns-json" },
+    signal: AbortSignal.timeout(DNS_TIMEOUT_MS),
+  });
+  if (!response?.ok) {
+    return [];
+  }
+  return dnsAddressAnswers(await response.json());
+}
+
+export function workerResolvedUrlSafetyGuard({
+  fetchImpl = fetch,
+  dnsJsonEndpoint = DNS_JSON_ENDPOINT,
+} = {}) {
+  return async function isUnsafeWorkerResolvedUrl(value) {
+    if (isUnsafePublicUrl(value)) {
+      return true;
+    }
+    let host;
+    try {
+      host = normalizedHostname(new URL(value).hostname);
+    } catch {
+      return true;
+    }
+    if (ipv4Octets(host) || host.includes(":")) {
+      return isUnsafeIpAddress(host);
+    }
+    try {
+      const answers = (
+        await Promise.all(
+          DNS_RECORD_TYPES.map((type) =>
+            resolveDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
+          ),
+        )
+      ).flat();
+      // Block only on a confirmed private answer (rebinding). No answer / DoH
+      // failure → fail open (handled by the catch below + the literal guard).
+      return answers.some(isUnsafeIpAddress);
+    } catch {
+      return false;
+    }
+  };
+}
 
 // Worker outbound-WebSocket connector for the WSS subtensor probe. Workers open
 // client sockets via fetch(Upgrade: websocket) → response.webSocket, NOT the
@@ -191,7 +309,11 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     overrides.loadSurfaces || (() => loadOperationalSurfaces(env));
   const probe = overrides.probeSurface || coreProbeSurface;
   const probeOptions = overrides.probeOptions || {
-    isUnsafeUrl: overrides.isUnsafeUrl || isUnsafePublicUrl,
+    // DNS-aware SSRF guard (resolves via DoH; fail-open on DoH error). Falls back
+    // to the isomorphic literal guard when an override is supplied (tests).
+    isUnsafeUrl:
+      overrides.isUnsafeUrl ||
+      workerResolvedUrlSafetyGuard({ fetchImpl: overrides.safetyFetch }),
     connect: overrides.connect || workerWebSocketConnector(),
   };
   const concurrency = overrides.concurrency || PROBE_CONCURRENCY;

@@ -8,9 +8,93 @@ import {
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
   runHealthProber,
+  workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
 import { handleScheduled } from "../workers/api.mjs";
+
+describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
+  // DoH JSON mock: maps host → { A: [...], AAAA: [...] }.
+  const dohFetch = (records) => async (url) => {
+    const u = new URL(url);
+    const name = u.searchParams.get("name");
+    const type = u.searchParams.get("type");
+    const data = records[name]?.[type] || [];
+    return {
+      ok: true,
+      async json() {
+        return { Answer: data.map((d) => ({ data: d })) };
+      },
+    };
+  };
+
+  test("literal guard still blocks private literals + bad schemes", async () => {
+    const guard = workerResolvedUrlSafetyGuard({ fetchImpl: dohFetch({}) });
+    assert.equal(await guard("http://10.0.0.1/x"), true);
+    assert.equal(await guard("ftp://example.com"), true);
+    assert.equal(await guard("not a url"), true);
+  });
+
+  test("IP-literal hosts are checked directly without DNS", async () => {
+    let called = false;
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async () => {
+        called = true;
+        return {
+          ok: true,
+          async json() {
+            return {};
+          },
+        };
+      },
+    });
+    // 8.8.8.8 is public, passes the literal guard, and is an IP literal.
+    assert.equal(await guard("https://8.8.8.8/x"), false);
+    assert.equal(called, false);
+  });
+
+  test("blocks a public hostname that resolves to a private IP (rebinding)", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: dohFetch({ "evil.example.com": { A: ["10.1.2.3"] } }),
+    });
+    assert.equal(await guard("https://evil.example.com/x"), true);
+  });
+
+  test("blocks a private IPv6 AAAA answer", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: dohFetch({ "v6.example.com": { AAAA: ["fd00::1"] } }),
+    });
+    assert.equal(await guard("https://v6.example.com/x"), true);
+  });
+
+  test("allows a hostname that resolves to a public IP", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: dohFetch({ "ok.example.com": { A: ["93.184.216.34"] } }),
+    });
+    assert.equal(await guard("https://ok.example.com/x"), false);
+  });
+
+  test("fails OPEN on a DoH error (does not block all health)", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async () => {
+        throw new Error("DoH unreachable");
+      },
+    });
+    assert.equal(await guard("https://ok.example.com/x"), false);
+  });
+
+  test("fails OPEN on no DNS answer / non-ok DoH", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async () => ({
+        ok: false,
+        async json() {
+          return {};
+        },
+      }),
+    });
+    assert.equal(await guard("https://unknown.example.com/x"), false);
+  });
+});
 
 // --- mocks --------------------------------------------------------------------
 function makeDb({ priorStatus = [] } = {}) {
@@ -344,7 +428,9 @@ describe("workerWebSocketConnector", () => {
     const promise = connect("ws://node.example", [RPC_CALLS[0]], 1000);
     await Promise.resolve();
     await Promise.resolve();
-    const bytes = new TextEncoder().encode(JSON.stringify({ id: 1, result: 9 }));
+    const bytes = new TextEncoder().encode(
+      JSON.stringify({ id: 1, result: 9 }),
+    );
     socket.emit("message", { data: bytes });
     const results = await promise;
     assert.equal(results.get("a").result, 9);
