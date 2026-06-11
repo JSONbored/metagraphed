@@ -64,6 +64,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
 - `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
+- `/metagraph/agent-catalog.json`: compact index of subnets exposing callable services for AI agents (per subnet: service kinds + callable count). Committed.
+- `/metagraph/agent-catalog/{netuid}.json`: per-subnet agent capability catalog — each callable service with base URL, auth, machine-readable schema, and build-time health/eligibility. R2-backed.
 - `/metagraph/health/trends/{netuid}.json`: schema for the computed 7d/30d uptime + latency trends served live from D1 at `GET /api/v1/subnets/{netuid}/health/trends` (no static file is written).
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
@@ -89,6 +91,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/profiles`: list public-safe subnet profiles and completeness scores.
 - `/api/v1/subnets/{netuid}/profile`: fetch public-safe profile detail for one subnet.
 - `/api/v1/subnets/{netuid}/overview`: fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.
+- `/api/v1/agent-catalog`: list subnets exposing callable services for AI agents (compact index: service kinds + callable count per subnet).
+- `/api/v1/agent-catalog/{netuid}`: fetch one subnet's agent capability catalog — each callable service with base URL, auth, machine-readable schema, and health/eligibility.
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.

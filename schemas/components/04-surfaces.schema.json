@@ -537,6 +537,97 @@
             "additionalProperties": true
           }
         ]
+      },
+      "AgentCatalogArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["subnet_count", "subnets"],
+            "properties": {
+              "total_subnet_count": { "type": "integer", "minimum": 0 },
+              "subnet_count": { "type": "integer", "minimum": 0 },
+              "callable_service_count": { "type": "integer", "minimum": 0 },
+              "subnets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["netuid", "service_count"],
+                  "properties": {
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "slug": { "type": "string" },
+                    "name": { "type": "string" },
+                    "categories": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "subnet_type": { "type": ["string", "null"] },
+                    "completeness_score": { "type": ["number", "null"] },
+                    "service_count": { "type": "integer", "minimum": 0 },
+                    "callable_count": { "type": "integer", "minimum": 0 },
+                    "service_kinds": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "AgentCatalogSubnetArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["netuid", "service_count", "services"],
+            "properties": {
+              "netuid": { "type": "integer", "minimum": 0 },
+              "slug": { "type": "string" },
+              "name": { "type": "string" },
+              "categories": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "subnet_type": { "type": ["string", "null"] },
+              "completeness_score": { "type": ["number", "null"] },
+              "service_count": { "type": "integer", "minimum": 0 },
+              "services": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["surface_id", "kind", "base_url"],
+                  "properties": {
+                    "surface_id": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "capability": { "type": "string" },
+                    "description": { "type": ["string", "null"] },
+                    "base_url": { "type": "string" },
+                    "provider": { "type": ["string", "null"] },
+                    "authority": { "type": ["string", "null"] },
+                    "auth_required": { "type": "boolean" },
+                    "schema_url": { "type": ["string", "null"] },
+                    "schema_status": { "type": ["string", "null"] },
+                    "schema_artifact": { "type": ["string", "null"] },
+                    "health": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "eligibility": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
       }
     }
   }

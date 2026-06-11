@@ -399,6 +399,24 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Compact index of subnets exposing callable services (subnet-api/openapi/sse/data-artifact) — the machine-readable 'which subnet does X + how to call it' index for AI agents.",
+      "id": "agent-catalog",
+      "path": "/metagraph/agent-catalog.json",
+      "schema_ref": "#/components/schemas/AgentCatalogArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-subnet agent capability catalog: each callable service with its base URL, auth, machine-readable schema, and live-build health/eligibility.",
+      "id": "agent-catalog-subnet",
+      "path": "/metagraph/agent-catalog/{netuid}.json",
+      "schema_ref": "#/components/schemas/AgentCatalogSubnetArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "OpenAPI schema snapshot/drift status.",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",

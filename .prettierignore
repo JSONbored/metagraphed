@@ -4,6 +4,9 @@ packages/*/src/metagraphed-api.ts
 packages/*/src/metagraphed-client.ts
 public/metagraph
 public/.assetsignore
+public/llms.txt
+public/llms-full.txt
+public/.well-known
 generated
 schemas/api-components.schema.json
 registry/native

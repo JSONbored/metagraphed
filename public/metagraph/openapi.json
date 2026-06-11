@@ -58,6 +58,213 @@
           }
         ]
       },
+      "AgentCatalogArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "callable_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "callable_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "categories": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "completeness_score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "service_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "service_kinds": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "subnet_type": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "service_count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total_subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "subnet_count",
+              "subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentCatalogSubnetArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "categories": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "completeness_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "services": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "authority": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "base_url": {
+                      "type": "string"
+                    },
+                    "capability": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "eligibility": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "health": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_artifact": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_status": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "kind",
+                    "base_url"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "subnet_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "netuid",
+              "service_count",
+              "services"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ApiIndexArtifact": {
         "allOf": [
           {
@@ -7631,6 +7838,194 @@
         "summary": "Fetch adapter-backed public metrics.",
         "tags": [
           "adapters"
+        ]
+      }
+    },
+    "/api/v1/agent-catalog": {
+      "get": {
+        "operationId": "agentCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AgentCatalogArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List subnets exposing callable services for AI agents (compact capability index).",
+        "tags": [
+          "agents",
+          "subnets"
+        ]
+      }
+    },
+    "/api/v1/agent-catalog/{netuid}": {
+      "get": {
+        "operationId": "agentCatalogSubnet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AgentCatalogSubnetArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the callable-services catalog for one subnet (each service with its schema + health).",
+        "tags": [
+          "agents",
+          "subnets"
         ]
       }
     },

@@ -178,6 +178,7 @@ function templatedArtifactDirectory(artifactId) {
 
 function netuidArtifactDirectories() {
   return {
+    "agent-catalog-subnet": "agent-catalog",
     "candidates-subnet": "candidates",
     "endpoints-subnet": "endpoints",
     "evidence-subnet": "evidence",

@@ -1,0 +1,618 @@
+{
+  "callable_service_count": 67,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "schema_version": 1,
+  "subnet_count": 30,
+  "subnets": [
+    {
+      "callable_count": 4,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "forecasting",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "openapi",
+        "subnet-api"
+      ],
+      "completeness_score": 85,
+      "name": "Numinous",
+      "netuid": 6,
+      "service_count": 4,
+      "service_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "numinous",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 13,
+      "categories": [
+        "baseline-augmented",
+        "bitcoin",
+        "pilot",
+        "subnet-api"
+      ],
+      "completeness_score": 97,
+      "name": "Allways",
+      "netuid": 7,
+      "service_count": 13,
+      "service_kinds": [
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "slug": "allways",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 3,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "search",
+        "social-data"
+      ],
+      "completeness_score": 85,
+      "name": "Desearch",
+      "netuid": 22,
+      "service_count": 3,
+      "service_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-22",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-dashboard",
+        "official-source-repo",
+        "subnet-api-observed"
+      ],
+      "completeness_score": 70,
+      "name": "Trishool",
+      "netuid": 23,
+      "service_count": 1,
+      "service_kinds": [
+        "subnet-api"
+      ],
+      "slug": "sn-23",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 3,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "language-models",
+        "model-artifacts",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "Quasar",
+      "netuid": 24,
+      "service_count": 3,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-24",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "data",
+        "distributed-training",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "Coldint",
+      "netuid": 29,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-29",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 2,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "conversation-data",
+        "data",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "ReadyAI",
+      "netuid": 33,
+      "service_count": 2,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-33",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 65,
+      "name": "Zipcode",
+      "netuid": 46,
+      "service_count": 1,
+      "service_kinds": [
+        "openapi"
+      ],
+      "slug": "sn-46",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "data",
+        "identity-reviewed",
+        "official-source-repo"
+      ],
+      "completeness_score": 48,
+      "name": "EvolAI",
+      "netuid": 47,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-47",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 2,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "robotics",
+        "tournament"
+      ],
+      "completeness_score": 85,
+      "name": "Nepher Robotics",
+      "netuid": 49,
+      "service_count": 2,
+      "service_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-49",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 65,
+      "name": "lium.io",
+      "netuid": 51,
+      "service_count": 1,
+      "service_kinds": [
+        "subnet-api"
+      ],
+      "slug": "sn-51",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 5,
+      "categories": [
+        "ai-training",
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-openapi",
+        "official-website",
+        "operational-interface"
+      ],
+      "completeness_score": 93,
+      "name": "Gradients",
+      "netuid": 56,
+      "service_count": 5,
+      "service_kinds": [
+        "data-artifact",
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "gradients",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 4,
+      "categories": [
+        "ai-marketplace",
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "payments"
+      ],
+      "completeness_score": 85,
+      "name": "Handshake58",
+      "netuid": 58,
+      "service_count": 4,
+      "service_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-58",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 65,
+      "name": "Babelbit",
+      "netuid": 59,
+      "service_count": 1,
+      "service_kinds": [
+        "subnet-api"
+      ],
+      "slug": "sn-59",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 4,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "compute",
+        "identity-reviewed",
+        "inference",
+        "official-api",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 93,
+      "name": "Chutes",
+      "netuid": 64,
+      "service_count": 4,
+      "service_kinds": [
+        "data-artifact",
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-64",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-source-repo",
+        "official-website",
+        "software-engineering",
+        "workflow"
+      ],
+      "completeness_score": 70,
+      "name": "ninja",
+      "netuid": 66,
+      "service_count": 1,
+      "service_kinds": [
+        "subnet-api"
+      ],
+      "slug": "sn-66",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 58,
+      "name": "NOVA",
+      "netuid": 68,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-68",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 58,
+      "name": "NexisGen",
+      "netuid": 70,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-70",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "computer-vision",
+        "data",
+        "depin",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "StreetVision by NATIX",
+      "netuid": 72,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-72",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 2,
+      "categories": [
+        "baseline-augmented",
+        "developer-tools",
+        "pilot",
+        "repositories"
+      ],
+      "completeness_score": 83,
+      "name": "Gittensor",
+      "netuid": 74,
+      "service_count": 2,
+      "service_kinds": [
+        "data-artifact",
+        "openapi"
+      ],
+      "slug": "gittensor",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "MVTRX",
+      "netuid": 79,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-79",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "data-artifact",
+        "finance",
+        "identity-reviewed",
+        "official-dashboard",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "Investing",
+      "netuid": 88,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-88",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "inference",
+        "model-registry",
+        "official-website"
+      ],
+      "completeness_score": 48,
+      "name": "Actual",
+      "netuid": 95,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "actual",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 2,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "inference",
+        "language-models",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 85,
+      "name": "Verathos",
+      "netuid": 96,
+      "service_count": 2,
+      "service_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-96",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 65,
+      "name": "Albedo",
+      "netuid": 97,
+      "service_count": 1,
+      "service_kinds": [
+        "openapi"
+      ],
+      "slug": "sn-97",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-curated"
+      ],
+      "completeness_score": 65,
+      "name": "Minos",
+      "netuid": 107,
+      "service_count": 1,
+      "service_kinds": [
+        "subnet-api"
+      ],
+      "slug": "sn-107",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "data-artifact",
+        "identity-reviewed",
+        "official-source-repo"
+      ],
+      "completeness_score": 48,
+      "name": "Academia",
+      "netuid": 109,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-109",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 5,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "model-directory",
+        "official-api",
+        "official-website"
+      ],
+      "completeness_score": 93,
+      "name": "Green Compute",
+      "netuid": 110,
+      "service_count": 5,
+      "service_kinds": [
+        "data-artifact",
+        "openapi",
+        "subnet-api"
+      ],
+      "slug": "sn-110",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "mcp",
+        "official-source-repo",
+        "official-website"
+      ],
+      "completeness_score": 63,
+      "name": "SOMA",
+      "netuid": 114,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-114",
+      "subnet_type": "application"
+    },
+    {
+      "callable_count": 1,
+      "categories": [
+        "agent-memory",
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-docs",
+        "official-website"
+      ],
+      "completeness_score": 48,
+      "name": "Ditto",
+      "netuid": 118,
+      "service_count": 1,
+      "service_kinds": [
+        "data-artifact"
+      ],
+      "slug": "sn-118",
+      "subnet_type": "application"
+    }
+  ],
+  "total_subnet_count": 129
+}

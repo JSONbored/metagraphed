@@ -310,6 +310,20 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "agent-catalog",
+      "path": "/metagraph/agent-catalog.json",
+      "schema_ref": "#/components/schemas/AgentCatalogArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "agent-catalog-subnet",
+      "path": "/metagraph/agent-catalog/{netuid}.json",
+      "schema_ref": "#/components/schemas/AgentCatalogSubnetArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
       "schema_ref": "#/components/schemas/SchemaDriftArtifact",
@@ -726,6 +740,30 @@
       "id": "subnet-overview",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/overview",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/agent-catalog.json",
+      "cache": "standard",
+      "description": "List subnets exposing callable services for AI agents (compact capability index).",
+      "id": "agent-catalog",
+      "method": "GET",
+      "path": "/api/v1/agent-catalog",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/agent-catalog/{netuid}.json",
+      "cache": "standard",
+      "description": "Fetch the callable-services catalog for one subnet (each service with its schema + health).",
+      "id": "agent-catalog-subnet",
+      "method": "GET",
+      "path": "/api/v1/agent-catalog/{netuid}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

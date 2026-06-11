@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List subnets exposing callable services for AI agents (compact capability index). */
+        get: operations["agentCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent-catalog/{netuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the callable-services catalog for one subnet (each service with its schema + health). */
+        get: operations["agentCatalogSubnet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/build": {
         parameters: {
             query?: never;
@@ -800,6 +834,58 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             subnet: string;
+        } & {
+            [key: string]: unknown;
+        });
+        AgentCatalogArtifact: components["schemas"]["ArtifactBase"] & ({
+            callable_service_count?: number;
+            subnet_count: number;
+            subnets: ({
+                callable_count?: number;
+                categories?: string[];
+                completeness_score?: number | null;
+                name?: string;
+                netuid: number;
+                service_count: number;
+                service_kinds?: string[];
+                slug?: string;
+                subnet_type?: string | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            total_subnet_count?: number;
+        } & {
+            [key: string]: unknown;
+        });
+        AgentCatalogSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
+            categories?: string[];
+            completeness_score?: number | null;
+            name?: string;
+            netuid: number;
+            service_count: number;
+            services: ({
+                auth_required?: boolean;
+                authority?: string | null;
+                base_url: string;
+                capability?: string;
+                description?: string | null;
+                eligibility?: {
+                    [key: string]: unknown;
+                };
+                health?: {
+                    [key: string]: unknown;
+                };
+                kind: string;
+                provider?: string | null;
+                schema_artifact?: string | null;
+                schema_status?: string | null;
+                schema_url?: string | null;
+                surface_id: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            slug?: string;
+            subnet_type?: string | null;
         } & {
             [key: string]: unknown;
         });
@@ -2646,6 +2732,144 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AdapterArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    agentCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AgentCatalogArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    agentCatalogSubnet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AgentCatalogSubnetArtifact"];
                     };
                 };
             };

@@ -66,6 +66,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/agent-catalog",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.callable_service_count, "number");
+    },
+  ],
+  [
+    "/api/v1/agent-catalog/7",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.services), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
     (body) =>
       assert.equal(

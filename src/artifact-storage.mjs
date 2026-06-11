@@ -25,6 +25,8 @@ const R2_ONLY_PATTERNS = [
   // file. Marked R2-only so the contract maps a schema to the route without the
   // build expecting a committed/staged artifact.
   /^health\/trends\/(?:\d+|\{netuid\})\.json$/,
+  // Per-subnet agent capability catalog (full service detail) — large, built.
+  /^agent-catalog\/(?:\d+|\{netuid\})\.json$/,
   /^metagraph\/latest\.json$/,
   /^profiles\/(?:\d+|\{netuid\})\.json$/,
   /^providers\/[^/]+\.json$/,
@@ -82,6 +84,9 @@ const DUAL_PATTERNS = [
   // operational surfaces), read by the Worker cron prober at runtime via ASSETS.
   // Committed + mirrored to R2 like the other small contract digests.
   /^operational-surfaces\.json$/,
+  // Compact agent-catalog index (the per-subnet detail is R2-only above). Small,
+  // agent-facing; committed + mirrored so it's always available to MCP/agents.
+  /^agent-catalog\.json$/,
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
   // subnets.json (124 KB) stays committed: the changelog diffs it against the

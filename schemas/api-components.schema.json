@@ -44,6 +44,213 @@
           }
         ]
       },
+      "AgentCatalogArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "callable_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "callable_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "categories": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "completeness_score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "service_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "service_kinds": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "subnet_type": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "service_count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total_subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "subnet_count",
+              "subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentCatalogSubnetArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "categories": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "completeness_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "services": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "authority": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "base_url": {
+                      "type": "string"
+                    },
+                    "capability": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "eligibility": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "health": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_artifact": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_status": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "schema_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "kind",
+                    "base_url"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "subnet_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "netuid",
+              "service_count",
+              "services"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ApiIndexArtifact": {
         "allOf": [
           {

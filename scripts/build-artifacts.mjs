@@ -32,7 +32,9 @@ import {
   writeJson,
 } from "./lib.mjs";
 import {
+  API_ROUTES,
   CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
   buildApiIndexArtifact,
   buildContractsArtifact,
 } from "../src/contracts.mjs";
@@ -661,6 +663,174 @@ for (const subnet of mergedSubnets) {
     gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
   });
 }
+// --- Agent capability catalog ------------------------------------------------
+// Machine-readable "which subnet exposes which callable service + how to call it"
+// index for AI agents: per-subnet callable surfaces (subnet-api/openapi/sse/
+// data-artifact) joined with their machine-readable schema snapshot + health.
+// Global file is a compact index (dual/committed); per-subnet files carry the
+// full service detail (R2). Health here is the 6h-build snapshot; the MCP tool +
+// serving layer can overlay the live 2-minute health.
+const AGENT_SERVICE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
+const agentSchemaBySurfaceId = new Map(
+  (schemaIndexArtifact.schemas || []).map((entry) => [
+    entry.surface_id,
+    entry,
+  ]),
+);
+const agentEndpointBySurfaceId = new Map(
+  endpointResources.endpoints
+    .filter((endpoint) => endpoint.surface_id)
+    .map((endpoint) => [endpoint.surface_id, endpoint]),
+);
+function buildSubnetServices(netuid) {
+  return (overviewSurfacesByNetuid.get(netuid) || [])
+    .filter(
+      (surface) =>
+        AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
+    )
+    .map((surface) => {
+      const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;
+      const schema = agentSchemaBySurfaceId.get(surface.id) || null;
+      const classification = endpoint?.classification || null;
+      return {
+        surface_id: surface.id,
+        kind: surface.kind,
+        capability: surface.name || surface.notes || `${surface.kind} surface`,
+        description: surface.notes || null,
+        base_url: surface.url,
+        provider: surface.provider || null,
+        authority: surface.authority || null,
+        auth_required: Boolean(surface.auth_required),
+        schema_url: surface.schema_url || null,
+        schema_status: surface.schema_status || null,
+        schema_artifact: schema?.path || null,
+        health: {
+          status: endpoint?.status || "unknown",
+          classification,
+          latency_ms: Number.isFinite(endpoint?.latency_ms)
+            ? endpoint.latency_ms
+            : null,
+          last_ok: endpoint?.last_ok || null,
+          last_checked: endpoint?.last_checked || null,
+          stale: endpoint?.health_stale ?? true,
+          monitoring_status: endpoint?.monitoring_status || null,
+        },
+        eligibility: {
+          callable:
+            Boolean(surface.public_safe) &&
+            classification !== "dead" &&
+            classification !== "unsafe",
+          reasons: endpoint?.pool_eligibility_reasons || [],
+        },
+      };
+    })
+    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+}
+await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
+const agentCatalogIndex = [];
+let callableServiceCount = 0;
+for (const subnet of mergedSubnets) {
+  const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
+  const services = buildSubnetServices(subnet.netuid);
+  await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    categories: Array.isArray(profile?.categories) ? profile.categories : [],
+    subnet_type: profile?.subnet_type || null,
+    completeness_score: profile?.completeness_score ?? null,
+    service_count: services.length,
+    services,
+  });
+  if (services.length > 0) {
+    const callable = services.filter((s) => s.eligibility.callable).length;
+    callableServiceCount += callable;
+    agentCatalogIndex.push({
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      categories: Array.isArray(profile?.categories) ? profile.categories : [],
+      subnet_type: profile?.subnet_type || null,
+      completeness_score: profile?.completeness_score ?? null,
+      service_count: services.length,
+      callable_count: callable,
+      service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
+    });
+  }
+}
+await writeJson(artifactFile("agent-catalog.json"), {
+  schema_version: 1,
+  contract_version: contractVersion,
+  generated_at: generatedAt,
+  total_subnet_count: mergedSubnets.length,
+  subnet_count: agentCatalogIndex.length,
+  callable_service_count: callableServiceCount,
+  subnets: agentCatalogIndex.sort((a, b) => a.netuid - b.netuid),
+});
+
+// --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------
+// The emerging standard for making a site/API legible to LLMs. Served from the
+// public/ root (and /.well-known) by the ASSETS handler at api.metagraph.sh.
+const llmsApiBase = `https://${PRIMARY_DOMAIN}`;
+const llmsHeader = [
+  "# metagraphed",
+  "",
+  "> The operational + integration registry for Bittensor subnets — what each subnet exposes (APIs, docs, schemas), whether it's healthy, and how to call it. Machine-readable for AI agents and developers.",
+  "",
+  `metagraphed catalogs the application/operational layer of Bittensor (complementary to chain explorers like taostats): ${mergedSubnets.length} subnets, ${surfaces.length} public surfaces, live 2-minute health probing. All endpoints are public, read-only JSON under the \`{ ok, schema_version, data, meta }\` envelope.`,
+  "",
+  "## Machine entrypoints",
+  `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
+  `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
+  `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools`,
+  `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
+  `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
+  "",
+  "## Key endpoints",
+  "- Subnets: `GET /api/v1/subnets`, `GET /api/v1/subnets/{netuid}`",
+  "- Health: `GET /api/v1/subnets/{netuid}/health`, `GET /api/v1/subnets/{netuid}/health/trends`",
+  "- Callable APIs: `GET /api/v1/agent-catalog/{netuid}`, `GET /api/v1/subnets/{netuid}/surfaces`",
+  "- Schemas: `GET /api/v1/schemas`, `GET /metagraph/schemas/{surface_id}.json`",
+  "- RPC pool: `GET /api/v1/rpc/endpoints`",
+].join("\n");
+const llmsShort = `${llmsHeader}\n\n## Optional\n- [llms-full.txt](${llmsApiBase}/llms-full.txt): expanded index with every subnet + route\n`;
+const llmsSubnetLines = mergedSubnets
+  .map((subnet) => {
+    const idx = agentCatalogIndex.find((e) => e.netuid === subnet.netuid);
+    const cats = idx?.categories?.length
+      ? ` [${idx.categories.join(", ")}]`
+      : "";
+    const svc = idx
+      ? `; ${idx.callable_count}/${idx.service_count} callable services (${idx.service_kinds.join(", ")})`
+      : "; no catalogued public API yet";
+    return `- SN${subnet.netuid} ${subnet.name} (${subnet.slug})${cats}${svc} — ${llmsApiBase}/api/v1/agent-catalog/${subnet.netuid}`;
+  })
+  .join("\n");
+const llmsRouteLines = API_ROUTES.map(
+  (entry) => `- \`${entry.method} ${entry.path}\` — ${entry.description}`,
+).join("\n");
+const llmsFull = `${llmsHeader}\n\n## Subnets\n${llmsSubnetLines}\n\n## All API routes\n${llmsRouteLines}\n`;
+await fs.writeFile(path.join(repoRoot, "public/llms.txt"), llmsShort, "utf8");
+await fs.writeFile(
+  path.join(repoRoot, "public/llms-full.txt"),
+  llmsFull,
+  "utf8",
+);
+await fs.mkdir(path.join(repoRoot, "public/.well-known"), { recursive: true });
+await fs.writeFile(
+  path.join(repoRoot, "public/.well-known/llms.txt"),
+  llmsShort,
+  "utf8",
+);
+
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(
   artifactFile("api-index.json"),
