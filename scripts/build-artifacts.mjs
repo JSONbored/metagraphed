@@ -11,6 +11,7 @@ import {
   buildTimestamp,
   buildRpcEndpointArtifact,
   flattenSurfaces,
+  formatLlmMarkdownText,
   hashJson,
   listJsonFilesRecursive,
   loadCandidates,
@@ -677,10 +678,7 @@ const AGENT_SERVICE_KINDS = new Set([
   "data-artifact",
 ]);
 const agentSchemaBySurfaceId = new Map(
-  (schemaIndexArtifact.schemas || []).map((entry) => [
-    entry.surface_id,
-    entry,
-  ]),
+  (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
 );
 const agentEndpointBySurfaceId = new Map(
   endpointResources.endpoints
@@ -690,8 +688,7 @@ const agentEndpointBySurfaceId = new Map(
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
-      (surface) =>
-        AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
+      (surface) => AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
     )
     .map((surface) => {
       const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;
@@ -806,12 +803,16 @@ const llmsSubnetLines = mergedSubnets
   .map((subnet) => {
     const idx = agentCatalogIndex.find((e) => e.netuid === subnet.netuid);
     const cats = idx?.categories?.length
-      ? ` [${idx.categories.join(", ")}]`
+      ? ` [${idx.categories
+          .map((category) => formatLlmMarkdownText(category))
+          .join(", ")}]`
       : "";
     const svc = idx
-      ? `; ${idx.callable_count}/${idx.service_count} callable services (${idx.service_kinds.join(", ")})`
+      ? `; ${idx.callable_count}/${idx.service_count} callable services (${idx.service_kinds
+          .map((kind) => formatLlmMarkdownText(kind))
+          .join(", ")})`
       : "; no catalogued public API yet";
-    return `- SN${subnet.netuid} ${subnet.name} (${subnet.slug})${cats}${svc} — ${llmsApiBase}/api/v1/agent-catalog/${subnet.netuid}`;
+    return `- SN${subnet.netuid} ${formatLlmMarkdownText(subnet.name)} (${formatLlmMarkdownText(subnet.slug)})${cats}${svc} — ${llmsApiBase}/api/v1/agent-catalog/${subnet.netuid}`;
   })
   .join("\n");
 const llmsRouteLines = API_ROUTES.map(

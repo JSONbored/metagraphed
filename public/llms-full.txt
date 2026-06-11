@@ -110,7 +110,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 - SN88 Investing (sn-88) [baseline-augmented, baseline-curated, data-artifact, finance, identity-reviewed, official-dashboard, official-source-repo, official-website]; 1/1 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/88
 - SN89 InfiniteHash (sn-89); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/89
 - SN90 DegenBrain (sn-90); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/90
-- SN91 Bitstarter #1 (sn-91); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/91
+- SN91 Bitstarter \#1 (sn-91); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/91
 - SN92 Tensorclaw (sn-92); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/92
 - SN93 Bitcast (sn-93); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/93
 - SN94 Bitsota (sn-94); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/94
@@ -123,7 +123,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 - SN101 eni (eni); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/101
 - SN102 ConnitoAI (sn-102); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/102
 - SN103 Djinn (sn-103); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/103
-- SN104 for sale (burn to uid1) (for-sale-uid1); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/104
+- SN104 for sale \(burn to uid1\) (for-sale-uid1); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/104
 - SN105 Beam (sn-105); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/105
 - SN106 Nodexo (sn-106); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/106
 - SN107 Minos (sn-107) [baseline-curated]; 1/1 callable services (subnet-api) — https://api.metagraph.sh/api/v1/agent-catalog/107
@@ -140,7 +140,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 - SN118 Ditto (sn-118) [agent-memory, baseline-augmented, baseline-curated, identity-reviewed, official-docs, official-website]; 1/1 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/118
 - SN119 Satori (satori); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/119
 - SN120 Affine (sn-120); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/120
-- SN121 sundae_bar (sn-121); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/121
+- SN121 sundae\_bar (sn-121); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/121
 - SN122 Bitrecs (sn-122); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/122
 - SN123 MANTIS (sn-123); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/123
 - SN124 Swarm (sn-124); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/124

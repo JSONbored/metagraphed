@@ -430,6 +430,31 @@ export function nativeNameQuality(subnet) {
   return classifyNativeName(rawName, subnet?.netuid).quality;
 }
 
+export function formatLlmMarkdownText(value, { maxLength = 160 } = {}) {
+  const markdownCharacters = new Set("\\&<>{}[]()#*_`|!");
+  const chars = Array.from(String(value ?? "")).slice(0, maxLength);
+  let safeValue = "";
+
+  for (const char of chars) {
+    const codePoint = char.codePointAt(0);
+    if (char === "\r") {
+      safeValue += "\\r";
+    } else if (char === "\n") {
+      safeValue += "\\n";
+    } else if (char === "\t") {
+      safeValue += " ";
+    } else if (codePoint < 0x20 || (codePoint >= 0x7f && codePoint <= 0x9f)) {
+      safeValue += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+    } else if (markdownCharacters.has(char)) {
+      safeValue += `\\${char}`;
+    } else {
+      safeValue += char;
+    }
+  }
+
+  return safeValue;
+}
+
 export function nativeDisplayName(subnet, fallbackName = null) {
   const quality = nativeNameQuality(subnet);
   const candidate =
