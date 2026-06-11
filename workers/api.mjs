@@ -70,6 +70,8 @@ const PERCENTILES_PATH_PATTERN =
 const INCIDENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
 const TRAJECTORY_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
 const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
+const ANALYTICS_WINDOW_PARAM = "window";
+const MAX_INCIDENT_ROWS = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
@@ -638,9 +640,35 @@ async function handleHealthTrends(request, env, netuid) {
 }
 
 function analyticsWindow(url) {
-  const requested = url.searchParams.get("window");
-  const label = ANALYTICS_WINDOWS[requested] ? requested : "7d";
+  for (const key of url.searchParams.keys()) {
+    if (key !== ANALYTICS_WINDOW_PARAM) {
+      return {
+        error: {
+          parameter: key,
+          message: `${key} is not supported for this route.`,
+        },
+      };
+    }
+  }
+
+  const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
+  if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
+    return {
+      error: {
+        parameter: ANALYTICS_WINDOW_PARAM,
+        message: `${ANALYTICS_WINDOW_PARAM} is not supported for this route.`,
+      },
+    };
+  }
+
+  const label = requested || "7d";
   return { label, days: ANALYTICS_WINDOWS[label] };
+}
+
+function analyticsQueryError(error) {
+  return errorResponse("invalid_query", error.message, 400, {
+    parameter: error.parameter,
+  });
 }
 
 async function d1All(env, sql, params) {
@@ -669,7 +697,8 @@ function analyticsMeta(env, artifactPath, observedAt) {
 
 // p50/p95/p99 latency percentiles per surface, computed in D1.
 async function handleHealthPercentiles(request, env, netuid, url) {
-  const { label, days } = analyticsWindow(url);
+  const { label, days, error } = analyticsWindow(url);
+  if (error) return analyticsQueryError(error);
   const rows = await d1All(
     env,
     `WITH ranked AS (
@@ -714,7 +743,8 @@ async function handleHealthPercentiles(request, env, netuid, url) {
 
 // SLA + reconstructed downtime incidents per surface.
 async function handleHealthIncidents(request, env, netuid, url) {
-  const { label, days } = analyticsWindow(url);
+  const { label, days, error } = analyticsWindow(url);
+  if (error) return analyticsQueryError(error);
   const since = Date.now() - days * DAY_MS;
   const [slaRows, incidentRows] = await Promise.all([
     d1All(
@@ -726,8 +756,8 @@ async function handleHealthIncidents(request, env, netuid, url) {
       [netuid, since],
     ),
     // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-    // incident threshold) into one incident row. Returns one row per incident,
-    // not per failure, so a fully-dead subnet can't return a huge result set.
+    // incident threshold) into one incident row, then cap the public payload so
+    // flapping endpoints cannot force unbounded result sets/responses.
     d1All(
       env,
       `WITH failures AS (
@@ -749,8 +779,9 @@ async function handleHealthIncidents(request, env, netuid, url) {
               COUNT(*) AS failed_samples
        FROM grouped
        GROUP BY surface_id, grp
-       ORDER BY surface_id, started_at`,
-      [netuid, since, INCIDENT_GAP_MS],
+       ORDER BY surface_id, started_at
+       LIMIT ?`,
+      [netuid, since, INCIDENT_GAP_MS, MAX_INCIDENT_ROWS],
     ),
   ]);
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -760,6 +791,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
     observedAt: meta?.last_run_at || null,
     slaRows,
     incidentRows,
+    maxIncidents: MAX_INCIDENT_ROWS,
   });
   return envelopeResponse(
     request,

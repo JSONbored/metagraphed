@@ -109,6 +109,22 @@ describe("formatIncidents", () => {
     });
     assert.equal(out.surfaces[0].uptime_ratio, null);
   });
+  test("caps materialized incidents when requested by the API", () => {
+    const t = 1_000_000_000_000;
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "x", total: 10, ok_count: 5 }],
+      incidentRows: Array.from({ length: 3 }, (_, i) => ({
+        surface_id: "x",
+        started_at: t + i * 60000,
+        ended_at: t + i * 60000,
+        failed_samples: 1,
+      })),
+      maxIncidents: 2,
+    });
+    assert.equal(out.surfaces[0].incident_count, 2);
+    assert.equal(out.surfaces[0].incidents.length, 2);
+  });
 });
 
 describe("formatLeaderboards", () => {
@@ -385,6 +401,16 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
   });
+  test("incidents rejects unsupported query parameters", async () => {
+    for (const query of ["window=bogus", "window=7d&cacheBust=x"]) {
+      const { status, body } = await getJson(
+        `https://api.metagraph.sh/api/v1/subnets/7/health/incidents?${query}`,
+        env,
+      );
+      assert.equal(status, 400);
+      assert.equal(body.error.code, "invalid_query");
+    }
+  });
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
@@ -430,6 +456,34 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(body.data.surfaces[0].uptime_ratio, 0.98);
     assert.equal(body.data.surfaces[0].incident_count, 1);
+  });
+  test("incidents SQL uses a hard incident row cap", async () => {
+    const queries = [];
+    const envWithCapture = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              queries.push({ sql, params });
+              return {
+                all: () => Promise.resolve({ results: rowsForSql(sql) }),
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
+      envWithCapture,
+    );
+    assert.equal(status, 200);
+    const incidentQuery = queries.find((query) =>
+      query.sql.includes("WITH failures"),
+    );
+    assert.ok(incidentQuery.sql.includes("LIMIT ?"));
+    assert.equal(incidentQuery.params.at(-1), 1000);
   });
   test("trajectory computes deltas from snapshots", async () => {
     const { body } = await getJson(

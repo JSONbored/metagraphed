@@ -325,18 +325,26 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
 
 // SLA + downtime incidents per surface. `slaRows`: [{ surface_id, total,
 // ok_count }]. `incidentRows`: [{ surface_id, started_at, ended_at,
-// failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL), so the
-// payload is bounded by incident count, not by failure count (a fully-dead
-// subnet over 30 days cannot blow up the Worker isolate).
+// failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).
+// `maxIncidents` is a defensive API cap so flapping endpoints cannot force the
+// formatter to materialize unbounded incident arrays.
 export function formatIncidents({
   netuid,
   window,
   observedAt,
   slaRows,
   incidentRows,
+  maxIncidents,
 }) {
+  const incidentLimit = Number.isInteger(maxIncidents)
+    ? Math.max(0, maxIncidents)
+    : Infinity;
   const incidentsBySurface = new Map();
+  let acceptedIncidents = 0;
   for (const row of incidentRows || []) {
+    if (acceptedIncidents >= incidentLimit) {
+      break;
+    }
     const list = incidentsBySurface.get(row.surface_id) || [];
     const startedAt = Number(row.started_at);
     const endedAt = Number(row.ended_at);
@@ -346,6 +354,7 @@ export function formatIncidents({
       duration_ms: endedAt - startedAt,
       failed_samples: Number(row.failed_samples) || 0,
     });
+    acceptedIncidents += 1;
     incidentsBySurface.set(row.surface_id, list);
   }
 
