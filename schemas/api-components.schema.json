@@ -5719,6 +5719,7 @@
               "error",
               "not-found",
               "pending-snapshot",
+              "too-large",
               "ui-only-or-undiscovered",
               "unsafe"
             ]
@@ -5832,6 +5833,7 @@
               "captured",
               "error",
               "not-found",
+              "too-large",
               "unsafe"
             ]
           },

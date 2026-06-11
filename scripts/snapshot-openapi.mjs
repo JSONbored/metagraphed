@@ -24,6 +24,28 @@ const observedAt =
   nonPlaceholderTimestamp(process.env.METAGRAPH_BUILD_TIMESTAMP) ||
   new Date().toISOString();
 const contractVersion = "2026-06-06.1";
+
+class SchemaSnapshotLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "SchemaSnapshotLimitError";
+  }
+}
+
+// DoS bounds for the production schemas:snapshot step, which fetches and
+// normalizes OpenAPI specs from untrusted upstream subnet origins.
+const OPENAPI_SNAPSHOT_LIMITS = {
+  responseBytes: positiveIntegerEnv("METAGRAPH_OPENAPI_MAX_BYTES", 5_000_000),
+  normalizeDepth: positiveIntegerEnv(
+    "METAGRAPH_OPENAPI_MAX_NORMALIZE_DEPTH",
+    100,
+  ),
+  normalizeNodes: positiveIntegerEnv(
+    "METAGRAPH_OPENAPI_MAX_NORMALIZE_NODES",
+    100_000,
+  ),
+};
+
 const subnets = await loadSubnets();
 const surfaces = flattenSurfaces(subnets).filter(
   (surface) => surface.kind === "openapi" && surface.public_safe,
@@ -120,13 +142,25 @@ async function snapshotSurface(surface) {
       if (response.private_redirect_blocked || response.unsafe_url) {
         return unavailable(surface, schemaUrl, "unsafe", response.error);
       }
+      if (isLimitResponse(response)) {
+        return unavailable(surface, schemaUrl, "too-large", response.error);
+      }
       continue;
     }
     if (!isOpenApiLike(response.body)) {
       continue;
     }
 
-    const normalized = sanitizeOpenApiDocument(response.body);
+    let normalized;
+    try {
+      assertNormalizationBounds(response.body);
+      normalized = sanitizeOpenApiDocument(response.body);
+    } catch (error) {
+      if (error instanceof SchemaSnapshotLimitError) {
+        return unavailable(surface, schemaUrl, "too-large", error.message);
+      }
+      throw error;
+    }
     const hash = hashJson(normalized);
     const previous = existingBySurface.get(surface.id);
     const driftStatus = previous?.hash
@@ -289,9 +323,26 @@ async function fetchJson(url, redirectCount = 0) {
       };
     }
 
+    const contentLength = parseContentLength(
+      response.headers.get("content-length"),
+    );
+    if (contentLength > OPENAPI_SNAPSHOT_LIMITS.responseBytes) {
+      await response.body?.cancel();
+      return {
+        ok: false,
+        content_type: contentType,
+        status_code: response.status,
+        error: `JSON response exceeds ${OPENAPI_SNAPSHOT_LIMITS.responseBytes} byte limit`,
+      };
+    }
+
+    const rawBody = await readBoundedResponseText(
+      response,
+      OPENAPI_SNAPSHOT_LIMITS.responseBytes,
+    );
     return {
       ok: true,
-      body: await response.json(),
+      body: JSON.parse(rawBody),
       content_type: contentType,
       status_code: response.status,
     };
@@ -300,6 +351,101 @@ async function fetchJson(url, redirectCount = 0) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isLimitResponse(response) {
+  return (
+    response.error_class === "SchemaSnapshotLimitError" ||
+    response.error?.includes("byte limit")
+  );
+}
+
+async function readBoundedResponseText(response, maxBytes) {
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      receivedBytes += value.byteLength;
+      if (receivedBytes > maxBytes) {
+        await reader.cancel();
+        throw new SchemaSnapshotLimitError(
+          `JSON response exceeds ${maxBytes} byte limit`,
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(receivedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
+// Depth/node guard for the untrusted OpenAPI document. The byte-bound caps
+// total size; this defends the recursive sanitizeOpenApiDocument() pass from a
+// pathological within-budget structure (deep nesting / huge fan-out). Kept
+// local to the snapshot step rather than folded into the shared lib.mjs
+// sanitizer so the limit policy stays with the untrusted-fetch threat.
+function assertNormalizationBounds(value) {
+  walkNormalizationBounds(value, { nodes: 0 }, 0);
+}
+
+function walkNormalizationBounds(value, state, depth) {
+  if (depth > OPENAPI_SNAPSHOT_LIMITS.normalizeDepth) {
+    throw new SchemaSnapshotLimitError(
+      `OpenAPI document exceeds ${OPENAPI_SNAPSHOT_LIMITS.normalizeDepth} level normalization depth limit`,
+    );
+  }
+
+  state.nodes += 1;
+  if (state.nodes > OPENAPI_SNAPSHOT_LIMITS.normalizeNodes) {
+    throw new SchemaSnapshotLimitError(
+      `OpenAPI document exceeds ${OPENAPI_SNAPSHOT_LIMITS.normalizeNodes} node normalization limit`,
+    );
+  }
+
+  if (Array.isArray(value)) {
+    for (const nested of value) {
+      walkNormalizationBounds(nested, state, depth + 1);
+    }
+  } else if (value && typeof value === "object") {
+    for (const nested of Object.values(value)) {
+      walkNormalizationBounds(nested, state, depth + 1);
+    }
+  }
+}
+
+function parseContentLength(value) {
+  if (!value) {
+    return 0;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function positiveIntegerEnv(name, fallback) {
+  const value = process.env[name];
+  if (value === undefined) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function isOpenApiLike(value) {

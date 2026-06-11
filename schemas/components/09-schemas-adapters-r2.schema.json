@@ -30,6 +30,7 @@
               "error",
               "not-found",
               "pending-snapshot",
+              "too-large",
               "ui-only-or-undiscovered",
               "unsafe"
             ]
@@ -106,7 +107,7 @@
             "additionalProperties": true
           },
           "status": {
-            "enum": ["captured", "error", "not-found", "unsafe"]
+            "enum": ["captured", "error", "not-found", "too-large", "unsafe"]
           },
           "subnet_slug": {
             "type": "string"
