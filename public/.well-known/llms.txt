@@ -14,6 +14,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 - [Ask](https://api.metagraph.sh/api/v1/ask): POST { question } for a grounded, cited answer over the registry
 - [API index](https://api.metagraph.sh/api/v1): route list + response envelope
 - [Registry summary](https://api.metagraph.sh/api/v1/registry/summary): coverage + completeness leaderboard
+- [Bulk datasets](https://api.metagraph.sh/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)
 
 ## Key endpoints
 - Subnets: `GET /api/v1/subnets`, `GET /api/v1/subnets/{netuid}`

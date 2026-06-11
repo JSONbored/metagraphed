@@ -50,6 +50,7 @@ import {
   MCP_PROTOCOL_VERSIONS,
   listToolDefinitions,
 } from "../src/mcp-server.mjs";
+import { buildDatasetExports } from "./datasets.mjs";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
@@ -882,6 +883,7 @@ const llmsHeader = [
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
+  `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
   "",
   "## Key endpoints",
   "- Subnets: `GET /api/v1/subnets`, `GET /api/v1/subnets/{netuid}`",
@@ -960,6 +962,35 @@ await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
     },
   ],
 });
+
+// Bulk datasets (CSV + NDJSON) + manifest — whole-registry snapshots for
+// analysts and "state of the subnets" data drops. Committed under
+// public/datasets/ and served as static ASSETS at api.metagraph.sh/datasets/*
+// (not worker-first, so no route/handler). Deterministic (epoch generated_at +
+// the already-sorted committed projections), so stable across rebuilds.
+const datasetExports = buildDatasetExports({
+  subnets: subnetIndex,
+  surfaces,
+  providers,
+  generatedAt,
+  contractVersion,
+});
+await fs.rm(path.join(repoRoot, "public/datasets"), {
+  recursive: true,
+  force: true,
+});
+await fs.mkdir(path.join(repoRoot, "public/datasets"), { recursive: true });
+for (const datasetFile of datasetExports.files) {
+  await fs.writeFile(
+    path.join(repoRoot, "public", datasetFile.relativePath),
+    datasetFile.body,
+    "utf8",
+  );
+}
+await writeJson(
+  path.join(repoRoot, "public/datasets/index.json"),
+  datasetExports.manifest,
+);
 
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(

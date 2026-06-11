@@ -4,6 +4,7 @@ packages/*/dist
 packages/*/src/metagraphed-api.ts
 packages/*/src/metagraphed-client.ts
 public/metagraph
+public/datasets
 public/.assetsignore
 public/llms.txt
 public/llms-full.txt
