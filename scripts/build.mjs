@@ -69,6 +69,12 @@ function localSteps() {
 function productionSteps() {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    // Capture live OpenAPI/Swagger specs (full document + auth) before
+    // build-artifacts, so the per-surface schema files carry the real spec for
+    // get_api_schema. build-artifacts grabs the document before its staging wipe
+    // and re-attaches it; the index stays light. Degrades to digests if a spec
+    // is unreachable (snapshot-openapi handles unavailable surfaces).
+    nodeStep("schemas-snapshot", "scripts/snapshot-openapi.mjs", "--write"),
     // Re-snapshot adapters from live GitHub metadata so the publish is
     // self-sufficient for freshness: adapter-snapshots are then fresh by
     // construction at publish time (the publish already re-probes health),
