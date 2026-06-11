@@ -426,16 +426,32 @@ async function handleApiRequest(request, env, url) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
 
-  const artifact = await readArtifact(env, matched.artifactPath);
-
-  // Live operational-health overlay (Phase 3): for health/rpc routes, overlay
-  // the fresh 2-minute cron snapshot (KV/D1) onto the static artifact. Falls back
-  // to the static artifact when the snapshot is cold/unbound — zero regression.
-  const live = await liveHealthOverlay(
-    env,
-    matched,
-    artifact.ok ? artifact.data : null,
-  );
+  // Live operational-health overlay (Phase 3): overlay the fresh 2-minute cron
+  // snapshot (KV/D1) onto the static artifact, falling back to static when the
+  // snapshot is cold/unbound — zero regression. Perf: the global `health` summary
+  // is built purely from KV, so it skips the otherwise-wasted static R2 read when
+  // the snapshot is warm (the hot path on the most-hit health endpoint).
+  let artifact;
+  let live = null;
+  if (matched.id === "health") {
+    const current = await readHealthKv(env, KV_HEALTH_CURRENT);
+    const liveData = current
+      ? buildGlobalHealth(current, { contract_version: contractVersion(env) })
+      : null;
+    if (liveData) {
+      live = { data: liveData };
+      artifact = { ok: false };
+    } else {
+      artifact = await readArtifact(env, matched.artifactPath);
+    }
+  } else {
+    artifact = await readArtifact(env, matched.artifactPath);
+    live = await liveHealthOverlay(
+      env,
+      matched,
+      artifact.ok ? artifact.data : null,
+    );
+  }
 
   if (!artifact.ok && !live) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
@@ -1152,7 +1168,11 @@ async function handleHealthRequest(request, env) {
   // pointer trips it, so local/dev and the worker-test harness (no published
   // pointer) stay healthy.
   const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 12;
-  const pointer = bindings.kv ? await latestPointer(env) : null;
+  // Read the publish pointer + the operational-health meta concurrently (one
+  // round-trip instead of two) — both are independent KV gets.
+  const [pointer, meta] = bindings.kv
+    ? await Promise.all([latestPointer(env), readHealthKv(env, KV_HEALTH_META)])
+    : [null, null];
   const publishedAtIso =
     pointer && typeof pointer.published_at === "string"
       ? pointer.published_at
@@ -1166,7 +1186,6 @@ async function handleHealthRequest(request, env) {
   // Operational-health freshness — the 2-minute cron prober's last run. Reported
   // for observability (a stuck prober shows a growing age); does not gate the
   // HTTP status here (Phase 4 wires alerting). Null until the first cron run.
-  const meta = bindings.kv ? await readHealthKv(env, KV_HEALTH_META) : null;
   const opRunAtMs = meta?.last_run_at ? Date.parse(meta.last_run_at) : NaN;
   const opAgeMinutes = Number.isFinite(opRunAtMs)
     ? (Date.now() - opRunAtMs) / 60_000
@@ -1617,11 +1636,6 @@ async function readHealthKv(env, key) {
 // { data } when a live snapshot is available, else null (caller serves static).
 async function liveHealthOverlay(env, matched, staticData) {
   switch (matched.id) {
-    case "health": {
-      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
-      if (!current) return null;
-      return { data: buildGlobalHealth(current, staticData) };
-    }
     case "subnet-health": {
       const current = await readHealthKv(env, KV_HEALTH_CURRENT);
       const data = overlaySubnetHealth(
