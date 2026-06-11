@@ -689,6 +689,25 @@ export function cleanDescription(value) {
   return cleaned.length >= 2 ? cleaned : null;
 }
 
+// Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
+// components.securitySchemes or Swagger 2 securityDefinitions. A spec that
+// declares any security scheme is treated as requiring auth — the fix for
+// services (e.g. Chutes) that declare apiKey yet were flagged auth_required:false.
+export function extractAuth(spec) {
+  const schemes =
+    (spec?.components && spec.components.securitySchemes) ||
+    spec?.securityDefinitions ||
+    {};
+  const authSchemes = [
+    ...new Set(
+      Object.values(schemes)
+        .map((scheme) => scheme?.type)
+        .filter((type) => typeof type === "string"),
+    ),
+  ].sort();
+  return { auth_required: authSchemes.length > 0, auth_schemes: authSchemes };
+}
+
 // Declared lifecycle, derived from the on-chain identity name (teams set it to
 // "deprecated"/"Parked"/"Pending" when a subnet is no longer a live product),
 // distinct from `status` (chain-registration state, which stays "active").

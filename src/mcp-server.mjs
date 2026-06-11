@@ -306,9 +306,11 @@ export const MCP_TOOLS = [
     name: "get_api_schema",
     title: "Get a surface's API schema",
     description:
-      "Fetch the captured machine-readable OpenAPI/Swagger schema snapshot for " +
-      "a subnet surface by its surface_id (from list_subnet_apis). Use this to " +
-      "generate a typed client or understand a subnet API's endpoints.",
+      "Fetch the captured OpenAPI/Swagger schema for a subnet surface by its " +
+      "surface_id (from list_subnet_apis). Returns the full spec under " +
+      "`document` (paths, components, securitySchemes) plus capture metadata " +
+      "(auth_required, auth_schemes, drift_status). Use it to generate a typed " +
+      "client or understand a subnet API's endpoints.",
     inputSchema: {
       type: "object",
       properties: {

@@ -133,6 +133,27 @@ const previousSchemaIndexArtifact = await readOptionalJson(
   path.join(outputRoot, "schemas/index.json"),
 );
 
+// snapshot-openapi writes the full OpenAPI `document` into the per-surface
+// schema files (R2 staging); capture it before the wipe below so the schema
+// rebuild can re-attach it (the index stays light, but the files carry the
+// real spec for get_api_schema).
+const capturedSchemaDocuments = new Map();
+{
+  const schemasDir = path.join(r2OutputRoot, "schemas");
+  let schemaFiles;
+  try {
+    schemaFiles = await fs.readdir(schemasDir);
+  } catch {
+    schemaFiles = [];
+  }
+  for (const file of schemaFiles) {
+    if (!file.endsWith(".json") || file === "index.json") continue;
+    const existing = await readOptionalJson(path.join(schemasDir, file));
+    if (existing?.document)
+      capturedSchemaDocuments.set(`schemas/${file}`, existing.document);
+  }
+}
+
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
 const subnetIndex = mergedSubnets.map((subnet) => ({
@@ -706,7 +727,13 @@ function buildSubnetServices(netuid) {
         base_url: surface.url,
         provider: surface.provider || null,
         authority: surface.authority || null,
-        auth_required: Boolean(surface.auth_required),
+        // Trust the captured spec's securitySchemes over the (often-unset)
+        // curated flag: if the upstream OpenAPI declares auth, the agent needs a
+        // credential (fixes Chutes etc. that declared apiKey yet showed false).
+        auth_required: Boolean(
+          surface.auth_required || schema?.snapshot?.auth_required,
+        ),
+        auth_schemes: schema?.snapshot?.auth_schemes || [],
         schema_url: surface.schema_url || null,
         schema_status: surface.schema_status || null,
         schema_artifact: schema?.path || null,
@@ -947,7 +974,13 @@ for (const entry of schemaIndexArtifact.schemas || []) {
   if (!relativePath || !entry.snapshot || typeof entry.snapshot !== "object") {
     continue;
   }
-  await writeJson(artifactFile(relativePath), entry.snapshot);
+  // Re-attach the full OpenAPI document captured before the staging wipe, so
+  // get_api_schema serves real paths/components — not just the digest.
+  const document = capturedSchemaDocuments.get(relativePath);
+  await writeJson(
+    artifactFile(relativePath),
+    document ? { ...entry.snapshot, document } : entry.snapshot,
+  );
 }
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {

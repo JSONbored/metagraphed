@@ -3,6 +3,7 @@ import {
   artifactFilePath,
   artifactOutputPath,
   buildTimestamp,
+  extractAuth,
   flattenSurfaces,
   hashJson,
   isJsonContentType,
@@ -53,7 +54,9 @@ const index = {
     by_status: countBy(results, "status"),
     by_drift_status: countBy(results, "drift_status"),
   },
-  schemas: results,
+  // The full `document` lives only in the per-surface schema file, never in the
+  // index (which would balloon to many MB).
+  schemas: results.map(({ document: _document, ...rest }) => rest),
 };
 
 const capturedSchemaCount = results.filter(
@@ -88,10 +91,12 @@ if (!dryRun) {
     if (result.status !== "captured") {
       continue;
     }
-    await writeJson(
-      artifactOutputPath(`schemas/${result.surface_id}.json`),
-      result.snapshot,
-    );
+    await writeJson(artifactOutputPath(`schemas/${result.surface_id}.json`), {
+      ...result.snapshot,
+      // The real OpenAPI/Swagger spec — paths + components + securitySchemes —
+      // so consumers (get_api_schema) can build a client, not just read a hash.
+      document: result.document,
+    });
   }
   await writeJson(artifactOutputPath("schemas/index.json"), index);
   await writeJson(artifactOutputPath("schema-drift.json"), drift);
@@ -158,6 +163,7 @@ async function snapshotSurface(surface) {
       server_count: Array.isArray(normalized.servers)
         ? normalized.servers.length
         : 0,
+      ...extractAuth(normalized),
     };
 
     return {
@@ -173,6 +179,9 @@ async function snapshotSurface(surface) {
       path: `/metagraph/schemas/${surface.id}.json`,
       content_type: response.content_type || null,
       snapshot,
+      // Full normalized spec — written only to the per-surface schema file (not
+      // the index), so get_api_schema can return the real paths/components.
+      document: normalized,
     };
   }
 

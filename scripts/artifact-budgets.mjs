@@ -10,6 +10,8 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("health/history/*.json", 650_000, 1_250_000),
   budget("search.json", 750_000, 2_000_000),
   budget("openapi.json", 500_000, 1_000_000),
+  // Per-surface schema snapshots now embed the full upstream OpenAPI document.
+  budget("schemas/*.json", 1_500_000, 5_000_000),
   budget("profiles.json", 700_000, 1_000_000),
   budget("review/profile-completeness.json", 350_000, 1_000_000),
   budget("review/enrichment-evidence.json", 500_000, 1_000_000),

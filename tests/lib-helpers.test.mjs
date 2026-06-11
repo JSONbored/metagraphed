@@ -4,6 +4,7 @@ import {
   stripUrls,
   cleanDescription,
   subnetLifecycle,
+  extractAuth,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -55,8 +56,50 @@ describe("subnetLifecycle", () => {
     );
   });
   test("defaults to active for live subnets and missing identity", () => {
-    assert.equal(subnetLifecycle(withName("Gittensor", "autonomous dev")), "active");
+    assert.equal(
+      subnetLifecycle(withName("Gittensor", "autonomous dev")),
+      "active",
+    );
     assert.equal(subnetLifecycle({}), "active");
     assert.equal(subnetLifecycle(null), "active");
+  });
+});
+
+describe("extractAuth", () => {
+  test("flags auth from OpenAPI 3 securitySchemes", () => {
+    assert.deepEqual(
+      extractAuth({
+        components: { securitySchemes: { ApiKeyHeader: { type: "apiKey" } } },
+      }),
+      { auth_required: true, auth_schemes: ["apiKey"] },
+    );
+  });
+  test("flags auth from Swagger 2 securityDefinitions", () => {
+    assert.deepEqual(
+      extractAuth({ securityDefinitions: { oauth: { type: "oauth2" } } }),
+      { auth_required: true, auth_schemes: ["oauth2"] },
+    );
+  });
+  test("dedupes + sorts scheme types", () => {
+    const out = extractAuth({
+      components: {
+        securitySchemes: {
+          a: { type: "http" },
+          b: { type: "apiKey" },
+          c: { type: "http" },
+        },
+      },
+    });
+    assert.deepEqual(out.auth_schemes, ["apiKey", "http"]);
+  });
+  test("no schemes => no auth required", () => {
+    assert.deepEqual(extractAuth({ paths: {} }), {
+      auth_required: false,
+      auth_schemes: [],
+    });
+    assert.deepEqual(extractAuth(null), {
+      auth_required: false,
+      auth_schemes: [],
+    });
   });
 });

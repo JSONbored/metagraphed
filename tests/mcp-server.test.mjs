@@ -453,6 +453,34 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.openapi, "3.1.0");
   });
 
+  test("get_api_schema returns the full captured document + auth metadata", async () => {
+    const schemaDeps = makeDeps({
+      "/metagraph/schemas/chutes.json": {
+        surface_id: "chutes",
+        auth_required: true,
+        auth_schemes: ["apiKey"],
+        document: {
+          openapi: "3.1.0",
+          paths: { "/v1/chat": {}, "/v1/models": {} },
+          components: { securitySchemes: { ApiKeyHeader: { type: "apiKey" } } },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_api_schema",
+      { surface_id: "chutes" },
+      { deps: schemaDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.auth_required, true);
+    assert.deepEqual(out.auth_schemes, ["apiKey"]);
+    assert.ok(out.document, "must return the captured OpenAPI document");
+    assert.deepEqual(Object.keys(out.document.paths), [
+      "/v1/chat",
+      "/v1/models",
+    ]);
+  });
+
   test("get_api_schema rejects path-traversal surface ids", async () => {
     const res = await callTool(
       "get_api_schema",
