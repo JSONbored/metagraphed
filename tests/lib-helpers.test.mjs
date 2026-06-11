@@ -49,10 +49,24 @@ describe("subnetLifecycle", () => {
     assert.equal(subnetLifecycle(withName("Parked")), "parked");
     assert.equal(subnetLifecycle(withName("Pending")), "pending");
   });
-  test("reads the description field too", () => {
+  test("requires exact canonical subnet names", () => {
+    assert.equal(subnetLifecycle(withName(" deprecated ")), "deprecated");
+    assert.equal(subnetLifecycle(withName("Deprecated Network")), "active");
+  });
+  test("ignores free-form descriptions to avoid false positive lifecycle markers", () => {
     assert.equal(
-      subnetLifecycle(withName("Foo", "this subnet is deprecated")),
-      "deprecated",
+      subnetLifecycle(withName("Foo", "not deprecated, actively maintained")),
+      "active",
+    );
+    assert.equal(
+      subnetLifecycle(
+        withName("InferenceNet", "patent pending inference network"),
+      ),
+      "active",
+    );
+    assert.equal(
+      subnetLifecycle(withName("LiveNet", "not parked; actively maintained")),
+      "active",
     );
   });
   test("defaults to active for live subnets and missing identity", () => {

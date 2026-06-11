@@ -708,17 +708,20 @@ export function extractAuth(spec) {
   return { auth_required: authSchemes.length > 0, auth_schemes: authSchemes };
 }
 
-// Declared lifecycle, derived from the on-chain identity name (teams set it to
-// "deprecated"/"Parked"/"Pending" when a subnet is no longer a live product),
-// distinct from `status` (chain-registration state, which stays "active").
-// Shared by the build + the reproducibility validator.
+// Declared lifecycle, derived from canonical on-chain identity names (teams set
+// subnet_name exactly to "deprecated"/"Parked"/"Pending" when a subnet is no
+// longer a live product), distinct from `status` (chain-registration state,
+// which stays "active"). Avoid scanning descriptions: they are free-form
+// attacker-influenced metadata and can contain words such as "not deprecated"
+// or "patent pending" for otherwise live subnets. Shared by the build + the
+// reproducibility validator.
 export function subnetLifecycle(nativeSubnet) {
-  const marker = `${nativeSubnet?.chain_identity?.subnet_name || ""} ${
-    nativeSubnet?.chain_identity?.description || ""
-  }`.toLowerCase();
-  if (/\bdeprecat/.test(marker)) return "deprecated";
-  if (/\bparked\b/.test(marker)) return "parked";
-  if (/\bpending\b/.test(marker)) return "pending";
+  const name = (nativeSubnet?.chain_identity?.subnet_name || "")
+    .trim()
+    .toLowerCase();
+  if (name === "deprecated") return "deprecated";
+  if (name === "parked") return "parked";
+  if (name === "pending") return "pending";
   return "active";
 }
 
