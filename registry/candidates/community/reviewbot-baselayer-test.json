@@ -1,0 +1,1 @@
+{ "candidate": { "netuid": 5, "kind": "subtensor-wss", "url": "wss://entrypoint-finney.opentensor.ai:443", "source_url": "https://github.com/torvalds/linux", "public_safe": true } }
