@@ -160,6 +160,10 @@
           "description": {
             "type": ["string", "null"]
           },
+          "lifecycle": {
+            "type": "string",
+            "enum": ["active", "deprecated", "parked", "pending"]
+          },
           "gap_count": {
             "type": "integer",
             "minimum": 0
@@ -275,6 +279,10 @@
           },
           "description": {
             "type": ["string", "null"]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": ["active", "deprecated", "parked", "pending"]
           },
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"
@@ -1178,6 +1186,10 @@
           },
           "description": {
             "type": ["string", "null"]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": ["active", "deprecated", "parked", "pending"]
           },
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"

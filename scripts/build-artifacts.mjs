@@ -31,6 +31,7 @@ import {
   sha256Hex,
   slugify,
   staleOperationalKinds,
+  subnetLifecycle,
   writeJson,
 } from "./lib.mjs";
 import {
@@ -144,6 +145,7 @@ const subnetIndex = mergedSubnets.map((subnet) => ({
   description: subnet.description,
   docs_url: subnet.docs_url,
   gap_count: subnet.gaps.missing_kinds.length,
+  lifecycle: subnet.lifecycle,
   mechanism_count: subnet.mechanism_count,
   name: subnet.name,
   native_name: subnet.native_name,
@@ -1250,6 +1252,7 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
         ? overlay.curation?.level || "curated-overlay"
         : "none",
     },
+    lifecycle: subnetLifecycle(nativeSubnet),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
     source_repo: overlay?.source_repo || null,

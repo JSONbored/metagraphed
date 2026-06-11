@@ -14,6 +14,7 @@ import {
   nativeNameQuality,
   listJsonFilesRecursive,
   cleanDescription,
+  subnetLifecycle,
   publicMetagraphRoot,
   readJson,
   registrySurfaceKey,
@@ -737,6 +738,7 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
         ? overlay.curation?.level || "curated-overlay"
         : "none",
     },
+    lifecycle: subnetLifecycle(nativeSubnet),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
     source_repo: overlay?.source_repo || null,

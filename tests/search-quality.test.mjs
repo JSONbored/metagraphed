@@ -105,3 +105,36 @@ describe("search corpus invariants", () => {
     }
   });
 });
+
+describe("registry lifecycle truth (TS4)", () => {
+  const subnets = subnetsArtifact.subnets;
+  const byNetuid = new Map(subnets.map((subnet) => [subnet.netuid, subnet]));
+
+  test("every subnet carries a valid lifecycle", () => {
+    const valid = new Set(["active", "deprecated", "parked", "pending"]);
+    for (const subnet of subnets) {
+      assert.ok(
+        valid.has(subnet.lifecycle),
+        `subnet ${subnet.netuid} has invalid lifecycle "${subnet.lifecycle}"`,
+      );
+    }
+  });
+
+  test("chain-deprecated/parked/pending subnets are not reported as live", () => {
+    // netuids 3/39/81 are chain-deprecated, 73 Parked, 58 Pending — they must
+    // NOT carry lifecycle "active" (the bug: shown as active).
+    for (const netuid of [3, 39, 81]) {
+      assert.equal(byNetuid.get(netuid)?.lifecycle, "deprecated");
+    }
+    assert.equal(byNetuid.get(73)?.lifecycle, "parked");
+    assert.equal(byNetuid.get(58)?.lifecycle, "pending");
+  });
+
+  test("lifecycle is distinct from chain-registration status", () => {
+    // status stays the chain-registration truth ("active"); lifecycle carries
+    // the team's declared state.
+    const deprecated = byNetuid.get(3);
+    assert.equal(deprecated.lifecycle, "deprecated");
+    assert.equal(deprecated.status, "active");
+  });
+});

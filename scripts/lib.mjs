@@ -689,6 +689,20 @@ export function cleanDescription(value) {
   return cleaned.length >= 2 ? cleaned : null;
 }
 
+// Declared lifecycle, derived from the on-chain identity name (teams set it to
+// "deprecated"/"Parked"/"Pending" when a subnet is no longer a live product),
+// distinct from `status` (chain-registration state, which stays "active").
+// Shared by the build + the reproducibility validator.
+export function subnetLifecycle(nativeSubnet) {
+  const marker = `${nativeSubnet?.chain_identity?.subnet_name || ""} ${
+    nativeSubnet?.chain_identity?.description || ""
+  }`.toLowerCase();
+  if (/\bdeprecat/.test(marker)) return "deprecated";
+  if (/\bparked\b/.test(marker)) return "parked";
+  if (/\bpending\b/.test(marker)) return "pending";
+  return "active";
+}
+
 // Real wall-clock publish time, distinct from the deterministic build stamp.
 // `buildTimestamp()` stays reproducible (epoch by default) so artifact hashing
 // and changelog diffs are stable; `publishedAt()` carries the true publish

@@ -1175,6 +1175,15 @@
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
           },
+          "lifecycle": {
+            "enum": [
+              "active",
+              "deprecated",
+              "parked",
+              "pending"
+            ],
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -6223,6 +6232,15 @@
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
           },
+          "lifecycle": {
+            "enum": [
+              "active",
+              "deprecated",
+              "parked",
+              "pending"
+            ],
+            "type": "string"
+          },
           "links": {
             "items": {
               "additionalProperties": true,
@@ -6517,6 +6535,15 @@
           "gap_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "lifecycle": {
+            "enum": [
+              "active",
+              "deprecated",
+              "parked",
+              "pending"
+            ],
+            "type": "string"
           },
           "mechanism_count": {
             "minimum": 0,

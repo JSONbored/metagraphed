@@ -1191,6 +1191,8 @@ export interface components {
             description?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
+            /** @enum {string} */
+            lifecycle?: "active" | "deprecated" | "parked" | "pending";
             name: string;
             netuid: number;
             slug: string;
@@ -2370,6 +2372,8 @@ export interface components {
             docs_url?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
+            /** @enum {string} */
+            lifecycle?: "active" | "deprecated" | "parked" | "pending";
             links: {
                 [key: string]: unknown;
             }[];
@@ -2440,6 +2444,8 @@ export interface components {
             /** Format: uri */
             docs_url?: string | null;
             gap_count?: number;
+            /** @enum {string} */
+            lifecycle?: "active" | "deprecated" | "parked" | "pending";
             mechanism_count?: number;
             name: string;
             native_name?: string | null;
