@@ -1188,6 +1188,7 @@ export interface components {
             candidate_count: number;
             coverage_level: components["schemas"]["CoverageLevel"];
             curation: components["schemas"]["CurationMetadata"];
+            description?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
             name: string;
@@ -2364,6 +2365,7 @@ export interface components {
             curation_level: components["schemas"]["CurationLevel"];
             /** Format: uri */
             dashboard_url?: string | null;
+            description?: string | null;
             /** Format: uri */
             docs_url?: string | null;
             gap_count?: number;
@@ -2434,6 +2436,7 @@ export interface components {
             curation_level: components["schemas"]["CurationLevel"];
             /** Format: uri */
             dashboard_url?: string | null;
+            description?: string | null;
             /** Format: uri */
             docs_url?: string | null;
             gap_count?: number;

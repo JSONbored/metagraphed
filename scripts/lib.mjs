@@ -665,6 +665,30 @@ export function buildTimestamp() {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
 }
 
+// Strip embedded URLs/emails/bare-domains from free text — they shred into junk
+// search tokens ("https"/"com"/"gg") and read poorly.
+export function stripUrls(value) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi, " ")
+    .replace(
+      /\b[\w-]+\.(?:com|io|org|net|gg|ai|xyz|dev|app|finance|sh|co)\b\S*/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Normalize a free-text description (chain SubnetIdentitiesV3 / overlay): strip
+// URLs, collapse whitespace, drop empties. Shared by the build + the
+// reproducibility validator so the two never drift.
+export function cleanDescription(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = stripUrls(value);
+  return cleaned.length >= 2 ? cleaned : null;
+}
+
 // Real wall-clock publish time, distinct from the deterministic build stamp.
 // `buildTimestamp()` stays reproducible (epoch by default) so artifact hashing
 // and changelog diffs are stable; `publishedAt()` carries the true publish

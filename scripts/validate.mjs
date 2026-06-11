@@ -13,6 +13,7 @@ import {
   nativeDisplayName,
   nativeNameQuality,
   listJsonFilesRecursive,
+  cleanDescription,
   publicMetagraphRoot,
   readJson,
   registrySurfaceKey,
@@ -701,6 +702,10 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
     curation_level:
       overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
     dashboard_url: overlay?.dashboard_url || null,
+    description:
+      cleanDescription(nativeSubnet.chain_identity?.description) ||
+      cleanDescription(overlay?.description) ||
+      null,
     docs_url: overlay?.docs_url || null,
     gaps: buildGeneratedArtifactGaps(overlay?.surfaces || [], overlay),
     mechanism_count: nativeSubnet.mechanism_count,
