@@ -34,6 +34,26 @@ Example routes:
 - not another alpha dashboard, docs encyclopedia, or generic RPC provider;
 - not a validator credential, wallet, or private scoring mirror.
 
+## Use It From An Agent (MCP)
+
+metagraphed is agent-native. Point any MCP client at the public, read-only
+Streamable-HTTP endpoint and your agent can query the registry as tools:
+
+```
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
+```
+
+For Cursor / other clients, add an MCP server with url
+`https://api.metagraph.sh/mcp` and transport `streamable-http`. The nine tools
+(`search_subnets`, `find_subnets_by_capability`, `get_subnet`,
+`get_subnet_health`, `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,
+`get_best_rpc_endpoint`, `registry_summary`) let an agent discover a subnet,
+check whether it's up, and learn how to call its API.
+
+- Server descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`
+- Drop-in "bittensor in a box" skill: `https://api.metagraph.sh/skills/bittensor/SKILL.md`
+- Machine index for any LLM/crawler: `https://api.metagraph.sh/llms.txt`
+
 ## Registry Coverage
 
 Metagraphed is chain-first:

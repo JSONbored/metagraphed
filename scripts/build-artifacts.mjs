@@ -45,6 +45,12 @@ import {
   buildContractsArtifact,
 } from "../src/contracts.mjs";
 import {
+  MCP_SERVER_INFO,
+  MCP_INSTRUCTIONS,
+  MCP_PROTOCOL_VERSIONS,
+  listToolDefinitions,
+} from "../src/mcp-server.mjs";
+import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
 } from "./artifact-budgets.mjs";
@@ -825,7 +831,9 @@ const llmsHeader = [
   "## Machine entrypoints",
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
-  `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools`,
+  `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
+  `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
+  `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
@@ -871,6 +879,43 @@ await fs.writeFile(
   llmsShort,
   "utf8",
 );
+
+// MCP server card + SEP-1960 discovery doc — lets MCP-aware crawlers/registries
+// (Smithery, PulseMCP, mcp.so, the official registry) autodiscover the server.
+// Served as static ASSETS at api.metagraph.sh; reuses the exact MCP
+// server-info/instructions/tool definitions so the card can never drift from
+// what POST /mcp tools/list advertises.
+const mcpEndpoint = `${llmsApiBase}/mcp`;
+await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
+  recursive: true,
+});
+await writeJson(path.join(repoRoot, "public/.well-known/mcp/server-card.json"), {
+  schema_version: 1,
+  name: MCP_SERVER_INFO.name,
+  title: MCP_SERVER_INFO.title,
+  description: MCP_INSTRUCTIONS,
+  version: MCP_SERVER_INFO.version,
+  repository: "https://github.com/JSONbored/metagraphed",
+  documentation: `${llmsApiBase}/llms.txt`,
+  endpoint: mcpEndpoint,
+  transport: "streamable-http",
+  protocol_versions: MCP_PROTOCOL_VERSIONS,
+  authentication: "none",
+  capabilities: { tools: { listChanged: false } },
+  tools: listToolDefinitions(),
+  generated_at: generatedAt,
+});
+await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
+  schema_version: 1,
+  servers: [
+    {
+      name: MCP_SERVER_INFO.name,
+      url: mcpEndpoint,
+      transport: "streamable-http",
+      card: "/.well-known/mcp/server-card.json",
+    },
+  ],
+});
 
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(

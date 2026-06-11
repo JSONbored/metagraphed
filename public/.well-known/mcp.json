@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "servers": [
+    {
+      "card": "/.well-known/mcp/server-card.json",
+      "name": "metagraphed",
+      "transport": "streamable-http",
+      "url": "https://api.metagraph.sh/mcp"
+    }
+  ]
+}

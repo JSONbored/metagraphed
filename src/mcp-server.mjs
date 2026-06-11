@@ -25,7 +25,7 @@ export const MCP_SERVER_INFO = {
   version: CONTRACT_VERSION,
 };
 
-const MCP_INSTRUCTIONS =
+export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
   "what each of the ~129 subnets exposes (APIs, docs, schemas), whether those " +
   "surfaces are healthy, and how to call them. Use search_subnets / " +

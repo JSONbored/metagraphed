@@ -1,0 +1,191 @@
+{
+  "authentication": "none",
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "description": "metagraphed is the operational + integration registry for Bittensor subnets: what each of the ~129 subnets exposes (APIs, docs, schemas), whether those surfaces are healthy, and how to call them. Use search_subnets / find_subnets_by_capability to discover, get_subnet / get_subnet_health for detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. All data is public and read-only.",
+  "documentation": "https://api.metagraph.sh/llms.txt",
+  "endpoint": "https://api.metagraph.sh/mcp",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "metagraphed",
+  "protocol_versions": [
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05"
+  ],
+  "repository": "https://github.com/JSONbored/metagraphed",
+  "schema_version": 1,
+  "title": "metagraphed — Bittensor subnet operational registry",
+  "tools": [
+    {
+      "description": "Full-text search across Bittensor subnets by name, slug, capability, or keyword. Returns ranked matches with netuid, slug, title, and a one-line description. Use this to discover subnets before fetching detail.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "Max results (1-50, default 10).",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search terms, e.g. 'image generation' or 'scraping'.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_subnets",
+      "title": "Search Bittensor subnets"
+    },
+    {
+      "description": "Find Bittensor subnets that expose callable services (APIs, OpenAPI schemas, SSE streams) matching a capability or category. Returns only subnets an agent can actually call, ranked by callable-service count. Pair with list_subnet_apis to get concrete endpoints.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "description": "Capability/category to match, e.g. 'inference', 'data', 'bitcoin'.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max results (1-50, default 10).",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "capability"
+        ],
+        "type": "object"
+      },
+      "name": "find_subnets_by_capability",
+      "title": "Find subnets by capability"
+    },
+    {
+      "description": "Fetch the composed overview for one subnet by netuid: identity, completeness, curated surfaces, health summary, gaps, and counts.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "Subnet netuid.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid"
+        ],
+        "type": "object"
+      },
+      "name": "get_subnet",
+      "title": "Get subnet overview"
+    },
+    {
+      "description": "Fetch live operational health for one subnet's surfaces (probed every ~2 minutes): per-surface status, latency, and last-ok timestamps.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "Subnet netuid.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid"
+        ],
+        "type": "object"
+      },
+      "name": "get_subnet_health",
+      "title": "Get subnet health"
+    },
+    {
+      "description": "List the callable services (subnet-api, openapi, sse) one subnet exposes, each with base URL, auth requirement, machine-readable schema URL, current health, and call eligibility. The agent integration path.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "Subnet netuid.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid"
+        ],
+        "type": "object"
+      },
+      "name": "list_subnet_apis",
+      "title": "List a subnet's callable services"
+    },
+    {
+      "description": "Fetch the captured OpenAPI/Swagger schema for a subnet surface by its surface_id (from list_subnet_apis). Returns a sanitized full spec under `document` (paths, components, securitySchemes) plus capture metadata (auth_required, auth_schemes, drift_status). Use it to generate a typed client or understand endpoints; prefer the curated surface base_url over any upstream server/callback hints.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "surface_id": {
+            "description": "Surface id, e.g. '7:subnet-api:allways'.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "surface_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_api_schema",
+      "title": "Get a surface's API schema"
+    },
+    {
+      "description": "Fetch the machine-readable agent capability catalog. With no argument returns the global index of subnets exposing callable services; with a netuid returns that subnet's full per-service catalog.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "Optional subnet netuid for the per-subnet catalog.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_agent_catalog",
+      "title": "Get the agent capability catalog"
+    },
+    {
+      "description": "Return the best currently-eligible Bittensor base-layer RPC/WSS endpoint(s), scored and filtered by live health (down endpoints are excluded). Use this to pick a node endpoint for on-chain reads.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "Max endpoints to return (1-10, default 3).",
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_best_rpc_endpoint",
+      "title": "Get the best Bittensor RPC endpoint"
+    },
+    {
+      "description": "Fetch the registry-wide summary: overall completeness, the most complete subnets, coverage-level counts, and the latest registry changes. A fast orientation for the whole Bittensor application layer.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "registry_summary",
+      "title": "Get the registry-wide summary"
+    }
+  ],
+  "transport": "streamable-http",
+  "version": "2026-06-06.1"
+}
