@@ -677,10 +677,7 @@ const AGENT_SERVICE_KINDS = new Set([
   "data-artifact",
 ]);
 const agentSchemaBySurfaceId = new Map(
-  (schemaIndexArtifact.schemas || []).map((entry) => [
-    entry.surface_id,
-    entry,
-  ]),
+  (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
 );
 const agentEndpointBySurfaceId = new Map(
   endpointResources.endpoints
@@ -690,8 +687,7 @@ const agentEndpointBySurfaceId = new Map(
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
-      (surface) =>
-        AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
+      (surface) => AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
     )
     .map((surface) => {
       const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;

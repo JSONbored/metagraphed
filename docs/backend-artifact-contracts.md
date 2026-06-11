@@ -197,6 +197,12 @@ metagraph.sh regenerates its dataset on a ~6h schedule (ADR 0001), so the realti
 
 At publish time the dispatcher reads `changelog.json`, matches each subscription's filters, and `POST`s the change event signed with `HMAC-SHA256` (hex) over the raw body in the `x-metagraph-signature` header. Subscriptions auto-expire after 180 days of inactivity. The SSRF guard is best-effort and cannot prevent DNS rebinding; the dispatcher runs on GitHub-hosted runners with no access to the project's network, which bounds the residual risk.
 
+## Remote MCP Server (AI agents)
+
+`POST /mcp` is a stateless [Model Context Protocol](https://modelcontextprotocol.io) server (Streamable HTTP transport, JSON-RPC 2.0) that exposes the registry to AI agents (Claude Desktop/Code, Cursor, autonomous agents). It is read-only, so there is no session id, Durable Object, or server-initiated stream; `GET /mcp` returns `405`. The handler (`src/mcp-server.mjs`) is dispatched before the read-only method gate (it is POST-only, like the RPC proxy) and reuses the exact R2/ASSETS artifact resolution via injected readers, so MCP tools and REST routes always agree.
+
+Tools (thin wrappers over the artifact contract): `search_subnets`, `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`, `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`, `get_best_rpc_endpoint` (live-health-filtered), and `registry_summary`. `tools/call` returns the MCP result envelope (`content[]` text + `structuredContent`); argument and artifact failures degrade to an `isError: true` result rather than a transport error. The server is validated by `npm run validate:mcp` (lifecycle + one `tools/call` per tool against a cold local env) and smoke-checked live by `scripts/smoke-live-api.mjs`. The endpoint is excluded from the `validate-api` route-count invariant and is added to `assets.run_worker_first`.
+
 ## Current Domain Scope
 
 Use `metagraph.sh` for the current launch. Do not use `subnet.health` for v1 registry, status, badge, health, or probe contracts.

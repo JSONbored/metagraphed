@@ -172,6 +172,10 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:api
 
+      - name: Validate MCP server
+        if: steps.route.outputs.mode == 'full'
+        run: npm run validate:mcp
+
       - name: Validate OpenAPI
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:openapi

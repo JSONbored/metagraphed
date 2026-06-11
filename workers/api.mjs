@@ -39,6 +39,7 @@ import {
   overlaySubnetHealth,
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
+import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
 // trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
@@ -144,6 +145,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {
     return handleWebhookRequest(request, env, url);
+  }
+
+  // Remote MCP server (stateless JSON-RPC over POST), for AI agents. Runs before
+  // the read-only method gate (it is POST-only) like the RPC proxy. Artifact/KV
+  // readers are injected so the MCP tools reuse the exact R2/ASSETS resolution.
+  if (url.pathname === "/mcp") {
+    return handleMcpRequest(request, env, { readArtifact, readHealthKv });
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {

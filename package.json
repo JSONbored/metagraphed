@@ -41,6 +41,7 @@
     "scan:public-safety": "node scripts/scan-public-safety.mjs",
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "validate:api": "node scripts/validate-api.mjs",
+    "validate:mcp": "node scripts/validate-mcp.mjs",
     "validate:openapi": "node scripts/validate-openapi.mjs",
     "validate:types": "node scripts/validate-types.mjs",
     "validate:contract-drift": "node scripts/validate-contract-drift.mjs",

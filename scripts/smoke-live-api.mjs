@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { API_ROUTES } from "../src/contracts.mjs";
+import { MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const DEFAULT_BASE_URL = "https://api.metagraph.sh";
 const baseUrl = normalizeBaseUrl(
@@ -165,6 +166,56 @@ assert.equal(
   "the /wss RPC route should return rpc_websocket_unsupported",
 );
 
+// Remote MCP server: the JSON-RPC handshake must work and expose every tool,
+// and a representative tools/call must resolve real registry data.
+const mcpInit = await fetchJson(`${baseUrl}/mcp`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18" },
+  }),
+});
+assert.equal(mcpInit.status, 200, "POST /mcp initialize must return HTTP 200");
+assert.equal(
+  mcpInit.body?.result?.serverInfo?.name,
+  "metagraphed",
+  "MCP initialize must identify the metagraphed server",
+);
+
+const mcpTools = await fetchJson(`${baseUrl}/mcp`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
+});
+assert.equal(
+  mcpTools.body?.result?.tools?.length,
+  MCP_TOOLS.length,
+  `MCP tools/list must expose all ${MCP_TOOLS.length} tools`,
+);
+
+const mcpCall = await fetchJson(`${baseUrl}/mcp`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 3,
+    method: "tools/call",
+    params: { name: "list_subnet_apis", arguments: { netuid: 7 } },
+  }),
+});
+assert.equal(
+  mcpCall.body?.result?.isError,
+  false,
+  "MCP list_subnet_apis(7) must succeed against live data",
+);
+assert.ok(
+  mcpCall.body?.result?.structuredContent?.service_count >= 1,
+  "MCP list_subnet_apis(7) must return at least one service",
+);
+
 console.log(
   JSON.stringify(
     {
@@ -172,6 +223,7 @@ console.log(
       status: "passed",
       api_route_count: apiChecks.length,
       raw_artifact_count: rawArtifactChecks.length,
+      mcp_tool_count: MCP_TOOLS.length,
       health_history_date: healthDate,
       checked_paths: results,
     },
