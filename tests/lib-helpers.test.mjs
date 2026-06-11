@@ -6,6 +6,8 @@ import {
   subnetLifecycle,
   extractAuth,
   sanitizeOpenApiDocument,
+  isPlaceholderIdentityUrl,
+  backfilledIdentityUrl,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -183,5 +185,45 @@ describe("sanitizeOpenApiDocument", () => {
         },
       },
     );
+  });
+});
+
+describe("isPlaceholderIdentityUrl", () => {
+  test("flags the known on-chain placeholder junk", () => {
+    assert.equal(isPlaceholderIdentityUrl("https://deprecated.png"), true);
+    assert.equal(
+      isPlaceholderIdentityUrl("https://github.com/username/repo"),
+      true,
+    );
+    assert.equal(isPlaceholderIdentityUrl("https://example.com"), true);
+  });
+  test("passes real links and non-strings through as not-placeholder", () => {
+    assert.equal(isPlaceholderIdentityUrl("https://github.com/opentensor/bt"), false);
+    assert.equal(isPlaceholderIdentityUrl("https://taofu.xyz"), false);
+    assert.equal(isPlaceholderIdentityUrl(null), false);
+    assert.equal(isPlaceholderIdentityUrl(undefined), false);
+  });
+});
+
+describe("backfilledIdentityUrl", () => {
+  test("curated overlay value always wins", () => {
+    assert.equal(
+      backfilledIdentityUrl("https://curated.example/repo", "github.com/x/y"),
+      "https://curated.example/repo",
+    );
+  });
+  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+    assert.equal(
+      backfilledIdentityUrl(null, "github.com/opentensor/bittensor"),
+      "https://github.com/opentensor/bittensor",
+    );
+    // bare domain gets https:// prefixed (root path keeps its trailing slash)
+    assert.equal(backfilledIdentityUrl(undefined, "nodexo.ai"), "https://nodexo.ai/");
+  });
+  test("rejects placeholder junk and unusable chain values", () => {
+    assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
+    assert.equal(backfilledIdentityUrl(null, "github.com/username/repo"), null);
+    assert.equal(backfilledIdentityUrl(null, null), null);
+    assert.equal(backfilledIdentityUrl(null, "not a url"), null);
   });
 });

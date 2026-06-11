@@ -6228,6 +6228,13 @@
             },
             "type": "array"
           },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "mechanism_count": {
             "minimum": 0,
             "type": "integer"
@@ -6524,6 +6531,13 @@
               "pending"
             ],
             "type": "string"
+          },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "mechanism_count": {
             "minimum": 0,

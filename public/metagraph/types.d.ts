@@ -2377,6 +2377,8 @@ export interface components {
             links: {
                 [key: string]: unknown;
             }[];
+            /** Format: uri */
+            logo_url?: string | null;
             mechanism_count?: number;
             name: string;
             native_name?: string | null;
@@ -2446,6 +2448,8 @@ export interface components {
             gap_count?: number;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
+            /** Format: uri */
+            logo_url?: string | null;
             mechanism_count?: number;
             name: string;
             native_name?: string | null;

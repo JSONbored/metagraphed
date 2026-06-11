@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
 import {
+  backfilledIdentityUrl,
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
   buildEndpointPoolArtifact,
@@ -172,6 +173,7 @@ const subnetIndex = mergedSubnets.map((subnet) => ({
   docs_url: subnet.docs_url,
   gap_count: subnet.gaps.missing_kinds.length,
   lifecycle: subnet.lifecycle,
+  logo_url: subnet.logo_url,
   mechanism_count: subnet.mechanism_count,
   name: subnet.name,
   native_name: subnet.native_name,
@@ -1295,6 +1297,10 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
         : "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
+    logo_url: backfilledIdentityUrl(
+      overlay?.logo_url,
+      nativeSubnet.chain_identity?.logo_url,
+    ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
     source_repo: overlay?.source_repo || null,

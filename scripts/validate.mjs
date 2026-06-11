@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  backfilledIdentityUrl,
   flattenSurfaces,
   loadCandidates,
   loadVerification,
@@ -177,7 +178,12 @@ function validateSubnet(
       `${subnet.slug}: docs_url must be a URL`,
     );
   }
-  for (const key of ["source_repo", "dashboard_url", "website_url"]) {
+  for (const key of [
+    "source_repo",
+    "dashboard_url",
+    "website_url",
+    "logo_url",
+  ]) {
     if (subnet[key] !== undefined && subnet[key] !== null) {
       assert(
         isValidUrl(subnet[key]),
@@ -739,6 +745,10 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
         : "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
+    logo_url: backfilledIdentityUrl(
+      overlay?.logo_url,
+      nativeSubnet.chain_identity?.logo_url,
+    ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
     source_repo: overlay?.source_repo || null,

@@ -769,6 +769,31 @@ export function normalizePublicUrl(value) {
   }
 }
 
+// Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
+// deprecated subnets' "https://deprecated.png" + "github.com/username/repo",
+// or "example.com" stubs). These must never surface as real links.
+const PLACEHOLDER_IDENTITY_URL = /deprecated|username\/repo|example\.com/i;
+
+export function isPlaceholderIdentityUrl(value) {
+  return typeof value === "string" && PLACEHOLDER_IDENTITY_URL.test(value);
+}
+
+// Resolve a subnet identity link (source_repo / website_url / logo_url):
+// curated overlay wins; otherwise fall back to the cleaned on-chain value;
+// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
+// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
+// generator and the reproducibility validator.
+export function backfilledIdentityUrl(overlayValue, chainValue) {
+  if (overlayValue) {
+    return overlayValue;
+  }
+  const normalized = normalizePublicUrl(chainValue);
+  if (!normalized || isPlaceholderIdentityUrl(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
 export function registrySurfaceKey(entry) {
   const normalizedUrl = normalizePublicUrl(entry?.url);
   return [
