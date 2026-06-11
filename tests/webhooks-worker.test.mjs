@@ -237,3 +237,147 @@ describe("SSE change feed", () => {
     assert.ok(Array.isArray(event.affected_netuids));
   });
 });
+
+describe("webhook route edge cases", () => {
+  test("404 for an unknown webhook sub-route", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/not-subscriptions"),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, "not_found");
+  });
+
+  test("405 for an unsupported method on the collection root", async () => {
+    // PUT has an id-less collection path but is neither POST (create) nor a
+    // GET/DELETE on an id, so it hits the method_not_allowed tail.
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", { method: "PATCH" }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 405);
+    assert.equal((await res.json()).error.code, "method_not_allowed");
+    assert.match(res.headers.get("allow"), /POST, GET, DELETE/);
+  });
+
+  test("413 when the content-length header exceeds the body limit", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(9000),
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 413);
+    assert.equal((await res.json()).error.code, "payload_too_large");
+  });
+
+  test("413 when the decoded body byte length exceeds the limit", async () => {
+    // content-length omitted, but the JSON payload itself is oversized.
+    const body = JSON.stringify({
+      url: "https://hooks.example.com/mg",
+      pad: "x".repeat(9000),
+    });
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body,
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 413);
+    assert.equal((await res.json()).error.code, "payload_too_large");
+  });
+
+  test("503 when KV put fails during creation", async () => {
+    const kv = makeKv();
+    kv.put = async () => {
+      throw new Error("kv put down");
+    };
+    const res = await postSub(envWith(kv), {
+      url: "https://hooks.example.com/mg",
+    });
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+  });
+
+  test("400 invalid_subscription_id on GET with a malformed id", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions/not-a-uuid"),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_subscription_id");
+  });
+
+  test("400 invalid_subscription_id on DELETE with a malformed id", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions/not-a-uuid", { method: "DELETE" }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_subscription_id");
+  });
+
+  test("404 on DELETE of an unknown subscription id", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000", {
+        method: "DELETE",
+        headers: { "x-metagraph-webhook-secret": "whatever" },
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, "subscription_not_found");
+  });
+
+  test("503 when KV delete fails", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    kv.delete = async () => {
+      throw new Error("kv delete down");
+    };
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${created.data.id}`, {
+        method: "DELETE",
+        headers: { "x-metagraph-webhook-secret": created.data.secret },
+      }),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+  });
+
+  test("readWebhookSubscription swallows a throwing KV get → 404", async () => {
+    const kv = makeKv();
+    kv.get = async () => {
+      throw new Error("kv get down");
+    };
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000"),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, "subscription_not_found");
+  });
+});

@@ -156,9 +156,9 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run validate
 
-      - name: Test
+      - name: Test (with coverage gate)
         if: steps.route.outputs.mode == 'full'
-        run: npm test
+        run: npm run test:coverage
 
       - name: Generate R2 manifest
         if: steps.route.outputs.mode == 'full'

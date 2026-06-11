@@ -284,4 +284,4 @@ jobs:
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
-            -d "{\"text\":\"🔴 metagraphed data publish failed — ${RUN_URL}\"}" || true
+            -d "{\"content\":\"🔴 metagraphed data publish failed — ${RUN_URL}\"}" || true
