@@ -55,12 +55,14 @@ const patterns = [
 
 // Per-surface schema artifacts embed the full upstream OpenAPI/Swagger spec
 // (TS2). Those are public docs the subnet published; the soft wording
-// heuristics false-positive on their API terminology.
+// heuristics false-positive on their API terminology. Keep this exemption scoped
+// to generated public/R2 artifact directories so source schemas are still
+// covered by the terminology guard.
 function isMirroredExternalSpec(relativePath) {
-  return (
-    /(^|\/)schemas\/.+\.json$/.test(relativePath) &&
-    !relativePath.endsWith("schemas/index.json")
-  );
+  return [
+    /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
+    /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
+  ].some((pattern) => pattern.test(relativePath));
 }
 
 const findings = [];
