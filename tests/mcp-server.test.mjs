@@ -4,6 +4,8 @@ import {
   MCP_TOOLS,
   MCP_PROTOCOL_VERSIONS,
   MCP_SERVER_INFO,
+  MAX_MCP_BATCH_LENGTH,
+  MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
@@ -235,6 +237,70 @@ describe("MCP transport handling", () => {
     const res = await rpc([]);
     assert.equal(res.status, 400);
     assert.equal(res.body.error.code, -32600);
+  });
+
+  test("an oversized batch is rejected before processing messages", async () => {
+    const calls = [];
+    const deps = {
+      ...makeDeps(),
+      readArtifact(_env, path) {
+        calls.push(path);
+        return Promise.resolve({ ok: true, data: {} });
+      },
+    };
+    const res = await rpc(
+      Array.from({ length: MAX_MCP_BATCH_LENGTH + 1 }, (_, index) => ({
+        jsonrpc: "2.0",
+        id: index + 1,
+        method: "tools/list",
+      })),
+      { deps },
+    );
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.code, -32600);
+    assert.match(res.body.error.message, /batch length exceeds/);
+    assert.deepEqual(calls, []);
+  });
+
+  test("an oversized decoded body is rejected before JSON parsing", async () => {
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: `"${"x".repeat(MAX_MCP_BODY_BYTES)}"`,
+    });
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 413);
+    const body = await response.json();
+    assert.equal(body.error.code, -32600);
+  });
+
+  test("the MCP rate limiter is enforced before body parsing", async () => {
+    let rateLimitKey;
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "203.0.113.7",
+      },
+      body: "{not json",
+    });
+    const response = await handleMcpRequest(
+      request,
+      {
+        MCP_RATE_LIMITER: {
+          async limit({ key }) {
+            rateLimitKey = key;
+            return { success: false };
+          },
+        },
+      },
+      makeDeps(),
+    );
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("retry-after"), "60");
+    assert.equal(rateLimitKey, "203.0.113.7");
+    const body = await response.json();
+    assert.match(body.error.message, /Too many MCP requests/);
   });
 
   test("handleMcpRequest defaults deps to an empty object", async () => {

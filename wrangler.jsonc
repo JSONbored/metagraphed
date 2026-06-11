@@ -91,6 +91,18 @@
         "period": 60,
       },
     },
+    // Per-client abuse control for the MCP JSON-RPC endpoint. 100 requests /
+    // 60s per client IP, paired with MCP's body and batch caps so a public POST
+    // cannot amplify one request into unbounded artifact/KV reads. Skipped when
+    // the binding is absent (local dev/CI).
+    {
+      "name": "MCP_RATE_LIMITER",
+      "namespace_id": "1003",
+      "simple": {
+        "limit": 100,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the AI routes (semantic + /ask). 20 requests
     // / 60s per client IP — tighter than the RPC proxy because /ask drives an
     // LLM call. Skipped when the binding is absent (local dev/CI).

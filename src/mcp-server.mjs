@@ -36,6 +36,14 @@ const MCP_INSTRUCTIONS =
 
 const JSONRPC_VERSION = "2.0";
 
+// Abuse controls for the public Streamable-HTTP endpoint. Keep these small
+// enough to prevent one unauthenticated request from amplifying into many
+// artifact/KV reads, while still allowing legacy clients that send tiny
+// JSON-RPC batches.
+export const MAX_MCP_BODY_BYTES = 64 * 1024;
+export const MAX_MCP_BATCH_LENGTH = 10;
+const MCP_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+
 // JSON-RPC error codes (subset of the spec we emit).
 const RPC_PARSE_ERROR = -32700;
 const RPC_INVALID_REQUEST = -32600;
@@ -579,16 +587,54 @@ const MCP_HEADERS = {
   "cache-control": "no-store",
 };
 
-function jsonResponse(payload, status = 200) {
+function jsonResponse(payload, status = 200, headers = {}) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: MCP_HEADERS,
+    headers: { ...MCP_HEADERS, ...headers },
   });
+}
+
+function mcpClientKey(request) {
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for") ||
+    "anonymous"
+  );
+}
+
+async function enforceMcpRateLimit(request, env) {
+  const limiter = env.MCP_RATE_LIMITER || env.RPC_RATE_LIMITER;
+  if (!limiter?.limit) return null;
+
+  const { success } = await limiter.limit({ key: mcpClientKey(request) });
+  if (success) return null;
+
+  return jsonResponse(
+    rpcError(
+      null,
+      RPC_INVALID_REQUEST,
+      "Too many MCP requests from this client; slow down.",
+    ),
+    429,
+    {
+      "retry-after": String(MCP_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(MCP_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${MCP_RATE_LIMIT.limit};w=${MCP_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
+function bodyTooLargeResponse() {
+  return jsonResponse(
+    rpcError(null, RPC_INVALID_REQUEST, "MCP request body is too large."),
+    413,
+  );
 }
 
 // Entry point wired into the Worker at `POST /mcp`. `deps` injects the shared
 // artifact/KV readers from workers/api.mjs.
-export async function handleMcpRequest(request, env, deps = {}) {
+export async function handleMcpRequest(request, env = {}, deps = {}) {
   if (request.method !== "POST") {
     return new Response(
       JSON.stringify({
@@ -605,9 +651,21 @@ export async function handleMcpRequest(request, env, deps = {}) {
     );
   }
 
+  const rateLimitResponse = await enforceMcpRateLimit(request, env);
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > MAX_MCP_BODY_BYTES) {
+    return bodyTooLargeResponse();
+  }
+
   let body;
   try {
-    body = await request.json();
+    const bodyText = await request.text();
+    if (new TextEncoder().encode(bodyText).length > MAX_MCP_BODY_BYTES) {
+      return bodyTooLargeResponse();
+    }
+    body = JSON.parse(bodyText);
   } catch {
     return jsonResponse(
       rpcError(null, RPC_PARSE_ERROR, "Request body is not valid JSON."),
@@ -617,12 +675,22 @@ export async function handleMcpRequest(request, env, deps = {}) {
 
   const ctx = buildContext(request, env, deps);
 
-  // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but we stay
-  // lenient for older clients.
+  // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
+  // older-client compatibility so one HTTP request cannot fan out unboundedly.
   if (Array.isArray(body)) {
     if (body.length === 0) {
       return jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, "Empty JSON-RPC batch."),
+        400,
+      );
+    }
+    if (body.length > MAX_MCP_BATCH_LENGTH) {
+      return jsonResponse(
+        rpcError(
+          null,
+          RPC_INVALID_REQUEST,
+          `JSON-RPC batch length exceeds the maximum of ${MAX_MCP_BATCH_LENGTH}.`,
+        ),
         400,
       );
     }
