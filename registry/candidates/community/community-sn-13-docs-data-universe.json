@@ -1,0 +1,25 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-13-docs-data-universe",
+      "kind": "docs",
+      "name": "Data Universe (Subnet 13) documentation",
+      "netuid": 13,
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public documentation surface for Subnet 13 (Data Universe).",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "source_urls": ["https://github.com/macrocosm-os/data-universe"],
+      "state": "schema-valid",
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-13-data-universe"
+    }
+  ],
+  "schema_version": 1,
+  "submission": { "submitted_by": "jsonbored", "submitted_by_url": "https://github.com/jsonbored" }
+}
