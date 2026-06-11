@@ -2255,7 +2255,7 @@ export interface components {
             /** Format: uri */
             schema_url: string | null;
             /** @enum {unknown} */
-            status: "captured" | "error" | "not-found" | "pending-snapshot" | "ui-only-or-undiscovered" | "unsafe";
+            status: "captured" | "error" | "not-found" | "pending-snapshot" | "too-large" | "ui-only-or-undiscovered" | "unsafe";
             subnet_slug: string;
             surface_id: string;
             /** Format: uri */
@@ -2282,7 +2282,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** @enum {unknown} */
-            status: "captured" | "error" | "not-found" | "unsafe";
+            status: "captured" | "error" | "not-found" | "too-large" | "unsafe";
             subnet_slug?: string;
             surface_id: string;
             /** Format: uri */
