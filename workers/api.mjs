@@ -23,11 +23,30 @@ import {
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
-import { pruneHealthHistory, runHealthProber } from "../src/health-prober.mjs";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+  pruneHealthHistory,
+  runHealthProber,
+} from "../src/health-prober.mjs";
+import {
+  buildGlobalHealth,
+  formatTrends,
+  mergeFreshness,
+  mergeRpcEndpoints,
+  overlayRpcPoolEligibility,
+  overlaySubnetHealth,
+  subnetBadgeStatus,
+} from "../src/health-serving.mjs";
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
 // trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
 const HEALTH_PRUNE_CRON = "0 * * * *";
+// Trend windows for /api/v1/subnets/{netuid}/health/trends.
+const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
+const TRENDS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
@@ -157,6 +176,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         { slug: resolved.slug },
       );
     }
+    // D1-backed health trends (slug-aware after resolution). Special-handled
+    // rather than artifact-backed, like /api/v1/events.
+    const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
+    if (trendsMatch) {
+      return handleHealthTrends(request, env, Number(trendsMatch[1]));
+    }
     return handleApiRequest(request, env, resolved.url);
   }
 
@@ -231,6 +256,13 @@ const BADGE_COLOR_HEX = {
   lightgrey: "#9f9f9f",
   grey: "#555",
 };
+// Shields-style color for a health status (matches the build's badgeColor).
+const BADGE_STATUS_COLOR = {
+  ok: "brightgreen",
+  degraded: "yellow",
+  failed: "red",
+  unknown: "lightgrey",
+};
 
 async function handleBadgeSvgRequest(request, env, url) {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -247,10 +279,27 @@ async function handleBadgeSvgRequest(request, env, url) {
     env,
     `/metagraph/health/badges/${netuid}.json`,
   );
-  const available = artifact.ok && artifact.data;
-  const badge = available
-    ? artifact.data
-    : { label: `SN${netuid}`, message: "unavailable", color: "lightgrey" };
+  // Live overlay: prefer the fresh operational status from the 2-min cron
+  // snapshot; fall back to the static badge artifact, then to "unavailable".
+  const liveCurrent = await readHealthKv(env, KV_HEALTH_CURRENT);
+  const liveStatus = subnetBadgeStatus(liveCurrent, Number(netuid));
+  const available = Boolean(liveStatus || (artifact.ok && artifact.data));
+  let badge;
+  if (liveStatus) {
+    badge = {
+      label: `SN${netuid}`,
+      message: liveStatus.status,
+      color: BADGE_STATUS_COLOR[liveStatus.status] || "lightgrey",
+    };
+  } else if (artifact.ok && artifact.data) {
+    badge = artifact.data;
+  } else {
+    badge = {
+      label: `SN${netuid}`,
+      message: "unavailable",
+      color: "lightgrey",
+    };
+  }
   const svg = renderBadgeSvg(
     badge.label || `SN${netuid}`,
     badge.message || "unknown",
@@ -378,14 +427,27 @@ async function handleApiRequest(request, env, url) {
   }
 
   const artifact = await readArtifact(env, matched.artifactPath);
-  if (!artifact.ok) {
+
+  // Live operational-health overlay (Phase 3): for health/rpc routes, overlay
+  // the fresh 2-minute cron snapshot (KV/D1) onto the static artifact. Falls back
+  // to the static artifact when the snapshot is cold/unbound — zero regression.
+  const live = await liveHealthOverlay(
+    env,
+    matched,
+    artifact.ok ? artifact.data : null,
+  );
+
+  if (!artifact.ok && !live) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
       artifact_path: matched.artifactPath,
     });
   }
 
+  const baseData = live ? live.data : artifact.data;
+  const baseSource = live ? "live-cron-prober" : artifact.source;
+
   const transformed = applyQueryFilters(
-    artifact.data,
+    baseData,
     url,
     matched.queryCollection,
     matched.queryFilterNames,
@@ -404,16 +466,72 @@ async function handleApiRequest(request, env, url) {
         artifact_path: matched.artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
-        generated_at: artifact.data?.generated_at || null,
+        generated_at: baseData?.generated_at || null,
         // Real publish time from the KV latest pointer; null until a publish has
         // populated it. Unlike generated_at (a deterministic content marker),
         // this is safe to render as a human "last updated" timestamp.
         published_at: await publishedAt(env),
-        source: artifact.source,
+        source: baseSource,
+        ...(baseData?.operational_observed_at
+          ? { operational_observed_at: baseData.operational_observed_at }
+          : {}),
         ...transformed.meta,
       },
     },
     matched.cache,
+  );
+}
+
+// D1-backed 7d/30d uptime + latency trends for one subnet's operational
+// surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
+// never errors (mirrors the live-overlay fall-back philosophy).
+async function handleHealthTrends(request, env, netuid) {
+  const db = env.METAGRAPH_HEALTH_DB;
+  const nowMs = Date.now();
+  const windows = {};
+  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+    let rows = [];
+    if (db?.prepare) {
+      try {
+        const result = await db
+          .prepare(
+            `SELECT surface_id,
+                    COUNT(*) AS total,
+                    SUM(ok) AS ok_count,
+                    AVG(latency_ms) AS avg_latency_ms
+             FROM surface_checks
+             WHERE netuid = ? AND checked_at >= ?
+             GROUP BY surface_id`,
+          )
+          .bind(netuid, nowMs - days * DAY_MS)
+          .all();
+        rows = result?.results || [];
+      } catch {
+        rows = [];
+      }
+    }
+    windows[label] = rows;
+  }
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatTrends({
+    netuid,
+    observedAt: meta?.last_run_at || null,
+    windows,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: null,
+        cache: "short",
+        contract_version: contractVersion(env),
+        generated_at: data.observed_at,
+        published_at: await publishedAt(env),
+        source: "live-cron-prober",
+      },
+    },
+    "short",
   );
 }
 
@@ -540,9 +658,14 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     );
   }
   const poolId = "finney-rpc";
-  const pool = (poolArtifact.data.pools || []).find(
+  const staticPool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
+  // Overlay the 2-minute cron health so the proxy avoids sustained-down endpoints
+  // (the in-isolate breaker still handles instantaneous failures). Falls back to
+  // the static pool when the live snapshot is cold.
+  const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+  const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
   const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
   if (!candidates.length) {
     if (unsafeEndpoint) {
@@ -955,6 +1078,7 @@ function matchRoute(pathname) {
     }
     const params = match.groups || {};
     return {
+      id: candidate.id,
       artifactPath: candidate.artifactPath(params),
       cache: candidate.cache,
       params,
@@ -1018,6 +1142,7 @@ async function handleHealthRequest(request, env) {
     assets: Boolean(env.ASSETS?.fetch),
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
+    health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
   };
 
   // Data freshness — the scheduled refresh (ADR 0001) advances the KV `latest`
@@ -1038,6 +1163,15 @@ async function handleHealthRequest(request, env) {
     : null;
   const stale = ageHours !== null && ageHours > maxAgeHours;
 
+  // Operational-health freshness — the 2-minute cron prober's last run. Reported
+  // for observability (a stuck prober shows a growing age); does not gate the
+  // HTTP status here (Phase 4 wires alerting). Null until the first cron run.
+  const meta = bindings.kv ? await readHealthKv(env, KV_HEALTH_META) : null;
+  const opRunAtMs = meta?.last_run_at ? Date.parse(meta.last_run_at) : NaN;
+  const opAgeMinutes = Number.isFinite(opRunAtMs)
+    ? (Date.now() - opRunAtMs) / 60_000
+    : null;
+
   const body = JSON.stringify({
     status: stale ? "degraded" : "ok",
     service: "metagraphed",
@@ -1049,6 +1183,13 @@ async function handleHealthRequest(request, env) {
       age_hours: ageHours === null ? null : Math.round(ageHours * 100) / 100,
       max_age_hours: maxAgeHours,
       stale,
+    },
+    operational_health: {
+      last_run_at: meta?.last_run_at || null,
+      age_minutes:
+        opAgeMinutes === null ? null : Math.round(opAgeMinutes * 100) / 100,
+      probed_count: meta?.probed_count ?? null,
+      status_counts: meta?.status_counts ?? null,
     },
   });
 
@@ -1455,6 +1596,53 @@ async function latestPointer(env) {
     });
   } catch {
     return null;
+  }
+}
+
+// Read a live health snapshot written by the cron prober (KV health:* keys).
+// Returns null when KV is unbound or the key is cold so callers fall back to the
+// static artifact.
+async function readHealthKv(env, key) {
+  if (!env.METAGRAPH_CONTROL?.get) {
+    return null;
+  }
+  try {
+    return await env.METAGRAPH_CONTROL.get(key, { type: "json" });
+  } catch {
+    return null;
+  }
+}
+
+// Overlay the 2-minute cron snapshot onto a static health/rpc artifact. Returns
+// { data } when a live snapshot is available, else null (caller serves static).
+async function liveHealthOverlay(env, matched, staticData) {
+  switch (matched.id) {
+    case "health": {
+      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
+      if (!current) return null;
+      return { data: buildGlobalHealth(current, staticData) };
+    }
+    case "subnet-health": {
+      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
+      const data = overlaySubnetHealth(
+        staticData,
+        current,
+        Number(matched.params.netuid),
+      );
+      return data ? { data } : null;
+    }
+    case "rpc-endpoints": {
+      const pool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+      const data = mergeRpcEndpoints(staticData, pool);
+      return data ? { data } : null;
+    }
+    case "freshness": {
+      const meta = await readHealthKv(env, KV_HEALTH_META);
+      const data = mergeFreshness(staticData, meta);
+      return data ? { data } : null;
+    }
+    default:
+      return null;
   }
 }
 
