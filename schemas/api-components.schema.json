@@ -2368,6 +2368,107 @@
         ],
         "type": "object"
       },
+      "HealthIncidentsArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "downtime_ms": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incident_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incidents": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "duration_ms": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "ended_at": {
+                        "type": "integer"
+                      },
+                      "failed_samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "started_at": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "started_at",
+                      "ended_at",
+                      "duration_ms",
+                      "failed_samples"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "samples": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "surface_id",
+                "samples",
+                "uptime_ratio",
+                "incident_count",
+                "downtime_ms",
+                "incidents"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "HealthLatestArtifact": {
         "allOf": [
           {
@@ -2402,6 +2503,103 @@
             "type": "object"
           }
         ]
+      },
+      "HealthPercentilesArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "latency_ms": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "avg": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "max": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "min": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "p50": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "p95": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "p99": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "samples": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "surface_id",
+                "samples",
+                "latency_ms"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "HealthStatus": {
         "enum": [
@@ -3248,6 +3446,45 @@
           "sha256",
           "size_bytes",
           "storage_tier"
+        ],
+        "type": "object"
+      },
+      "RegistryLeaderboardsArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "board": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "boards": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "boards"
         ],
         "type": "object"
       },
@@ -7132,6 +7369,73 @@
       },
       "SubnetSurfacesArtifact": {
         "$ref": "#/components/schemas/SurfacesArtifact"
+      },
+      "SubnetTrajectoryArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "deltas": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "completeness_score": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "date": {
+                  "type": "string"
+                },
+                "endpoint_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "surface_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points",
+          "deltas"
+        ],
+        "type": "object"
       },
       "SubnetType": {
         "enum": [

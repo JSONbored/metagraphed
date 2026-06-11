@@ -25,6 +25,11 @@ const R2_ONLY_PATTERNS = [
   // file. Marked R2-only so the contract maps a schema to the route without the
   // build expecting a committed/staged artifact.
   /^health\/trends\/(?:\d+|\{netuid\})\.json$/,
+  // AI-4 analytics: also computed live from D1, never written as files.
+  /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,
+  /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
+  /^registry\/leaderboards\.json$/,
   // Per-subnet agent capability catalog (full service detail) — large, built.
   /^agent-catalog\/(?:\d+|\{netuid\})\.json$/,
   /^metagraph\/latest\.json$/,

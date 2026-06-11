@@ -440,6 +440,150 @@
           }
         },
         "additionalProperties": true
+      },
+      "HealthPercentilesArtifact": {
+        "type": "object",
+        "required": ["schema_version", "netuid", "source", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["surface_id", "samples", "latency_ms"],
+              "properties": {
+                "surface_id": { "type": "string" },
+                "samples": { "type": "integer", "minimum": 0 },
+                "latency_ms": {
+                  "type": "object",
+                  "properties": {
+                    "p50": { "type": ["integer", "null"] },
+                    "p95": { "type": ["integer", "null"] },
+                    "p99": { "type": ["integer", "null"] },
+                    "avg": { "type": ["integer", "null"] },
+                    "min": { "type": ["integer", "null"] },
+                    "max": { "type": ["integer", "null"] }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "HealthIncidentsArtifact": {
+        "type": "object",
+        "required": ["schema_version", "netuid", "source", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "surface_id",
+                "samples",
+                "uptime_ratio",
+                "incident_count",
+                "downtime_ms",
+                "incidents"
+              ],
+              "properties": {
+                "surface_id": { "type": "string" },
+                "samples": { "type": "integer", "minimum": 0 },
+                "uptime_ratio": { "type": ["number", "null"] },
+                "incident_count": { "type": "integer", "minimum": 0 },
+                "downtime_ms": { "type": "integer", "minimum": 0 },
+                "incidents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "started_at",
+                      "ended_at",
+                      "duration_ms",
+                      "failed_samples"
+                    ],
+                    "properties": {
+                      "started_at": { "type": "integer" },
+                      "ended_at": { "type": "integer" },
+                      "duration_ms": { "type": "integer", "minimum": 0 },
+                      "failed_samples": { "type": "integer", "minimum": 0 }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "SubnetTrajectoryArtifact": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points",
+          "deltas"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["date"],
+              "properties": {
+                "date": { "type": "string" },
+                "completeness_score": { "type": ["integer", "null"] },
+                "surface_count": { "type": ["integer", "null"] },
+                "endpoint_count": { "type": ["integer", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "deltas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["object", "null"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "RegistryLeaderboardsArtifact": {
+        "type": "object",
+        "required": ["schema_version", "source", "boards"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "board": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "boards": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "object", "additionalProperties": true }
+            }
+          }
+        },
+        "additionalProperties": true
       }
     }
   }

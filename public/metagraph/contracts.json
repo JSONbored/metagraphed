@@ -354,6 +354,42 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
+      "id": "health-percentiles",
+      "path": "/metagraph/health/percentiles/{netuid}.json",
+      "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/incidents (no static file).",
+      "id": "health-incidents",
+      "path": "/metagraph/health/incidents/{netuid}.json",
+      "schema_ref": "#/components/schemas/HealthIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory (no static file).",
+      "id": "subnet-trajectory",
+      "path": "/metagraph/subnets/{netuid}/trajectory.json",
+      "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+      "id": "registry-leaderboards",
+      "path": "/metagraph/registry/leaderboards.json",
+      "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Bittensor base-layer RPC endpoint registry and probe status.",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",

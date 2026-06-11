@@ -558,3 +558,53 @@ export async function pruneHealthHistory(env, overrides = {}) {
     return { pruned: false };
   }
 }
+
+// Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
+// subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron;
+// ON CONFLICT DO NOTHING makes repeated fires within a day idempotent (the first
+// fire of the day wins). `overrides.readArtifact` is injected from the Worker.
+export async function writeSubnetSnapshot(env, overrides = {}) {
+  const now = overrides.now || (() => Date.now());
+  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
+  const readArtifact = overrides.readArtifact;
+  if (!db?.prepare || typeof readArtifact !== "function") {
+    return { ok: false, reason: "unavailable" };
+  }
+  const profilesResult = await readArtifact(env, "/metagraph/profiles.json");
+  if (!profilesResult?.ok) return { ok: false, reason: "profiles_unavailable" };
+  const profiles = Array.isArray(profilesResult.data?.profiles)
+    ? profilesResult.data.profiles
+    : [];
+  if (!profiles.length) return { ok: false, reason: "no_profiles" };
+
+  const date = new Date(now()).toISOString().slice(0, 10);
+  const capturedAt = now();
+  const stmt = db.prepare(
+    `INSERT INTO subnet_snapshots
+       (netuid, snapshot_date, completeness_score, surface_count,
+        endpoint_count, monitored_count, candidate_count, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (netuid, snapshot_date) DO NOTHING`,
+  );
+  const statements = profiles
+    .filter((profile) => Number.isInteger(profile.netuid))
+    .map((profile) =>
+      stmt.bind(
+        profile.netuid,
+        date,
+        profile.completeness_score ?? null,
+        profile.surface_count ?? null,
+        profile.endpoint_count ?? null,
+        profile.monitored_endpoint_count ?? null,
+        profile.candidate_count ?? null,
+        capturedAt,
+      ),
+    );
+  if (!statements.length) return { ok: false, reason: "no_rows" };
+  try {
+    await db.batch(statements);
+    return { ok: true, date, rows: statements.length };
+  } catch {
+    return { ok: false, reason: "write_failed" };
+  }
+}

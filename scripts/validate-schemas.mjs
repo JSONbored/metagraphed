@@ -20,7 +20,13 @@ import {
 // Artifacts whose schema describes a live-computed API response with no static
 // file on disk (served from D1/KV). Their schema is exercised by validate-api's
 // per-route response validation, not by validating files here.
-const COMPUTED_ARTIFACTS = new Set(["health-trends"]);
+const COMPUTED_ARTIFACTS = new Set([
+  "health-trends",
+  "health-percentiles",
+  "health-incidents",
+  "subnet-trajectory",
+  "registry-leaderboards",
+]);
 
 const ajv = new Ajv2020({
   allErrors: true,

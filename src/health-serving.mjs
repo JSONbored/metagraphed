@@ -281,4 +281,260 @@ export function formatTrends({ netuid, observedAt, windows }) {
   };
 }
 
+// --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
+
+// A gap larger than this between consecutive failing checks (probe cadence is
+// ~2 min) ends one incident and starts another.
+const INCIDENT_GAP_MS = 6 * 60 * 1000;
+
+function round4(value) {
+  return value == null ? null : Number(Number(value).toFixed(4));
+}
+function roundInt(value) {
+  return value == null ? null : Math.round(Number(value));
+}
+
+// p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
+// surface). `rows`: [{ surface_id, samples, p50, p95, p99, avg_latency_ms,
+// min_latency_ms, max_latency_ms }].
+export function formatPercentiles({ netuid, window, observedAt, rows }) {
+  const surfaces = (rows || [])
+    .map((row) => ({
+      surface_id: row.surface_id,
+      samples: Number(row.samples) || 0,
+      latency_ms: {
+        p50: roundInt(row.p50),
+        p95: roundInt(row.p95),
+        p99: roundInt(row.p99),
+        avg: roundInt(row.avg_latency_ms),
+        min: roundInt(row.min_latency_ms),
+        max: roundInt(row.max_latency_ms),
+      },
+    }))
+    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+  return {
+    schema_version: 1,
+    netuid,
+    window: window || null,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    surfaces,
+  };
+}
+
+// SLA + reconstructed downtime windows per surface. `slaRows`: [{ surface_id,
+// total, ok_count }]. `failureRows`: [{ surface_id, checked_at }] ordered by
+// (surface_id, checked_at) — only non-ok checks, so the set is small.
+export function formatIncidents({
+  netuid,
+  window,
+  observedAt,
+  slaRows,
+  failureRows,
+}) {
+  const incidentsBySurface = new Map();
+  for (const row of failureRows || []) {
+    const list = incidentsBySurface.get(row.surface_id) || [];
+    const at = Number(row.checked_at);
+    const last = list[list.length - 1];
+    if (last && at - last.end <= INCIDENT_GAP_MS) {
+      last.end = at;
+      last.samples += 1;
+    } else {
+      list.push({ start: at, end: at, samples: 1 });
+    }
+    incidentsBySurface.set(row.surface_id, list);
+  }
+
+  const surfaces = (slaRows || [])
+    .map((row) => {
+      const total = Number(row.total) || 0;
+      const okCount = Number(row.ok_count) || 0;
+      const incidents = (incidentsBySurface.get(row.surface_id) || []).map(
+        (incident) => ({
+          started_at: incident.start,
+          ended_at: incident.end,
+          duration_ms: incident.end - incident.start,
+          failed_samples: incident.samples,
+        }),
+      );
+      const downtimeMs = incidents.reduce((sum, i) => sum + i.duration_ms, 0);
+      return {
+        surface_id: row.surface_id,
+        samples: total,
+        uptime_ratio: total ? round4(okCount / total) : null,
+        incident_count: incidents.length,
+        downtime_ms: downtimeMs,
+        incidents,
+      };
+    })
+    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+
+  return {
+    schema_version: 1,
+    netuid,
+    window: window || null,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    surfaces,
+  };
+}
+
+export const LEADERBOARD_BOARDS = [
+  "healthiest",
+  "fastest-rpc",
+  "most-complete",
+  "fastest-growing",
+];
+
+// Assemble registry leaderboards from already-query-shaped inputs:
+// healthRows [{netuid, total, ok_count, avg_latency_ms}], rpcRows
+// [{netuid, min_latency_ms}], mostComplete [{netuid, slug, name,
+// completeness_score}], growthRows [{netuid, delta}]. `subnetMeta` is a
+// Map(netuid -> {slug, name}).
+export function formatLeaderboards({
+  board,
+  limit,
+  observedAt,
+  healthRows,
+  rpcRows,
+  mostComplete,
+  growthRows,
+  subnetMeta,
+}) {
+  const cap = Math.max(1, Math.min(100, Number(limit) || 20));
+  const metaFor = (netuid) => (subnetMeta && subnetMeta.get(netuid)) || {};
+
+  const healthiest = (healthRows || [])
+    .map((row) => {
+      const total = Number(row.total) || 0;
+      const ok = Number(row.ok_count) || 0;
+      return {
+        netuid: row.netuid,
+        ...metaFor(row.netuid),
+        uptime_ratio: total ? round4(ok / total) : null,
+        surfaces_ok: ok,
+        surfaces_total: total,
+        avg_latency_ms: roundInt(row.avg_latency_ms),
+      };
+    })
+    .filter((entry) => entry.surfaces_total > 0)
+    .sort(
+      (a, b) =>
+        (b.uptime_ratio ?? -1) - (a.uptime_ratio ?? -1) ||
+        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity),
+    )
+    .slice(0, cap);
+
+  const fastestRpc = (rpcRows || [])
+    .map((row) => ({
+      netuid: row.netuid,
+      ...metaFor(row.netuid),
+      latency_ms: roundInt(row.min_latency_ms),
+    }))
+    .filter((entry) => entry.latency_ms != null)
+    .sort((a, b) => a.latency_ms - b.latency_ms)
+    .slice(0, cap);
+
+  const completeBoard = (mostComplete || [])
+    .map((row) => ({
+      netuid: row.netuid,
+      slug: row.slug ?? null,
+      name: row.name ?? null,
+      completeness_score: row.completeness_score ?? null,
+    }))
+    .sort((a, b) => (b.completeness_score ?? -1) - (a.completeness_score ?? -1))
+    .slice(0, cap);
+
+  const fastestGrowing = (growthRows || [])
+    .map((row) => ({
+      netuid: row.netuid,
+      ...metaFor(row.netuid),
+      completeness_delta: roundInt(row.delta),
+    }))
+    .filter(
+      (entry) =>
+        entry.completeness_delta != null && entry.completeness_delta > 0,
+    )
+    .sort((a, b) => b.completeness_delta - a.completeness_delta)
+    .slice(0, cap);
+
+  const allBoards = {
+    healthiest,
+    "fastest-rpc": fastestRpc,
+    "most-complete": completeBoard,
+    "fastest-growing": fastestGrowing,
+  };
+  const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
+
+  return {
+    schema_version: 1,
+    board: board || null,
+    observed_at: observedAt || null,
+    source: "registry+live-cron-prober",
+    boards,
+  };
+}
+
+// Week-over-week trajectory from daily snapshots. `rows`: [{snapshot_date,
+// completeness_score, surface_count, endpoint_count}].
+export function formatTrajectory({ netuid, rows }) {
+  const points = (rows || [])
+    .map((row) => ({
+      date: row.snapshot_date,
+      completeness_score: row.completeness_score ?? null,
+      surface_count: row.surface_count ?? null,
+      endpoint_count: row.endpoint_count ?? null,
+    }))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  const latest = points[points.length - 1] || null;
+  const deltaOver = (days) => {
+    if (!latest) return null;
+    const cutoff = pointAtOrBefore(points, latest.date, days);
+    if (!cutoff || cutoff.date === latest.date) return null;
+    return {
+      from_date: cutoff.date,
+      to_date: latest.date,
+      completeness_score: diff(
+        latest.completeness_score,
+        cutoff.completeness_score,
+      ),
+      surface_count: diff(latest.surface_count, cutoff.surface_count),
+      endpoint_count: diff(latest.endpoint_count, cutoff.endpoint_count),
+    };
+  };
+
+  return {
+    schema_version: 1,
+    netuid,
+    point_count: points.length,
+    points,
+    deltas: { "7d": deltaOver(7), "30d": deltaOver(30) },
+  };
+}
+
+function diff(now, then) {
+  if (now == null || then == null) return null;
+  return Number(now) - Number(then);
+}
+
+// Latest point whose date is <= (latestDate - days). Dates are YYYY-MM-DD
+// strings compared lexically (valid for ISO dates).
+function pointAtOrBefore(points, latestDate, days) {
+  const target = shiftDate(latestDate, -days);
+  let chosen = null;
+  for (const point of points) {
+    if (String(point.date) <= target) chosen = point;
+    else break;
+  }
+  return chosen;
+}
+
+function shiftDate(isoDate, days) {
+  const [y, m, d] = String(isoDate).split("-").map(Number);
+  const base = Date.UTC(y, (m || 1) - 1, d || 1) + days * 24 * 60 * 60 * 1000;
+  return new Date(base).toISOString().slice(0, 10);
+}
+
 export { OPERATIONAL_KINDS };

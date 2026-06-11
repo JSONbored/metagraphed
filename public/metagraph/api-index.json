@@ -275,6 +275,34 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "health-percentiles",
+      "path": "/metagraph/health/percentiles/{netuid}.json",
+      "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "health-incidents",
+      "path": "/metagraph/health/incidents/{netuid}.json",
+      "schema_ref": "#/components/schemas/HealthIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-trajectory",
+      "path": "/metagraph/subnets/{netuid}/trajectory.json",
+      "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "registry-leaderboards",
+      "path": "/metagraph/registry/leaderboards.json",
+      "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
       "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
@@ -3224,6 +3252,97 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/health/percentiles/{netuid}.json",
+      "cache": "short",
+      "description": "Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1).",
+      "id": "subnet-health-percentiles",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/health/percentiles",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/health/incidents/{netuid}.json",
+      "cache": "short",
+      "description": "Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1).",
+      "id": "subnet-health-incidents",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/health/incidents",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/trajectory.json",
+      "cache": "short",
+      "description": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
+      "id": "subnet-trajectory",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/trajectory",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/registry/leaderboards.json",
+      "cache": "standard",
+      "description": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+      "id": "registry-leaderboards",
+      "method": "GET",
+      "path": "/api/v1/registry/leaderboards",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "board",
+          "schema": {
+            "enum": [
+              "healthiest",
+              "fastest-rpc",
+              "most-complete",
+              "fastest-growing"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/freshness.json",

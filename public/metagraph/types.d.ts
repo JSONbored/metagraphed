@@ -395,6 +395,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/registry/leaderboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards. */
+        get: operations["registryLeaderboards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registry/summary": {
         parameters: {
             query?: never;
@@ -735,6 +752,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/health/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1). */
+        get: operations["subnetHealthIncidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/health/percentiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1). */
+        get: operations["subnetHealthPercentiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/health/trends": {
         parameters: {
             query?: never;
@@ -795,6 +846,23 @@ export interface paths {
         };
         /** List curated public surfaces for one subnet. */
         get: operations["subnetSurfaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/trajectory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). */
+        get: operations["subnetTrajectory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1399,6 +1467,32 @@ export interface components {
             surface_id: string;
             verified_at?: string | null;
         };
+        HealthIncidentsArtifact: {
+            netuid: number;
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            surfaces: ({
+                downtime_ms: number;
+                incident_count: number;
+                incidents: ({
+                    duration_ms: number;
+                    ended_at: number;
+                    failed_samples: number;
+                    started_at: number;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                samples: number;
+                surface_id: string;
+                uptime_ratio: number | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
             /** Format: date-time */
             observed_at: string | null;
@@ -1409,6 +1503,31 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        HealthPercentilesArtifact: {
+            netuid: number;
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            surfaces: ({
+                latency_ms: {
+                    avg?: number | null;
+                    max?: number | null;
+                    min?: number | null;
+                    p50?: number | null;
+                    p95?: number | null;
+                    p99?: number | null;
+                } & {
+                    [key: string]: unknown;
+                };
+                samples: number;
+                surface_id: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** @enum {unknown} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
         HealthSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
@@ -1635,6 +1754,19 @@ export interface components {
             size_bytes: number;
             /** @enum {unknown} */
             storage_tier: "dual" | "git" | "r2";
+        };
+        RegistryLeaderboardsArtifact: {
+            board?: string | null;
+            boards: {
+                [key: string]: {
+                    [key: string]: unknown;
+                }[];
+            };
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+        } & {
+            [key: string]: unknown;
         };
         RegistrySummaryArtifact: components["schemas"]["ArtifactBase"] & ({
             counts: {
@@ -2496,6 +2628,26 @@ export interface components {
         /** @enum {unknown} */
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
+        SubnetTrajectoryArtifact: {
+            deltas: {
+                [key: string]: {
+                    [key: string]: unknown;
+                } | null;
+            };
+            netuid: number;
+            point_count: number;
+            points: ({
+                completeness_score?: number | null;
+                date: string;
+                endpoint_count?: number | null;
+                surface_count?: number | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @enum {unknown} */
         SubnetType: "root" | "application";
         SubnetVerificationArtifact: components["schemas"]["VerificationArtifact"];
@@ -4324,6 +4476,77 @@ export interface operations {
             };
         };
     };
+    registryLeaderboards: {
+        parameters: {
+            query?: {
+                board?: "healthiest" | "fastest-rpc" | "most-complete" | "fastest-growing";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RegistryLeaderboardsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     registrySummary: {
         parameters: {
             query?: never;
@@ -5849,6 +6072,150 @@ export interface operations {
             };
         };
     };
+    subnetHealthIncidents: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["HealthIncidentsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetHealthPercentiles: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["HealthPercentilesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetHealthTrends: {
         parameters: {
             query?: never;
@@ -6088,6 +6455,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetSurfacesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetTrajectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
                 };
             };

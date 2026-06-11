@@ -44,6 +44,35 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/health/percentiles",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.surfaces), true);
+    },
+  ],
+  [
+    "/api/v1/subnets/7/health/incidents",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.surfaces), true);
+    },
+  ],
+  [
+    "/api/v1/subnets/7/trajectory",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
+    "/api/v1/registry/leaderboards",
+    (body) => {
+      assert.equal(typeof body.data.boards, "object");
+      assert.equal(Array.isArray(body.data.boards["most-complete"]), true);
+    },
+  ],
+  [
     "/api/v1/profiles?profile_level=adapter-backed",
     (body) =>
       assert.equal(
