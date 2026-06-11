@@ -42,6 +42,7 @@
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "validate:api": "node scripts/validate-api.mjs",
     "validate:mcp": "node scripts/validate-mcp.mjs",
+    "validate:ai": "node scripts/validate-ai-routes.mjs",
     "validate:openapi": "node scripts/validate-openapi.mjs",
     "validate:types": "node scripts/validate-types.mjs",
     "validate:contract-drift": "node scripts/validate-contract-drift.mjs",

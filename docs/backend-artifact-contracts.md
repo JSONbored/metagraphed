@@ -203,6 +203,15 @@ At publish time the dispatcher reads `changelog.json`, matches each subscription
 
 Tools (thin wrappers over the artifact contract): `search_subnets`, `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`, `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`, `get_best_rpc_endpoint` (live-health-filtered), and `registry_summary`. `tools/call` returns the MCP result envelope (`content[]` text + `structuredContent`); argument and artifact failures degrade to an `isError: true` result rather than a transport error. The server is validated by `npm run validate:mcp` (lifecycle + one `tools/call` per tool against a cold local env) and smoke-checked live by `scripts/smoke-live-api.mjs`. The endpoint is excluded from the `validate-api` route-count invariant and is added to `assets.run_worker_first`.
 
+## AI Search + Ask (semantic + RAG)
+
+Two **out-of-contract dynamic routes** (special-handled like `/api/v1/events`, so they are not in `API_ROUTES`, OpenAPI, or the `validate-api` route-count invariant) power natural-language discovery, backed by Workers AI + a Vectorize index:
+
+- `GET /api/v1/search/semantic?q=&limit=` — embeds the query (`@cf/baai/bge-base-en-v1.5`, 768-dim) and returns the nearest registry entries `{ score, type, netuid, slug, title, subtitle, url }` (limit ≤ 20). Vector search, so it matches intent without exact keywords.
+- `POST /api/v1/ask` — body `{ question }`. Retrieves the top-6 registry entries and prompts `@cf/meta/llama-3.1-8b-instruct` with a cite-only system prompt, returning `{ question, answer, citations[], context_count, model }`. The answer is grounded in registry context and cites sources as `[n]`.
+
+Both live in `src/ai-search.mjs`, return the standard `{ ok, schema_version, data, meta }` envelope, and are gated three ways: the `METAGRAPH_ENABLE_AI` kill-switch, the presence of the `AI` + `VECTORIZE` bindings (absent in local/CI → `503 ai_unavailable`), and the `AI_RATE_LIMITER` binding (20 req/60s per client IP; absent → allow). Hard caps bound cost: result/context size and a 1000-char question limit. The Vectorize index is kept warm by a daily embedding-sync cron (`37 3 * * *`) that diffs the `search.json` index against a content-hash manifest in KV and re-embeds only the deltas. Response shapes are validated by `npm run validate:ai` (disabled→503, stubbed-enabled→200 against `schemas/ai/*.schema.json`, negatives + rate-limit); see ADR 0003.
+
 ## Current Domain Scope
 
 Use `metagraph.sh` for the current launch. Do not use `subnet.health` for v1 registry, status, badge, health, or probe contracts.

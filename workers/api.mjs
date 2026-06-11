@@ -40,10 +40,21 @@ import {
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import {
+  aiEnabled,
+  askQuestion,
+  runEmbeddingSync,
+  semanticSearch,
+  withinRateLimit,
+} from "../src/ai-search.mjs";
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
 // trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
 const HEALTH_PRUNE_CRON = "0 * * * *";
+// Daily embedding-sync trigger (Worker-runtime, since CI has no AI bindings).
+// Distinct minute (odd) so it never collides with the 2-minute probe or the
+// top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
+const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends.
 const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
 const TRENDS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
@@ -127,6 +138,9 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   if (cron === HEALTH_PRUNE_CRON) {
     return pruneHealthHistory(env);
   }
+  if (cron === EMBEDDING_SYNC_CRON) {
+    return runEmbeddingSync(env, { readArtifact });
+  }
   return runHealthProber(env, ctx);
 }
 
@@ -154,6 +168,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleMcpRequest(request, env, { readArtifact, readHealthKv });
   }
 
+  // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
+  // and degrades to 503 when the AI bindings/kill-switch are absent.
+  if (url.pathname === "/api/v1/ask") {
+    return handleAskRequest(request, env);
+  }
+
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -172,6 +192,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   if (url.pathname === "/api/v1/events") {
     return handleEventsRequest(request, env);
+  }
+
+  // Semantic (vector) search over the registry. Special-handled (dynamic, not
+  // artifact-backed) like /api/v1/events; degrades to 503 when AI is off.
+  if (url.pathname === "/api/v1/search/semantic") {
+    return handleSemanticSearchRequest(request, env, url);
   }
 
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
@@ -1596,6 +1622,103 @@ async function handleEventsRequest(request, env) {
   return new Response(frame, { status: 200, headers });
 }
 
+// --- AI search / ask (semantic + RAG) --------------------------------------
+
+function aiUnavailableResponse() {
+  return errorResponse(
+    "ai_unavailable",
+    "AI features are not enabled on this deployment.",
+    503,
+  );
+}
+
+function aiRateLimitedResponse() {
+  return errorResponse(
+    "rate_limited",
+    "Too many AI requests. Please retry shortly.",
+    429,
+    {},
+    { "retry-after": "60" },
+  );
+}
+
+function aiClientKey(request, scope) {
+  const ip =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for") ||
+    "anon";
+  return `${scope}:${ip}`;
+}
+
+async function handleSemanticSearchRequest(request, env, url) {
+  if (!aiEnabled(env)) {
+    return aiUnavailableResponse();
+  }
+  if (!(await withinRateLimit(env, aiClientKey(request, "semantic")))) {
+    return aiRateLimitedResponse();
+  }
+  try {
+    const data = await semanticSearch(env, url.searchParams.get("q"), {
+      limit: url.searchParams.get("limit"),
+    });
+    return dataResponse(env, data, 200, { source: "ai-live" });
+  } catch (error) {
+    if (error?.aiInput) {
+      return errorResponse("invalid_query", error.message, 400);
+    }
+    logEvent(env, "error", "semantic_search_failed", {
+      message: error?.message,
+    });
+    return errorResponse(
+      "ai_error",
+      "Semantic search failed. Please retry shortly.",
+      502,
+    );
+  }
+}
+
+async function handleAskRequest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse(
+      "method_not_allowed",
+      "POST a JSON body { question } to /api/v1/ask.",
+      405,
+      {},
+      { allow: "POST, OPTIONS" },
+    );
+  }
+  if (!aiEnabled(env)) {
+    return aiUnavailableResponse();
+  }
+  if (!(await withinRateLimit(env, aiClientKey(request, "ask")))) {
+    return aiRateLimitedResponse();
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse(
+      "invalid_json",
+      "Request body must be valid JSON.",
+      400,
+    );
+  }
+  try {
+    const data = await askQuestion(env, body?.question, { topK: body?.topK });
+    return dataResponse(env, data, 200, { source: "ai-live" });
+  } catch (error) {
+    if (error?.aiInput) {
+      return errorResponse("invalid_request", error.message, 400);
+    }
+    logEvent(env, "error", "ask_failed", { message: error?.message });
+    return errorResponse(
+      "ai_error",
+      "The answer service failed. Please retry shortly.",
+      502,
+    );
+  }
+}
+
 // Success envelope for non-cacheable (mutation / dynamic) JSON responses.
 function dataResponse(env, data, status = 200, extraMeta = {}) {
   const headers = apiHeaders("short");
@@ -1956,6 +2079,8 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
+  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+    methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
   headers.set(

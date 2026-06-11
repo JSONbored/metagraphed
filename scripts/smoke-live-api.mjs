@@ -216,6 +216,49 @@ assert.ok(
   "MCP list_subnet_apis(7) must return at least one service",
 );
 
+// AI routes (semantic search + /ask). Tolerant of the kill-switch: a 503
+// ai_unavailable is an accepted "disabled" state; when enabled we validate the
+// envelope shape (results may be empty if the embedding index is still cold).
+let aiStatus = "disabled";
+const semantic = await fetchJson(
+  `${baseUrl}/api/v1/search/semantic?q=image%20generation&limit=5`,
+);
+if (semantic.status === 200) {
+  aiStatus = "enabled";
+  assert.equal(
+    semantic.body?.ok,
+    true,
+    "semantic search must return an ok envelope",
+  );
+  assert.ok(
+    Array.isArray(semantic.body?.data?.results),
+    "semantic search must return a results array",
+  );
+
+  const ask = await fetchJson(`${baseUrl}/api/v1/ask`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question: "Which subnets expose a public API?" }),
+  });
+  assert.equal(ask.status, 200, "ask must return HTTP 200 when AI is enabled");
+  assert.equal(
+    typeof ask.body?.data?.answer,
+    "string",
+    "ask must return an answer string",
+  );
+  assert.ok(
+    Array.isArray(ask.body?.data?.citations),
+    "ask must return a citations array",
+  );
+} else {
+  assert.equal(
+    semantic.status,
+    503,
+    "semantic search must be 200 (enabled) or 503 (disabled)",
+  );
+  assert.equal(semantic.body?.error?.code, "ai_unavailable");
+}
+
 console.log(
   JSON.stringify(
     {
@@ -224,6 +267,7 @@ console.log(
       api_route_count: apiChecks.length,
       raw_artifact_count: rawArtifactChecks.length,
       mcp_tool_count: MCP_TOOLS.length,
+      ai_status: aiStatus,
       health_history_date: healthDate,
       checked_paths: results,
     },

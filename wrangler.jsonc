@@ -30,6 +30,10 @@
     "METAGRAPH_CONTRACT_VERSION": "2026-06-06.1",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
+    // Kill-switch for the AI layer (semantic search + /ask). When "true" and the
+    // AI/VECTORIZE bindings are present, the routes serve live; otherwise they
+    // return 503 ai_unavailable. Flip to "false" to instantly disable.
+    "METAGRAPH_ENABLE_AI": "true",
   },
   "routes": [{ "pattern": "api.metagraph.sh", "custom_domain": true }],
   "kv_namespaces": [
@@ -42,6 +46,19 @@
     {
       "binding": "METAGRAPH_ARCHIVE",
       "bucket_name": "metagraphed-artifacts",
+    },
+  ],
+  // AI-native layer (semantic search + grounded /ask). Workers AI runs the
+  // embedding (bge-base-en-v1.5, 768-dim) + answer (llama-3.1-8b) models; the
+  // Vectorize index holds the registry embeddings, refreshed by the daily
+  // embedding-sync cron. Absent in local/CI, so the AI routes degrade to 503.
+  "ai": {
+    "binding": "AI",
+  },
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "metagraphed-registry",
     },
   ],
   // Live operational-health store. Written every 2 minutes by the cron prober
@@ -59,7 +76,7 @@
   // (served live); the hourly trigger prunes the D1 time-series. Registered
   // automatically on the next Workers Builds deploy.
   "triggers": {
-    "crons": ["*/2 * * * *", "0 * * * *"],
+    "crons": ["*/2 * * * *", "0 * * * *", "37 3 * * *"],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
   // for enabling METAGRAPH_ENABLE_RPC_PROXY). 100 requests / 60s per client IP;
@@ -71,6 +88,17 @@
       "namespace_id": "1001",
       "simple": {
         "limit": 100,
+        "period": 60,
+      },
+    },
+    // Per-client abuse control for the AI routes (semantic + /ask). 20 requests
+    // / 60s per client IP — tighter than the RPC proxy because /ask drives an
+    // LLM call. Skipped when the binding is absent (local dev/CI).
+    {
+      "name": "AI_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 20,
         "period": 60,
       },
     },

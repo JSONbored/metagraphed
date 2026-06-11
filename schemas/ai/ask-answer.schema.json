@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/ai/ask-answer.schema.json",
+  "title": "AskAnswerData",
+  "description": "Data payload for POST /api/v1/ask (out-of-contract dynamic route).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["question", "answer", "citations", "context_count", "model"],
+  "properties": {
+    "question": { "type": "string" },
+    "answer": { "type": "string" },
+    "context_count": { "type": "integer", "minimum": 0 },
+    "model": { "type": "string" },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "title", "netuid", "slug", "url"],
+        "properties": {
+          "ref": { "type": "integer", "minimum": 1 },
+          "title": { "type": ["string", "null"] },
+          "netuid": { "type": ["integer", "null"] },
+          "slug": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

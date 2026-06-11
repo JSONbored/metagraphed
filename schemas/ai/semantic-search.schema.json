@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/ai/semantic-search.schema.json",
+  "title": "SemanticSearchData",
+  "description": "Data payload for GET /api/v1/search/semantic (out-of-contract dynamic route).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "count", "results", "model"],
+  "properties": {
+    "query": { "type": "string" },
+    "count": { "type": "integer", "minimum": 0 },
+    "model": { "type": "string" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "score",
+          "type",
+          "netuid",
+          "slug",
+          "title",
+          "subtitle",
+          "url"
+        ],
+        "properties": {
+          "score": { "type": "number" },
+          "type": { "type": ["string", "null"] },
+          "netuid": { "type": ["integer", "null"] },
+          "slug": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "subtitle": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

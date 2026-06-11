@@ -787,6 +787,8 @@ const llmsHeader = [
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools`,
+  `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
+  `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   "",

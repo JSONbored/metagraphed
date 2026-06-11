@@ -1,6 +1,6 @@
 # ADR 0003 — AI-native layer (agent catalog, llms.txt, remote MCP server)
 
-- **Status:** Accepted — implementing. AI-1 (agent catalog + llms.txt) and AI-2 (MCP server) shipped; AI-3 (semantic search + `/ask`) planned.
+- **Status:** Accepted — implementing. AI-1 (agent catalog + llms.txt), AI-2 (MCP server), and AI-3 (semantic search + `/ask`) shipped.
 - **Date:** 2026-06-10
 - **Relates to:** ADR 0001 (R2-only data artifacts), ADR 0002 (live operational health).
 
@@ -94,6 +94,24 @@ contract. No new authority, no new pipeline.
   `ci-verify-submitted-artifacts` + subset-commit discipline).
 - `get_best_rpc_endpoint` depends on the live health KV (ADR 0002); with no live
   snapshot it degrades to the build-time pool eligibility rather than failing.
-- AI-3 (semantic search + `/ask` via Vectorize + Workers AI) will add the only
-  pieces that need new bindings and a kill-switch; it is intentionally deferred
-  so the zero-binding agent surface ships first.
+
+## AI-3 — semantic search + `/ask`
+
+`GET /api/v1/search/semantic` and `POST /api/v1/ask` (`src/ai-search.mjs`) are
+the only pieces that need new bindings (`AI` + `VECTORIZE`). They are
+**out-of-contract dynamic routes** — special-handled like `/api/v1/events`, not
+in `API_ROUTES`/OpenAPI/the `validate-api` count invariant — so the contract
+spine and the count invariant are untouched. Semantic search embeds the query
+(`bge-base-en-v1.5`, 768-dim) and queries Vectorize; `/ask` is grounded RAG over
+the top-k with a cite-only prompt to `llama-3.1-8b`.
+
+Three gates bound cost/abuse: the `METAGRAPH_ENABLE_AI` kill-switch, binding
+presence (absent in local/CI → `503 ai_unavailable`, so CI never calls Workers
+AI), and the `AI_RATE_LIMITER` native rate-limit binding (20/60s per IP; absent
+→ allow), plus hard result/context/question caps. A daily embedding-sync cron
+(`37 3 * * *`, Worker-runtime) diffs `search.json` against a KV content-hash
+manifest and re-embeds only deltas, so embeddings stay ≤24h fresh while
+structural data stays fresh on the existing path. The KV-based rate limiter from
+the original plan was replaced by the native binding already used by the RPC
+proxy (zero KV cost, same config shape). Validated by `npm run validate:ai`
+against standalone `schemas/ai/*.schema.json`.
