@@ -228,6 +228,26 @@ describe("runEmbeddingSync", () => {
     assert.ok(env.METAGRAPH_CONTROL.store.get(EMBED_MANIFEST_KEY));
   });
 
+  test("ignores the legacy unscoped manifest after model/index migrations", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: memKv({
+        "ai:embed-manifest": JSON.stringify({
+          "subnet:1": "legacy-hash",
+          "subnet:2": "legacy-hash",
+        }),
+      }),
+    };
+
+    const r = await runEmbeddingSync(env, { readArtifact: reader(searchDocs) });
+
+    assert.equal(r.embedded, 2);
+    assert.equal(env.VECTORIZE.ops.upserts[0].length, 2);
+    assert.ok(env.METAGRAPH_CONTROL.store.get(EMBED_MANIFEST_KEY));
+    assert.ok(env.METAGRAPH_CONTROL.store.get("ai:embed-manifest"));
+  });
+
   test("re-embeds only deltas and deletes removed ids on a second run", async () => {
     const kv = memKv();
     const env = {

@@ -18,7 +18,13 @@
 export const EMBED_MODEL = "@cf/qwen/qwen3-embedding-0.6b"; // 1024-dim
 export const EMBED_DIMENSIONS = 1024;
 export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-export const EMBED_MANIFEST_KEY = "ai:embed-manifest";
+export const VECTORIZE_INDEX_NAME = "metagraphed-registry-v2";
+export const EMBED_MANIFEST_KEY = [
+  "ai:embed-manifest",
+  VECTORIZE_INDEX_NAME,
+  EMBED_MODEL,
+  EMBED_DIMENSIONS,
+].join(":");
 
 export const SEMANTIC_DEFAULT_LIMIT = 10;
 export const SEMANTIC_MAX_LIMIT = 20;
@@ -136,8 +142,9 @@ async function readManifest(env) {
   }
 }
 
-// Embedding-sync cron: diff the search index against a content-hash manifest in
-// KV, (re)embed only the deltas, upsert to Vectorize, drop removed ids. Runs in
+// Embedding-sync cron: diff the search index against a deployment-scoped
+// content-hash manifest in KV, (re)embed only the deltas, upsert to Vectorize,
+// drop removed ids. Runs in
 // the Worker runtime (CI has no AI bindings). `deps.readArtifact` is injected.
 export async function runEmbeddingSync(env, deps = {}) {
   if (!aiConfigured(env)) return { ok: false, reason: "ai_unconfigured" };
