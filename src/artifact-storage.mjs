@@ -21,6 +21,10 @@ const R2_ONLY_PATTERNS = [
   /^health\/latest\.json$/,
   /^health\/summary\.json$/,
   /^health\/subnets\/(?:\d+|\{netuid\})\.json$/,
+  // Health trends are computed live from D1 by the Worker, never written as a
+  // file. Marked R2-only so the contract maps a schema to the route without the
+  // build expecting a committed/staged artifact.
+  /^health\/trends\/(?:\d+|\{netuid\})\.json$/,
   /^metagraph\/latest\.json$/,
   /^profiles\/(?:\d+|\{netuid\})\.json$/,
   /^providers\/[^/]+\.json$/,

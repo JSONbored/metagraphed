@@ -701,6 +701,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/health/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1). */
+        get: operations["subnetHealthTrends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/overview": {
         parameters: {
             query?: never;
@@ -1376,6 +1393,30 @@ export interface components {
             /** Format: uri */
             url: string;
             verified_at?: string | null;
+        };
+        HealthTrendsArtifact: {
+            netuid: number;
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            windows: {
+                [key: string]: {
+                    samples: number;
+                    surfaces: ({
+                        avg_latency_ms: number | null;
+                        samples: number;
+                        surface_id: string;
+                        uptime_ratio: number | null;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                    uptime_ratio: number | null;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        } & {
+            [key: string]: unknown;
         };
         JsonObject: {
             [key: string]: unknown;
@@ -5536,6 +5577,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSubnetArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetHealthTrends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["HealthTrendsArtifact"];
                     };
                 };
             };

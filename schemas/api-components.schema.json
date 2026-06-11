@@ -2503,6 +2503,92 @@
         ],
         "type": "object"
       },
+      "HealthTrendsArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "properties": {
+                "samples": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surfaces": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "surface_id": {
+                        "type": "string"
+                      },
+                      "uptime_ratio": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "surface_id",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "samples",
+                "uptime_ratio",
+                "surfaces"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "windows"
+        ],
+        "type": "object"
+      },
       "JsonObject": {
         "additionalProperties": true,
         "type": "object"

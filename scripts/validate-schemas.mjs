@@ -17,6 +17,11 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.mjs";
 
+// Artifacts whose schema describes a live-computed API response with no static
+// file on disk (served from D1/KV). Their schema is exercised by validate-api's
+// per-route response validation, not by validating files here.
+const COMPUTED_ARTIFACTS = new Set(["health-trends"]);
+
 const ajv = new Ajv2020({
   allErrors: true,
   allowUnionTypes: true,
@@ -105,7 +110,7 @@ console.log("JSON Schema validation passed.");
 async function artifactValidationTargets() {
   const targets = [];
   for (const artifact of PUBLIC_ARTIFACTS) {
-    if (!artifact.schema_ref) {
+    if (!artifact.schema_ref || COMPUTED_ARTIFACTS.has(artifact.id)) {
       continue;
     }
 

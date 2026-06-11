@@ -398,6 +398,48 @@
             "additionalProperties": true
           }
         ]
+      },
+      "HealthTrendsArtifact": {
+        "type": "object",
+        "required": ["schema_version", "netuid", "source", "windows"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "windows": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["samples", "uptime_ratio", "surfaces"],
+              "properties": {
+                "samples": { "type": "integer", "minimum": 0 },
+                "uptime_ratio": { "type": ["number", "null"] },
+                "surfaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "surface_id",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms"
+                    ],
+                    "properties": {
+                      "surface_id": { "type": "string" },
+                      "samples": { "type": "integer", "minimum": 0 },
+                      "uptime_ratio": { "type": ["number", "null"] },
+                      "avg_latency_ms": { "type": ["integer", "null"] }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
       }
     }
   }

@@ -64,6 +64,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
 - `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
+- `/metagraph/health/trends/{netuid}.json`: schema for the computed 7d/30d uptime + latency trends served live from D1 at `GET /api/v1/subnets/{netuid}/health/trends` (no static file is written).
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/schemas/{surface_id}.json`: captured machine-readable OpenAPI/Swagger schema snapshot detail. R2-backed.

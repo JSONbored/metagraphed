@@ -751,6 +751,12 @@ export const PUBLIC_ARTIFACTS = [
     "HealthBadgeArtifact",
   ),
   artifact(
+    "health-trends",
+    "/metagraph/health/trends/{netuid}.json",
+    "Computed 7d/30d uptime + latency trends for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
+    "HealthTrendsArtifact",
+  ),
+  artifact(
     "rpc-endpoints",
     "/metagraph/rpc-endpoints.json",
     "Bittensor base-layer RPC endpoint registry and probe status.",
@@ -1174,6 +1180,17 @@ export const API_ROUTES = [
     "short",
     ["health", "subnets"],
     listQuery("health-surfaces", { exclude: ["netuid"] }),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-health-trends",
+    "GET",
+    "/api/v1/subnets/{netuid}/health/trends",
+    "/metagraph/health/trends/{netuid}.json",
+    "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+    "short",
+    ["health", "subnets"],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

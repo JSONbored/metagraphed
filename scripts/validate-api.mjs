@@ -36,6 +36,14 @@ const checks = [
   ],
   ["/api/v1/subnets/7", (body) => assert.equal(body.data.subnet.netuid, 7)],
   [
+    "/api/v1/subnets/7/health/trends",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.windows, "object");
+      assert.equal(typeof body.data.windows["7d"].samples, "number");
+    },
+  ],
+  [
     "/api/v1/profiles?profile_level=adapter-backed",
     (body) =>
       assert.equal(

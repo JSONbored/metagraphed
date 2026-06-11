@@ -523,7 +523,7 @@ async function handleHealthTrends(request, env, netuid) {
     {
       data,
       meta: {
-        artifact_path: null,
+        artifact_path: `/metagraph/health/trends/${netuid}.json`,
         cache: "short",
         contract_version: contractVersion(env),
         generated_at: data.observed_at,

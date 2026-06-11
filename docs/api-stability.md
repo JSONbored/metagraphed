@@ -161,10 +161,16 @@ curl -s https://api.metagraph.sh/api/v1/subnets/7/profile | jq '.data'
 # Search across the registry
 curl -s 'https://api.metagraph.sh/api/v1/search?q=gittensor' | jq '.data'
 
-# Probe-derived health for a subnet + its embeddable badge
+# Operational health for a subnet + its embeddable badge. Operational surfaces
+# (RPC/WSS/subnet-api/SSE) are probed LIVE every ~2 minutes (D1/KV) and overlaid
+# on the 6h static artifact; read freshness from meta.operational_observed_at.
 curl -s https://api.metagraph.sh/api/v1/subnets/7/health | jq '.data'
 #   <img src="https://api.metagraph.sh/metagraph/health/badges/7.svg">
 
-# Worker readiness (not part of /api/v1)
+# 7d/30d uptime + latency trends for a subnet's operational surfaces (D1-backed)
+curl -s https://api.metagraph.sh/api/v1/subnets/7/health/trends | jq '.data.windows'
+
+# Worker readiness (not part of /api/v1); operational_health.last_run_at shows the
+# cron prober's last sweep.
 curl -s https://api.metagraph.sh/health | jq
 ```

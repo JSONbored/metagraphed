@@ -2525,6 +2525,92 @@
         ],
         "type": "object"
       },
+      "HealthTrendsArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "properties": {
+                "samples": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surfaces": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "surface_id": {
+                        "type": "string"
+                      },
+                      "uptime_ratio": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "surface_id",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "samples",
+                "uptime_ratio",
+                "surfaces"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "windows"
+        ],
+        "type": "object"
+      },
       "JsonObject": {
         "additionalProperties": true,
         "type": "object"
@@ -14132,6 +14218,105 @@
           }
         },
         "summary": "Fetch health detail for one subnet.",
+        "tags": [
+          "health",
+          "subnets"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/health/trends": {
+      "get": {
+        "operationId": "subnetHealthTrends",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/HealthTrendsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
         "tags": [
           "health",
           "subnets"
