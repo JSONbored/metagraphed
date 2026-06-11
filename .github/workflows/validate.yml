@@ -94,7 +94,7 @@ jobs:
                       "category": "generated-artifact-tampering",
                       "message": "direct submissions cannot change other files: " + ", ".join(unrelated),
                   })
-          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} and not errors else "full"
+          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} else "full"
           report = {
               "schema_version": 1,
               "mode": mode,
