@@ -992,6 +992,35 @@ await writeJson(
   datasetExports.manifest,
 );
 
+// robots.txt + sitemap.xml for the api.metagraph.sh machine surfaces. The
+// human-page SEO sitemap belongs to the metagraph.sh frontend (Lovable's repo);
+// this is the agent/AI-crawler discoverability slice — allow-all (the AI-bot
+// block is already off) + a sitemap of the static machine docs and per-subnet
+// agent-catalog entries. Static ASSETS (not worker-first). No <lastmod> so it
+// stays deterministic alongside the epoch-pinned artifacts.
+const sitemapUrls = [
+  `${llmsApiBase}/llms.txt`,
+  `${llmsApiBase}/llms-full.txt`,
+  `${llmsApiBase}/metagraph/openapi.json`,
+  `${llmsApiBase}/.well-known/mcp/server-card.json`,
+  `${llmsApiBase}/skills/bittensor/SKILL.md`,
+  `${llmsApiBase}/datasets/index.json`,
+  `${llmsApiBase}/api/v1/agent-catalog`,
+  `${llmsApiBase}/api/v1/registry/summary`,
+  ...mergedSubnets.map(
+    (subnet) => `${llmsApiBase}/api/v1/agent-catalog/${subnet.netuid}`,
+  ),
+];
+const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls
+  .map((loc) => `  <url><loc>${loc}</loc></url>`)
+  .join("\n")}\n</urlset>\n`;
+await fs.writeFile(path.join(repoRoot, "public/sitemap.xml"), sitemapXml, "utf8");
+await fs.writeFile(
+  path.join(repoRoot, "public/robots.txt"),
+  `User-agent: *\nAllow: /\nSitemap: ${llmsApiBase}/sitemap.xml\n`,
+  "utf8",
+);
+
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(
   artifactFile("api-index.json"),
