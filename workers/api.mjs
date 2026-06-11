@@ -38,6 +38,7 @@ import {
   formatPercentiles,
   formatTrajectory,
   formatTrends,
+  INCIDENT_GAP_MS,
   LEADERBOARD_BOARDS,
   mergeFreshness,
   mergeRpcEndpoints,
@@ -442,6 +443,13 @@ const SUBNET_SLUG_ROUTE_PATTERN = /^\/api\/v1\/subnets\/([^/]+)(\/.*)?$/;
 const SUBNET_SLUG_INDEX_TTL_MS = 300_000;
 let subnetSlugIndex = null; // { map: Map<slug, netuid>, builtAt }
 
+// Leaderboards re-derives a {meta, completeness} projection from the ~600 KB
+// R2 profiles.json; cache the small projection in-isolate (5 min TTL, same as
+// the slug index) so junk-query-param cache-busting can't force a full R2 read
+// + parse per request.
+const LEADERBOARD_PROFILES_TTL_MS = 300_000;
+let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
+
 async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
   const match = SUBNET_SLUG_ROUTE_PATTERN.exec(url.pathname);
   // Not a per-subnet route, or already a numeric netuid → pass through.
@@ -708,7 +716,7 @@ async function handleHealthPercentiles(request, env, netuid, url) {
 async function handleHealthIncidents(request, env, netuid, url) {
   const { label, days } = analyticsWindow(url);
   const since = Date.now() - days * DAY_MS;
-  const [slaRows, failureRows] = await Promise.all([
+  const [slaRows, incidentRows] = await Promise.all([
     d1All(
       env,
       `SELECT surface_id, COUNT(*) AS total, SUM(ok) AS ok_count
@@ -717,13 +725,32 @@ async function handleHealthIncidents(request, env, netuid, url) {
        GROUP BY surface_id`,
       [netuid, since],
     ),
+    // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+    // incident threshold) into one incident row. Returns one row per incident,
+    // not per failure, so a fully-dead subnet can't return a huge result set.
     d1All(
       env,
-      `SELECT surface_id, checked_at
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ? AND ok = 0
-       ORDER BY surface_id, checked_at`,
-      [netuid, since],
+      `WITH failures AS (
+         SELECT surface_id, checked_at,
+                checked_at - LAG(checked_at)
+                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS gap
+         FROM surface_checks
+         WHERE netuid = ? AND checked_at >= ? AND ok = 0
+       ),
+       grouped AS (
+         SELECT surface_id, checked_at,
+                SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS grp
+         FROM failures
+       )
+       SELECT surface_id,
+              MIN(checked_at) AS started_at,
+              MAX(checked_at) AS ended_at,
+              COUNT(*) AS failed_samples
+       FROM grouped
+       GROUP BY surface_id, grp
+       ORDER BY surface_id, started_at`,
+      [netuid, since, INCIDENT_GAP_MS],
     ),
   ]);
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -732,7 +759,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
     window: label,
     observedAt: meta?.last_run_at || null,
     slaRows,
-    failureRows,
+    incidentRows,
   });
   return envelopeResponse(
     request,
@@ -750,12 +777,14 @@ async function handleHealthIncidents(request, env, netuid, url) {
 
 // Week-over-week structural trajectory from daily snapshots.
 async function handleTrajectory(request, env, netuid) {
+  // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
+  // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
     env,
     `SELECT snapshot_date, completeness_score, surface_count, endpoint_count
      FROM subnet_snapshots
      WHERE netuid = ?
-     ORDER BY snapshot_date
+     ORDER BY snapshot_date DESC
      LIMIT 400`,
     [netuid],
   );
@@ -774,23 +803,16 @@ async function handleTrajectory(request, env, netuid) {
   );
 }
 
-// Registry leaderboards: healthiest / fastest-rpc / most-complete /
-// fastest-growing. Combines live D1 status with registry projections.
-async function handleLeaderboards(request, env, url) {
-  const requestedBoard = url.searchParams.get("board");
-  if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
-    return errorResponse(
-      "invalid_query",
-      `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
-      400,
-    );
+// Small {meta, completeness} projection over profiles.json, cached in-isolate.
+async function leaderboardProfilesProjection(env, now = Date.now()) {
+  if (
+    leaderboardProfilesCache &&
+    now - leaderboardProfilesCache.builtAt <= LEADERBOARD_PROFILES_TTL_MS
+  ) {
+    return leaderboardProfilesCache;
   }
-  const limit = url.searchParams.get("limit");
-
-  const profilesArtifact = await readArtifact(env, "/metagraph/profiles.json");
-  const profiles = profilesArtifact.ok
-    ? profilesArtifact.data?.profiles || []
-    : [];
+  const artifact = await readArtifact(env, "/metagraph/profiles.json");
+  const profiles = artifact.ok ? artifact.data?.profiles || [] : [];
   const subnetMeta = new Map();
   const mostComplete = [];
   for (const profile of profiles) {
@@ -806,6 +828,28 @@ async function handleLeaderboards(request, env, url) {
       completeness_score: profile.completeness_score ?? null,
     });
   }
+  const projection = { subnetMeta, mostComplete, builtAt: now };
+  // Don't cache an empty projection (failed/cold read) — retry next request.
+  if (mostComplete.length > 0) {
+    leaderboardProfilesCache = projection;
+  }
+  return projection;
+}
+
+// Registry leaderboards: healthiest / fastest-rpc / most-complete /
+// fastest-growing. Combines live D1 status with registry projections.
+async function handleLeaderboards(request, env, url) {
+  const requestedBoard = url.searchParams.get("board");
+  if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
+    return errorResponse(
+      "invalid_query",
+      `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
+      400,
+    );
+  }
+  const limit = url.searchParams.get("limit");
+
+  const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
 
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
@@ -843,9 +887,14 @@ async function handleLeaderboards(request, env, url) {
   // Per-subnet completeness delta over the window (latest - earliest sample).
   const growthByNetuid = new Map();
   for (const row of growthSamples) {
-    const entry = growthByNetuid.get(row.netuid) || { first: null, last: null };
-    if (entry.first === null) entry.first = row.completeness_score;
-    entry.last = row.completeness_score;
+    const entry = growthByNetuid.get(row.netuid) || {
+      first: undefined,
+      last: undefined,
+    };
+    // `undefined` = no row yet; a real null completeness_score must latch as the
+    // baseline so the delta guard below can drop unscored window endpoints.
+    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
+    entry.last = row.completeness_score ?? null;
     growthByNetuid.set(row.netuid, entry);
   }
   const growthRows = [...growthByNetuid.entries()].map(([netuid, entry]) => ({

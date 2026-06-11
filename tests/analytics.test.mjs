@@ -62,18 +62,27 @@ describe("formatPercentiles", () => {
 });
 
 describe("formatIncidents", () => {
-  test("reconstructs incidents from consecutive failures and computes SLA", () => {
+  test("maps SQL-grouped incident rows and computes SLA + downtime", () => {
     const t = 1_000_000_000_000;
     const out = formatIncidents({
       netuid: 7,
       window: "7d",
       observedAt: null,
       slaRows: [{ surface_id: "x", total: 100, ok_count: 96 }],
-      failureRows: [
-        { surface_id: "x", checked_at: t },
-        { surface_id: "x", checked_at: t + 120000 }, // +2min -> same incident
-        { surface_id: "x", checked_at: t + 240000 }, // +2min -> same incident
-        { surface_id: "x", checked_at: t + 12 * 60000 }, // +8min gap -> new incident
+      // One row per incident (gap-island grouped in SQL).
+      incidentRows: [
+        {
+          surface_id: "x",
+          started_at: t,
+          ended_at: t + 240000,
+          failed_samples: 3,
+        },
+        {
+          surface_id: "x",
+          started_at: t + 12 * 60000,
+          ended_at: t + 14 * 60000,
+          failed_samples: 2,
+        },
       ],
     });
     const surface = out.surfaces[0];
@@ -81,13 +90,13 @@ describe("formatIncidents", () => {
     assert.equal(surface.incident_count, 2);
     assert.equal(surface.incidents[0].failed_samples, 3);
     assert.equal(surface.incidents[0].duration_ms, 240000);
-    assert.equal(surface.downtime_ms, 240000);
+    assert.equal(surface.downtime_ms, 240000 + 120000);
   });
-  test("surface with no failures has zero incidents", () => {
+  test("surface with no incidents has zero incidents", () => {
     const out = formatIncidents({
       netuid: 1,
       slaRows: [{ surface_id: "y", total: 10, ok_count: 10 }],
-      failureRows: [],
+      incidentRows: [],
     });
     assert.equal(out.surfaces[0].incident_count, 0);
     assert.equal(out.surfaces[0].uptime_ratio, 1);
@@ -96,7 +105,7 @@ describe("formatIncidents", () => {
     const out = formatIncidents({
       netuid: 1,
       slaRows: [{ surface_id: "z", total: 0, ok_count: 0 }],
-      failureRows: [],
+      incidentRows: [],
     });
     assert.equal(out.surfaces[0].uptime_ratio, null);
   });
@@ -312,10 +321,17 @@ function rowsForSql(sql) {
   if (sql.includes("SUM(ok) AS ok_count")) {
     return [{ surface_id: "s1", total: 100, ok_count: 98 }];
   }
-  if (sql.includes("ok = 0")) {
-    return [{ surface_id: "s1", checked_at: 1_000_000_000_000 }];
+  if (sql.includes("WITH failures")) {
+    return [
+      {
+        surface_id: "s1",
+        started_at: 1_000_000_000_000,
+        ended_at: 1_000_000_120_000,
+        failed_samples: 2,
+      },
+    ];
   }
-  if (sql.includes("FROM subnet_snapshots\n     WHERE netuid")) {
+  if (sql.includes("ORDER BY snapshot_date DESC")) {
     return [
       {
         snapshot_date: "2026-06-01",
@@ -430,6 +446,48 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(body.data.boards["fastest-growing"][0].netuid, 7);
     assert.equal(body.data.boards["fastest-growing"][0].completeness_delta, 7);
+  });
+});
+
+describe("leaderboards growth baseline handles a null window-start score", () => {
+  // A subnet whose earliest in-window snapshot is unscored (null) must NOT
+  // produce a spurious positive delta from a forward-shifted baseline.
+  function growthD1(growthRows) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () =>
+                Promise.resolve({
+                  results: sql.includes("WHERE snapshot_date >= ?")
+                    ? growthRows
+                    : [],
+                }),
+            };
+          },
+        };
+      },
+    };
+  }
+  test("excludes a subnet that was unscored at the window start", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: growthD1([
+        { netuid: 9, snapshot_date: "2026-06-03", completeness_score: null },
+        { netuid: 9, snapshot_date: "2026-06-06", completeness_score: 80 },
+        { netuid: 9, snapshot_date: "2026-06-10", completeness_score: 85 },
+      ]),
+    };
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=fastest-growing",
+      env,
+    );
+    assert.equal(
+      body.data.boards["fastest-growing"].some((e) => e.netuid === 9),
+      false,
+      "unscored-at-start subnet must not appear with a spurious delta",
+    );
   });
 });
 

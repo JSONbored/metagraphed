@@ -284,8 +284,9 @@ export function formatTrends({ netuid, observedAt, windows }) {
 // --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
 
 // A gap larger than this between consecutive failing checks (probe cadence is
-// ~2 min) ends one incident and starts another.
-const INCIDENT_GAP_MS = 6 * 60 * 1000;
+// ~2 min) ends one incident and starts another. Used by the gap-island SQL in
+// the incidents handler.
+export const INCIDENT_GAP_MS = 6 * 60 * 1000;
 
 function round4(value) {
   return value == null ? null : Number(Number(value).toFixed(4));
@@ -322,27 +323,29 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
   };
 }
 
-// SLA + reconstructed downtime windows per surface. `slaRows`: [{ surface_id,
-// total, ok_count }]. `failureRows`: [{ surface_id, checked_at }] ordered by
-// (surface_id, checked_at) — only non-ok checks, so the set is small.
+// SLA + downtime incidents per surface. `slaRows`: [{ surface_id, total,
+// ok_count }]. `incidentRows`: [{ surface_id, started_at, ended_at,
+// failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL), so the
+// payload is bounded by incident count, not by failure count (a fully-dead
+// subnet over 30 days cannot blow up the Worker isolate).
 export function formatIncidents({
   netuid,
   window,
   observedAt,
   slaRows,
-  failureRows,
+  incidentRows,
 }) {
   const incidentsBySurface = new Map();
-  for (const row of failureRows || []) {
+  for (const row of incidentRows || []) {
     const list = incidentsBySurface.get(row.surface_id) || [];
-    const at = Number(row.checked_at);
-    const last = list[list.length - 1];
-    if (last && at - last.end <= INCIDENT_GAP_MS) {
-      last.end = at;
-      last.samples += 1;
-    } else {
-      list.push({ start: at, end: at, samples: 1 });
-    }
+    const startedAt = Number(row.started_at);
+    const endedAt = Number(row.ended_at);
+    list.push({
+      started_at: startedAt,
+      ended_at: endedAt,
+      duration_ms: endedAt - startedAt,
+      failed_samples: Number(row.failed_samples) || 0,
+    });
     incidentsBySurface.set(row.surface_id, list);
   }
 
@@ -350,14 +353,7 @@ export function formatIncidents({
     .map((row) => {
       const total = Number(row.total) || 0;
       const okCount = Number(row.ok_count) || 0;
-      const incidents = (incidentsBySurface.get(row.surface_id) || []).map(
-        (incident) => ({
-          started_at: incident.start,
-          ended_at: incident.end,
-          duration_ms: incident.end - incident.start,
-          failed_samples: incident.samples,
-        }),
-      );
+      const incidents = incidentsBySurface.get(row.surface_id) || [];
       const downtimeMs = incidents.reduce((sum, i) => sum + i.duration_ms, 0);
       return {
         surface_id: row.surface_id,
