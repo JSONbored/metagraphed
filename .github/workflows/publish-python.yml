@@ -1,0 +1,105 @@
+name: Publish Python SDK
+
+# Publishes `metagraphed` (python/) to PyPI via OIDC Trusted Publishing — no
+# token. Manual trigger; the version is read from python/pyproject.toml.
+# Requires a one-time PyPI-side setup (see python/PUBLISHING.md): a pending
+# trusted publisher pointing at this repo + workflow + the `pypi-production`
+# environment.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-package-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Validate release version
+        run: bash scripts/validate-python-release.sh
+
+      # Build happens in THIS unprivileged job (no id-token). The privileged
+      # publish job below never builds, so a compromised build dependency can't
+      # reach the OIDC token (mirrors the npm publish split, codex #251).
+      - name: Build sdist + wheel
+        working-directory: python
+        run: |
+          set -euo pipefail
+          uv build --out-dir "$RUNNER_TEMP/dist"
+          count=$(find "$RUNNER_TEMP/dist" -maxdepth 1 -type f \( -name "*.whl" -o -name "*.tar.gz" \) | wc -l | tr -d ' ')
+          if [ "$count" != "2" ]; then
+            echo "Expected exactly one wheel + one sdist, found $count file(s)" >&2
+            find "$RUNNER_TEMP/dist" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+      - name: Upload dist
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: python-dist
+          path: ${{ runner.temp }}/dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    environment: pypi-production
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release version
+        id: release
+        run: bash scripts/validate-python-release.sh
+
+      # Pull the dist built by the unprivileged build job — this job never builds,
+      # so no third-party code runs while the OIDC token is available.
+      - name: Download dist
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: python-dist
+          path: ${{ runner.temp }}/dist
+
+      - name: Publish to PyPI (OIDC Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@6733eb7d741f0b11ec6a39b58540dab7590f9b7d # v1.14.0
+        with:
+          packages-dir: ${{ runner.temp }}/dist
+
+      - name: Tag + GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "metagraphed (Python) v$RELEASE_VERSION"
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          gh auth setup-git
+          git push origin "$RELEASE_TAG"
+          gh release create "$RELEASE_TAG" \
+            --title "metagraphed (Python) v$RELEASE_VERSION" \
+            --notes "Published \`metagraphed==$RELEASE_VERSION\` to PyPI via OIDC Trusted Publishing. https://pypi.org/project/metagraphed/$RELEASE_VERSION/"

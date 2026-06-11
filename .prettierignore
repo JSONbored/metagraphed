@@ -1,4 +1,5 @@
 node_modules
+python
 packages/*/dist
 packages/*/src/metagraphed-api.ts
 packages/*/src/metagraphed-client.ts
