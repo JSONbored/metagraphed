@@ -891,12 +891,16 @@ test("public artifacts are internally consistent", () => {
     assert.equal(typeof source.required_for_publish, "boolean");
     assert.equal(["block", "warn"].includes(source.stale_behavior), true);
   }
+  // surface-health is warn-only now: operational health is served LIVE from the
+  // 2-minute cron prober (D1/KV), so the 6h full-surface probe is a fallback and
+  // must never block publish. This is the decoupling that fixed the cascade.
   assert.equal(
     freshness.sources.some(
       (source) =>
         source.id === "surface-health" &&
         source.lane === "health-probe" &&
-        source.stale_behavior === "block",
+        source.stale_behavior === "warn" &&
+        source.required_for_publish === false,
     ),
     true,
   );

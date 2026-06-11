@@ -269,3 +269,19 @@ jobs:
           exit 1
         env:
           METAGRAPH_LIVE_BASE_URL: https://api.metagraph.sh
+
+      # Surfaces publish failures immediately (the original cascade went unnoticed
+      # for ~a day). Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"text\":\"🔴 metagraphed data publish failed — ${RUN_URL}\"}" || true

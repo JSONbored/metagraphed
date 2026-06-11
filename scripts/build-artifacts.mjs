@@ -3540,6 +3540,12 @@ function buildFreshnessArtifact({
     adapterRows.map((row) => row.as_of),
   );
   const schemaSnapshotAsOf = schemaSnapshotTimestamp(schemaDrift);
+  // Publish freshness windows are env-configurable so ops can widen them when the
+  // sync pipeline lags (e.g. raise to 48h) instead of the publish hard-failing.
+  const blockingHours =
+    Number(process.env.METAGRAPH_FRESHNESS_BLOCKING_HOURS) || 24;
+  const healthHours =
+    Number(process.env.METAGRAPH_FRESHNESS_HEALTH_HOURS) || 24;
   const sources = [
     freshnessSource({
       asOf: native.captured_at,
@@ -3547,7 +3553,7 @@ function buildFreshnessArtifact({
       lane: "native-data",
       pathValue: "registry/native/finney-subnets.json",
       requiredForPublish: true,
-      staleAfterHours: 24,
+      staleAfterHours: blockingHours,
       timestampField: "native_data_as_of",
     }),
     freshnessSource({
@@ -3556,7 +3562,7 @@ function buildFreshnessArtifact({
       lane: "candidate-discovery",
       pathValue: "registry/candidates/generated/public-sources.json",
       requiredForPublish: true,
-      staleAfterHours: 24,
+      staleAfterHours: blockingHours,
       status: candidateDiscoveryAsOf ? "captured" : null,
       timestampField: "candidate_discovery_as_of",
     }),
@@ -3566,22 +3572,27 @@ function buildFreshnessArtifact({
       lane: "candidate-verification",
       pathValue: "registry/verification/promotions.json",
       requiredForPublish: true,
-      staleAfterHours: 24,
+      staleAfterHours: blockingHours,
       timestampField: "verification_as_of",
     }),
     freshnessSource({
       asOf: healthProbeAsOf,
       id: "surface-health",
       lane: "health-probe",
+      // Operational health is now served LIVE from the 2-minute cron prober
+      // (D1/KV), so this 6h-build probe is only the informational/full-surface
+      // fallback. It must NEVER block publish — that coupling was the cascade that
+      // froze the whole site. Warn-only; operational freshness lives in KV
+      // health:meta and is surfaced at /health → operational_health.last_run_at.
       notes:
         health.latest.source === "live-smoke-probe"
-          ? "Observed health is probe-derived."
-          : "Run probes with METAGRAPH_WRITE_PROBE_RESULTS=1 before production publish.",
+          ? "Full-surface health is probe-derived; operational surfaces are probed live every ~2 minutes."
+          : "Operational surfaces are probed live; the 6h full-surface probe is a fallback.",
       pathValue: "public/metagraph/health/latest.json",
-      requiredForPublish: true,
-      staleAfterHours: 6,
+      requiredForPublish: false,
+      staleAfterHours: healthHours,
       status: health.latest.source === "live-smoke-probe" ? "captured" : null,
-      staleBehavior: "block",
+      staleBehavior: "warn",
       timestampField: "health_probe_as_of",
     }),
     freshnessSource({
@@ -3594,7 +3605,7 @@ function buildFreshnessArtifact({
       // candidate-verification, native-subnets all 24h). The publish re-snapshots
       // adapters, so this is a safety buffer for the carry-forward path rather
       // than the primary freshness mechanism.
-      staleAfterHours: 24,
+      staleAfterHours: blockingHours,
       timestampField: "adapter_snapshot_as_of",
     }),
     freshnessSource({

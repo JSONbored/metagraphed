@@ -42,46 +42,81 @@ if (!dryRun) {
 
 console.log(stableStringify(summary));
 
-function fetchNativeSnapshot() {
-  const result = spawnSync(
-    "uvx",
-    [
-      "--from",
-      "bittensor==10.4.0",
-      "python",
-      "scripts/fetch-native-subnets.py",
-      "--network",
-      "finney",
-    ],
-    {
-      cwd: repoRoot,
-      encoding: "utf8",
-      maxBuffer: 1024 * 1024 * 20,
-    },
-  );
+// Synchronous backoff between retries (spawnSync is blocking; Atomics.wait gives
+// a clean sync sleep without a busy-loop).
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
 
-  if (result.status !== 0) {
-    const errorMessage = result.error?.message
-      ? `spawn error: ${result.error.message}`
-      : null;
-    const stderr =
-      typeof result.stderr === "string" ? result.stderr.trim() : "";
-    const stdout =
-      typeof result.stdout === "string" ? result.stdout.trim() : "";
-    throw new Error(
+// The chain RPC the Bittensor SDK hits is rate-limited and occasionally flaky —
+// the failure mode that previously stalled the sync for ~40h and cascaded into a
+// blocked publish. Retry with exponential backoff before giving up.
+function fetchNativeSnapshot() {
+  const maxAttempts = Number(process.env.METAGRAPH_NATIVE_FETCH_ATTEMPTS) || 3;
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = spawnSync(
+      "uvx",
       [
-        "Failed to fetch native Bittensor subnet snapshot.",
-        "Install uv or run the Bittensor SDK helper manually.",
-        errorMessage,
-        stderr,
-        stdout,
-      ]
-        .filter(Boolean)
-        .join("\n"),
+        "--from",
+        "bittensor==10.4.0",
+        "python",
+        "scripts/fetch-native-subnets.py",
+        "--network",
+        "finney",
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        maxBuffer: 1024 * 1024 * 20,
+      },
     );
+
+    if (result.status === 0) {
+      try {
+        return JSON.parse(result.stdout);
+      } catch (error) {
+        lastError = new Error(
+          `Native subnet snapshot was not valid JSON: ${error.message}`,
+        );
+      }
+    } else {
+      const errorMessage = result.error?.message
+        ? `spawn error: ${result.error.message}`
+        : null;
+      const stderr =
+        typeof result.stderr === "string" ? result.stderr.trim() : "";
+      const stdout =
+        typeof result.stdout === "string" ? result.stdout.trim() : "";
+      lastError = new Error(
+        [
+          "Failed to fetch native Bittensor subnet snapshot.",
+          "Install uv or run the Bittensor SDK helper manually.",
+          errorMessage,
+          stderr,
+          stdout,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+      // A spawn failure (e.g. uvx not installed) is permanent — fail fast instead
+      // of burning the backoff. Only a non-zero EXIT (chain RPC rate-limit/flake)
+      // is worth retrying.
+      if (result.error) {
+        throw lastError;
+      }
+    }
+
+    if (attempt < maxAttempts) {
+      const backoffMs = 5000 * 2 ** (attempt - 1); // 5s, 10s, 20s…
+      console.warn(
+        `::warning::native subnet fetch attempt ${attempt}/${maxAttempts} failed; retrying in ${backoffMs / 1000}s`,
+      );
+      sleepSync(backoffMs);
+    }
   }
 
-  return JSON.parse(result.stdout);
+  throw lastError;
 }
 
 async function readExistingSnapshot() {

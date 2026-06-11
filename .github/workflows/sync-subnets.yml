@@ -2,7 +2,10 @@ name: Sync Subnets
 
 on:
   schedule:
-    - cron: "17 5,17 * * *"
+    # Every 6h, an hour before each publish (cron 17 1,7,13,19) so a merged sync
+    # PR feeds fresh native/candidate data into the next publish. Was 2×/day,
+    # which let native data drift past the 24h freshness gate and stall publishes.
+    - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
 
 permissions:
@@ -107,6 +110,22 @@ jobs:
           path: ${{ runner.temp }}/sync-output
           if-no-files-found: error
           retention-days: 1
+
+      # A failing sync (chain RPC rate-limits) is what starved the publish gate.
+      # Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"text\":\"🟠 metagraphed subnet sync failed — ${RUN_URL}\"}" || true
 
   pull-request:
     runs-on: ubuntu-latest
