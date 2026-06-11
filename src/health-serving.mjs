@@ -153,29 +153,32 @@ export function subnetBadgeStatus(liveCurrent, netuid) {
 
 // Overlay live RPC/WSS health onto the static rpc-endpoints artifact.
 export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
-  if (!liveRpcPool || !Array.isArray(liveRpcPool.endpoints)) return null;
+  if (
+    !staticArtifact ||
+    !Array.isArray(staticArtifact.endpoints) ||
+    !liveRpcPool ||
+    !Array.isArray(liveRpcPool.endpoints)
+  ) {
+    return null;
+  }
   const liveById = new Map(liveRpcPool.endpoints.map((e) => [e.id, e]));
-  const endpoints = Array.isArray(staticArtifact?.endpoints)
-    ? staticArtifact.endpoints.map((endpoint) => {
-        const live = liveById.get(endpoint.id);
-        if (!live) return endpoint;
-        return {
-          ...endpoint,
-          status: live.status,
-          classification: live.classification,
-          latency_ms: live.latency_ms,
-          archive_support: live.archive_support ?? endpoint.archive_support,
-          health_source: "live-cron-prober",
-          health_stale: false,
-          observed_at: live.last_ok || liveRpcPool.last_run_at,
-          pool_eligible: live.pool_eligible,
-        };
-      })
-    : liveRpcPool.endpoints;
+  const endpoints = staticArtifact.endpoints.map((endpoint) => {
+    const live = liveById.get(endpoint.id);
+    if (!live) return endpoint;
+    return {
+      ...endpoint,
+      status: live.status,
+      classification: live.classification,
+      latency_ms: live.latency_ms,
+      archive_support: live.archive_support ?? endpoint.archive_support,
+      health_source: "probe-derived",
+      health_stale: false,
+      observed_at: live.last_ok || liveRpcPool.last_run_at,
+    };
+  });
   return {
-    schema_version: staticArtifact?.schema_version ?? 1,
-    contract_version: staticArtifact?.contract_version,
-    generated_at: liveRpcPool.generated_at,
+    ...staticArtifact,
+    generated_at: liveRpcPool.generated_at ?? staticArtifact.generated_at,
     source: "live-cron-prober",
     operational_observed_at: liveRpcPool.last_run_at || null,
     endpoints,

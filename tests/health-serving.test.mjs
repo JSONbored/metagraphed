@@ -89,11 +89,14 @@ describe("buildGlobalHealth", () => {
 });
 
 describe("mergeRpcEndpoints", () => {
-  test("overlays live status/eligibility by id", () => {
+  test("overlays live status by id while preserving the artifact contract", () => {
     const stat = {
+      schema_version: 1,
+      generated_at: "old",
+      summary: { total: 2 },
       endpoints: [
-        { id: "a", status: "ok", pool_eligible: true },
-        { id: "b", status: "ok", pool_eligible: true },
+        { id: "a", status: "ok", health_source: "probe-derived" },
+        { id: "b", status: "ok", health_source: "probe-derived" },
       ],
     };
     const live = {
@@ -110,11 +113,13 @@ describe("mergeRpcEndpoints", () => {
       ],
     };
     const merged = mergeRpcEndpoints(stat, live);
-    assert.equal(merged.endpoints.find((e) => e.id === "a").status, "failed");
-    assert.equal(
-      merged.endpoints.find((e) => e.id === "a").pool_eligible,
-      false,
-    );
+    const a = merged.endpoints.find((e) => e.id === "a");
+    assert.equal(a.status, "failed");
+    assert.equal(a.health_source, "probe-derived");
+    assert.equal(a.pool_eligible, undefined);
+    assert.deepEqual(merged.summary, { total: 2 });
+    assert.equal(merged.generated_at, "g");
+    assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
 });
@@ -468,9 +473,9 @@ describe("mergeRpcEndpoints (additional paths)", () => {
     const stat = {
       schema_version: 3,
       contract_version: "cv",
-      endpoints: [
-        { id: "a", status: "ok", archive_support: true, pool_eligible: true },
-      ],
+      generated_at: "old",
+      summary: { total: 1 },
+      endpoints: [{ id: "a", status: "ok", archive_support: true }],
     };
     const live = {
       last_run_at: "r",
@@ -492,34 +497,29 @@ describe("mergeRpcEndpoints (additional paths)", () => {
     assert.equal(out.contract_version, "cv");
     const a = out.endpoints.find((e) => e.id === "a");
     assert.equal(a.archive_support, true); // fallback to static
-    assert.equal(a.health_source, "live-cron-prober");
+    assert.equal(a.health_source, "probe-derived");
     assert.equal(a.health_stale, false);
+    assert.equal(a.pool_eligible, undefined);
+    assert.deepEqual(out.summary, { total: 1 });
     assert.equal(a.observed_at, "r"); // last_ok null → last_run_at
   });
 
-  test("static WITHOUT an endpoints array → uses the live endpoint pool directly", () => {
+  test("static WITHOUT an endpoints array → null so caller serves static", () => {
     const live = {
       last_run_at: "r",
       generated_at: "g",
       endpoints: [{ id: "x", status: "ok" }],
     };
-    const out = mergeRpcEndpoints({ schema_version: 1 }, live);
-    assert.deepEqual(out.endpoints, live.endpoints);
-    assert.equal(out.source, "live-cron-prober");
-    assert.equal(out.operational_observed_at, "r");
+    assert.equal(mergeRpcEndpoints({ schema_version: 1 }, live), null);
   });
 
-  test("static null entirely → defaults + live endpoints", () => {
+  test("static null entirely → null so caller serves static", () => {
     const live = {
       last_run_at: null,
       generated_at: "g",
       endpoints: [{ id: "x", status: "ok" }],
     };
-    const out = mergeRpcEndpoints(null, live);
-    assert.equal(out.schema_version, 1);
-    assert.equal(out.contract_version, undefined);
-    assert.equal(out.operational_observed_at, null);
-    assert.deepEqual(out.endpoints, live.endpoints);
+    assert.equal(mergeRpcEndpoints(null, live), null);
   });
 });
 
