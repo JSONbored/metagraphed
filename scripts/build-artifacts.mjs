@@ -772,12 +772,52 @@ function buildSubnetServices(netuid) {
     })
     .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
 }
+
+const READINESS_VERSION = 1;
+
+// Codified, OBJECTIVE "can a developer build on this subnet today" score
+// (0-100), composed only from deterministic build-time signals — never the live
+// 2-minute prober — so it stays a reproducible committed value. The live "is it
+// up right now" dimension is intentionally separate (get_subnet_health / the
+// health overlay). Components are published so agents can re-weight to their own
+// needs. Rubric: docs/integration-readiness.md.
+function subnetIntegrationReadiness({ services, lifecycle, completenessScore }) {
+  const callable = services.filter((service) => service.eligibility.callable);
+  const components = {
+    has_callable_api: services.length > 0,
+    documented: services.some((service) => Boolean(service.schema_artifact)),
+    auth_clarity:
+      services.length > 0 &&
+      callable.every(
+        (service) => !service.auth_required || service.auth_schemes.length > 0,
+      ),
+    callable_now: callable.length > 0,
+    active_lifecycle: lifecycle === "active",
+    profile_complete: (completenessScore ?? 0) >= 70,
+  };
+  const score = Math.min(
+    100,
+    (components.has_callable_api ? 30 : 0) +
+      (components.documented ? 25 : 0) +
+      (components.auth_clarity ? 15 : 0) +
+      (components.callable_now ? 15 : 0) +
+      (components.active_lifecycle ? 10 : 0) +
+      (components.profile_complete ? 5 : 0),
+  );
+  return { score, readiness_version: READINESS_VERSION, components };
+}
+
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
 const agentCatalogIndex = [];
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = buildSubnetServices(subnet.netuid);
+  const readiness = subnetIntegrationReadiness({
+    services,
+    lifecycle: subnet.lifecycle,
+    completenessScore: profile?.completeness_score,
+  });
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -788,6 +828,8 @@ for (const subnet of mergedSubnets) {
     categories: Array.isArray(profile?.categories) ? profile.categories : [],
     subnet_type: profile?.subnet_type || null,
     completeness_score: profile?.completeness_score ?? null,
+    integration_readiness: readiness.score,
+    readiness,
     service_count: services.length,
     services,
   });
@@ -801,6 +843,8 @@ for (const subnet of mergedSubnets) {
       categories: Array.isArray(profile?.categories) ? profile.categories : [],
       subnet_type: profile?.subnet_type || null,
       completeness_score: profile?.completeness_score ?? null,
+      integration_readiness: readiness.score,
+      readiness,
       service_count: services.length,
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),

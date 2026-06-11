@@ -18,8 +18,21 @@
         "subnet-api"
       ],
       "completeness_score": 85,
+      "integration_readiness": 100,
       "name": "Numinous",
       "netuid": 6,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 4,
       "service_kinds": [
         "openapi",
@@ -37,8 +50,21 @@
         "subnet-api"
       ],
       "completeness_score": 97,
+      "integration_readiness": 100,
       "name": "Allways",
       "netuid": 7,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 13,
       "service_kinds": [
         "openapi",
@@ -63,8 +89,21 @@
         "social-data"
       ],
       "completeness_score": 85,
+      "integration_readiness": 85,
       "name": "Desearch",
       "netuid": 22,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": false,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 85
+      },
       "service_count": 3,
       "service_kinds": [
         "openapi",
@@ -84,8 +123,21 @@
         "subnet-api-observed"
       ],
       "completeness_score": 70,
+      "integration_readiness": 75,
       "name": "Trishool",
       "netuid": 23,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 75
+      },
       "service_count": 1,
       "service_kinds": [
         "subnet-api"
@@ -106,8 +158,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "Quasar",
       "netuid": 24,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 3,
       "service_kinds": [
         "data-artifact"
@@ -128,8 +193,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "Coldint",
       "netuid": 29,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -150,8 +228,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "ReadyAI",
       "netuid": 33,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 2,
       "service_kinds": [
         "data-artifact"
@@ -165,8 +256,21 @@
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "integration_readiness": 95,
       "name": "Zipcode",
       "netuid": 46,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 95
+      },
       "service_count": 1,
       "service_kinds": [
         "openapi"
@@ -184,8 +288,21 @@
         "official-source-repo"
       ],
       "completeness_score": 48,
+      "integration_readiness": 70,
       "name": "EvolAI",
       "netuid": 47,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -208,8 +325,21 @@
         "tournament"
       ],
       "completeness_score": 85,
+      "integration_readiness": 85,
       "name": "Nepher Robotics",
       "netuid": 49,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": false,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 85
+      },
       "service_count": 2,
       "service_kinds": [
         "openapi",
@@ -224,8 +354,21 @@
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "integration_readiness": 70,
       "name": "lium.io",
       "netuid": 51,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "subnet-api"
@@ -246,8 +389,21 @@
         "operational-interface"
       ],
       "completeness_score": 93,
+      "integration_readiness": 100,
       "name": "Gradients",
       "netuid": 56,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 5,
       "service_kinds": [
         "data-artifact",
@@ -271,8 +427,21 @@
         "payments"
       ],
       "completeness_score": 85,
+      "integration_readiness": 90,
       "name": "Handshake58",
       "netuid": 58,
+      "readiness": {
+        "components": {
+          "active_lifecycle": false,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 90
+      },
       "service_count": 4,
       "service_kinds": [
         "openapi",
@@ -287,8 +456,21 @@
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "integration_readiness": 70,
       "name": "Babelbit",
       "netuid": 59,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "subnet-api"
@@ -310,8 +492,21 @@
         "official-website"
       ],
       "completeness_score": 93,
+      "integration_readiness": 100,
       "name": "Chutes",
       "netuid": 64,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 4,
       "service_kinds": [
         "data-artifact",
@@ -335,8 +530,21 @@
         "workflow"
       ],
       "completeness_score": 70,
+      "integration_readiness": 75,
       "name": "ninja",
       "netuid": 66,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 75
+      },
       "service_count": 1,
       "service_kinds": [
         "subnet-api"
@@ -350,8 +558,21 @@
         "baseline-curated"
       ],
       "completeness_score": 58,
+      "integration_readiness": 70,
       "name": "NOVA",
       "netuid": 68,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -365,8 +586,21 @@
         "baseline-curated"
       ],
       "completeness_score": 58,
+      "integration_readiness": 70,
       "name": "NexisGen",
       "netuid": 70,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -388,8 +622,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "StreetVision by NATIX",
       "netuid": 72,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -406,8 +653,21 @@
         "repositories"
       ],
       "completeness_score": 83,
+      "integration_readiness": 100,
       "name": "Gittensor",
       "netuid": 74,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 2,
       "service_kinds": [
         "data-artifact",
@@ -426,8 +686,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "MVTRX",
       "netuid": 79,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -448,8 +721,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "Investing",
       "netuid": 88,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -468,8 +754,21 @@
         "official-website"
       ],
       "completeness_score": 48,
+      "integration_readiness": 70,
       "name": "Actual",
       "netuid": 95,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -492,8 +791,21 @@
         "official-website"
       ],
       "completeness_score": 85,
+      "integration_readiness": 100,
       "name": "Verathos",
       "netuid": 96,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 100
+      },
       "service_count": 2,
       "service_kinds": [
         "openapi",
@@ -508,8 +820,21 @@
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "integration_readiness": 95,
       "name": "Albedo",
       "netuid": 97,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 95
+      },
       "service_count": 1,
       "service_kinds": [
         "openapi"
@@ -523,8 +848,21 @@
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "integration_readiness": 70,
       "name": "Minos",
       "netuid": 107,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "subnet-api"
@@ -542,8 +880,21 @@
         "official-source-repo"
       ],
       "completeness_score": 48,
+      "integration_readiness": 70,
       "name": "Academia",
       "netuid": 109,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -562,8 +913,21 @@
         "official-website"
       ],
       "completeness_score": 93,
+      "integration_readiness": 85,
       "name": "Green Compute",
       "netuid": 110,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": false,
+          "callable_now": true,
+          "documented": true,
+          "has_callable_api": true,
+          "profile_complete": true
+        },
+        "readiness_version": 1,
+        "score": 85
+      },
       "service_count": 5,
       "service_kinds": [
         "data-artifact",
@@ -584,8 +948,21 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "integration_readiness": 70,
       "name": "SOMA",
       "netuid": 114,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"
@@ -604,8 +981,21 @@
         "official-website"
       ],
       "completeness_score": 48,
+      "integration_readiness": 70,
       "name": "Ditto",
       "netuid": 118,
+      "readiness": {
+        "components": {
+          "active_lifecycle": true,
+          "auth_clarity": true,
+          "callable_now": true,
+          "documented": false,
+          "has_callable_api": true,
+          "profile_complete": false
+        },
+        "readiness_version": 1,
+        "score": 70
+      },
       "service_count": 1,
       "service_kinds": [
         "data-artifact"

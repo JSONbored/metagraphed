@@ -80,12 +80,20 @@
                         "null"
                       ]
                     },
+                    "integration_readiness": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "name": {
                       "type": "string"
                     },
                     "netuid": {
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "readiness": {
+                      "$ref": "#/components/schemas/IntegrationReadiness"
                     },
                     "service_count": {
                       "minimum": 0,
@@ -148,12 +156,20 @@
                   "null"
                 ]
               },
+              "integration_readiness": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
               "name": {
                 "type": "string"
               },
               "netuid": {
                 "minimum": 0,
                 "type": "integer"
+              },
+              "readiness": {
+                "$ref": "#/components/schemas/IntegrationReadiness"
               },
               "service_count": {
                 "minimum": 0,
@@ -3006,6 +3022,51 @@
           "netuid",
           "source",
           "windows"
+        ],
+        "type": "object"
+      },
+      "IntegrationReadiness": {
+        "additionalProperties": false,
+        "description": "Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md.",
+        "properties": {
+          "components": {
+            "additionalProperties": false,
+            "properties": {
+              "active_lifecycle": {
+                "type": "boolean"
+              },
+              "auth_clarity": {
+                "type": "boolean"
+              },
+              "callable_now": {
+                "type": "boolean"
+              },
+              "documented": {
+                "type": "boolean"
+              },
+              "has_callable_api": {
+                "type": "boolean"
+              },
+              "profile_complete": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "readiness_version": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "readiness_version",
+          "components"
         ],
         "type": "object"
       },

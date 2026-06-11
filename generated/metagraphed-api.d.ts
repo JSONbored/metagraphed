@@ -912,8 +912,10 @@ export interface components {
                 callable_count?: number;
                 categories?: string[];
                 completeness_score?: number | null;
+                integration_readiness?: number;
                 name?: string;
                 netuid: number;
+                readiness?: components["schemas"]["IntegrationReadiness"];
                 service_count: number;
                 service_kinds?: string[];
                 slug?: string;
@@ -928,8 +930,10 @@ export interface components {
         AgentCatalogSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
             categories?: string[];
             completeness_score?: number | null;
+            integration_readiness?: number;
             name?: string;
             netuid: number;
+            readiness?: components["schemas"]["IntegrationReadiness"];
             service_count: number;
             services: ({
                 auth_required?: boolean;
@@ -1625,6 +1629,19 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
+        };
+        /** @description Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md. */
+        IntegrationReadiness: {
+            components: {
+                active_lifecycle?: boolean;
+                auth_clarity?: boolean;
+                callable_now?: boolean;
+                documented?: boolean;
+                has_callable_api?: boolean;
+                profile_complete?: boolean;
+            };
+            readiness_version: number;
+            score: number;
         };
         JsonObject: {
             [key: string]: unknown;

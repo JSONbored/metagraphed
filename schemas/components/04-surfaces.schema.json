@@ -538,6 +538,28 @@
           }
         ]
       },
+      "IntegrationReadiness": {
+        "type": "object",
+        "description": "Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md.",
+        "required": ["score", "readiness_version", "components"],
+        "additionalProperties": false,
+        "properties": {
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "readiness_version": { "type": "integer", "minimum": 1 },
+          "components": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "has_callable_api": { "type": "boolean" },
+              "documented": { "type": "boolean" },
+              "auth_clarity": { "type": "boolean" },
+              "callable_now": { "type": "boolean" },
+              "active_lifecycle": { "type": "boolean" },
+              "profile_complete": { "type": "boolean" }
+            }
+          }
+        }
+      },
       "AgentCatalogArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -563,6 +585,14 @@
                     },
                     "subnet_type": { "type": ["string", "null"] },
                     "completeness_score": { "type": ["number", "null"] },
+                    "integration_readiness": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "readiness": {
+                      "$ref": "#/components/schemas/IntegrationReadiness"
+                    },
                     "service_count": { "type": "integer", "minimum": 0 },
                     "callable_count": { "type": "integer", "minimum": 0 },
                     "service_kinds": {
@@ -594,6 +624,14 @@
               },
               "subnet_type": { "type": ["string", "null"] },
               "completeness_score": { "type": ["number", "null"] },
+              "integration_readiness": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "readiness": {
+                "$ref": "#/components/schemas/IntegrationReadiness"
+              },
               "service_count": { "type": "integer", "minimum": 0 },
               "services": {
                 "type": "array",

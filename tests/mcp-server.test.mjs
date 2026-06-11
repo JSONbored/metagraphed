@@ -352,6 +352,7 @@ describe("MCP tools (injected deps)", () => {
             categories: ["bitcoin", "data"],
             service_kinds: ["subnet-api", "openapi"],
             callable_count: 13,
+            integration_readiness: 100,
           },
           {
             netuid: 12,
@@ -472,6 +473,12 @@ describe("MCP tools (injected deps)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.count, 1);
     assert.equal(out.results[0].netuid, 7);
+    // integration_readiness is surfaced so agents can rank/filter buildability
+    assert.equal(
+      typeof out.results[0].integration_readiness,
+      "number",
+      "find_subnets_by_capability results must carry integration_readiness",
+    );
   });
 
   test("find_subnets_by_capability with no match returns empty", async () => {

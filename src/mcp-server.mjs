@@ -230,6 +230,8 @@ export const MCP_TOOLS = [
         .sort(
           (a, b) =>
             b.score - a.score ||
+            (b.subnet.integration_readiness || 0) -
+              (a.subnet.integration_readiness || 0) ||
             b.subnet.callable_count - a.subnet.callable_count,
         )
         .slice(0, limit)
@@ -240,6 +242,7 @@ export const MCP_TOOLS = [
           categories: subnet.categories || [],
           service_kinds: subnet.service_kinds || [],
           callable_count: subnet.callable_count,
+          integration_readiness: subnet.integration_readiness ?? null,
         }));
       return { capability, count: ranked.length, results: ranked };
     },
