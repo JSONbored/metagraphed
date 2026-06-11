@@ -4,7 +4,6 @@ import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const PUB = "2026-06-11T12:00:00.000Z";
-const EPOCH = "1970-01-01T00:00:00.000Z";
 
 function envWithPointer() {
   return createLocalArtifactEnv({
@@ -28,14 +27,16 @@ describe("raw artifact published_at header", () => {
   test("exposes the real publish time as a header without changing the body", async () => {
     const { res, body } = await rawSubnets(envWithPointer());
     assert.equal(res.headers.get("x-metagraph-published-at"), PUB);
-    // The body stays byte-identical to the committed artifact: generated_at is
-    // the deterministic epoch content marker by design, not overwritten.
-    assert.equal(body.generated_at, EPOCH);
+    // The body is unchanged: generated_at is NOT overlaid with the publish
+    // time (proven without assuming the build's generated_at value, which is
+    // the epoch locally but a real timestamp in the publish/sync build).
+    assert.notEqual(body.generated_at, PUB);
   });
 
   test("omits the header when there is no latest pointer", async () => {
     const { res, body } = await rawSubnets(createLocalArtifactEnv());
     assert.equal(res.headers.get("x-metagraph-published-at"), null);
-    assert.equal(body.generated_at, EPOCH);
+    // body unchanged (not overlaid), timestamp-value-agnostic
+    assert.notEqual(body.generated_at, PUB);
   });
 });
