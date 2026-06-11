@@ -9,6 +9,8 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
+  cleanDescription,
+  stripUrls,
   buildRpcEndpointArtifact,
   flattenSurfaces,
   hashJson,
@@ -139,6 +141,7 @@ const subnetIndex = mergedSubnets.map((subnet) => ({
   coverage_level: subnet.coverage_level,
   curation_level: subnet.curation.level,
   dashboard_url: subnet.dashboard_url,
+  description: subnet.description,
   docs_url: subnet.docs_url,
   gap_count: subnet.gaps.missing_kinds.length,
   mechanism_count: subnet.mechanism_count,
@@ -1210,6 +1213,12 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
     curation_level:
       overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
     dashboard_url: overlay?.dashboard_url || null,
+    // Human-readable purpose, sourced from the on-chain SubnetIdentitiesV3
+    // description (101/129 subnets) — the answer to "what does this subnet do".
+    description:
+      cleanDescription(nativeSubnet.chain_identity?.description) ||
+      cleanDescription(overlay?.description) ||
+      null,
     docs_url: overlay?.docs_url || null,
     gaps: buildGaps(overlay?.surfaces || [], overlay),
     mechanism_count: nativeSubnet.mechanism_count,
@@ -3570,13 +3579,17 @@ function buildSearchIndex(
         netuid: subnet.netuid,
         slug: subnet.slug,
         title: subnet.name,
-        subtitle: `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
+        // Real on-chain purpose drives discovery; fall back to the symbol label
+        // only when a subnet has no description at all.
+        subtitle:
+          subnet.description ||
+          `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
         url: `/subnets/${subnet.netuid}`,
         artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
         tokens: compactTokens([
           subnet.name,
           subnet.slug,
-          subnet.symbol,
+          subnet.description,
           subnet.categories?.join(" "),
           nativeIdentityTokenText(profile?.native_identity),
         ]),
@@ -3633,17 +3646,15 @@ function nativeIdentityTokenText(identity) {
   if (!identity || typeof identity !== "object") {
     return "";
   }
-  return [
-    identity.subnet_name,
-    identity.description,
-    identity.additional,
-    identity.website_url,
-    identity.github_url,
-    identity.discord_url,
-    identity.logo_url,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // Text fields only — URL fields (logo/website/github/discord) shred into junk
+  // tokens (avatars, githubusercontent, com, ...) that pollute keyword search
+  // and embeddings, so they are excluded; URLs embedded in the text fields
+  // themselves are stripped for the same reason.
+  return stripUrls(
+    [identity.subnet_name, identity.description, identity.additional]
+      .filter(Boolean)
+      .join(" "),
+  );
 }
 
 function compactTokens(values) {

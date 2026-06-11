@@ -1162,6 +1162,12 @@
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"
           },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "gap_count": {
             "minimum": 0,
             "type": "integer"
@@ -6197,6 +6203,12 @@
               "null"
             ]
           },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "docs_url": {
             "format": "uri",
             "type": [
@@ -6484,6 +6496,12 @@
           },
           "dashboard_url": {
             "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
             "type": [
               "string",
               "null"

@@ -157,6 +157,9 @@
               "type": "string"
             }
           },
+          "description": {
+            "type": ["string", "null"]
+          },
           "gap_count": {
             "type": "integer",
             "minimum": 0
@@ -269,6 +272,9 @@
           "gap_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "description": {
+            "type": ["string", "null"]
           },
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"
@@ -1169,6 +1175,9 @@
           "gap_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "description": {
+            "type": ["string", "null"]
           },
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"
