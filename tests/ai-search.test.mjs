@@ -44,10 +44,10 @@ function stubAi() {
     calls,
     run(model, input) {
       calls.push({ model, input });
-      if (model.includes("bge")) {
+      if (model === EMBED_MODEL) {
         const n = Array.isArray(input.text) ? input.text.length : 1;
         return Promise.resolve({
-          data: Array.from({ length: n }, () => new Array(768).fill(0.02)),
+          data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
         });
       }
       return Promise.resolve({ response: "Subnet 1 does images [1]." });

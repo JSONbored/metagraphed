@@ -102,8 +102,14 @@ the only pieces that need new bindings (`AI` + `VECTORIZE`). They are
 **out-of-contract dynamic routes** — special-handled like `/api/v1/events`, not
 in `API_ROUTES`/OpenAPI/the `validate-api` count invariant — so the contract
 spine and the count invariant are untouched. Semantic search embeds the query
-(`bge-base-en-v1.5`, 768-dim) and queries Vectorize; `/ask` is grounded RAG over
-the top-k with a cite-only prompt to `llama-3.1-8b`.
+(`@cf/qwen/qwen3-embedding-0.6b`, 1024-dim — tops MTEB English) and queries the
+Vectorize index `metagraphed-registry-v2` (1024-dim/cosine); `/ask` is grounded
+RAG over the top-k with a cite-only prompt to
+`@cf/meta/llama-4-scout-17b-16e-instruct` (131k ctx, non-reasoning, so the
+cite-only `completion.response` path is unchanged). These are the best free
+Workers AI models verified available on the account; Vectorize is included on
+the Workers Paid plan and the ~1.4M stored dimensions sit well inside the 10M
+free allowance.
 
 Three gates bound cost/abuse: the `METAGRAPH_ENABLE_AI` kill-switch, binding
 presence (absent in local/CI → `503 ai_unavailable`, so CI never calls Workers

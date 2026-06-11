@@ -11,6 +11,7 @@ import path from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { handleRequest } from "../workers/api.mjs";
+import { EMBED_MODEL } from "../src/ai-search.mjs";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -85,10 +86,10 @@ function makeAiEnv(overrides = {}) {
     METAGRAPH_ENABLE_AI: "true",
     AI: {
       run(model, input) {
-        if (model.includes("bge")) {
+        if (model === EMBED_MODEL) {
           const n = Array.isArray(input.text) ? input.text.length : 1;
           return Promise.resolve({
-            data: Array.from({ length: n }, () => new Array(768).fill(0.01)),
+            data: Array.from({ length: n }, () => new Array(1024).fill(0.01)),
           });
         }
         return Promise.resolve({ response: "Subnet 1 serves images [1]." });

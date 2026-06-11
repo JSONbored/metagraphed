@@ -58,7 +58,7 @@
   "vectorize": [
     {
       "binding": "VECTORIZE",
-      "index_name": "metagraphed-registry",
+      "index_name": "metagraphed-registry-v2",
     },
   ],
   // Live operational-health store. Written every 2 minutes by the cron prober

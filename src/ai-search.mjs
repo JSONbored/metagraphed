@@ -10,8 +10,14 @@
 // rate-limit binding (`AI_RATE_LIMITER`), and hard caps on result/context size
 // and question length.
 
-export const EMBED_MODEL = "@cf/baai/bge-base-en-v1.5"; // 768-dim
-export const ASK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// Best free Workers AI models (verified available on the account):
+// - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
+//   Vectorize index `metagraphed-registry-v2` is created at 1024 dims to match.
+// - Answer: Llama 4 Scout (131k ctx, non-reasoning) — returns a clean string in
+//   completion.response, so the cite-only RAG path is unchanged.
+export const EMBED_MODEL = "@cf/qwen/qwen3-embedding-0.6b"; // 1024-dim
+export const EMBED_DIMENSIONS = 1024;
+export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 export const EMBED_MANIFEST_KEY = "ai:embed-manifest";
 
 export const SEMANTIC_DEFAULT_LIMIT = 10;
