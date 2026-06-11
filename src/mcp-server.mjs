@@ -388,24 +388,34 @@ export const MCP_TOOLS = [
         poolData.pools && typeof poolData.pools === "object"
           ? poolData.pools
           : {};
-      const candidates = [];
-      for (const [network, pool] of Object.entries(pools)) {
+      // Pool map keys ("0"/"1"/"2") are pool indices, NOT networks — and the
+      // same physical endpoint can appear in more than one pool. Dedupe by
+      // endpoint id, keeping the best-scored instance.
+      const bestById = new Map();
+      for (const pool of Object.values(pools)) {
         const overlaid = overlayRpcPoolEligibility(pool, liveRpcPool);
         for (const endpoint of overlaid.endpoints || []) {
           if (!endpoint.pool_eligible) continue;
-          candidates.push({ network, ...endpoint });
+          const existing = bestById.get(endpoint.id);
+          if (!existing || (endpoint.score || 0) > (existing.score || 0)) {
+            bestById.set(endpoint.id, endpoint);
+          }
         }
       }
-      candidates.sort(
+      const candidates = [...bestById.values()].sort(
         (a, b) =>
           (b.score || 0) - (a.score || 0) ||
           (a.latency_ms ?? Infinity) - (b.latency_ms ?? Infinity),
       );
       const endpoints = candidates.slice(0, limit).map((endpoint) => ({
         id: endpoint.id,
-        network: endpoint.network,
-        provider: endpoint.provider,
-        kind: endpoint.kind,
+        // The connectable endpoint URL — the whole point of the tool.
+        url: endpoint.url ?? null,
+        provider: endpoint.provider ?? null,
+        kind: endpoint.kind ?? null,
+        // These pools are the Bittensor mainnet (Finney) base layer.
+        network: "finney",
+        layer: endpoint.layer ?? "bittensor-base",
         score: endpoint.score ?? null,
         latency_ms: endpoint.latency_ms ?? null,
         status: endpoint.status ?? null,

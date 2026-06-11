@@ -317,6 +317,7 @@ describe("MCP tools (injected deps)", () => {
             endpoints: [
               {
                 id: "a",
+                url: "wss://a.example",
                 provider: "x",
                 kind: "subtensor-rpc",
                 score: 90,
@@ -325,6 +326,7 @@ describe("MCP tools (injected deps)", () => {
               },
               {
                 id: "b",
+                url: "wss://b.example",
                 provider: "y",
                 kind: "subtensor-rpc",
                 score: 95,
@@ -333,10 +335,26 @@ describe("MCP tools (injected deps)", () => {
               },
               {
                 id: "c",
+                url: "wss://c.example",
                 provider: "z",
                 kind: "subtensor-rpc",
                 score: 99,
                 pool_eligible: false,
+              },
+            ],
+          },
+          // Same physical endpoint 'b' also appears in a second pool — must be
+          // deduped, not returned twice.
+          1: {
+            endpoints: [
+              {
+                id: "b",
+                url: "wss://b.example",
+                provider: "y",
+                kind: "subtensor-wss",
+                score: 95,
+                pool_eligible: true,
+                latency_ms: 80,
               },
             ],
           },
@@ -455,14 +473,20 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.netuid, 7);
   });
 
-  test("get_best_rpc_endpoint excludes down endpoints and applies live health", async () => {
+  test("get_best_rpc_endpoint dedupes, exposes url/network, applies live health", async () => {
     const res = await callTool("get_best_rpc_endpoint", { limit: 5 }, { deps });
     const out = res.body.result.structuredContent;
     assert.equal(out.live_health, true);
-    // 'a' and 'b' are pool_eligible; 'c' is not. 'b' gets live latency 70.
+    // 'a' and 'b' are pool_eligible ('c' is not); 'b' appears in two pools but
+    // must be deduped -> exactly 2 eligible. 'b' gets live latency 70.
     assert.equal(out.eligible_count, 2);
+    assert.equal(out.endpoints.filter((e) => e.id === "b").length, 1);
     assert.equal(out.endpoints[0].id, "b");
     assert.equal(out.endpoints[0].latency_ms, 70);
+    assert.equal(out.endpoints[0].url, "wss://b.example");
+    assert.equal(out.endpoints[0].network, "finney");
+    // The bogus pool-key network ("0"/"1") must never leak.
+    assert.ok(out.endpoints.every((e) => e.network === "finney"));
   });
 
   test("get_best_rpc_endpoint works without a live KV snapshot", async () => {
