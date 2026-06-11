@@ -1,0 +1,1 @@
+{ "schema_version": 1, "id": "reviewbot-test", "name": "SignalPlus", "kind": "subnet-team", "website_url": "https://example.com", "authority": "provider-claimed", "notes": "Test provider profile for reviewbot dual-AI verification." }
