@@ -967,6 +967,14 @@ describe("script utility contracts", () => {
       redactCredentialedUrl("https://example.com/download?file=1"),
       "https://example.com/download?file=1",
     );
+    assert.equal(
+      redactCredentialedUrl("https://user:pass@example.com/private?token=1"),
+      "https://example.com/private",
+    );
+    assert.equal(
+      isCredentialedUrl("https://user:pass@example.com/private"),
+      true,
+    );
     assert.equal(isCredentialedUrl("not a url"), false);
     assert.equal(
       isCredentialedUrl("https://example.com/download?file=1"),

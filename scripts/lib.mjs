@@ -477,6 +477,115 @@ export function sortValue(value) {
   return value;
 }
 
+const schemaGeneratedTimestampKeys = new Set(["x-generated-at", "x-timestamp"]);
+const schemaDroppedContentKeys = new Set([
+  "description",
+  "summary",
+  "externaldocs",
+  "example",
+  "examples",
+]);
+const schemaAbsoluteUrlPattern = /\b(?:https?|wss?):\/\/[^\s<>"'`)}\]]+/gi;
+
+function isSchemaExtensionKey(key) {
+  return String(key || "")
+    .toLowerCase()
+    .startsWith("x-");
+}
+
+function isAbsoluteHttpLikeUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:", "ws:", "wss:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeSchemaUrlString(value) {
+  if (isUnsafeUrl(value)) {
+    return null;
+  }
+  return redactCredentialedUrl(value);
+}
+
+function sanitizeSchemaText(value) {
+  return value.replace(schemaAbsoluteUrlPattern, (match) => {
+    const sanitized = sanitizeSchemaUrlString(match);
+    return sanitized || "[redacted-unsafe-url]";
+  });
+}
+
+function sanitizeSchemaKey(key) {
+  if (!isAbsoluteHttpLikeUrl(key)) {
+    return key;
+  }
+  return sanitizeSchemaUrlString(key);
+}
+
+function sanitizeSchemaServer(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return sanitizeOpenApiDocument(value);
+  }
+
+  if (typeof value.url === "string" && isAbsoluteHttpLikeUrl(value.url)) {
+    const url = sanitizeSchemaUrlString(value.url);
+    if (!url) {
+      return undefined;
+    }
+  }
+
+  return sanitizeOpenApiDocument(value);
+}
+
+export function sanitizeOpenApiDocument(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((nested) => sanitizeOpenApiDocument(nested))
+      .filter((nested) => nested !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .flatMap(([key, nested]) => {
+          const lowerKey = key.toLowerCase();
+          if (
+            schemaGeneratedTimestampKeys.has(lowerKey) ||
+            schemaDroppedContentKeys.has(lowerKey) ||
+            isSchemaExtensionKey(key)
+          ) {
+            return [];
+          }
+
+          const sanitizedKey = sanitizeSchemaKey(key);
+          if (!sanitizedKey) {
+            return [];
+          }
+
+          const sanitizedNested =
+            lowerKey === "servers" && Array.isArray(nested)
+              ? nested
+                  .map((server) => sanitizeSchemaServer(server))
+                  .filter((server) => server !== undefined)
+              : sanitizeOpenApiDocument(nested);
+          if (sanitizedNested === undefined) {
+            return [];
+          }
+
+          return [[sanitizedKey, sanitizedNested]];
+        })
+        .sort(([a], [b]) => a.localeCompare(b)),
+    );
+  }
+
+  if (typeof value === "string") {
+    return sanitizeSchemaText(redactCredentialedUrl(value));
+  }
+
+  return value;
+}
+
 export function isValidUrl(value) {
   try {
     const parsed = new URL(value);
@@ -550,6 +659,9 @@ function normalizeHostname(hostname) {
 export function isCredentialedUrl(value) {
   try {
     const url = new URL(value);
+    if (url.username || url.password) {
+      return true;
+    }
     for (const key of url.searchParams.keys()) {
       if (credentialedUrlParams.has(key.toLowerCase())) {
         return true;
@@ -567,6 +679,8 @@ export function redactCredentialedUrl(value) {
   }
 
   const url = new URL(value);
+  url.username = "";
+  url.password = "";
   url.search = "";
   url.hash = "";
   return url.toString();

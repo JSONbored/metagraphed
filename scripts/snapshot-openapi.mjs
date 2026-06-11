@@ -10,6 +10,7 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   loadSubnets,
+  sanitizeOpenApiDocument,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
@@ -125,7 +126,7 @@ async function snapshotSurface(surface) {
       continue;
     }
 
-    const normalized = normalizeSchema(response.body);
+    const normalized = sanitizeOpenApiDocument(response.body);
     const hash = hashJson(normalized);
     const previous = existingBySurface.get(surface.id);
     const driftStatus = previous?.hash
@@ -179,8 +180,8 @@ async function snapshotSurface(surface) {
       path: `/metagraph/schemas/${surface.id}.json`,
       content_type: response.content_type || null,
       snapshot,
-      // Full normalized spec — written only to the per-surface schema file (not
-      // the index), so get_api_schema can return the real paths/components.
+      // Sanitized spec — written only to the per-surface schema file (not the
+      // index), so get_api_schema can return real paths/components safely.
       document: normalized,
     };
   }
@@ -310,24 +311,6 @@ function isOpenApiLike(value) {
       typeof value.swagger === "string" ||
       value.paths),
   );
-}
-
-function normalizeSchema(value) {
-  if (Array.isArray(value)) {
-    return value.map(normalizeSchema);
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(
-          ([key]) =>
-            !["x-generated-at", "x-timestamp"].includes(key.toLowerCase()),
-        )
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, nested]) => [key, normalizeSchema(nested)]),
-    );
-  }
-  return value;
 }
 
 async function loadExistingSchemaIndex() {

@@ -27,6 +27,7 @@ import {
   publishedAt,
   readJson,
   redactCredentialedUrls,
+  sanitizeOpenApiDocument,
   repoRoot,
   sha256Hex,
   slugify,
@@ -133,10 +134,10 @@ const previousSchemaIndexArtifact = await readOptionalJson(
   path.join(outputRoot, "schemas/index.json"),
 );
 
-// snapshot-openapi writes the full OpenAPI `document` into the per-surface
+// snapshot-openapi writes the sanitized OpenAPI `document` into per-surface
 // schema files (R2 staging); capture it before the wipe below so the schema
 // rebuild can re-attach it (the index stays light, but the files carry the
-// real spec for get_api_schema).
+// spec for get_api_schema).
 const capturedSchemaDocuments = new Map();
 {
   const schemasDir = path.join(r2OutputRoot, "schemas");
@@ -150,7 +151,10 @@ const capturedSchemaDocuments = new Map();
     if (!file.endsWith(".json") || file === "index.json") continue;
     const existing = await readOptionalJson(path.join(schemasDir, file));
     if (existing?.document)
-      capturedSchemaDocuments.set(`schemas/${file}`, existing.document);
+      capturedSchemaDocuments.set(
+        `schemas/${file}`,
+        sanitizeOpenApiDocument(existing.document),
+      );
   }
 }
 
@@ -974,8 +978,8 @@ for (const entry of schemaIndexArtifact.schemas || []) {
   if (!relativePath || !entry.snapshot || typeof entry.snapshot !== "object") {
     continue;
   }
-  // Re-attach the full OpenAPI document captured before the staging wipe, so
-  // get_api_schema serves real paths/components — not just the digest.
+  // Re-attach the sanitized OpenAPI document captured before the staging wipe,
+  // so get_api_schema serves real paths/components — not just the digest.
   const document = capturedSchemaDocuments.get(relativePath);
   await writeJson(
     artifactFile(relativePath),
