@@ -259,6 +259,35 @@ if (semantic.status === 200) {
   assert.equal(semantic.body?.error?.code, "ai_unavailable");
 }
 
+// AI-crawler access regression check: Cloudflare's "Block AI bots" zone setting
+// once served 403s to AI user-agents on the exact endpoints built for them
+// (llms.txt, agent-catalog) — fatal for an AI-native registry, and invisible to
+// default-UA checks. Assert agent UAs are never blocked again.
+const AI_USER_AGENTS = [
+  "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",
+  "Claude-User/1.0",
+  "GPTBot/1.2",
+];
+for (const userAgent of AI_USER_AGENTS) {
+  for (const path of ["/llms.txt", "/api/v1/agent-catalog"]) {
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: { "user-agent": userAgent },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    await response.body?.cancel?.();
+    assert.notEqual(
+      response.status,
+      403,
+      `${path}: AI agent UA "${userAgent}" is blocked (403) — the Cloudflare AI-bot block has regressed`,
+    );
+    assert.equal(
+      response.status,
+      200,
+      `${path}: expected 200 for AI agent UA "${userAgent}", got ${response.status}`,
+    );
+  }
+}
+
 console.log(
   JSON.stringify(
     {
@@ -268,6 +297,7 @@ console.log(
       raw_artifact_count: rawArtifactChecks.length,
       mcp_tool_count: MCP_TOOLS.length,
       ai_status: aiStatus,
+      ai_crawler_access: "unblocked",
       health_history_date: healthDate,
       checked_paths: results,
     },
