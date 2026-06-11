@@ -307,11 +307,19 @@ async function handleRawArtifactRequest(request, env, url) {
       artifact_path: url.pathname,
     });
   }
+  // The raw artifact path has no envelope, so direct fetchers of
+  // /metagraph/*.json have no freshness signal — the body's generated_at is the
+  // deterministic epoch content marker by design. Expose the real publish time
+  // as a header; the body stays byte-identical to the committed artifact.
+  const pub = await publishedAt(env);
   const body = JSON.stringify(artifact.data);
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
   headers.set("x-metagraph-artifact-source", artifact.source);
   headers.set("x-metagraph-storage-tier", artifact.storage_tier);
+  if (pub) {
+    headers.set("x-metagraph-published-at", pub);
+  }
   headers.set("etag", await weakEtag(body));
   if (request.headers.get("if-none-match") === headers.get("etag")) {
     return new Response(null, { status: 304, headers });
