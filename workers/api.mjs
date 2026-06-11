@@ -23,6 +23,11 @@ import {
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
+import { pruneHealthHistory, runHealthProber } from "../src/health-prober.mjs";
+
+// Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
+// trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
+const HEALTH_PRUNE_CRON = "0 * * * *";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
@@ -89,7 +94,21 @@ export default {
   async fetch(request, env, ctx) {
     return handleRequest(request, env, ctx);
   },
+  async scheduled(controller, env, ctx) {
+    return handleScheduled(controller, env, ctx);
+  },
 };
+
+// Cron entrypoint. Cloudflare passes the exact cron string that fired in
+// `controller.cron`; the hourly trigger prunes the time-series, every other
+// trigger (the 2-minute one) runs a full operational-health probe sweep.
+export async function handleScheduled(controller, env = {}, ctx = {}) {
+  const cron = controller?.cron || "";
+  if (cron === HEALTH_PRUNE_CRON) {
+    return pruneHealthHistory(env);
+  }
+  return runHealthProber(env, ctx);
+}
 
 export async function handleRequest(request, env = {}, ctx = {}) {
   const url = new URL(request.url);

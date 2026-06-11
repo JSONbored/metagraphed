@@ -1,6 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { readJson, repoRoot, stableStringify } from "./lib.mjs";
+import {
+  readJson,
+  repoRoot,
+  stableStringify,
+  stripJsonComments,
+} from "./lib.mjs";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
 const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
@@ -159,11 +164,4 @@ function check(condition, message) {
   if (!condition) {
     errors.push(message);
   }
-}
-
-function stripJsonComments(value) {
-  return value
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|\s)\/\/.*$/gm, "$1")
-    .replace(/,\s*([}\]])/g, "$1");
 }

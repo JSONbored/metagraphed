@@ -131,6 +131,64 @@ export async function writeJson(filePath, value) {
   await fs.writeFile(filePath, `${stableStringify(value)}\n`, "utf8");
 }
 
+// String-aware JSONC comment stripper. Unlike a naive regex, it never treats
+// `//`, `/*`, or `*/` INSIDE a string literal as a comment delimiter — essential
+// because wrangler.jsonc holds route globs like `"/api/*"` (ends in `/*`) and the
+// cron `"*/2 * * * *"` (contains `*/`); a regex stripper would splice from the
+// former's `/*` to the latter's `*/` and delete the config in between. Also drops
+// trailing commas so JSON.parse accepts the result.
+export function stripJsonComments(value) {
+  let out = "";
+  let inString = false;
+  let inLine = false;
+  let inBlock = false;
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    const next = value[i + 1];
+    if (inLine) {
+      if (ch === "\n") {
+        inLine = false;
+        out += ch;
+      }
+      continue;
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false;
+        i += 1;
+      }
+      continue;
+    }
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += next ?? "";
+        i += 1;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      continue;
+    }
+    if (ch === "/" && next === "/") {
+      inLine = true;
+      i += 1;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlock = true;
+      i += 1;
+      continue;
+    }
+    out += ch;
+  }
+  return out.replace(/,\s*([}\]])/g, "$1");
+}
+
 export async function formatRepositoryJson(value) {
   const prettier = await import("prettier");
   return prettier.format(`${stableStringify(value)}\n`, { parser: "json" });
