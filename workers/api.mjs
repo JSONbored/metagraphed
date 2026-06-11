@@ -104,6 +104,7 @@ const DENIED_RPC_PREFIXES = [
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
 const MAX_WEBHOOK_BODY_BYTES = 8192;
+const MAX_ASK_BODY_BYTES = 4096;
 const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
   "x-metagraph-webhook-subscription-token";
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
@@ -1650,6 +1651,42 @@ function aiClientKey(request, scope) {
   return `${scope}:${ip}`;
 }
 
+async function readBoundedRequestText(request, maxBytes) {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > maxBytes) {
+    return { ok: false, text: "" };
+  }
+
+  if (!request.body) {
+    return { ok: true, text: "" };
+  }
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk =
+        typeof value === "string" ? new TextEncoder().encode(value) : value;
+      bytes += chunk.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, text: "" };
+      }
+      text += decoder.decode(chunk, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  text += decoder.decode();
+  return { ok: true, text };
+}
+
 async function handleSemanticSearchRequest(request, env, url) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
@@ -1695,7 +1732,18 @@ async function handleAskRequest(request, env) {
   }
   let body;
   try {
-    body = await request.json();
+    const boundedBody = await readBoundedRequestText(
+      request,
+      MAX_ASK_BODY_BYTES,
+    );
+    if (!boundedBody.ok) {
+      return errorResponse(
+        "payload_too_large",
+        "Ask request body exceeds the size limit.",
+        413,
+      );
+    }
+    body = JSON.parse(boundedBody.text);
   } catch {
     return errorResponse(
       "invalid_json",

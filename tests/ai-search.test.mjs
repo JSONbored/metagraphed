@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { ReadableStream } from "node:stream/web";
 import { describe, test } from "vitest";
 import {
   EMBED_MODEL,
@@ -409,6 +410,46 @@ describe("AI routes through the Worker dispatch", () => {
     );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error.code, "invalid_json");
+  });
+
+  test("ask rejects oversized Content-Length before parsing", async () => {
+    const env = aiWorkerEnv({
+      AI: { run: () => Promise.reject(new Error("body should not parse")) },
+    });
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        headers: { "content-length": "4097" },
+        body: JSON.stringify({ question: "x" }),
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 413);
+    assert.equal((await res.json()).error.code, "payload_too_large");
+  });
+
+  test("ask rejects oversized streamed bodies while reading", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode('{"question":"x","padding":"'),
+        );
+        controller.enqueue(new Uint8Array(4097));
+        controller.enqueue(new TextEncoder().encode('"}'));
+        controller.close();
+      },
+    });
+    const env = aiWorkerEnv({
+      AI: { run: () => Promise.reject(new Error("body should not parse")) },
+    });
+    const res = await handleRequest(
+      new Request(ASK_URL, { method: "POST", body: stream, duplex: "half" }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 413);
+    assert.equal((await res.json()).error.code, "payload_too_large");
   });
 
   test("GET /api/v1/ask is a 405", async () => {
