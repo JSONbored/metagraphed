@@ -29,9 +29,31 @@ const errors = [];
 
 for (const route of API_ROUTES) {
   const artifactPath = await exampleArtifactPath(route.artifact_path);
-  const artifact = await readJson(
-    artifactFilePath(artifactPath.replace(/^\/metagraph\//, "")),
-  );
+  if (artifactPath === null) {
+    console.warn(
+      `validate-openapi-examples: no example artifact on disk for ${route.path}; skipping.`,
+    );
+    continue;
+  }
+  let artifact;
+  try {
+    artifact = await readJson(
+      artifactFilePath(artifactPath.replace(/^\/metagraph\//, "")),
+    );
+  } catch (error) {
+    // The example artifact isn't on disk in this build context (e.g. an
+    // R2-only or per-subnet artifact that depends on D1/health data). Presence
+    // is enforced by other gates (build, r2-manifest, contract-drift, live
+    // smoke) — this gate only validates example↔schema conformance for the
+    // artifacts that ARE present, so skip-with-warning instead of crashing.
+    if (error.code === "ENOENT") {
+      console.warn(
+        `validate-openapi-examples: example artifact not generated for ${route.path}; skipping.`,
+      );
+      continue;
+    }
+    throw error;
+  }
   const body = {
     ok: true,
     schema_version: 1,
@@ -96,9 +118,64 @@ async function exampleArtifactPath(template) {
     return artifactPathFromTemplate(template, { slug });
   }
   if (template.includes("{netuid}")) {
-    return artifactPathFromTemplate(template, { netuid: 7 });
+    const netuid = await firstExistingNetuid(template);
+    return netuid === null
+      ? null
+      : artifactPathFromTemplate(template, { netuid });
   }
   return template;
+}
+
+// Pick a netuid whose artifact actually exists on disk for this template,
+// preferring 7 for stable/consistent examples. Per-subnet artifacts (e.g.
+// health/trends/{netuid}.json) are only emitted when that subnet has data, so
+// hard-coding netuid 7 made validate:openapi-examples (and the scheduled
+// Sync Subnets job that runs it) fail with ENOENT whenever 7 had no instance.
+// Returns null when no instance exists at all (nothing to validate → skip).
+async function firstExistingNetuid(template) {
+  const nested = /\{netuid\}\/.+/.test(template);
+  const relativeDir = template
+    .replace(/^\/metagraph\//, "")
+    .split("{netuid}")[0]
+    .replace(/\/+$/, "");
+  let entries;
+  try {
+    entries = await fs.readdir(artifactDirectoryPath(relativeDir), {
+      withFileTypes: true,
+    });
+  } catch {
+    return null;
+  }
+  const candidates = entries
+    .filter((entry) => (nested ? entry.isDirectory() : entry.isFile()))
+    .map((entry) => entry.name.replace(/\.json$/, ""))
+    .filter((name) => /^\d+$/.test(name))
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (candidates.length === 0) {
+    return null;
+  }
+  const order = candidates.includes(7)
+    ? [7, ...candidates.filter((netuid) => netuid !== 7)]
+    : candidates;
+  if (!nested) {
+    return order[0];
+  }
+  for (const netuid of order) {
+    const filePath = artifactFilePath(
+      artifactPathFromTemplate(template, { netuid }).replace(
+        /^\/metagraph\//,
+        "",
+      ),
+    );
+    try {
+      await fs.access(filePath);
+      return netuid;
+    } catch {
+      // try the next candidate
+    }
+  }
+  return null;
 }
 
 async function firstProviderSlug(template) {
