@@ -60,6 +60,25 @@ describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
     assert.equal(await guard("https://evil.example.com/x"), true);
   });
 
+  test("blocks a private DNS answer when the other RR lookup fails", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async (url) => {
+        const u = new URL(url);
+        const type = u.searchParams.get("type");
+        if (type === "AAAA") {
+          throw new Error("AAAA lookup timed out");
+        }
+        return {
+          ok: true,
+          async json() {
+            return { Answer: [{ data: "10.1.2.3" }] };
+          },
+        };
+      },
+    });
+    assert.equal(await guard("https://evil.example.com/x"), true);
+  });
+
   test("blocks a private IPv6 AAAA answer", async () => {
     const guard = workerResolvedUrlSafetyGuard({
       fetchImpl: dohFetch({ "v6.example.com": { AAAA: ["fd00::1"] } }),

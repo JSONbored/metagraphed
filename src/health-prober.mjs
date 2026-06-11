@@ -132,20 +132,17 @@ export function workerResolvedUrlSafetyGuard({
     if (ipv4Octets(host) || host.includes(":")) {
       return isUnsafeIpAddress(host);
     }
-    try {
-      const answers = (
-        await Promise.all(
-          DNS_RECORD_TYPES.map((type) =>
-            resolveDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
-          ),
-        )
-      ).flat();
-      // Block only on a confirmed private answer (rebinding). No answer / DoH
-      // failure → fail open (handled by the catch below + the literal guard).
-      return answers.some(isUnsafeIpAddress);
-    } catch {
-      return false;
-    }
+    const lookups = await Promise.allSettled(
+      DNS_RECORD_TYPES.map((type) =>
+        resolveDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
+      ),
+    );
+    const answers = lookups.flatMap((lookup) =>
+      lookup.status === "fulfilled" ? lookup.value : [],
+    );
+    // Block on any confirmed private answer (rebinding), even if another RR
+    // lookup failed. No confirmed private answer / DoH failure → fail open.
+    return answers.some(isUnsafeIpAddress);
   };
 }
 
