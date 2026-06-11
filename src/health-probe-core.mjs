@@ -31,8 +31,9 @@ export const OPERATIONAL_SURFACE_KINDS = [
 ];
 
 // --- URL safety: isomorphic literal SSRF guard --------------------------------
-// Best-effort default used by the Worker (which cannot resolve DNS). The Node
-// build injects the stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.mjs.
+// Best-effort fallback for tests/injected runtimes. The Node build injects the
+// stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.mjs, and the Worker
+// cron prober injects a DNS-over-HTTPS guard from src/health-prober.mjs.
 // Operational surfaces are already curated `public_safe`, so this is defense in
 // depth, not the primary control.
 const UNSAFE_HOST_PATTERNS = [

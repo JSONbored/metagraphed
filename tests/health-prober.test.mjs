@@ -6,6 +6,7 @@ import {
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
   runHealthProber,
+  workerResolvedUrlSafetyGuard,
 } from "../src/health-prober.mjs";
 import { handleScheduled } from "../workers/api.mjs";
 
@@ -100,6 +101,60 @@ const probeImpl = async (input) =>
         latency_ms: null,
         status_code: 404,
       };
+
+describe("workerResolvedUrlSafetyGuard", () => {
+  test("blocks public-looking hostnames that resolve to private DNS answers", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async (url) => {
+        const recordType = new URL(url).searchParams.get("type");
+        return {
+          ok: true,
+          async json() {
+            return recordType === "A"
+              ? { Answer: [{ type: 1, data: "127.0.0.1" }] }
+              : { Answer: [] };
+          },
+        };
+      },
+    });
+
+    assert.equal(
+      await guard("https://metagraphed-rebind-poc.example/private"),
+      true,
+    );
+  });
+
+  test("allows public hostnames only after public DNS answers are verified", async () => {
+    const seen = [];
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async (url) => {
+        seen.push(new URL(url).searchParams.get("type"));
+        return {
+          ok: true,
+          async json() {
+            return { Answer: [{ type: 1, data: "93.184.216.34" }] };
+          },
+        };
+      },
+    });
+
+    assert.equal(await guard("https://example.com/api"), false);
+    assert.deepEqual(seen.sort(), ["A", "AAAA"]);
+  });
+
+  test("fails closed when DNS verification has no A/AAAA answers", async () => {
+    const guard = workerResolvedUrlSafetyGuard({
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { Answer: [] };
+        },
+      }),
+    });
+
+    assert.equal(await guard("https://example.com/api"), true);
+  });
+});
 
 describe("runHealthProber", () => {
   test("writes D1 batch + the three KV snapshots with correct shapes", async () => {

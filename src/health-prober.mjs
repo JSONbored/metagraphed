@@ -25,6 +25,121 @@ export const KV_HEALTH_RPC_POOL = "health:rpc-pool";
 export const KV_HEALTH_META = "health:meta";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
+const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
+const DNS_RECORD_TYPES = ["A", "AAAA"];
+
+function normalizedHostname(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\]$/, "$1")
+    .replace(/\.$/, "");
+}
+
+function ipv4Octets(value) {
+  const parts = String(value || "").split(".");
+  if (parts.length !== 4) return null;
+  const octets = parts.map((part) => {
+    if (!/^\d+$/.test(part)) return null;
+    const n = Number(part);
+    return Number.isInteger(n) && n >= 0 && n <= 255 ? n : null;
+  });
+  return octets.every((n) => n !== null) ? octets : null;
+}
+
+function isUnsafeIpAddress(value) {
+  const host = normalizedHostname(value);
+  const v4 = ipv4Octets(host);
+  if (v4) {
+    const [a, b, c, d] = v4;
+    return (
+      a === 0 ||
+      a === 10 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && c === 0) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224 ||
+      (a === 255 && b === 255 && c === 255 && d === 255)
+    );
+  }
+
+  // Compact IPv6 denylist matching the ranges used by the Node build guard:
+  // unspecified/loopback, discard-only, IPv4/IPv6 translation, unique-local,
+  // link-local, and multicast. DNS answers are already canonical IP literals.
+  return (
+    host === "::" ||
+    host === "::1" ||
+    host === "0:0:0:0:0:0:0:0" ||
+    host === "0:0:0:0:0:0:0:1" ||
+    host === "100::" ||
+    host.startsWith("100:0:") ||
+    host.startsWith("64:ff9b:1:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
+    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    host.startsWith("ff")
+  );
+}
+
+function dnsAddressAnswers(body) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.Answer)) {
+    return [];
+  }
+  return body.Answer.map((answer) => String(answer?.data || "").trim()).filter(
+    (data) => ipv4Octets(data) || normalizedHostname(data).includes(":"),
+  );
+}
+
+async function resolveDnsJson(host, recordType, fetchImpl, endpoint) {
+  const query = new URL(endpoint);
+  query.searchParams.set("name", host);
+  query.searchParams.set("type", recordType);
+  const response = await fetchImpl(query.toString(), {
+    headers: { accept: "application/dns-json" },
+  });
+  if (!response?.ok) {
+    return [];
+  }
+  return dnsAddressAnswers(await response.json());
+}
+
+export function workerResolvedUrlSafetyGuard({
+  fetchImpl = fetch,
+  dnsJsonEndpoint = DNS_JSON_ENDPOINT,
+} = {}) {
+  return async function isUnsafeWorkerResolvedUrl(value) {
+    if (isUnsafePublicUrl(value)) {
+      return true;
+    }
+
+    const url = new URL(value);
+    const host = normalizedHostname(url.hostname);
+    if (ipv4Octets(host) || host.includes(":")) {
+      return isUnsafeIpAddress(host);
+    }
+
+    try {
+      const answers = (
+        await Promise.all(
+          DNS_RECORD_TYPES.map((type) =>
+            resolveDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
+          ),
+        )
+      ).flat();
+
+      // Fail closed if the Worker cannot verify a public A/AAAA answer
+      // immediately before the outbound probe.
+      return answers.length === 0 || answers.some(isUnsafeIpAddress);
+    } catch {
+      return true;
+    }
+  };
+}
+
 const PROBE_CONCURRENCY = 8;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
@@ -190,8 +305,11 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   const loadSurfaces =
     overrides.loadSurfaces || (() => loadOperationalSurfaces(env));
   const probe = overrides.probeSurface || coreProbeSurface;
+  const isUnsafeUrl =
+    overrides.isUnsafeUrl ||
+    workerResolvedUrlSafetyGuard({ fetchImpl: overrides.safetyFetch });
   const probeOptions = overrides.probeOptions || {
-    isUnsafeUrl: overrides.isUnsafeUrl || isUnsafePublicUrl,
+    isUnsafeUrl,
     connect: overrides.connect || workerWebSocketConnector(),
   };
   const concurrency = overrides.concurrency || PROBE_CONCURRENCY;
