@@ -35,16 +35,33 @@ const patterns = [
     regex:
       /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{16,}/i,
   },
+  // `soft` patterns are terminology heuristics (not actual secrets). They are
+  // skipped for mirrored third-party OpenAPI specs, where wording like "seed
+  // phrase" or "validator hotkey" is public API documentation the subnet
+  // published — not data we are leaking. The hard secret patterns above still
+  // apply to those files.
   {
     name: "wallet/key wording",
     regex: /\b(coldkey|wallet path|private key|seed phrase|mnemonic)\b/i,
+    soft: true,
   },
   {
     name: "sensitive hotkey wording",
     regex:
       /\b(?:private|secret|wallet|validator|miner)\s+hotkey\b|\bhotkey\s+(?:path|private key|seed|seed phrase|mnemonic)\b/i,
+    soft: true,
   },
 ];
+
+// Per-surface schema artifacts embed the full upstream OpenAPI/Swagger spec
+// (TS2). Those are public docs the subnet published; the soft wording
+// heuristics false-positive on their API terminology.
+function isMirroredExternalSpec(relativePath) {
+  return (
+    /(^|\/)schemas\/.+\.json$/.test(relativePath) &&
+    !relativePath.endsWith("schemas/index.json")
+  );
+}
 
 const findings = [];
 
@@ -84,9 +101,13 @@ for (const root of targetRoots) {
     }
     const content = await fs.readFile(filePath, "utf8");
     const lines = content.split(/\r?\n/);
+    const skipSoft = isMirroredExternalSpec(relative);
 
     for (const [index, line] of lines.entries()) {
       for (const pattern of patterns) {
+        if (pattern.soft && skipSoft) {
+          continue;
+        }
         if (pattern.regex.test(line)) {
           findings.push(`${relative}:${index + 1}: ${pattern.name}`);
         }
