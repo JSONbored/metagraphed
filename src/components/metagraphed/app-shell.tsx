@@ -168,6 +168,51 @@ interface SearchHit {
   slug?: string;
 }
 
+function isLocalOrPrivateHost(hostname: string) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  if (!host) return true;
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) {
+    return true;
+  }
+
+  const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (ipv4) {
+    const [, aRaw, bRaw] = ipv4;
+    const a = Number(aRaw);
+    const b = Number(bRaw);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  if (!host.includes(":")) return false;
+
+  return (
+    host === "::1" ||
+    host.startsWith("fe80:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
+    host.startsWith("::ffff:")
+  );
+}
+
+function safeExternalUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (isLocalOrPrivateHost(url.hostname)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function resolveHref(
   hit: SearchHit,
 ): { to: string; params?: Record<string, string> } | { external: string } {
@@ -179,7 +224,10 @@ function resolveHref(
   if (kind === "surface") return { to: "/surfaces" };
   if (kind === "endpoint") return { to: "/endpoints" };
   if (hit.netuid != null) return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
-  if (hit.url) return { external: hit.url };
+
+  const external = hit.url ? safeExternalUrl(hit.url) : null;
+  if (external) return { external };
+
   return { to: "/" };
 }
 
