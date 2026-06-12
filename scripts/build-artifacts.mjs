@@ -11,6 +11,7 @@ import {
   buildEndpointIncidentArtifact,
   buildTimestamp,
   cleanDescription,
+  sanitizeChainText,
   stripUrls,
   buildRpcEndpointArtifact,
   flattenSurfaces,
@@ -2781,6 +2782,16 @@ function buildSubnetProfile({
   });
   const sourceUrls = profileSourceUrls({ primaryLinks, surfaces });
   const confidence = profileConfidence(subnet.curation);
+  // True when any of this subnet's attacker-controllable chain/overlay text had
+  // prompt-injection markers neutralized — a signal for agents that the text was
+  // modified and is untrusted data. Computed from the raw sources (subnet.
+  // description is already sanitized, so we re-scan the originals).
+  const injectionScrubbed = [
+    nativeIdentity?.subnet_name,
+    nativeIdentity?.description,
+    nativeIdentity?.additional,
+    overlay?.description,
+  ].some((value) => sanitizeChainText(value).scrubbed);
   const nativeIdentityInfo = nativeIdentitySummary(nativeIdentity);
   const identityEvidence = profileIdentityEvidence({
     candidates,
@@ -2795,6 +2806,7 @@ function buildSubnetProfile({
     native_name: subnet.native_name,
     native_name_quality: subnet.native_name_quality,
     native_identity: nativeIdentityInfo,
+    injection_scrubbed: injectionScrubbed,
     subnet_type: subnet.subnet_type,
     status: subnet.status,
     symbol: subnet.symbol,
@@ -2940,7 +2952,10 @@ function cleanProfileText(value) {
   if (typeof value !== "string") {
     return null;
   }
-  const clean = value.trim();
+  // Defuse prompt-injection in native-identity text (it reaches agents via the
+  // profile + search tokens). URLs are preserved here — unlike descriptions —
+  // because identity URLs are surfaced as links elsewhere.
+  const clean = sanitizeChainText(value).text.trim();
   return clean || null;
 }
 

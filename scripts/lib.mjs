@@ -844,12 +844,64 @@ export function stripUrls(value) {
     .trim();
 }
 
-// Normalize a free-text description (chain SubnetIdentitiesV3 / overlay): strip
-// URLs, collapse whitespace, drop empties. Shared by the build + the
-// reproducibility validator so the two never drift.
+// On-chain identity text (SubnetIdentitiesV3 description/name/additional, and any
+// candidate-overlay text seeded from it) is attacker-controllable and is piped
+// verbatim to LLMs via /ask, the MCP tools, search, and llms.txt. These rules
+// DEFUSE prompt-injection: they neutralize the markers an attacker uses to make
+// a reading model treat the data as instructions — chat-template/role tokens,
+// turn/role boundaries, fence break-outs, and "ignore previous"/"act as" takeover
+// phrasing — while leaving ordinary prose readable. We defang, not delete, so a
+// benign description that merely mentions these words stays legible. All patterns
+// use bounded quantifiers (no nested unbounded repetition) so they are
+// ReDoS-safe. Order: specific tokens first, then phrasing.
+const CHAIN_TEXT_INJECTION_RULES = [
+  // Chat-template / model special tokens: ChatML <|...|>, Llama [INST], BOS/EOS.
+  { re: /<\|[^|>\n]{0,40}\|>/g, to: " " },
+  { re: /\[\/?INST\]/gi, to: " " },
+  { re: /<\/?(?:s|system|user|assistant)>/gi, to: " " },
+  // Fenced code/quote delimiters used to "break out" of a quoted data span.
+  { re: /```+|~~~+/g, to: " " },
+  // Line-start role / section markers: "System:", "### Instruction:", "Assistant：".
+  {
+    re: /(^|\n)[ \t]{0,8}#{0,4}[ \t]*(system|assistant|user|developer|human|instruction|prompt)[ \t]*[:：]/gi,
+    to: "$1$2 ",
+  },
+  // Classic instruction-override phrasing ("ignore the previous instructions").
+  {
+    re: /\b(?:ignore|disregard|forget|override|bypass)\b(?:[ \t,]+\w+){0,4}[ \t]+(?:previous|prior|above|earlier|preceding|system|initial|all)\b[^.!?\n]{0,40}/gi,
+    to: " [scrubbed] ",
+  },
+  // Role-takeover phrasing ("you are now ...", "act as a developer", "new instructions:").
+  {
+    re: /\b(?:you are now|from now on|act as(?: an?)?|pretend(?: to be| you are)?|new instructions?)\b[^.!?\n]{0,40}/gi,
+    to: " [scrubbed] ",
+  },
+];
+
+// Neutralize prompt-injection markers in attacker-controllable on-chain text.
+// Returns the defanged text plus `scrubbed` (whether any marker was neutralized)
+// so artifacts can tag `injection_scrubbed` and downstream agents know the text
+// was modified and must be treated as untrusted data, never instructions.
+// Deterministic + idempotent, so the build and the reproducibility validator
+// derive identical output. Does NOT strip URLs — that is cleanDescription's job.
+export function sanitizeChainText(value) {
+  if (typeof value !== "string") return { text: null, scrubbed: false };
+  let text = value;
+  let scrubbed = false;
+  for (const { re, to } of CHAIN_TEXT_INJECTION_RULES) {
+    const next = text.replace(re, to);
+    if (next !== text) scrubbed = true;
+    text = next;
+  }
+  return { text, scrubbed };
+}
+
+// Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
+// neutralize prompt-injection, strip URLs, collapse whitespace, drop empties.
+// Shared by the build + the reproducibility validator so the two never drift.
 export function cleanDescription(value) {
   if (typeof value !== "string") return null;
-  const cleaned = stripUrls(value);
+  const cleaned = stripUrls(sanitizeChainText(value).text);
   return cleaned.length >= 2 ? cleaned : null;
 }
 
