@@ -664,6 +664,30 @@ function isUnsafeHostname(host) {
   return isUnsafeIpAddress(host);
 }
 
+// metagraphed's own public domain. Candidate base_urls that impersonate it must
+// never enter the discovery bundle.
+const SELF_DOMAIN = "metagraph.sh";
+
+// Reject candidate URLs that trade on metagraphed's own identity. The SSRF guard
+// (isUnsafeUrl/isUnsafeResolvedUrl) passes for an attacker-registered PUBLIC
+// domain, so a base_url that reads as "metagraph.sh" — metagraph.sh.evil.com,
+// metagraphsh.com, metagraph-sh.io — would clear it yet could get an agent to
+// trust and call it. The real metagraph.sh and its subdomains are exempt; this
+// targets squats of our exact domain, not the generic "metagraph" Bittensor term
+// (a subnet legitimately named "…metagraph…" is unaffected).
+export function isBrandImpersonationUrl(value) {
+  let host;
+  try {
+    host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return false;
+  }
+  if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
+    return false;
+  }
+  return /metagraph\.sh(?:\.|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host);
+}
+
 function isUnsafeIpAddress(address) {
   const normalized = normalizeHostname(address);
   const family = isIP(normalized);

@@ -4,6 +4,7 @@ import {
   stripUrls,
   cleanDescription,
   sanitizeChainText,
+  isBrandImpersonationUrl,
   subnetLifecycle,
   extractAuth,
   sanitizeOpenApiDocument,
@@ -124,6 +125,46 @@ describe("sanitizeChainText", () => {
     ).text;
     const twice = sanitizeChainText(once).text;
     assert.equal(once, twice);
+  });
+});
+
+describe("isBrandImpersonationUrl", () => {
+  test("allows the real metagraph.sh and its subdomains", () => {
+    for (const url of [
+      "https://metagraph.sh",
+      "https://metagraph.sh/api/v1/subnets",
+      "https://api.metagraph.sh/x",
+      "https://www.metagraph.sh",
+    ]) {
+      assert.equal(isBrandImpersonationUrl(url), false, url);
+    }
+  });
+
+  test("blocks squats of the exact domain", () => {
+    for (const url of [
+      "https://metagraph.sh.evil.com/api",
+      "https://metagraphsh.com",
+      "https://metagraph-sh.io/call",
+      "https://api.metagraphsh.net",
+    ]) {
+      assert.equal(isBrandImpersonationUrl(url), true, url);
+    }
+  });
+
+  test("does not flag the generic 'metagraph' term or unrelated hosts", () => {
+    for (const url of [
+      "https://my-metagraph-subnet.io", // generic Bittensor term
+      "https://taostats.io/subnets",
+      "https://example.com",
+      "https://metagraph.sharing.io", // 'metagraph.sh' is not a boundary here
+    ]) {
+      assert.equal(isBrandImpersonationUrl(url), false, url);
+    }
+  });
+
+  test("non-URL input is not an impersonation", () => {
+    assert.equal(isBrandImpersonationUrl("not a url"), false);
+    assert.equal(isBrandImpersonationUrl(null), false);
   });
 });
 

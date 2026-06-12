@@ -1,7 +1,9 @@
 import path from "node:path";
 import {
   buildTimestamp,
+  isBrandImpersonationUrl,
   isUnsafeResolvedUrl,
+  isUnsafeUrl,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
@@ -986,7 +988,17 @@ function normalizePublicUrl(value) {
     if (!["http:", "https:"].includes(url.protocol)) {
       return null;
     }
-    if (isUnsafeHost(url.hostname)) {
+    // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +
+    // localhost. The authoritative, DNS-resolving check (isUnsafeResolvedUrl)
+    // still runs at probe + overlay-promotion time; this just keeps obviously
+    // internal targets out of the bundle entirely.
+    if (isUnsafeUrl(url.toString())) {
+      return null;
+    }
+    // Reject base_urls that impersonate metagraphed's own domain — they pass the
+    // SSRF guard (public attacker domain) but could trick an agent into trusting
+    // them. See ADR 0004.
+    if (isBrandImpersonationUrl(url.toString())) {
       return null;
     }
     url.hash = "";
@@ -1269,19 +1281,6 @@ function isBadgeOrAssetUrl(value) {
   } catch {
     return true;
   }
-}
-
-function isUnsafeHost(hostname) {
-  const host = hostname.toLowerCase();
-  return (
-    host === "localhost" ||
-    host === "0.0.0.0" ||
-    host === "127.0.0.1" ||
-    host === "::1" ||
-    host.startsWith("10.") ||
-    host.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-  );
 }
 
 function isSocialUrl(value) {
