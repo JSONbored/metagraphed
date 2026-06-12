@@ -85,6 +85,9 @@
           "native_name_quality": {
             "enum": ["chain", "placeholder", "empty"]
           },
+          "native_slug": {
+            "type": ["string", "null"]
+          },
           "slug": {
             "type": "string"
           },

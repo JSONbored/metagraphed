@@ -161,6 +161,7 @@ function buildIndexEntry(subnet) {
     name: subnet.name,
     native_name: subnet.native_name,
     native_name_quality: subnet.native_name_quality,
+    native_slug: subnet.native_slug,
     netuid: subnet.netuid,
     participant_count: subnet.participant_count,
     probed_surface_count: subnet.probed_surface_count,

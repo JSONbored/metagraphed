@@ -2474,6 +2474,7 @@ export interface components {
             native_name?: string | null;
             /** @enum {unknown} */
             native_name_quality?: "chain" | "placeholder" | "empty";
+            native_slug?: string | null;
             netuid: number;
             participant_count?: number;
             probed_surface_count?: number;

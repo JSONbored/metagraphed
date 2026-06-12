@@ -76,8 +76,12 @@ export async function withinRateLimit(env, key) {
 
 function clampLimit(value, fallback, max) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.min(max, Math.floor(n)));
+  // Number(null) and Number("") are 0 (not NaN), so a missing/blank/<1 limit
+  // must fall back to the default — NOT clamp UP to 1. The old `Math.max(1, …)`
+  // turned every default-limit query (e.g. `?q=…` with no &limit) into a single
+  // result, which read as "this registry knows one subnet" to agents.
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(max, Math.floor(n));
 }
 
 // Stable, dependency-free 53-bit string hash (cyrb53) for change detection.
