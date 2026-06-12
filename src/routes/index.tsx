@@ -239,11 +239,11 @@ function TableSkeleton() {
 
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
-  const { data: healthRes } = useSuspenseQuery(healthQuery());
+  const health = useQuery(healthQuery()).data?.data;
   const coverage = useQuery(coverageQuery()).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
-  const hsubs = (healthRes.data as { subnets?: Array<{ netuid: number; status?: string }> })
+  const hsubs = (health as { subnets?: Array<{ netuid: number; status?: string }> } | undefined)
     ?.subnets;
   if (Array.isArray(hsubs)) {
     for (const s of hsubs) {
