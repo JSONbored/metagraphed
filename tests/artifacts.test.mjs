@@ -612,6 +612,7 @@ test("public artifacts are internally consistent", () => {
   const providerEndpoints = readArtifact("providers/allways/endpoints.json");
   const providersArtifact = readArtifact("providers.json");
   const agentCatalog = readArtifact("agent-catalog.json");
+  const lineage = readArtifact("lineage.json");
   const r2Manifest = readArtifact("r2-manifest.json");
   const schemaDrift = readArtifact("schema-drift.json");
   const schemaIndex = readArtifact("schemas/index.json");
@@ -873,6 +874,33 @@ test("public artifacts are internally consistent", () => {
     "agent-catalog must carry a deterministic content_hash",
   );
   assert.ok(agentCatalog.content_hash.length >= 16);
+
+  // Cross-network lineage (issue #353): mainnet ↔ testnet mapping, with the
+  // profile's lineage reconciled against the standalone artifact.
+  assert.equal(lineage.source_network, "mainnet");
+  assert.equal(lineage.target_network, "testnet");
+  assert.equal(Array.isArray(lineage.links), true);
+  assert.ok(lineage.link_count > 0, "expected lineage links between networks");
+  assert.equal(lineage.link_count, lineage.links.length);
+  const lineageMainnetNetuids = new Set();
+  for (const link of lineage.links) {
+    assert.equal(typeof link.mainnet_netuid, "number");
+    assert.equal(typeof link.testnet_netuid, "number");
+    assert.ok(["github_repo", "chain_name"].includes(link.matched_by));
+    lineageMainnetNetuids.add(link.mainnet_netuid);
+  }
+  assert.equal(lineage.graduated_subnet_count, lineageMainnetNetuids.size);
+  // every profile that claims to have graduated appears in the lineage artifact
+  for (const profile of profiles.profiles) {
+    if (profile.lineage) {
+      assert.equal(profile.lineage.graduated_from_testnet, true);
+      assert.ok(profile.lineage.also_on.length > 0);
+      assert.ok(
+        lineageMainnetNetuids.has(profile.netuid),
+        `profile ${profile.netuid}: lineage must be reflected in lineage.json`,
+      );
+    }
+  }
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");
   const facetSum = Object.values(coverage.domain_coverage).reduce(

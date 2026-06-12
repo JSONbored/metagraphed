@@ -310,6 +310,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lineage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline). */
+        get: operations["lineage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/openapi.json": {
         parameters: {
             query?: never;
@@ -1651,6 +1668,30 @@ export interface components {
         JsonObject: {
             [key: string]: unknown;
         };
+        LineageArtifact: components["schemas"]["ArtifactBase"] & ({
+            graduated_subnet_count?: number;
+            link_count: number;
+            links: ({
+                mainnet_name?: string | null;
+                mainnet_netuid: number;
+                mainnet_slug?: string | null;
+                /** @enum {unknown} */
+                matched_by: "github_repo" | "chain_name";
+                testnet_name?: string | null;
+                testnet_netuid: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            matched_by_counts?: {
+                [key: string]: number;
+            };
+            published_at?: string | null;
+            source_network: string;
+            target_network: string;
+            testnet_only_count?: number;
+        } & {
+            [key: string]: unknown;
+        });
         OpenApiArtifact: {
             components: {
                 [key: string]: unknown;
@@ -2568,6 +2609,21 @@ export interface components {
             injection_scrubbed?: boolean;
             integration_readiness?: number;
             interface_count?: number;
+            /** @description Cross-network lineage (issue #353): when this mainnet subnet has a testnet counterpart (matched by github_repo or chain name), { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only. */
+            lineage?: ({
+                also_on?: ({
+                    /** @enum {unknown} */
+                    matched_by?: "github_repo" | "chain_name";
+                    name?: string | null;
+                    netuid?: number;
+                    network?: string;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                graduated_from_testnet?: boolean;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             missing_critical_count: number;
             missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
@@ -4134,6 +4190,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    lineage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["LineageArtifact"];
                     };
                 };
             };

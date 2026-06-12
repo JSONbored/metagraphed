@@ -5,6 +5,7 @@ import path from "node:path";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
 import {
   backfilledIdentityUrl,
+  buildSubnetLineageLinks,
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
   buildEndpointPoolArtifact,
@@ -214,6 +215,45 @@ for (const subnet of mergedSubnets) {
       break;
     }
   }
+}
+
+// Cross-network lineage (issue #353): join mainnet ↔ testnet on non-placeholder
+// github_repo, else on-chain name — the one mapping a chain explorer can't make.
+// A mainnet subnet with a testnet counterpart "graduated from testnet". Emitted
+// as a standalone /metagraph/lineage.json + onto each mainnet profile.
+const testnetSnapshot = await readOptionalJson(
+  path.join(repoRoot, "registry/native/test-subnets.json"),
+);
+const testnetSubnets = testnetSnapshot?.subnets || [];
+const testnetByNetuid = new Map(
+  testnetSubnets.map((subnet) => [subnet.netuid, subnet]),
+);
+const mergedByNetuid = new Map(
+  mergedSubnets.map((subnet) => [subnet.netuid, subnet]),
+);
+const lineageLinks = buildSubnetLineageLinks(chainSubnets, testnetSubnets);
+const lineageEntries = lineageLinks.map((link) => ({
+  mainnet_netuid: link.source_netuid,
+  mainnet_name: mergedByNetuid.get(link.source_netuid)?.name || null,
+  mainnet_slug: mergedByNetuid.get(link.source_netuid)?.slug || null,
+  testnet_netuid: link.target_netuid,
+  testnet_name: nativeDisplayName(
+    testnetByNetuid.get(link.target_netuid),
+    `Subnet ${link.target_netuid}`,
+  ),
+  matched_by: link.matched_by,
+}));
+const lineageByMainnetNetuid = new Map();
+for (const entry of lineageEntries) {
+  if (!lineageByMainnetNetuid.has(entry.mainnet_netuid)) {
+    lineageByMainnetNetuid.set(entry.mainnet_netuid, []);
+  }
+  lineageByMainnetNetuid.get(entry.mainnet_netuid).push({
+    network: "testnet",
+    netuid: entry.testnet_netuid,
+    name: entry.testnet_name,
+    matched_by: entry.matched_by,
+  });
 }
 
 // Honest first-party substrate (issue #348): of all curated surfaces, only the
@@ -508,6 +548,7 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   // chain-backfilled. Keeps the SN74 curation flywheel queue unchanged.
   overlaysByNetuid: overlayByNetuid,
   derivedDescriptionByNetuid,
+  lineageByNetuid: lineageByMainnetNetuid,
   probeFinishedAt: healthArtifacts.latest.probe_finished_at || null,
   subnets: mergedSubnets,
   surfaces,
@@ -705,6 +746,28 @@ await writeJson(artifactFile("subnets.json"), {
   source: nativeSnapshot.source,
   native_snapshot_captured_at: nativeSnapshot.captured_at,
   subnets: subnetIndex,
+});
+
+// Cross-network lineage map (issue #353): mainnet subnets that have a testnet
+// counterpart (graduated), the join method, and how many testnet subnets are
+// not yet on mainnet (the deploying-soon pipeline).
+const graduatedMainnetNetuids = new Set(
+  lineageEntries.map((entry) => entry.mainnet_netuid),
+);
+const matchedTestnetNetuids = new Set(
+  lineageEntries.map((entry) => entry.testnet_netuid),
+);
+await writeJson(artifactFile("lineage.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  published_at: publishedAt(),
+  source_network: "mainnet",
+  target_network: "testnet",
+  link_count: lineageEntries.length,
+  graduated_subnet_count: graduatedMainnetNetuids.size,
+  matched_by_counts: countBy(lineageEntries, (entry) => entry.matched_by),
+  testnet_only_count: testnetSubnets.length - matchedTestnetNetuids.size,
+  links: lineageEntries,
 });
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
@@ -1857,6 +1920,7 @@ function buildSubnetProfileArtifacts({
   nativeIdentitiesByNetuid = new Map(),
   overlaysByNetuid = new Map(),
   derivedDescriptionByNetuid = new Map(),
+  lineageByNetuid = new Map(),
   healthSurfaces = [],
   probeFinishedAt = null,
 }) {
@@ -1874,6 +1938,7 @@ function buildSubnetProfileArtifacts({
         overlay: overlaysByNetuid.get(subnet.netuid) || null,
         derivedDescription:
           derivedDescriptionByNetuid.get(subnet.netuid) || null,
+        lineage: lineageByNetuid.get(subnet.netuid) || null,
         probeFinishedAt,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
@@ -2957,6 +3022,7 @@ function buildSubnetProfile({
   nativeIdentity,
   overlay = null,
   derivedDescription = null,
+  lineage = null,
   healthByKind = new Map(),
   probeFinishedAt = null,
 }) {
@@ -3030,6 +3096,9 @@ function buildSubnetProfile({
     categories: subnet.categories || [],
     derived_categories: subnet.derived_categories || [],
     derived_description: derivedDescription,
+    lineage: lineage
+      ? { graduated_from_testnet: true, also_on: lineage }
+      : null,
     primary_links: primaryLinks,
     primary_app_surface: surfaceSummary(primaryAppSurface(surfaces)),
     supported_interface_kinds: supportedKinds,

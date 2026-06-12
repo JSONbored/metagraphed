@@ -16,6 +16,7 @@ import {
   DOMAIN_TAGS,
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
+  buildSubnetLineageLinks,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -516,6 +517,49 @@ describe("deriveDescriptionFromNotes", () => {
     assert.equal(deriveDescriptionFromNotes(42), null);
     assert.equal(deriveDescriptionFromNotes(""), null);
     assert.equal(deriveDescriptionFromNotes("   "), null);
+  });
+});
+
+describe("buildSubnetLineageLinks", () => {
+  const sub = (netuid, name, repo) => ({
+    netuid,
+    name,
+    raw_name: name,
+    chain_identity: { subnet_name: name, github_repo: repo || null },
+  });
+
+  test("matches by non-placeholder github_repo (strongest), then chain name", () => {
+    const mainnet = [
+      sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
+      sub(4, "Targon", null),
+    ];
+    const testnet = [
+      sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
+      sub(4, "targon", null),
+    ];
+    const links = buildSubnetLineageLinks(mainnet, testnet);
+    assert.deepEqual(links, [
+      { source_netuid: 4, target_netuid: 4, matched_by: "chain_name" },
+      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+    ]);
+  });
+
+  test("ignores placeholder repos and generic names", () => {
+    const mainnet = [
+      sub(3, "deprecated", "https://github.com/username/repo"),
+      sub(0, "root", null),
+    ];
+    const testnet = [
+      sub(295, "deprecated", "https://github.com/username/repo"),
+      sub(0, "root", null),
+    ];
+    // placeholder repo + generic names ("root"/"deprecated") must not match
+    assert.deepEqual(buildSubnetLineageLinks(mainnet, testnet), []);
+  });
+
+  test("returns [] for empty inputs", () => {
+    assert.deepEqual(buildSubnetLineageLinks([], []), []);
+    assert.deepEqual(buildSubnetLineageLinks(undefined, undefined), []);
   });
 });
 

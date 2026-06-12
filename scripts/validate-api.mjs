@@ -214,6 +214,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/lineage",
+    (body) => {
+      assert.equal(typeof body.data.link_count, "number");
+      assert.equal(Array.isArray(body.data.links), true);
+    },
+  ],
+  [
     "/api/v1/review/gaps?limit=3",
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],

@@ -982,6 +982,78 @@ export function cleanDescription(value) {
 // vocabulary; re-exported here for the build-side import sites.
 export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
 
+// Cross-network lineage join (issue #353): match a subnet across networks by
+// its non-placeholder on-chain github_repo (strongest), else its on-chain name
+// slug (excluding generic/junk names). The one thing metagraphed can say that a
+// chain explorer cannot — which mainnet subnet a testnet subnet graduates into.
+const LINEAGE_GENERIC_NAMES = new Set([
+  "root",
+  "unknown",
+  "deprecated",
+  "none",
+  "test",
+  "testnet",
+]);
+
+function lineageRepoKey(subnet) {
+  const repo = normalizePublicUrl(subnet?.chain_identity?.github_repo);
+  return repo && !isPlaceholderIdentityUrl(repo) ? repo.toLowerCase() : null;
+}
+
+function lineageNameKey(subnet) {
+  if (!subnet || nativeNameQuality(subnet) !== "chain") return null;
+  const raw =
+    typeof subnet.raw_name === "string" ? subnet.raw_name : subnet.name;
+  const slug = slugify(raw || "");
+  if (!slug || LINEAGE_GENERIC_NAMES.has(slug)) return null;
+  return slug;
+}
+
+function pushToMapArray(map, key, value) {
+  if (!map.has(key)) map.set(key, []);
+  map.get(key).push(value);
+}
+
+// Join two native-subnet lists (each: { netuid, name/raw_name, chain_identity }).
+// Returns sorted links [{ source_netuid, target_netuid, matched_by }] where
+// matched_by is "github_repo" or "chain_name". Deterministic + pure so the build
+// and the validator never drift.
+export function buildSubnetLineageLinks(sourceSubnets, targetSubnets) {
+  const targetByRepo = new Map();
+  const targetByName = new Map();
+  for (const target of targetSubnets || []) {
+    const repoKey = lineageRepoKey(target);
+    if (repoKey) pushToMapArray(targetByRepo, repoKey, target);
+    const nameKey = lineageNameKey(target);
+    if (nameKey) pushToMapArray(targetByName, nameKey, target);
+  }
+  const links = [];
+  for (const source of sourceSubnets || []) {
+    const repoKey = lineageRepoKey(source);
+    const nameKey = lineageNameKey(source);
+    let matches = [];
+    let matchedBy = null;
+    if (repoKey && targetByRepo.has(repoKey)) {
+      matches = targetByRepo.get(repoKey);
+      matchedBy = "github_repo";
+    } else if (nameKey && targetByName.has(nameKey)) {
+      matches = targetByName.get(nameKey);
+      matchedBy = "chain_name";
+    }
+    for (const target of matches) {
+      links.push({
+        source_netuid: source.netuid,
+        target_netuid: target.netuid,
+        matched_by: matchedBy,
+      });
+    }
+  }
+  return links.sort(
+    (a, b) =>
+      a.source_netuid - b.source_netuid || a.target_netuid - b.target_netuid,
+  );
+}
+
 // Naive registrable domain (eTLD+1 by last-two-labels) of a URL, for the
 // provider shared-team cluster heuristic (issue #347). Good enough for the
 // .io/.ai/.com domains Bittensor teams use; not PSL-accurate for multi-part

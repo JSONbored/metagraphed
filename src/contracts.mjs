@@ -672,6 +672,12 @@ export const PUBLIC_ARTIFACTS = [
     "RegistrySummaryArtifact",
   ),
   artifact(
+    "lineage",
+    "/metagraph/lineage.json",
+    "Cross-network subnet lineage: mainnet subnets matched to their testnet counterpart by github_repo or chain name.",
+    "LineageArtifact",
+  ),
+  artifact(
     "curation",
     "/metagraph/curation.json",
     "Curation state and gaps for every active subnet.",
@@ -1114,6 +1120,15 @@ export const API_ROUTES = [
     "Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).",
     "standard",
     ["registry"],
+  ),
+  route(
+    "lineage",
+    "GET",
+    "/api/v1/lineage",
+    "/metagraph/lineage.json",
+    "Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).",
+    "standard",
+    ["registry", "multi-network"],
   ),
   route(
     "curation",

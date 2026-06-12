@@ -1,0 +1,248 @@
+{
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "graduated_subnet_count": 29,
+  "link_count": 29,
+  "links": [
+    {
+      "mainnet_name": "Apex",
+      "mainnet_netuid": 1,
+      "mainnet_slug": "sn-1",
+      "matched_by": "chain_name",
+      "testnet_name": "apex",
+      "testnet_netuid": 1
+    },
+    {
+      "mainnet_name": "Targon",
+      "mainnet_netuid": 4,
+      "mainnet_slug": "sn-4",
+      "matched_by": "chain_name",
+      "testnet_name": "targon",
+      "testnet_netuid": 4
+    },
+    {
+      "mainnet_name": "Zeus",
+      "mainnet_netuid": 18,
+      "mainnet_slug": "sn-18",
+      "matched_by": "chain_name",
+      "testnet_name": "zeus",
+      "testnet_netuid": 301
+    },
+    {
+      "mainnet_name": "Quasar",
+      "mainnet_netuid": 24,
+      "mainnet_slug": "sn-24",
+      "matched_by": "github_repo",
+      "testnet_name": "quasar-test",
+      "testnet_netuid": 383
+    },
+    {
+      "mainnet_name": "ItsAI",
+      "mainnet_netuid": 32,
+      "mainnet_slug": "sn-32",
+      "matched_by": "chain_name",
+      "testnet_name": "itsai",
+      "testnet_netuid": 32
+    },
+    {
+      "mainnet_name": "Aurelius",
+      "mainnet_netuid": 37,
+      "mainnet_slug": "sn-37",
+      "matched_by": "chain_name",
+      "testnet_name": "Aurelius",
+      "testnet_netuid": 455
+    },
+    {
+      "mainnet_name": "Graphite",
+      "mainnet_netuid": 43,
+      "mainnet_slug": "sn-43",
+      "matched_by": "chain_name",
+      "testnet_name": "graphite",
+      "testnet_netuid": 43
+    },
+    {
+      "mainnet_name": "Synth",
+      "mainnet_netuid": 50,
+      "mainnet_slug": "sn-50",
+      "matched_by": "github_repo",
+      "testnet_name": "Synth",
+      "testnet_netuid": 247
+    },
+    {
+      "mainnet_name": "Dojo",
+      "mainnet_netuid": 52,
+      "mainnet_slug": "sn-52",
+      "matched_by": "chain_name",
+      "testnet_name": "dojo",
+      "testnet_netuid": 52
+    },
+    {
+      "mainnet_name": "NIOME",
+      "mainnet_netuid": 55,
+      "mainnet_slug": "sn-55",
+      "matched_by": "github_repo",
+      "testnet_name": "Gen Test",
+      "testnet_netuid": 289
+    },
+    {
+      "mainnet_name": "Gradients",
+      "mainnet_netuid": 56,
+      "mainnet_slug": "gradients",
+      "matched_by": "chain_name",
+      "testnet_name": "gradients",
+      "testnet_netuid": 56
+    },
+    {
+      "mainnet_name": "Sparket",
+      "mainnet_netuid": 57,
+      "mainnet_slug": "sn-57",
+      "matched_by": "chain_name",
+      "testnet_name": "gaia",
+      "testnet_netuid": 57
+    },
+    {
+      "mainnet_name": "Babelbit",
+      "mainnet_netuid": 59,
+      "mainnet_slug": "sn-59",
+      "matched_by": "chain_name",
+      "testnet_name": "babelbit",
+      "testnet_netuid": 288
+    },
+    {
+      "mainnet_name": "Ridges",
+      "mainnet_netuid": 62,
+      "mainnet_slug": "sn-62",
+      "matched_by": "chain_name",
+      "testnet_name": "ridges",
+      "testnet_netuid": 372
+    },
+    {
+      "mainnet_name": "Chutes",
+      "mainnet_netuid": 64,
+      "mainnet_slug": "sn-64",
+      "matched_by": "chain_name",
+      "testnet_name": "chutes",
+      "testnet_netuid": 64
+    },
+    {
+      "mainnet_name": "NOVA",
+      "mainnet_netuid": 68,
+      "mainnet_slug": "sn-68",
+      "matched_by": "chain_name",
+      "testnet_name": "NOVA",
+      "testnet_netuid": 379
+    },
+    {
+      "mainnet_name": "ain",
+      "mainnet_netuid": 69,
+      "mainnet_slug": "ain",
+      "matched_by": "chain_name",
+      "testnet_name": "ain",
+      "testnet_netuid": 69
+    },
+    {
+      "mainnet_name": "MVTRX",
+      "mainnet_netuid": 79,
+      "mainnet_slug": "sn-79",
+      "matched_by": "github_repo",
+      "testnet_name": "τaos",
+      "testnet_netuid": 366
+    },
+    {
+      "mainnet_name": "dogelayer",
+      "mainnet_netuid": 80,
+      "mainnet_slug": "sn-80",
+      "matched_by": "chain_name",
+      "testnet_name": "dogelayer",
+      "testnet_netuid": 284
+    },
+    {
+      "mainnet_name": "Compelle",
+      "mainnet_netuid": 82,
+      "mainnet_slug": "sn-82",
+      "matched_by": "chain_name",
+      "testnet_name": "Compelle",
+      "testnet_netuid": 449
+    },
+    {
+      "mainnet_name": "ansuz",
+      "mainnet_netuid": 84,
+      "mainnet_slug": "sn-84",
+      "matched_by": "chain_name",
+      "testnet_name": "ansuz",
+      "testnet_netuid": 84
+    },
+    {
+      "mainnet_name": "DegenBrain",
+      "mainnet_netuid": 90,
+      "mainnet_slug": "sn-90",
+      "matched_by": "chain_name",
+      "testnet_name": "ogham",
+      "testnet_netuid": 90
+    },
+    {
+      "mainnet_name": "Verathos",
+      "mainnet_netuid": 96,
+      "mainnet_slug": "sn-96",
+      "matched_by": "chain_name",
+      "testnet_name": "verathos",
+      "testnet_netuid": 405
+    },
+    {
+      "mainnet_name": "ForeverMoney",
+      "mainnet_netuid": 98,
+      "mainnet_slug": "sn-98",
+      "matched_by": "github_repo",
+      "testnet_name": "forevermoney",
+      "testnet_netuid": 374
+    },
+    {
+      "mainnet_name": "eni",
+      "mainnet_netuid": 101,
+      "mainnet_slug": "eni",
+      "matched_by": "chain_name",
+      "testnet_name": "eni",
+      "testnet_netuid": 101
+    },
+    {
+      "mainnet_name": "oneoneone",
+      "mainnet_netuid": 111,
+      "mainnet_slug": "sn-111",
+      "matched_by": "chain_name",
+      "testnet_name": "oneoneone",
+      "testnet_netuid": 427
+    },
+    {
+      "mainnet_name": "TensorUSD",
+      "mainnet_netuid": 113,
+      "mainnet_slug": "sn-113",
+      "matched_by": "chain_name",
+      "testnet_name": "TensorUSD",
+      "testnet_netuid": 421
+    },
+    {
+      "mainnet_name": "TaoLend",
+      "mainnet_netuid": 116,
+      "mainnet_slug": "taolend",
+      "matched_by": "chain_name",
+      "testnet_name": "hard_sign",
+      "testnet_netuid": 116
+    },
+    {
+      "mainnet_name": "Bitrecs",
+      "mainnet_netuid": 122,
+      "mainnet_slug": "sn-122",
+      "matched_by": "chain_name",
+      "testnet_name": "gamma_small",
+      "testnet_netuid": 122
+    }
+  ],
+  "matched_by_counts": {
+    "chain_name": 24,
+    "github_repo": 5
+  },
+  "published_at": null,
+  "schema_version": 1,
+  "source_network": "mainnet",
+  "target_network": "testnet",
+  "testnet_only_count": 476
+}

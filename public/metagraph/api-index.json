@@ -170,6 +170,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "lineage",
+      "path": "/metagraph/lineage.json",
+      "schema_ref": "#/components/schemas/LineageArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "curation",
       "path": "/metagraph/curation.json",
       "schema_ref": "#/components/schemas/CurationArtifact",
@@ -1732,6 +1739,18 @@
       "id": "registry-summary",
       "method": "GET",
       "path": "/api/v1/registry/summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/lineage.json",
+      "cache": "standard",
+      "description": "Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).",
+      "id": "lineage",
+      "method": "GET",
+      "path": "/api/v1/lineage",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

@@ -750,6 +750,27 @@
             "type": ["string", "null"],
             "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness_score."
           },
+          "lineage": {
+            "type": ["object", "null"],
+            "description": "Cross-network lineage (issue #353): when this mainnet subnet has a testnet counterpart (matched by github_repo or chain name), { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only.",
+            "properties": {
+              "graduated_from_testnet": { "type": "boolean" },
+              "also_on": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "network": { "type": "string" },
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "name": { "type": ["string", "null"] },
+                    "matched_by": { "enum": ["github_repo", "chain_name"] }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          },
           "primary_links": {
             "$ref": "#/components/schemas/SubnetProfilePrimaryLinks"
           },
@@ -1459,6 +1480,55 @@
                 }
               },
               "recent_changes": { "type": "object" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "LineageArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "source_network",
+              "target_network",
+              "link_count",
+              "links"
+            ],
+            "properties": {
+              "published_at": { "type": ["string", "null"] },
+              "source_network": { "type": "string" },
+              "target_network": { "type": "string" },
+              "link_count": { "type": "integer", "minimum": 0 },
+              "graduated_subnet_count": { "type": "integer", "minimum": 0 },
+              "matched_by_counts": {
+                "type": "object",
+                "additionalProperties": { "type": "integer", "minimum": 0 }
+              },
+              "testnet_only_count": { "type": "integer", "minimum": 0 },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "mainnet_netuid",
+                    "testnet_netuid",
+                    "matched_by"
+                  ],
+                  "properties": {
+                    "mainnet_netuid": { "type": "integer", "minimum": 0 },
+                    "mainnet_name": { "type": ["string", "null"] },
+                    "mainnet_slug": { "type": ["string", "null"] },
+                    "testnet_netuid": { "type": "integer", "minimum": 0 },
+                    "testnet_name": { "type": ["string", "null"] },
+                    "matched_by": {
+                      "enum": ["github_repo", "chain_name"]
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
             },
             "additionalProperties": true
           }

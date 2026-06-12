@@ -97,6 +97,10 @@ const DUAL_PATTERNS = [
   // subnets.json (124 KB) stays committed: the changelog diffs it against the
   // committed HEAD version to produce the "what changed between publishes" feed.
   /^subnets\.json$/,
+  // Cross-network lineage map (issue #353): small (~6 KB), agent-facing, low
+  // churn (changes only with chain identities); committed + mirrored like the
+  // other small contract digests.
+  /^lineage\.json$/,
   /^types\.d\.ts$/,
 ];
 

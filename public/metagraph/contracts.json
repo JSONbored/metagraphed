@@ -219,6 +219,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Cross-network subnet lineage: mainnet subnets matched to their testnet counterpart by github_repo or chain name.",
+      "id": "lineage",
+      "path": "/metagraph/lineage.json",
+      "schema_ref": "#/components/schemas/LineageArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Curation state and gaps for every active subnet.",
       "id": "curation",
       "path": "/metagraph/curation.json",

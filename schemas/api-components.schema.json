@@ -3091,6 +3091,102 @@
         "additionalProperties": true,
         "type": "object"
       },
+      "LineageArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "graduated_subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "link_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "links": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "mainnet_name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "mainnet_netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "mainnet_slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "matched_by": {
+                      "enum": [
+                        "github_repo",
+                        "chain_name"
+                      ]
+                    },
+                    "testnet_name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "testnet_netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "mainnet_netuid",
+                    "testnet_netuid",
+                    "matched_by"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "matched_by_counts": {
+                "additionalProperties": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_network": {
+                "type": "string"
+              },
+              "target_network": {
+                "type": "string"
+              },
+              "testnet_only_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "source_network",
+              "target_network",
+              "link_count",
+              "links"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "OpenApiArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -6981,6 +7077,47 @@
           "interface_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "lineage": {
+            "additionalProperties": true,
+            "description": "Cross-network lineage (issue #353): when this mainnet subnet has a testnet counterpart (matched by github_repo or chain name), { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only.",
+            "properties": {
+              "also_on": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "matched_by": {
+                      "enum": [
+                        "github_repo",
+                        "chain_name"
+                      ]
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "network": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "graduated_from_testnet": {
+                "type": "boolean"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "missing_critical_count": {
             "minimum": 0,
