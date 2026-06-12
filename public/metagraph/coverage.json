@@ -58,6 +58,21 @@
     "machine-verified": 38,
     "maintainer-reviewed": 89
   },
+  "domain_coverage": {
+    "agents": 6,
+    "compute": 6,
+    "data": 9,
+    "finance": 7,
+    "inference": 10,
+    "media": 4,
+    "prediction": 5,
+    "privacy": 1,
+    "robotics": 1,
+    "science": 4,
+    "search": 2,
+    "security": 3,
+    "storage": 1
+  },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "manifested_count": 0,
   "native_only_count": 0,

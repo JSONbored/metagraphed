@@ -11,6 +11,7 @@ import {
   buildEndpointIncidentArtifact,
   buildTimestamp,
   cleanDescription,
+  deriveDomainTags,
   sanitizeChainText,
   stripUrls,
   buildRpcEndpointArtifact,
@@ -195,6 +196,7 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     coverage_level: subnet.coverage_level,
     curation_level: subnet.curation.level,
     dashboard_url: subnet.dashboard_url,
+    derived_categories: subnet.derived_categories,
     description: subnet.description,
     discord: discordContact,
     discord_url:
@@ -375,6 +377,12 @@ const coverage = {
     (subnet) =>
       subnet.coverage_level === "native-only" && subnet.candidate_count === 0,
   ).length,
+  // Derived domain/capability facet (issue #345): subnet count per domain tag.
+  // A subnet contributes to every tag it carries. Reporting-only.
+  domain_coverage: countBy(
+    mergedSubnets.flatMap((subnet) => subnet.derived_categories || []),
+    (tag) => tag,
+  ),
 };
 
 const candidateIndex = candidates.map((candidate) => ({
@@ -1504,12 +1512,23 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
         ? "root"
         : `sn-${nativeSubnet.netuid}`;
 
+  const categories =
+    overlay?.categories ||
+    (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]);
+  // Domain/capability tags derived from on-chain identity text + curated
+  // categories (issue #345). Display/search-only — never feeds completeness
+  // (the #343 flywheel gate). Shared helper so index, detail, and profile agree.
+  const derivedCategories = deriveDomainTags({
+    description: nativeSubnet.chain_identity?.description,
+    additional: nativeSubnet.chain_identity?.additional,
+    categories,
+  });
+
   return {
     block: nativeSubnet.block,
     candidate_count: candidateCount,
-    categories:
-      overlay?.categories ||
-      (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]),
+    categories,
+    derived_categories: derivedCategories,
     coverage_level: coverageLevel,
     curation_level:
       overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
@@ -2841,6 +2860,7 @@ function buildSubnetProfile({
     project_name: subnet.name,
     team: null,
     categories: subnet.categories || [],
+    derived_categories: subnet.derived_categories || [],
     primary_links: primaryLinks,
     primary_app_surface: surfaceSummary(primaryAppSurface(surfaces)),
     supported_interface_kinds: supportedKinds,

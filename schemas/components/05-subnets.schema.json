@@ -164,6 +164,13 @@
               "type": "string"
             }
           },
+          "derived_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. Filterable via ?domain=."
+          },
           "description": {
             "type": ["string", "null"]
           },
@@ -302,6 +309,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "derived_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness."
           },
           "gap_count": {
             "type": "integer",
@@ -636,6 +650,7 @@
           "project_name",
           "team",
           "categories",
+          "derived_categories",
           "primary_links",
           "primary_app_surface",
           "supported_interface_kinds",
@@ -705,6 +720,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "derived_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness_score."
           },
           "primary_links": {
             "$ref": "#/components/schemas/SubnetProfilePrimaryLinks"

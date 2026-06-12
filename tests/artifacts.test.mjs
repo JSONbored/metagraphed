@@ -20,6 +20,7 @@ import {
   createLocalArtifactEnv,
   nativeContactHandle,
   nativeContactUrl,
+  deriveDomainTags,
   publicMetagraphRoot,
   r2StagingRoot,
 } from "../scripts/lib.mjs";
@@ -707,6 +708,53 @@ test("public artifacts are internally consistent", () => {
       `profile ${profile.netuid}: native_identity.discord_url must be the URL subset of discord`,
     );
   }
+
+  // Derived domain tags (issue #345): index + profile carry the same shared
+  // projection, reproducible from chain text + curated categories, and the
+  // values are always drawn from the controlled vocabulary.
+  let derivedTagCount = 0;
+  const profileByNetuid = new Map(profiles.profiles.map((p) => [p.netuid, p]));
+  for (const entry of subnets.subnets) {
+    const chain = nativeByNetuid.get(entry.netuid)?.chain_identity || {};
+    const expected = deriveDomainTags({
+      description: chain.description,
+      additional: chain.additional,
+      categories: entry.categories,
+    });
+    assert.deepEqual(
+      entry.derived_categories,
+      expected,
+      `subnet ${entry.netuid}: derived_categories must reproduce deriveDomainTags`,
+    );
+    const profile = profileByNetuid.get(entry.netuid);
+    if (profile) {
+      assert.deepEqual(
+        profile.derived_categories,
+        expected,
+        `profile ${entry.netuid}: derived_categories must match the index projection`,
+      );
+    }
+    if (entry.derived_categories.length) derivedTagCount += 1;
+  }
+  assert.ok(
+    derivedTagCount > 0,
+    "expected at least some subnets to carry a derived domain tag",
+  );
+  // The domain coverage facet sums the per-subnet tags.
+  assert.equal(typeof coverage.domain_coverage, "object");
+  const facetSum = Object.values(coverage.domain_coverage).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  const tagSum = subnets.subnets.reduce(
+    (a, s) => a + s.derived_categories.length,
+    0,
+  );
+  assert.equal(
+    facetSum,
+    tagSum,
+    "domain_coverage counts must sum to the total derived tags on the index",
+  );
 
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
   assert.equal(

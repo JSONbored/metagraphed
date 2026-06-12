@@ -1,4 +1,5 @@
 import { artifactStorageTierForPath } from "./artifact-storage.mjs";
+import { DOMAIN_TAGS } from "./domain-tags.mjs";
 
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
@@ -495,11 +496,15 @@ export const API_QUERY_COLLECTIONS = {
   }),
   subnets: queryCollection("subnets", {
     csvFilters: { netuids: "netuid" },
+    // ?domain= matches the union of curated categories + derived_categories
+    // (issue #345), so a derived domain tag OR a curated category resolves it.
+    arrayFilters: { domain: ["categories", "derived_categories"] },
     filters: {
       netuid: integerSchema,
       netuids: { type: "string", pattern: "^\\d+(,\\d+)*$" },
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      domain: enumSchema(DOMAIN_TAGS),
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
@@ -1743,6 +1748,10 @@ function queryCollection(dataKey, options = {}) {
     // CSV membership filters: param name -> the row field it matches against.
     // e.g. { netuids: "netuid" } makes `?netuids=1,7,74` return those rows.
     csv_filters: options.csvFilters || {},
+    // Array-membership filters: param name -> the row array field(s) whose
+    // union is tested for the value. e.g. { domain: ["categories",
+    // "derived_categories"] } makes `?domain=inference` match either array.
+    array_filters: options.arrayFilters || {},
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };

@@ -500,6 +500,7 @@
         "netuids",
         "coverage_level",
         "curation_level",
+        "domain",
         "status",
         "subnet_type"
       ],
@@ -538,6 +539,28 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "domain",
+          "schema": {
+            "enum": [
+              "agents",
+              "compute",
+              "data",
+              "finance",
+              "inference",
+              "media",
+              "prediction",
+              "privacy",
+              "robotics",
+              "science",
+              "search",
+              "security",
+              "storage",
+              "training"
             ],
             "type": "string"
           }

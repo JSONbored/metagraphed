@@ -2516,7 +2516,7 @@ function applyQueryFilters(data, url, queryCollection, queryFilterNames = []) {
   });
 }
 
-function filterRows(rows, params, keys, csvFilters = {}) {
+function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
   return rows.filter((row) =>
     keys.every((key) => {
       if (!params.has(key)) {
@@ -2533,6 +2533,15 @@ function filterRows(rows, params, keys, csvFilters = {}) {
             .filter(Boolean),
         );
         return wanted.has(String(row[csvField]));
+      }
+      // Array-membership filter over the UNION of one or more array fields
+      // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
+      const arrayFields = arrayFilters[key];
+      if (arrayFields) {
+        return arrayFields.some(
+          (field) =>
+            Array.isArray(row[field]) && row[field].map(String).includes(expected),
+        );
       }
       const value = row[key];
       if (Array.isArray(value)) {
@@ -2555,6 +2564,7 @@ function applyListTransform(data, params, config) {
     params,
     filterKeys,
     config.csv_filters,
+    config.array_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);

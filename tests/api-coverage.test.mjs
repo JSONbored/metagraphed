@@ -500,6 +500,48 @@ describe("invalid query handling", () => {
     assert.equal(body.meta.pagination.cursor, 0);
   });
 
+  test("?domain= filters subnets by derived/curated domain tag (#345)", async () => {
+    const env = createLocalArtifactEnv();
+    const all = await (
+      await handleRequest(req("/api/v1/subnets?limit=200"), env, {})
+    ).json();
+    const expected = all.data.subnets.filter(
+      (s) =>
+        (s.derived_categories || []).includes("inference") ||
+        (s.categories || []).includes("inference"),
+    );
+    assert.ok(expected.length > 0, "fixture should have inference subnets");
+
+    const res = await handleRequest(
+      req("/api/v1/subnets?domain=inference&limit=200"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnets.length, expected.length);
+    assert.equal(body.meta.pagination.total, expected.length);
+    assert.ok(
+      body.data.subnets.every(
+        (s) =>
+          (s.derived_categories || []).includes("inference") ||
+          (s.categories || []).includes("inference"),
+      ),
+    );
+  });
+
+  test("400 invalid_query for an unknown ?domain= value (#345)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?domain=not_a_domain"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "domain");
+  });
+
   test("sorts by a string field (name) descending", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?sort=name&order=desc&limit=3"),

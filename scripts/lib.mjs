@@ -977,6 +977,11 @@ export function cleanDescription(value) {
   return cleaned.length >= 2 ? cleaned : null;
 }
 
+// Domain/capability tag derivation (issue #345) lives in the worker-safe
+// src/domain-tags.mjs so the build and the Worker's ?domain= enum share one
+// vocabulary; re-exported here for the build-side import sites.
+export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
+
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
 // components.securitySchemes or Swagger 2 securityDefinitions. A spec that
 // declares any security scheme is treated as requiring auth — the fix for

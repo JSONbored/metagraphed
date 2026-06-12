@@ -6282,6 +6282,13 @@
               "null"
             ]
           },
+          "derived_categories": {
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "description": {
             "type": [
               "string",
@@ -6600,6 +6607,13 @@
               "null"
             ]
           },
+          "derived_categories": {
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. Filterable via ?domain=.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "description": {
             "type": [
               "string",
@@ -6867,6 +6881,13 @@
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
           },
+          "derived_categories": {
+            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness_score.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "endpoint_count": {
             "minimum": 0,
             "type": "integer"
@@ -7040,6 +7061,7 @@
           "project_name",
           "team",
           "categories",
+          "derived_categories",
           "primary_links",
           "primary_app_surface",
           "supported_interface_kinds",

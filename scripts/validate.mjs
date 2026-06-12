@@ -15,6 +15,7 @@ import {
   nativeNameQuality,
   listJsonFilesRecursive,
   cleanDescription,
+  deriveDomainTags,
   subnetLifecycle,
   publicMetagraphRoot,
   readJson,
@@ -699,12 +700,20 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
         ? "root"
         : `sn-${nativeSubnet.netuid}`;
 
+  const categories =
+    overlay?.categories ||
+    (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]);
   return {
     block: nativeSubnet.block,
     candidate_count: candidateCount,
-    categories:
-      overlay?.categories ||
-      (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]),
+    categories,
+    // Mirror mergeSubnet's derived domain tags (issue #345) so the per-subnet
+    // detail artifact stays reproducible from registry inputs.
+    derived_categories: deriveDomainTags({
+      description: nativeSubnet.chain_identity?.description,
+      additional: nativeSubnet.chain_identity?.additional,
+      categories,
+    }),
     coverage_level: coverageLevel,
     curation_level:
       overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
