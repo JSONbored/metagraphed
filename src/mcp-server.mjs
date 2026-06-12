@@ -793,10 +793,10 @@ export const MCP_TOOLS = [
           required: Boolean(s.auth_required),
           schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
         },
-        // Ready-to-run curl/Python/TS for a first call (issue #351), generated
-        // at build time from base_url + auth. Falls back to on-the-fly
-        // generation for older catalogs that predate the field.
-        snippets: s.snippets || generateServiceSnippets(s) || null,
+        // Ready-to-run curl/Python/TS for a first call (issue #351).
+        // Regenerate from base_url + auth so cleartext credential guards stay
+        // current even when reading older catalogs with stored snippets.
+        snippets: generateServiceSnippets(s) || s.snippets || null,
         schema: s.schema_artifact
           ? {
               available: true,

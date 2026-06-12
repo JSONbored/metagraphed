@@ -1075,6 +1075,33 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
   });
 
+  test("how_do_i_call regenerates snippets without cleartext credentials", async () => {
+    const cleartextDetail = structuredClone(callDetail);
+    const service =
+      cleartextDetail["/metagraph/agent-catalog/7.json"].services[0];
+    service.base_url = "http://api.data.io";
+    service.snippets = {
+      curl: "curl -sS 'http://api.data.io' -H 'X-API-Key: YOUR_API_KEY'",
+      python:
+        'requests.get("http://api.data.io", headers={"X-API-Key": "YOUR_API_KEY"})',
+      typescript:
+        'fetch("http://api.data.io", { headers: { "X-API-Key": "YOUR_API_KEY" } })',
+    };
+
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 7 },
+      { deps: makeDeps(cleartextDetail) },
+    );
+
+    assert.equal(res.status, 200);
+    const snippets = res.body.result.structuredContent.services[0].snippets;
+    assert.equal(snippets.curl, "curl -sS 'http://api.data.io'");
+    assert.ok(!snippets.curl.includes("YOUR_API_KEY"));
+    assert.ok(!snippets.python.includes("YOUR_API_KEY"));
+    assert.ok(!snippets.typescript.includes("YOUR_API_KEY"));
+  });
+
   test("how_do_i_call resolves a subnet by chain native_slug", async () => {
     const res = await callTool(
       "how_do_i_call",
