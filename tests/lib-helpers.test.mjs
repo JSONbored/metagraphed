@@ -1,4 +1,13 @@
 import assert from "node:assert/strict";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, test } from "vitest";
 import {
   stripUrls,
@@ -18,6 +27,7 @@ import {
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
   sanitizeFixtureBody,
+  writeJson,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -561,6 +571,29 @@ describe("buildSubnetLineageLinks", () => {
   test("returns [] for empty inputs", () => {
     assert.deepEqual(buildSubnetLineageLinks([], []), []);
     assert.deepEqual(buildSubnetLineageLinks(undefined, undefined), []);
+  });
+});
+
+describe("writeJson (atomic)", () => {
+  test("writes JSON atomically via a temp file + rename", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-ok-"));
+    const file = path.join(dir, "out.json");
+    await writeJson(file, { a: 1, b: [2, 3] });
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { a: 1, b: [2, 3] });
+    assert.ok(readFileSync(file, "utf8").endsWith("\n"));
+    // no temp artifact survives a successful write
+    assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);
+  });
+
+  test("rethrows and cleans up the temp file when the rename fails", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-fail-"));
+    // target is a non-empty directory → rename(tempFile, dir) fails
+    const target = path.join(dir, "blocked");
+    mkdirSync(target);
+    writeFileSync(path.join(target, "child"), "x");
+    await assert.rejects(() => writeJson(target, { a: 1 }));
+    // the staged *.tmp must not be left behind
+    assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);
   });
 });
 

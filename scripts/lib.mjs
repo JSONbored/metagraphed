@@ -126,9 +126,31 @@ export async function readArtifactJson(relativePath) {
   return readJson(artifactFilePath(relativePath));
 }
 
-export async function writeJson(filePath, value) {
+// Monotonic suffix so two writers (or one writer with many files) never collide
+// on a temp name within a process.
+let atomicWriteCounter = 0;
+
+// Write a file atomically: stage to a sibling temp path (same directory, so the
+// same filesystem → rename() is atomic) then rename over the target. A
+// concurrent reader always sees a complete old-or-new file, never the
+// zero-length window a plain truncate-write exposes. This makes the build safe
+// to run while tests / the Worker read the committed artifacts in parallel
+// (fixes the vitest file-scheduling race where a reader saw a half-written
+// subnets.json and 404'd).
+async function atomicWriteFile(filePath, content) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, `${stableStringify(value)}\n`, "utf8");
+  const tempPath = `${filePath}.${process.pid}.${atomicWriteCounter++}.tmp`;
+  try {
+    await fs.writeFile(tempPath, content, "utf8");
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function writeJson(filePath, value) {
+  await atomicWriteFile(filePath, `${stableStringify(value)}\n`);
 }
 
 // String-aware JSONC comment stripper. Unlike a naive regex, it never treats
@@ -195,8 +217,7 @@ export async function formatRepositoryJson(value) {
 }
 
 export async function writeRepositoryJson(filePath, value) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, await formatRepositoryJson(value), "utf8");
+  await atomicWriteFile(filePath, await formatRepositoryJson(value));
 }
 
 export function artifactFilePath(relativePath, options = {}) {
