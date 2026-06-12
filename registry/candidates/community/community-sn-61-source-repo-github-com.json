@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-61-source-repo-github-com",
+      "kind": "source-repo",
+      "name": "RedTeam subnet Scoring REST API source repository",
+      "netuid": 61,
+      "provider": "redteam",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/RedTeamSubnet/rest-scoring-api",
+      "source_urls": ["https://github.com/RedTeamSubnet/rest-scoring-api"],
+      "state": "schema-valid",
+      "url": "https://github.com/RedTeamSubnet/rest-scoring-api"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
