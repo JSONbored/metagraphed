@@ -21,6 +21,8 @@ const UMAMI_WEBSITE_ID = "aac97255-44e1-4e9a-92d0-29d5fda1af45";
 // Reported-to path. MUST be the frontend Worker, not `/api/*` (that route hits
 // the backend on this zone). Umami appends `/api/send` to data-host-url.
 const STATS_PREFIX = "/stats";
+const STATS_COLLECT_PATH = `${STATS_PREFIX}/api/send`;
+const MAX_STATS_BODY_BYTES = 16 * 1024;
 const UMAMI_SNIPPET =
   `<script defer src="${STATS_PREFIX}/script.js" ` +
   `data-website-id="${UMAMI_WEBSITE_ID}" ` +
@@ -43,13 +45,22 @@ declare const HTMLRewriter: {
 async function handleStatsProxy(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const isScript = url.pathname === `${STATS_PREFIX}/script.js`;
-  const isCollect = url.pathname.startsWith(`${STATS_PREFIX}/api/`);
-  if (!isScript && !isCollect) return null;
-
-  const upstreamUrl = `${UMAMI_HOST}${url.pathname.slice(STATS_PREFIX.length)}${url.search}`;
+  const isStatsApi = url.pathname.startsWith(`${STATS_PREFIX}/api/`);
+  if (!isScript && !isStatsApi) return null;
 
   if (isScript) {
-    const upstream = await fetch(upstreamUrl, { headers: { accept: "*/*" } });
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { allow: "GET, HEAD" },
+      });
+    }
+
+    const upstreamUrl = `${UMAMI_HOST}${url.pathname.slice(STATS_PREFIX.length)}${url.search}`;
+    const upstream = await fetch(upstreamUrl, {
+      method: request.method,
+      headers: { accept: "*/*" },
+    });
     const headers = new Headers(upstream.headers);
     // Long-lived browser cache; Cloudflare edge-caches the subrequest too.
     headers.set("cache-control", "public, max-age=86400, stale-while-revalidate=604800");
@@ -57,10 +68,35 @@ async function handleStatsProxy(request: Request): Promise<Response | null> {
     return new Response(upstream.body, { status: upstream.status, headers });
   }
 
+  if (url.pathname !== STATS_COLLECT_PATH) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  if (request.method !== "POST") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { allow: "POST" },
+    });
+  }
+
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().split(";", 1)[0].trim().endsWith("/json")) {
+    return new Response("Unsupported Media Type", { status: 415 });
+  }
+
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? NaN : Number(contentLengthHeader);
+  if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+    return new Response("Length Required", { status: 411 });
+  }
+  if (contentLength > MAX_STATS_BODY_BYTES) {
+    return new Response("Payload Too Large", { status: 413 });
+  }
+
   // Collect: forward only what Umami needs to attribute a real visit (UA +
   // visitor IP + language + content-type), not the full header set.
   const forwarded = new Headers();
-  forwarded.set("content-type", request.headers.get("content-type") ?? "application/json");
+  forwarded.set("content-type", contentType);
   const userAgent = request.headers.get("user-agent");
   if (userAgent) forwarded.set("user-agent", userAgent);
   const acceptLanguage = request.headers.get("accept-language");
@@ -71,13 +107,11 @@ async function handleStatsProxy(request: Request): Promise<Response | null> {
     forwarded.set("x-real-ip", clientIp);
   }
 
+  const upstreamUrl = `${UMAMI_HOST}/api/send${url.search}`;
   const upstream = await fetch(upstreamUrl, {
-    method: request.method,
+    method: "POST",
     headers: forwarded,
-    body:
-      request.method === "GET" || request.method === "HEAD"
-        ? undefined
-        : await request.arrayBuffer(),
+    body: request.body,
   });
   const headers = new Headers(upstream.headers);
   headers.delete("set-cookie");
