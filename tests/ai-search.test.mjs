@@ -348,6 +348,19 @@ describe("semanticSearch", () => {
     const out = await semanticSearch(env, "x", { limit: 999 });
     assert.ok(out.results.length <= 20);
   });
+  test("falls back to the default limit when none is given (regression: #330)", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    // `url.searchParams.get("limit")` is null when absent — the exact prod path
+    // that previously clamped to 1. Should now use SEMANTIC_DEFAULT_LIMIT.
+    for (const noLimit of [{}, { limit: null }, { limit: "" }, { limit: 0 }]) {
+      const out = await semanticSearch(env, "x", noLimit);
+      assert.equal(
+        out.count,
+        3,
+        `expected default-limit fan-out, got ${out.count} for ${JSON.stringify(noLimit)}`,
+      );
+    }
+  });
 });
 
 describe("askQuestion", () => {
