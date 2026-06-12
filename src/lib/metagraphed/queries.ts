@@ -247,6 +247,10 @@ export const subnetQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
+function encodePathSegment(segment: string): string {
+  return encodeURIComponent(segment);
+}
+
 function pickStr(...vals: unknown[]): string | undefined {
   for (const v of vals) {
     if (typeof v === "string" && v.trim()) return v;
@@ -725,7 +729,9 @@ export const providerQuery = (slug: string) =>
   queryOptions({
     queryKey: k("provider", slug),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>(`/api/v1/providers/${slug}`, { signal });
+      const res = await apiFetch<unknown>(`/api/v1/providers/${encodePathSegment(slug)}`, {
+        signal,
+      });
       return {
         data: normalizeProvider(res.data, slug),
         meta: res.meta,
@@ -740,7 +746,7 @@ export const providerEndpointsQuery = (slug: string) =>
     queryKey: k("provider-endpoints", slug),
     queryFn: async ({ signal }) => {
       const res = await fetchList<unknown>(
-        `/api/v1/providers/${slug}/endpoints`,
+        `/api/v1/providers/${encodePathSegment(slug)}/endpoints`,
         "endpoints",
         undefined,
         signal,
@@ -918,6 +924,8 @@ export const adapterQuery = (slug: string) =>
   queryOptions({
     queryKey: k("adapter", slug),
     queryFn: ({ signal }) =>
-      apiFetch<AdapterSnapshot>(`/api/v1/adapters/${slug}`, { signal }),
+      apiFetch<AdapterSnapshot>(`/api/v1/adapters/${encodePathSegment(slug)}`, {
+        signal,
+      }),
     staleTime: STALE_MED,
   });
