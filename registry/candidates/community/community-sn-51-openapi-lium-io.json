@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-51-openapi-lium-io",
+      "kind": "openapi",
+      "name": "lium.io community openapi",
+      "netuid": 51,
+      "provider": "lium",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://lium.io/",
+      "source_urls": ["https://lium.io/"],
+      "state": "schema-valid",
+      "url": "https://lium.io/api/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
