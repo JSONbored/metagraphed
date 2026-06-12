@@ -2315,8 +2315,10 @@ export interface components {
         });
         SearchDocument: {
             artifact_path: string;
+            categories?: string[];
             id: string;
             netuid?: number;
+            service_kinds?: string[];
             slug?: string;
             subtitle?: string;
             title: string;

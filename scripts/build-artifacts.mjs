@@ -416,12 +416,36 @@ const agentEndpointBySurfaceId = new Map(
 // this subnet worth integrating" lives on the surfaces agents actually land on.
 // Read-only derived signal: it never feeds completeness_score or curation gaps,
 // so the SN74 curation flywheel is untouched.
+// Callable services per subnet, resolved once and reused by integration
+// readiness, the search index (service_kinds), and the agent-catalog.
+const servicesByNetuid = new Map(
+  mergedSubnets.map((subnet) => [
+    subnet.netuid,
+    buildSubnetServices(subnet.netuid),
+  ]),
+);
+// Distinct callable-service kinds per subnet (subnet-api/openapi/sse/
+// data-artifact). Feeds capability-aware discovery: the search index tokens +
+// the embedding text, so "which subnet has an inference API" ranks on what a
+// subnet can actually do, not just its prose description.
+const serviceKindsByNetuid = new Map(
+  mergedSubnets.map((subnet) => [
+    subnet.netuid,
+    [
+      ...new Set(
+        (servicesByNetuid.get(subnet.netuid) || []).map(
+          (service) => service.kind,
+        ),
+      ),
+    ].sort(),
+  ]),
+);
 const READINESS_VERSION = 1;
 const readinessByNetuid = new Map(
   mergedSubnets.map((subnet) => [
     subnet.netuid,
     subnetIntegrationReadiness({
-      services: buildSubnetServices(subnet.netuid),
+      services: servicesByNetuid.get(subnet.netuid),
       lifecycle: subnet.lifecycle,
       completenessScore: profileArtifacts.byNetuid.get(subnet.netuid)
         ?.completeness_score,
@@ -853,7 +877,7 @@ const agentCatalogIndex = [];
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
-  const services = buildSubnetServices(subnet.netuid);
+  const services = servicesByNetuid.get(subnet.netuid) || [];
   // Reuse the readiness computed once above for the index/profile surfaces.
   const readiness = readinessByNetuid.get(subnet.netuid);
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
@@ -1077,6 +1101,7 @@ await writeJson(
     surfaces,
     providers,
     profileArtifacts.byNetuid,
+    serviceKindsByNetuid,
   ),
 );
 await writeJson(
@@ -3831,10 +3856,15 @@ function buildSearchIndex(
   surfacesForIndex,
   providerList,
   profilesByNetuid = new Map(),
+  serviceKindsByNetuid = new Map(),
 ) {
   const documents = [
     ...subnets.map((subnet) => {
       const profile = profilesByNetuid.get(subnet.netuid);
+      const categories = Array.isArray(subnet.categories)
+        ? subnet.categories
+        : [];
+      const serviceKinds = serviceKindsByNetuid.get(subnet.netuid) || [];
       return {
         id: `subnet:${subnet.netuid}`,
         type: "subnet",
@@ -3848,11 +3878,18 @@ function buildSearchIndex(
           `SN${subnet.netuid} ${subnet.symbol || ""}`.trim(),
         url: `/subnets/${subnet.netuid}`,
         artifact_path: `/metagraph/subnets/${subnet.netuid}.json`,
+        // Explicit capability facets: what the subnet is (categories) and what
+        // it exposes (callable service kinds). Surfaced as fields for filtering
+        // and folded into tokens + the embedding so capability-shaped queries
+        // ("inference api", "sse stream") rank on what a subnet can do.
+        categories,
+        service_kinds: serviceKinds,
         tokens: compactTokens([
           subnet.name,
           subnet.slug,
           subnet.description,
-          subnet.categories?.join(" "),
+          categories.join(" "),
+          serviceKinds.join(" "),
           nativeIdentityTokenText(profile?.native_identity),
         ]),
       };

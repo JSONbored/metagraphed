@@ -149,6 +149,18 @@ describe("embedding helpers", () => {
     assert.equal(embeddingText({ title: "A" }), "A");
     assert.ok(embeddingText({ title: "x".repeat(5000) }).length <= 1500);
   });
+  test("embeddingText appends capability facets (categories + service_kinds)", () => {
+    assert.equal(
+      embeddingText({
+        title: "Apex",
+        subtitle: "text gen",
+        tokens: ["chat"],
+        categories: ["inference"],
+        service_kinds: ["openapi", "sse"],
+      }),
+      "Apex text gen chat inference openapi sse",
+    );
+  });
   test("vectorId keeps short ids and hashes long ones", () => {
     assert.equal(vectorId("subnet:7"), "subnet:7");
     const long = "surface:" + "x".repeat(80);
@@ -163,7 +175,29 @@ describe("embedding helpers", () => {
       title: null,
       subtitle: null,
       url: null,
+      categories: [],
+      service_kinds: [],
     });
+  });
+  test("embeddingMetadata carries capability facets when present", () => {
+    assert.deepEqual(
+      embeddingMetadata({
+        type: "subnet",
+        netuid: 1,
+        categories: ["inference"],
+        service_kinds: ["openapi"],
+      }),
+      {
+        type: "subnet",
+        netuid: 1,
+        slug: null,
+        title: null,
+        subtitle: null,
+        url: null,
+        categories: ["inference"],
+        service_kinds: ["openapi"],
+      },
+    );
   });
 });
 

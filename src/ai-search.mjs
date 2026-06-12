@@ -101,10 +101,16 @@ function contentHash(text) {
 }
 
 export function embeddingText(doc) {
+  // Capability facets (what a subnet IS + what it EXPOSES) are appended after the
+  // free-text tokens so they explicitly bias the embedding toward capability —
+  // "inference api", "sse stream", "data-artifact" queries rank on what a subnet
+  // can do, not just its prose. Non-subnet docs simply omit these (empty).
   return [
     doc.title,
     doc.subtitle,
     ...(Array.isArray(doc.tokens) ? doc.tokens : []),
+    ...(Array.isArray(doc.categories) ? doc.categories : []),
+    ...(Array.isArray(doc.service_kinds) ? doc.service_kinds : []),
   ]
     .filter(Boolean)
     .join(" ")
@@ -126,6 +132,10 @@ export function embeddingMetadata(doc) {
     title: doc.title ?? null,
     subtitle: doc.subtitle ?? null,
     url: doc.url ?? null,
+    // Returned with each hit so callers can see/post-filter on capability without
+    // a second round-trip. Only subnet docs carry these.
+    categories: Array.isArray(doc.categories) ? doc.categories : [],
+    service_kinds: Array.isArray(doc.service_kinds) ? doc.service_kinds : [],
   };
 }
 

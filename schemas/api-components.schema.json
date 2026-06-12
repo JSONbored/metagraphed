@@ -5957,12 +5957,24 @@
           "artifact_path": {
             "type": "string"
           },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "id": {
             "type": "string"
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
+          },
+          "service_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "slug": {
             "type": "string"
