@@ -5,6 +5,7 @@ import {
   Globe,
   LayoutDashboard,
 } from "lucide-react";
+import { safeExternalUrl } from "@/components/metagraphed/external-link";
 
 type LinkSpec = {
   label: string;
@@ -46,7 +47,7 @@ export function PrimaryLinksRail({
     { label: "Repository", href: repo, icon: Github },
     { label: "Dashboard", href: dashboard, icon: LayoutDashboard },
     ...(extras ?? []).map((e) => ({ label: e.label, href: e.href, icon: e.icon ?? Globe })),
-  ].filter((i) => !!i.href) as LinkSpec[];
+  ].filter((i) => safeExternalUrl(i.href)) as LinkSpec[];
 
   if (items.length === 0) return null;
 
@@ -54,10 +55,11 @@ export function PrimaryLinksRail({
     <div className="flex flex-wrap items-center gap-2">
       {items.map((it) => {
         const Icon = it.icon;
+        const href = safeExternalUrl(it.href)!;
         return (
           <a
-            key={it.label + it.href}
-            href={it.href}
+            key={it.label + href}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             className="group inline-flex items-center gap-2 rounded border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-ink-strong hover:border-ink/30 transition-colors"
@@ -65,7 +67,7 @@ export function PrimaryLinksRail({
             <Icon className="size-3.5 text-ink-muted" />
             <span>{it.label}</span>
             <span className="hidden sm:inline font-mono text-[10px] text-ink-muted">
-              {host(it.href)}
+              {host(href)}
             </span>
             <ExternalLinkIcon className="size-3 text-ink-muted opacity-60 group-hover:opacity-100" />
           </a>

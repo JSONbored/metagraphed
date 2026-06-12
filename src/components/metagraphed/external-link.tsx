@@ -45,7 +45,8 @@ function isPrivateHostname(hostname: string) {
   );
 }
 
-export function safeExternalUrl(href: string) {
+export function safeExternalUrl(href?: string) {
+  if (!href) return undefined;
   try {
     const url = new URL(href.trim());
     if (!SAFE_EXTERNAL_PROTOCOLS.has(url.protocol) || isPrivateHostname(url.hostname)) {
@@ -57,7 +58,13 @@ export function safeExternalUrl(href: string) {
   }
 }
 
-export function ExternalLink({ href, children, authRequired, publicSafe = true, className }: Props) {
+export function ExternalLink({
+  href,
+  children,
+  authRequired,
+  publicSafe = true,
+  className,
+}: Props) {
   const safeHref = safeExternalUrl(href);
   const content = (
     <>
