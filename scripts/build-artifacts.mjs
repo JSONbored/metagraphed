@@ -2888,6 +2888,12 @@ function nativeIdentitySummary(identity) {
     return null;
   }
 
+  // The Discord slot is usually a handle, not a URL — normalizePublicUrl alone
+  // would puff a dotted handle ("dev.alveuslabs") into a fake domain and drop
+  // plain handles entirely. Same shared allowlist projection as the index, so
+  // the profile and index contact fields cannot drift.
+  const discordContact = nativeContactHandle(identity.discord);
+
   return {
     source: identity.source || "SubtensorModule.SubnetIdentitiesV3",
     subnet_name: cleanProfileText(identity.subnet_name),
@@ -2895,7 +2901,8 @@ function nativeIdentitySummary(identity) {
     additional: cleanProfileText(identity.additional),
     website_url: normalizePublicUrl(identity.subnet_url),
     github_url: normalizePublicUrl(identity.github_repo),
-    discord_url: normalizePublicUrl(identity.discord),
+    discord: discordContact,
+    discord_url: nativeContactUrl(discordContact),
     logo_url: normalizePublicUrl(identity.logo_url),
     contact_present: Boolean(identity.contact_present),
   };

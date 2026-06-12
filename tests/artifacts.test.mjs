@@ -688,6 +688,26 @@ test("public artifacts are internally consistent", () => {
     "contact_present count must match the native snapshot",
   );
 
+  // The profile's native_identity uses the same shared contact projection as
+  // the index (regression: normalizePublicUrl alone puffed the dotted handle
+  // "dev.alveuslabs" into a fake https://dev.alveuslabs/ discord_url and
+  // silently dropped plain handles).
+  for (const profile of profiles.profiles) {
+    const identity = profile.native_identity;
+    if (!identity) continue;
+    const chain = nativeByNetuid.get(profile.netuid)?.chain_identity || {};
+    assert.equal(
+      identity.discord,
+      nativeContactHandle(chain.discord),
+      `profile ${profile.netuid}: native_identity.discord must reproduce nativeContactHandle(chain.discord)`,
+    );
+    assert.equal(
+      identity.discord_url,
+      nativeContactUrl(identity.discord),
+      `profile ${profile.netuid}: native_identity.discord_url must be the URL subset of discord`,
+    );
+  }
+
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
   assert.equal(
     health.surfaces.length,
