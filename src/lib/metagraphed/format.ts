@@ -42,8 +42,9 @@ export function formatRelative(iso?: string | null): string {
 }
 
 export function isStaleFreshness(iso?: string | null, thresholdMs = 5 * 60_000): boolean {
-  // No usable timestamp ⇒ we don't *know* it's stale; don't flag it.
-  if (!isUsableTimestamp(iso)) return false;
+  // Treat missing, invalid, and placeholder timestamps conservatively so
+  // untrusted metadata cannot make stale or unknown snapshots look fresh.
+  if (!isUsableTimestamp(iso)) return true;
   return Date.now() - Date.parse(iso) > thresholdMs;
 }
 

@@ -104,15 +104,19 @@ export function EmptyState({
 }
 
 export function StaleBanner({ generatedAt }: { generatedAt?: string }) {
-  // Don't render if there's no usable timestamp — that's an empty/unknown
-  // state, not a stale one.
-  if (!isUsableTimestamp(generatedAt)) return null;
+  const usableGeneratedAt = isUsableTimestamp(generatedAt) ? generatedAt : null;
   return (
     <div className="rounded border border-health-warn/30 bg-health-warn/5 px-3 py-2 text-[11px] text-health-warn flex items-center gap-2">
       <AlertCircle className="size-3" />
       <span>
-        Data may be stale — last generated <TimeAgo at={generatedAt} />
-        {" "}({new Date(generatedAt!).toLocaleString()}).
+        {usableGeneratedAt ? (
+          <>
+            Data may be stale — last generated <TimeAgo at={usableGeneratedAt} />
+            {" "}({new Date(usableGeneratedAt).toLocaleString()}).
+          </>
+        ) : (
+          "Data freshness is unknown — no usable generation timestamp was provided."
+        )}
       </span>
     </div>
   );
