@@ -169,6 +169,7 @@ function templatedArtifactDirectory(artifactId) {
     ...slugArtifactDirectories(),
     "health-history": "health/history",
     "schema-snapshot": "schemas",
+    "fixture-detail": "fixtures",
   };
   const relativeDir = directories[artifactId];
   const template = PUBLIC_ARTIFACTS.find(

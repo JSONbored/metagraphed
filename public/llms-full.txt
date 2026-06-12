@@ -183,6 +183,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/coverage` — Fetch registry coverage summary.
 - `GET /api/v1/registry/summary` — Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `GET /api/v1/lineage` — Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).
+- `GET /api/v1/fixtures` — Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.
 - `GET /api/v1/curation` — Fetch curation states by subnet.
 - `GET /api/v1/gaps` — Fetch interface gap report.
 - `GET /api/v1/review/gaps` — Fetch contributor-targeted subnet gap priorities.

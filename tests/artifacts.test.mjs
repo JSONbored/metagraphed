@@ -613,6 +613,7 @@ test("public artifacts are internally consistent", () => {
   const providersArtifact = readArtifact("providers.json");
   const agentCatalog = readArtifact("agent-catalog.json");
   const lineage = readArtifact("lineage.json");
+  const fixturesIndex = readArtifact("fixtures.json");
   const r2Manifest = readArtifact("r2-manifest.json");
   const schemaDrift = readArtifact("schema-drift.json");
   const schemaIndex = readArtifact("schemas/index.json");
@@ -890,6 +891,13 @@ test("public artifacts are internally consistent", () => {
     lineageMainnetNetuids.add(link.mainnet_netuid);
   }
   assert.equal(lineage.graduated_subnet_count, lineageMainnetNetuids.size);
+
+  // Captured-fixtures index (issue #352): well-formed and self-consistent. The
+  // deterministic build has no capture, so the count is 0 here; the per-surface
+  // bodies + populated index arrive via the capture:fixtures refresh step.
+  assert.equal(typeof fixturesIndex.fixture_count, "number");
+  assert.equal(Array.isArray(fixturesIndex.fixtures), true);
+  assert.equal(fixturesIndex.fixture_count, fixturesIndex.fixtures.length);
   // every profile that claims to have graduated appears in the lineage artifact
   for (const profile of profiles.profiles) {
     if (profile.lineage) {

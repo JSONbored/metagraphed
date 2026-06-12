@@ -752,6 +752,52 @@ export function redactCredentialedUrls(value) {
   return typeof value === "string" ? redactCredentialedUrl(value) : value;
 }
 
+// Keys whose VALUES are redacted from a captured live response before it is
+// committed as a fixture (issue #352) — credentials/secrets that a subnet API
+// might echo back. Matched whole-word/segment, case-insensitive.
+const FIXTURE_SENSITIVE_KEY =
+  /(^|[_-])(token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token)([_-]|$)/i;
+
+// Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
+// single live sample can be committed as a fixture (issue #352). Redacts
+// sensitive keys + credentialed URLs, and bounds depth / array length / string
+// length / key count so a hostile or huge response can never bloat the artifact
+// or smuggle secrets. Deterministic + pure. Returns the bounded, redacted value.
+export function sanitizeFixtureBody(
+  value,
+  { maxDepth = 6, maxArray = 20, maxString = 500, maxKeys = 60 } = {},
+) {
+  const walk = (node, depth) => {
+    if (depth > maxDepth) return "[truncated: max depth]";
+    if (typeof node === "string") {
+      const redacted = redactCredentialedUrl(node);
+      return redacted.length > maxString
+        ? `${redacted.slice(0, maxString)}…[truncated]`
+        : redacted;
+    }
+    if (Array.isArray(node)) {
+      const out = node.slice(0, maxArray).map((item) => walk(item, depth + 1));
+      if (node.length > maxArray) out.push(`[+${node.length - maxArray} more]`);
+      return out;
+    }
+    if (node && typeof node === "object") {
+      const out = {};
+      const entries = Object.entries(node);
+      for (const [key, nested] of entries.slice(0, maxKeys)) {
+        out[key] = FIXTURE_SENSITIVE_KEY.test(key)
+          ? "[redacted]"
+          : walk(nested, depth + 1);
+      }
+      if (entries.length > maxKeys) {
+        out["…"] = `[+${entries.length - maxKeys} more keys]`;
+      }
+      return out;
+    }
+    return node;
+  };
+  return walk(value, 0);
+}
+
 export function normalizePublicUrl(value) {
   if (typeof value !== "string") {
     return null;

@@ -175,6 +175,29 @@ const capturedSchemaDocuments = new Map();
   }
 }
 
+// Captured live request/response fixtures (issue #352), written to R2 staging by
+// the network capture:fixtures step. Preserve them across the wipe so the build
+// can re-serve fixtures/{surface_id}.json + index them in the committed
+// fixtures.json. Absent on a pure deterministic build (no capture run) → an
+// empty index, populated on the next refresh (same model as schemas).
+const capturedFixtures = new Map();
+{
+  const fixturesDir = path.join(r2OutputRoot, "fixtures");
+  let fixtureFiles;
+  try {
+    fixtureFiles = await fs.readdir(fixturesDir);
+  } catch {
+    fixtureFiles = [];
+  }
+  for (const file of fixtureFiles) {
+    if (!file.endsWith(".json") || file === "index.json") continue;
+    const existing = await readOptionalJson(path.join(fixturesDir, file));
+    if (existing?.surface_id) {
+      capturedFixtures.set(existing.surface_id, existing);
+    }
+  }
+}
+
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
 const nativeByNetuid = new Map(
@@ -1493,6 +1516,33 @@ for (const entry of schemaIndexArtifact.schemas || []) {
     document ? { ...entry.snapshot, document } : entry.snapshot,
   );
 }
+
+// Re-serve captured live fixtures (issue #352) + a committed fixtures.json index
+// (which surfaces have a sample + when). The per-surface fixtures/{id}.json is
+// R2-only (like the schema detail); the small index is committed so agents can
+// discover what's available, and get_fixture reads the detail.
+await fs.rm(r2ArtifactDir("fixtures"), { recursive: true, force: true });
+const fixtureIndexEntries = [...capturedFixtures.values()]
+  .map((fixture) => ({
+    surface_id: fixture.surface_id,
+    netuid: fixture.netuid,
+    subnet_slug: fixture.subnet_slug || null,
+    kind: fixture.kind,
+    captured_at: fixture.captured_at || null,
+    response_status: fixture.response?.status ?? null,
+  }))
+  .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+for (const fixture of capturedFixtures.values()) {
+  await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
+}
+await writeJson(artifactFile("fixtures.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  published_at: publishedAt(),
+  fixture_count: fixtureIndexEntries.length,
+  fixtures: fixtureIndexEntries,
+});
+
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,

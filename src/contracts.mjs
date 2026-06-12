@@ -678,6 +678,18 @@ export const PUBLIC_ARTIFACTS = [
     "LineageArtifact",
   ),
   artifact(
+    "fixtures-index",
+    "/metagraph/fixtures.json",
+    "Index of captured live request/response fixtures (which surfaces carry a sanitized sample).",
+    "FixturesIndexArtifact",
+  ),
+  artifact(
+    "fixture-detail",
+    "/metagraph/fixtures/{surface_id}.json",
+    "A captured, sanitized live request/response sample for one surface.",
+    "JsonObject",
+  ),
+  artifact(
     "curation",
     "/metagraph/curation.json",
     "Curation state and gaps for every active subnet.",
@@ -1129,6 +1141,15 @@ export const API_ROUTES = [
     "Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).",
     "standard",
     ["registry", "multi-network"],
+  ),
+  route(
+    "fixtures",
+    "GET",
+    "/api/v1/fixtures",
+    "/metagraph/fixtures.json",
+    "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+    "standard",
+    ["registry", "api-dx"],
   ),
   route(
     "curation",

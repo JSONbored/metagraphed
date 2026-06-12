@@ -43,6 +43,9 @@ const R2_ONLY_PATTERNS = [
   /^rpc\/pools\.json$/,
   /^rpc-endpoints\.json$/,
   /^schemas\/(?!index\.json$).+\.json$/,
+  // Per-surface captured live fixtures (issue #352) — R2-only like the schema
+  // detail; the committed fixtures.json index (below) lists what's available.
+  /^fixtures\/.+\.json$/,
   /^source-health\.json$/,
   /^source-snapshots\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\.json$/,
@@ -101,6 +104,9 @@ const DUAL_PATTERNS = [
   // churn (changes only with chain identities); committed + mirrored like the
   // other small contract digests.
   /^lineage\.json$/,
+  // Captured-fixtures index (issue #352): small, agent-facing list of which
+  // surfaces have a recorded live sample; the per-surface bodies stay R2-only.
+  /^fixtures\.json$/,
   /^types\.d\.ts$/,
 ];
 

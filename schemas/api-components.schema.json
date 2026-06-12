@@ -1968,6 +1968,74 @@
           }
         ]
       },
+      "FixturesIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "fixture_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixtures": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "captured_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "response_status": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "subnet_slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "netuid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "fixture_count",
+              "fixtures"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "FreshnessArtifact": {
         "allOf": [
           {

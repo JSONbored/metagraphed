@@ -17,6 +17,7 @@ import {
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
+  sanitizeFixtureBody,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -560,6 +561,50 @@ describe("buildSubnetLineageLinks", () => {
   test("returns [] for empty inputs", () => {
     assert.deepEqual(buildSubnetLineageLinks([], []), []);
     assert.deepEqual(buildSubnetLineageLinks(undefined, undefined), []);
+  });
+});
+
+describe("sanitizeFixtureBody (#352)", () => {
+  test("redacts sensitive keys anywhere in the tree", () => {
+    const out = sanitizeFixtureBody({
+      ok: true,
+      api_key: "sk-live-123",
+      nested: { authorization: "Bearer abc", access_token: "xyz", value: 1 },
+      list: [{ password: "p", keep: "ok" }],
+    });
+    assert.equal(out.api_key, "[redacted]");
+    assert.equal(out.nested.authorization, "[redacted]");
+    assert.equal(out.nested.access_token, "[redacted]");
+    assert.equal(out.nested.value, 1);
+    assert.equal(out.list[0].password, "[redacted]");
+    assert.equal(out.list[0].keep, "ok");
+    assert.equal(out.ok, true);
+  });
+  test("strips credentials from URL strings", () => {
+    const out = sanitizeFixtureBody({
+      url: "https://user:secret@api.example.io/x?token=abc",
+    });
+    assert.ok(!out.url.includes("secret"));
+    assert.ok(!out.url.includes("token=abc"));
+  });
+  test("bounds array length, string length, depth, and key count", () => {
+    const out = sanitizeFixtureBody(
+      {
+        big: "x".repeat(50),
+        arr: Array.from({ length: 10 }, (_, i) => i),
+        deep: { a: { b: { c: { d: "too deep" } } } },
+      },
+      { maxArray: 3, maxString: 10, maxDepth: 2, maxKeys: 60 },
+    );
+    assert.ok(out.big.endsWith("…[truncated]"));
+    assert.equal(out.arr.length, 4); // 3 + a "+N more" marker
+    assert.match(out.arr[3], /\+7 more/);
+    assert.equal(out.deep.a.b, "[truncated: max depth]");
+  });
+  test("passes through primitives and tolerates non-objects", () => {
+    assert.equal(sanitizeFixtureBody(42), 42);
+    assert.equal(sanitizeFixtureBody(null), null);
+    assert.equal(sanitizeFixtureBody("plain"), "plain");
   });
 });
 

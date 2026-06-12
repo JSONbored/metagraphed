@@ -1533,6 +1533,36 @@
             "additionalProperties": true
           }
         ]
+      },
+      "FixturesIndexArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["fixture_count", "fixtures"],
+            "properties": {
+              "published_at": { "type": ["string", "null"] },
+              "fixture_count": { "type": "integer", "minimum": 0 },
+              "fixtures": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["surface_id", "netuid"],
+                  "properties": {
+                    "surface_id": { "type": "string" },
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "subnet_slug": { "type": ["string", "null"] },
+                    "kind": { "type": "string" },
+                    "captured_at": { "type": ["string", "null"] },
+                    "response_status": { "type": ["integer", "null"] }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
       }
     }
   }

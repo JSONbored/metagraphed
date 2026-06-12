@@ -221,6 +221,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/fixtures",
+    (body) => {
+      assert.equal(typeof body.data.fixture_count, "number");
+      assert.equal(Array.isArray(body.data.fixtures), true);
+    },
+  ],
+  [
     "/api/v1/review/gaps?limit=3",
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],
