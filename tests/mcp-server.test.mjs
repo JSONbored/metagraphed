@@ -743,3 +743,95 @@ describe("MCP end-to-end through the Worker dispatch", () => {
     assert.ok(body.result.structuredContent.service_count >= 1);
   });
 });
+
+describe("MCP AI tools (semantic_search + ask)", () => {
+  // Minimal AI bindings: embed → 1024-d vector, vector query → subnet matches,
+  // completion → cited answer. Kill-switch on so aiEnabled() is satisfied.
+  function aiEnv() {
+    return {
+      METAGRAPH_ENABLE_AI: "true",
+      AI: {
+        run(model, input) {
+          if (Array.isArray(input?.text) || typeof input?.text === "string") {
+            const n = Array.isArray(input.text) ? input.text.length : 1;
+            return Promise.resolve({
+              data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
+            });
+          }
+          return Promise.resolve({ response: "Subnet 1 exposes an API [1]." });
+        },
+      },
+      VECTORIZE: {
+        query() {
+          return Promise.resolve({
+            matches: [
+              {
+                id: "subnet:1",
+                score: 0.88,
+                metadata: {
+                  type: "subnet",
+                  netuid: 1,
+                  slug: "sn-1",
+                  title: "Apex",
+                  subtitle: "text generation",
+                  url: "https://api.metagraph.sh/api/v1/subnets/1/overview",
+                },
+              },
+            ],
+          });
+        },
+      },
+    };
+  }
+
+  test("semantic_search returns isError without the AI layer", async () => {
+    const res = await callTool("semantic_search", { query: "images" });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ai_unavailable/);
+  });
+
+  test("ask returns isError without the AI layer", async () => {
+    const res = await callTool("ask", { question: "which subnet?" });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ai_unavailable/);
+  });
+
+  test("semantic_search returns ranked matches when AI is enabled", async () => {
+    const res = await callTool(
+      "semantic_search",
+      { query: "generate text", limit: 5 },
+      { env: aiEnv() },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.query, "generate text");
+    assert.equal(out.results[0].netuid, 1);
+  });
+
+  test("ask returns a grounded answer with citations when AI is enabled", async () => {
+    const res = await callTool(
+      "ask",
+      { question: "Which subnet exposes an API?" },
+      { env: aiEnv() },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.ok(out.answer.length > 0);
+    assert.equal(out.citations[0].netuid, 1);
+  });
+
+  test("semantic_search rejects a blank query with a clean tool error", async () => {
+    const res = await callTool(
+      "semantic_search",
+      { query: "   " },
+      { env: aiEnv() },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params|non-empty/);
+  });
+});

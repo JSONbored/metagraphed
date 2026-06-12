@@ -44,12 +44,15 @@ contract. No new authority, no new pipeline.
 
 3. **Remote MCP server** (AI-2). `POST /mcp` is a **stateless** Model Context
    Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.mjs`. It
-   exposes nine read-only tools (`search_subnets`,
+   exposes eleven read-only tools (`search_subnets`,
    `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`,
    `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,
-   `get_best_rpc_endpoint`, `registry_summary`) that are thin wrappers over the
-   same artifact/KV readers the REST routes use (injected as dependencies, so
-   the module stays pure and the resolution is identical).
+   `get_best_rpc_endpoint`, `registry_summary`, `semantic_search`, `ask`) that
+   are thin wrappers over the same artifact/KV readers (and, for the last two,
+   the AI search/RAG layer) the REST routes use (injected as dependencies, so
+   the module stays pure and the resolution is identical). `semantic_search`
+   and `ask` require the AI bindings; they degrade to a graceful `isError`
+   result (pointing at the keyword tools) when the AI layer is unavailable.
 
 ## Rationale for the key choices
 

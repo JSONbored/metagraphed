@@ -5,7 +5,7 @@
       "listChanged": false
     }
   },
-  "description": "metagraphed is the operational + integration registry for Bittensor subnets: what each of the ~129 subnets exposes (APIs, docs, schemas), whether those surfaces are healthy, and how to call them. Use search_subnets / find_subnets_by_capability to discover, get_subnet / get_subnet_health for detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. All data is public and read-only.",
+  "description": "metagraphed is the operational + integration registry for Bittensor subnets: what each of the ~129 subnets exposes (APIs, docs, schemas), whether those surfaces are healthy, and how to call them. Use search_subnets / find_subnets_by_capability to discover by keyword/capability, semantic_search to discover by intent (meaning-based), and ask for a grounded natural-language answer with citations; get_subnet / get_subnet_health for detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. All data is public and read-only.",
   "documentation": "https://api.metagraph.sh/llms.txt",
   "endpoint": "https://api.metagraph.sh/mcp",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -184,6 +184,48 @@
       },
       "name": "registry_summary",
       "title": "Get the registry-wide summary"
+    },
+    {
+      "description": "Meaning-based (vector) search across Bittensor subnets, surfaces, and providers. Unlike search_subnets' keyword match, this understands intent — 'generate images from a prompt', 'stream live price data' — and ranks by semantic similarity. Returns netuid/slug/title/description/url per hit. Requires the AI layer; fall back to search_subnets when it is not available.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "Max results (1-20, default 10).",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Natural-language intent, e.g. 'summarize long documents'.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "semantic_search",
+      "title": "Semantic search across the registry"
+    },
+    {
+      "description": "Natural-language Q&A grounded in the registry (RAG). Retrieves the most relevant subnets/surfaces and answers from them with bracketed [n] citations — e.g. 'Which subnets expose an inference API I can call today?'. Returns the answer plus its citations. Requires the AI layer.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "description": "A question about Bittensor subnets or the registry as a whole.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "type": "object"
+      },
+      "name": "ask",
+      "title": "Ask a grounded question about the registry"
     }
   ],
   "transport": "streamable-http",

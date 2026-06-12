@@ -13,6 +13,7 @@
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import { overlayRpcPoolEligibility } from "./health-serving.mjs";
+import { aiEnabled, semanticSearch, askQuestion } from "./ai-search.mjs";
 
 // Protocol versions we understand. We echo the client's requested version when
 // it is one of these, otherwise we answer with our latest.
@@ -29,8 +30,10 @@ export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
   "what each of the ~129 subnets exposes (APIs, docs, schemas), whether those " +
   "surfaces are healthy, and how to call them. Use search_subnets / " +
-  "find_subnets_by_capability to discover, get_subnet / get_subnet_health for " +
-  "detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
+  "find_subnets_by_capability to discover by keyword/capability, semantic_search " +
+  "to discover by intent (meaning-based), and ask for a grounded natural-" +
+  "language answer with citations; get_subnet / get_subnet_health for detail, " +
+  "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
   "All data is public and read-only.";
 
@@ -68,6 +71,30 @@ async function loadArtifactData(ctx, artifactPath) {
     );
   }
   return result.data;
+}
+
+// AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
+// the kill-switch on. In a cold/CI env they degrade to a graceful isError result
+// pointing at the keyword fallback, never a transport error.
+function requireAi(ctx) {
+  if (!aiEnabled(ctx.env)) {
+    throw toolError(
+      "ai_unavailable",
+      "The AI layer is not enabled in this environment. Use search_subnets / " +
+        "find_subnets_by_capability for keyword discovery instead.",
+    );
+  }
+}
+
+// Run an ai-search call, mapping its input-validation errors to tool errors so
+// they surface as a clean isError result instead of a thrown transport error.
+async function runAi(fn) {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error?.aiInput) throw toolError("invalid_params", error.message);
+    throw error;
+  }
 }
 
 function requireNetuid(args) {
@@ -456,6 +483,70 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadArtifactData(ctx, "/metagraph/registry-summary.json");
+    },
+  },
+  {
+    name: "semantic_search",
+    title: "Semantic search across the registry",
+    description:
+      "Meaning-based (vector) search across Bittensor subnets, surfaces, and " +
+      "providers. Unlike search_subnets' keyword match, this understands intent " +
+      "— 'generate images from a prompt', 'stream live price data' — and ranks " +
+      "by semantic similarity. Returns netuid/slug/title/description/url per " +
+      "hit. Requires the AI layer; fall back to search_subnets when it is not " +
+      "available.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Natural-language intent, e.g. 'summarize long documents'.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max results (1-20, default 10).",
+          minimum: 1,
+          maximum: 20,
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      requireAi(ctx);
+      const query = requireString(args, "query");
+      return runAi(() =>
+        semanticSearch(ctx.env, query, { limit: args?.limit }),
+      );
+    },
+  },
+  {
+    name: "ask",
+    title: "Ask a grounded question about the registry",
+    description:
+      "Natural-language Q&A grounded in the registry (RAG). Retrieves the most " +
+      "relevant subnets/surfaces and answers from them with bracketed [n] " +
+      "citations — e.g. 'Which subnets expose an inference API I can call " +
+      "today?'. Returns the answer plus its citations. Requires the AI layer.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description:
+            "A question about Bittensor subnets or the registry as a whole.",
+        },
+      },
+      required: ["question"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      requireAi(ctx);
+      const question = requireString(args, "question");
+      return runAi(() =>
+        askQuestion(ctx.env, question, {}, { readArtifact: ctx.readArtifact }),
+      );
     },
   },
 ];

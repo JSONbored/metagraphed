@@ -145,6 +145,23 @@ if (schemaService) {
   );
 }
 
+// --- AI tools degrade gracefully without the AI bindings -------------------
+// semantic_search + ask need VECTORIZE + AI, absent in this cold env. They must
+// return a clean isError result (pointing at the keyword fallback), never throw.
+
+const semanticCold = await call("semantic_search", { query: "image generation" });
+assert.equal(
+  semanticCold.isError,
+  true,
+  "semantic_search must isError without the AI layer",
+);
+const askCold = await call("ask", { question: "Which subnet exposes an API?" });
+assert.equal(
+  askCold.isError,
+  true,
+  "ask must isError without the AI layer",
+);
+
 // --- Negative paths --------------------------------------------------------
 
 const unknownMethod = await mcp({
