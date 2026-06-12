@@ -10,7 +10,10 @@
 // credentialed leaks into the exports.
 
 // RFC-4180: quote any field containing a comma, quote, or newline and double
-// embedded quotes; coerce null/undefined to empty; join arrays.
+// embedded quotes; coerce null/undefined to empty; join arrays. Prefix text
+// cells that spreadsheet apps may interpret as formulas when opened from CSV.
+const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+
 export function csvValue(value) {
   if (value === null || value === undefined) {
     return "";
@@ -20,7 +23,10 @@ export function csvValue(value) {
     : typeof value === "object"
       ? JSON.stringify(value)
       : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const safeText = SPREADSHEET_FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  return /[",\r\n]/.test(safeText)
+    ? `"${safeText.replace(/"/g, '""')}"`
+    : safeText;
 }
 
 export function toCsv(columns, rows) {

