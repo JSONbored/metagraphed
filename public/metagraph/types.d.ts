@@ -2465,6 +2465,7 @@ export interface components {
             /** Format: uri */
             docs_url?: string | null;
             gap_count?: number;
+            integration_readiness?: number;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
             /** Format: uri */
@@ -2524,6 +2525,7 @@ export interface components {
             /** @enum {unknown} */
             identity_level: "none" | "directory" | "partial" | "complete";
             identity_surface_count: number;
+            integration_readiness?: number;
             interface_count?: number;
             missing_critical_count: number;
             missing_identity: components["schemas"]["SurfaceKind"][];
@@ -2544,6 +2546,7 @@ export interface components {
             profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             project_name: string;
             provenance: components["schemas"]["SubnetProfileProvenance"];
+            readiness?: components["schemas"]["IntegrationReadiness"];
             review_state: components["schemas"]["ReviewState"];
             slug: string;
             status: components["schemas"]["SubnetStatus"];

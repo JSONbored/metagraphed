@@ -6614,6 +6614,11 @@
             "minimum": 0,
             "type": "integer"
           },
+          "integration_readiness": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
           "lifecycle": {
             "enum": [
               "active",
@@ -6869,6 +6874,11 @@
             "minimum": 0,
             "type": "integer"
           },
+          "integration_readiness": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
           "interface_count": {
             "minimum": 0,
             "type": "integer"
@@ -6952,6 +6962,9 @@
           },
           "provenance": {
             "$ref": "#/components/schemas/SubnetProfileProvenance"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/IntegrationReadiness"
           },
           "review_state": {
             "$ref": "#/components/schemas/ReviewState"

@@ -390,6 +390,55 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   subnets: mergedSubnets,
   surfaces,
 });
+
+// Service-resolution indices: join surfaces ↔ their captured schema snapshot and
+// live endpoint record by surface_id. Declared here (ahead of the index/profile
+// writes) because integration readiness consumes them via buildSubnetServices;
+// the agent-catalog and per-subnet overview below reuse the same maps.
+const AGENT_SERVICE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
+const overviewSurfacesByNetuid = groupByNetuid(surfaces);
+const agentSchemaBySurfaceId = new Map(
+  (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
+);
+const agentEndpointBySurfaceId = new Map(
+  endpointResources.endpoints
+    .filter((endpoint) => endpoint.surface_id)
+    .map((endpoint) => [endpoint.surface_id, endpoint]),
+);
+
+// Integration readiness (objective 0-100) for EVERY subnet — surfaced inline on
+// the index + profiles, not just the agent-catalog, so the score answering "is
+// this subnet worth integrating" lives on the surfaces agents actually land on.
+// Read-only derived signal: it never feeds completeness_score or curation gaps,
+// so the SN74 curation flywheel is untouched.
+const READINESS_VERSION = 1;
+const readinessByNetuid = new Map(
+  mergedSubnets.map((subnet) => [
+    subnet.netuid,
+    subnetIntegrationReadiness({
+      services: buildSubnetServices(subnet.netuid),
+      lifecycle: subnet.lifecycle,
+      completenessScore: profileArtifacts.byNetuid.get(subnet.netuid)
+        ?.completeness_score,
+    }),
+  ]),
+);
+// Index gets the compact score (list/ranking); the profile carries the full
+// component breakdown for the detail view.
+for (const entry of subnetIndex) {
+  entry.integration_readiness =
+    readinessByNetuid.get(entry.netuid)?.score ?? 0;
+}
+for (const profile of profileArtifacts.profiles) {
+  const readiness = readinessByNetuid.get(profile.netuid) ?? null;
+  profile.integration_readiness = readiness?.score ?? 0;
+  profile.readiness = readiness;
+}
 const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
   candidates: canonicalCandidateIndex,
   curationReview,
@@ -682,7 +731,6 @@ const overviewGapsByNetuid = new Map(
 const overviewGapPriorities = groupByNetuid(
   curationReview.gap_priorities || [],
 );
-const overviewSurfacesByNetuid = groupByNetuid(surfaces);
 const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
 const overviewCandidatesByNetuid = groupByNetuid(candidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
@@ -715,20 +763,9 @@ for (const subnet of mergedSubnets) {
 // Global file is a compact index (dual/committed); per-subnet files carry the
 // full service detail (R2). Health here is the 6h-build snapshot; the MCP tool +
 // serving layer can overlay the live 2-minute health.
-const AGENT_SERVICE_KINDS = new Set([
-  "subnet-api",
-  "openapi",
-  "sse",
-  "data-artifact",
-]);
-const agentSchemaBySurfaceId = new Map(
-  (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
-);
-const agentEndpointBySurfaceId = new Map(
-  endpointResources.endpoints
-    .filter((endpoint) => endpoint.surface_id)
-    .map((endpoint) => [endpoint.surface_id, endpoint]),
-);
+// AGENT_SERVICE_KINDS + agentSchemaBySurfaceId + agentEndpointBySurfaceId are
+// declared earlier (service-resolution indices, alongside integration readiness)
+// and reused here.
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
@@ -779,8 +816,6 @@ function buildSubnetServices(netuid) {
     .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
 }
 
-const READINESS_VERSION = 1;
-
 // Codified, OBJECTIVE "can a developer build on this subnet today" score
 // (0-100), composed only from deterministic build-time signals — never the live
 // 2-minute prober — so it stays a reproducible committed value. The live "is it
@@ -819,11 +854,8 @@ let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = buildSubnetServices(subnet.netuid);
-  const readiness = subnetIntegrationReadiness({
-    services,
-    lifecycle: subnet.lifecycle,
-    completenessScore: profile?.completeness_score,
-  });
+  // Reuse the readiness computed once above for the index/profile surfaces.
+  const readiness = readinessByNetuid.get(subnet.netuid);
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
