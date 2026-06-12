@@ -58,3 +58,8 @@ so Lovable's visual edits stay non-conflicting. App code under `src/` is fair ga
 The roadmap and most issues are tracked in the
 **[metagraphed](https://github.com/JSONbored/metagraphed/issues)** backend repo. Open
 **UI-specific** issues (rendering, routing, accessibility, design) in this repo.
+
+## License
+
+By contributing you agree your work is released under this repository's
+[AGPL-3.0 License](./LICENSE).

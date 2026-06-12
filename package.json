@@ -1,6 +1,7 @@
 {
   "name": "metagraphed-ui",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "sideEffects": false,
   "type": "module",
   "scripts": {
