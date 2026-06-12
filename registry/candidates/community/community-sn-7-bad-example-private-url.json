@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  },
+  "candidates": [
+    {
+      "schema_version": 1,
+      "id": "community-sn-7-bad-example-private-url",
+      "netuid": 7,
+      "state": "schema-valid",
+      "name": "Teaching example — rejected (private/localhost URL)",
+      "kind": "website",
+      "url": "http://localhost:3000/dashboard",
+      "source_url": "https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md",
+      "source_urls": [
+        "https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md"
+      ],
+      "source_type": "community-pr-intake",
+      "source_tier": "community-docs",
+      "confidence": "low",
+      "provider": "allways",
+      "auth_required": false,
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "INTENTIONAL teaching example of a rejected submission: the url is a private/localhost address, which is not a public surface. The review gate should close this as private-or-unsafe-url. Not for merge."
+    }
+  ]
+}
