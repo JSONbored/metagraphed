@@ -2493,6 +2493,8 @@ export interface components {
             discord_url?: string | null;
             /** Format: uri */
             docs_url?: string | null;
+            /** @description True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness. */
+            first_party?: boolean;
             gap_count?: number;
             integration_readiness?: number;
             /** @enum {string} */
@@ -2506,9 +2508,13 @@ export interface components {
             native_name_quality?: "chain" | "placeholder" | "empty";
             native_slug?: string | null;
             netuid: number;
+            /** @description Count of operator-official (first-party) curated surfaces for this subnet. */
+            official_surface_count?: number;
             participant_count?: number;
             probed_surface_count?: number;
             registered_at_block?: number;
+            /** @description Count of low-trust registry-observed (harvested) surfaces for this subnet. */
+            registry_observed_count?: number;
             slug: string;
             /** Format: uri */
             source_repo?: string | null;

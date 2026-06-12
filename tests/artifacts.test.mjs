@@ -818,6 +818,41 @@ test("public artifacts are internally consistent", () => {
     providersWithNetuids > 0,
     "expected providers to be linked to the subnets they operate",
   );
+
+  // Honest first-party substrate (issue #348): per-subnet official /
+  // registry-observed counts + first_party flag, reconciled with coverage.
+  let indexOfficialSum = 0;
+  let firstPartySubnets = 0;
+  for (const entry of subnets.subnets) {
+    assert.equal(typeof entry.official_surface_count, "number");
+    assert.equal(typeof entry.registry_observed_count, "number");
+    assert.equal(
+      entry.first_party,
+      entry.official_surface_count > 0,
+      `subnet ${entry.netuid}: first_party must mean official_surface_count > 0`,
+    );
+    indexOfficialSum += entry.official_surface_count;
+    if (entry.first_party) firstPartySubnets += 1;
+  }
+  assert.equal(
+    indexOfficialSum,
+    coverage.official_surface_count,
+    "coverage official_surface_count must equal the sum across the index",
+  );
+  assert.equal(
+    firstPartySubnets,
+    coverage.first_party_subnet_count,
+    "coverage first_party_subnet_count must match the index",
+  );
+  assert.equal(
+    coverage.subnets_without_official_surface,
+    subnets.subnets.length - firstPartySubnets,
+    "subnets_without_official_surface is the curation-target count",
+  );
+  assert.ok(
+    coverage.official_surface_count < coverage.surface_count,
+    "first-party surfaces must be an honest subset of all surfaces",
+  );
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");
   const facetSum = Object.values(coverage.domain_coverage).reduce(

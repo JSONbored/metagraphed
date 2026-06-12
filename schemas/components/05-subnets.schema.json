@@ -178,6 +178,20 @@
           "description": {
             "type": ["string", "null"]
           },
+          "first_party": {
+            "type": "boolean",
+            "description": "True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness."
+          },
+          "official_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of operator-official (first-party) curated surfaces for this subnet."
+          },
+          "registry_observed_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of low-trust registry-observed (harvested) surfaces for this subnet."
+          },
           "lifecycle": {
             "type": "string",
             "enum": ["active", "deprecated", "parked", "pending"]
