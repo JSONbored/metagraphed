@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-4-sdk-github-com",
+      "kind": "sdk",
+      "name": "Targon serverless Python SDK",
+      "netuid": 4,
+      "provider": "targon",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://raw.githubusercontent.com/manifold-inc/targon-sdk/main/README.md",
+      "source_urls": ["https://raw.githubusercontent.com/manifold-inc/targon-sdk/main/README.md"],
+      "state": "schema-valid",
+      "url": "https://github.com/manifold-inc/targon-sdk"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
