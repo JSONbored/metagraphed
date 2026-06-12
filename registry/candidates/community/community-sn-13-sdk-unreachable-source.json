@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-13-sdk-unreachable-source",
+      "kind": "sdk",
+      "name": "Macrocosmos subnet SDK (unverifiable source)",
+      "netuid": 13,
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/macrocosm-os/this-repo-does-not-exist-mg-close-404",
+      "source_urls": ["https://github.com/macrocosm-os/this-repo-does-not-exist-mg-close-404"],
+      "state": "schema-valid",
+      "url": "https://github.com/opentensor/bittensor"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
