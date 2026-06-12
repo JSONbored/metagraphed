@@ -11,6 +11,7 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import { overlayRpcPoolEligibility } from "./health-serving.mjs";
 import {
@@ -758,6 +759,10 @@ export const MCP_TOOLS = [
           required: Boolean(s.auth_required),
           schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
         },
+        // Ready-to-run curl/Python/TS for a first call (issue #351), generated
+        // at build time from base_url + auth. Falls back to on-the-fly
+        // generation for older catalogs that predate the field.
+        snippets: s.snippets || generateServiceSnippets(s) || null,
         schema: s.schema_artifact
           ? {
               available: true,

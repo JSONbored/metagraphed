@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
   backfilledIdentityUrl,
   buildSubnetLineageLinks,
@@ -1043,6 +1044,10 @@ function buildSubnetServices(netuid) {
       const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;
       const schema = agentSchemaBySurfaceId.get(surface.id) || null;
       const classification = endpoint?.classification || null;
+      const authRequired = Boolean(
+        surface.auth_required || schema?.snapshot?.auth_required,
+      );
+      const authSchemes = schema?.snapshot?.auth_schemes || [];
       return {
         surface_id: surface.id,
         kind: surface.kind,
@@ -1054,10 +1059,15 @@ function buildSubnetServices(netuid) {
         // Trust the captured spec's securitySchemes over the (often-unset)
         // curated flag: if the upstream OpenAPI declares auth, the agent needs a
         // credential (fixes Chutes etc. that declared apiKey yet showed false).
-        auth_required: Boolean(
-          surface.auth_required || schema?.snapshot?.auth_required,
-        ),
-        auth_schemes: schema?.snapshot?.auth_schemes || [],
+        auth_required: authRequired,
+        auth_schemes: authSchemes,
+        // Copy-paste curl/Python/TS that GETs this surface, auth header
+        // pre-filled from the declared scheme (issue #351). Reporting-only.
+        snippets: generateServiceSnippets({
+          base_url: surface.url,
+          auth_required: authRequired,
+          auth_schemes: authSchemes,
+        }),
         schema_url: surface.schema_url || null,
         schema_status: surface.schema_status || null,
         schema_artifact: schema?.path || null,

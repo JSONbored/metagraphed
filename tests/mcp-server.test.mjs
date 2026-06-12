@@ -1032,6 +1032,15 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.deepEqual(out.services[0].auth.schemes, ["apiKey"]);
     assert.equal(out.services[0].schema.available, true);
     assert.match(out.services[0].schema.fetch_with, /get_api_schema/);
+    // ready-to-run snippets (#351): curl/python/typescript for a first call
+    assert.ok(out.services[0].snippets, "expected integration snippets");
+    assert.match(
+      out.services[0].snippets.curl,
+      /^curl -sS 'https:\/\/api\.data\.io'/,
+    );
+    assert.match(out.services[0].snippets.curl, /X-API-Key: YOUR_API_KEY/);
+    assert.match(out.services[0].snippets.python, /import requests/);
+    assert.match(out.services[0].snippets.typescript, /await fetch/);
     assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
   });
 
