@@ -824,6 +824,73 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.equal(out.citations[0].netuid, 1);
   });
 
+  test("semantic_search applies the AI rate limiter before embedding", async () => {
+    const env = aiEnv();
+    let limiterKey;
+    let aiRuns = 0;
+    env.AI.run = () => {
+      aiRuns += 1;
+      return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
+    };
+    env.AI_RATE_LIMITER = {
+      async limit({ key }) {
+        limiterKey = key;
+        return { success: false };
+      },
+    };
+
+    const res = await callTool(
+      "semantic_search",
+      { query: "generate text" },
+      { env },
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rate_limited/);
+    assert.equal(limiterKey, "semantic:anonymous");
+    assert.equal(aiRuns, 0);
+  });
+
+  test("ask applies the AI rate limiter to each JSON-RPC batch item", async () => {
+    const env = aiEnv();
+    let limiterCalls = 0;
+    let aiRuns = 0;
+    env.AI.run = () => {
+      aiRuns += 1;
+      return Promise.resolve({ response: "should not run" });
+    };
+    env.AI_RATE_LIMITER = {
+      async limit({ key }) {
+        limiterCalls += 1;
+        assert.equal(key, "ask:anonymous");
+        return { success: false };
+      },
+    };
+
+    const res = await rpc(
+      Array.from({ length: MAX_MCP_BATCH_LENGTH }, (_, index) => ({
+        jsonrpc: "2.0",
+        id: index + 1,
+        method: "tools/call",
+        params: {
+          name: "ask",
+          arguments: { question: `Which subnet? ${index}` },
+        },
+      })),
+      { env },
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, MAX_MCP_BATCH_LENGTH);
+    assert.equal(limiterCalls, MAX_MCP_BATCH_LENGTH);
+    assert.equal(aiRuns, 0);
+    for (const response of res.body) {
+      assert.equal(response.result.isError, true);
+      assert.match(response.result.content[0].text, /rate_limited/);
+    }
+  });
+
   test("semantic_search rejects a blank query with a clean tool error", async () => {
     const res = await callTool(
       "semantic_search",
