@@ -784,6 +784,13 @@ test("public artifacts are internally consistent", () => {
     "x.com",
     "twitter.com",
   ]);
+  const GENERIC_CLUSTER_HOST_SUFFIXES = [
+    "github.io",
+    "pages.dev",
+    "workers.dev",
+    "vercel.app",
+    "netlify.app",
+  ];
   let providersWithNetuids = 0;
   for (const provider of providersArtifact.providers) {
     assert.ok(
@@ -813,6 +820,14 @@ test("public artifacts are internally consistent", () => {
     assert.ok(
       !GENERIC_CLUSTER_HOSTS.has(provider.cluster_id),
       `provider ${provider.id}: cluster_id must not be a generic host`,
+    );
+    assert.ok(
+      !GENERIC_CLUSTER_HOST_SUFFIXES.some(
+        (suffix) =>
+          provider.cluster_id === suffix ||
+          provider.cluster_id.endsWith(`.${suffix}`),
+      ),
+      `provider ${provider.id}: cluster_id must not be a multi-tenant host`,
     );
     if (provider.netuids.length) providersWithNetuids += 1;
   }

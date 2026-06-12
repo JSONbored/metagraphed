@@ -1054,17 +1054,115 @@ export function buildSubnetLineageLinks(sourceSubnets, targetSubnets) {
   );
 }
 
-// Naive registrable domain (eTLD+1 by last-two-labels) of a URL, for the
-// provider shared-team cluster heuristic (issue #347). Good enough for the
-// .io/.ai/.com domains Bittensor teams use; not PSL-accurate for multi-part
-// TLDs. Returns null on unparseable input.
+// Public/private suffixes that make the last-two-label heuristic unsafe for
+// provider shared-team clustering. This deliberately covers common multi-label
+// Public Suffix List rules and private multi-tenant hosts used for documentation
+// or app/site hosting; matched hosts cluster on the tenant label, not the shared
+// suffix (for example team-a.co.uk, not co.uk).
+const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
+  "ac.uk",
+  "co.uk",
+  "gov.uk",
+  "ltd.uk",
+  "me.uk",
+  "net.uk",
+  "nhs.uk",
+  "org.uk",
+  "plc.uk",
+  "sch.uk",
+  "asn.au",
+  "com.au",
+  "edu.au",
+  "gov.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "geek.nz",
+  "gen.nz",
+  "govt.nz",
+  "iwi.nz",
+  "maori.nz",
+  "net.nz",
+  "org.nz",
+  "school.nz",
+  "ac.jp",
+  "co.jp",
+  "ed.jp",
+  "go.jp",
+  "gr.jp",
+  "ne.jp",
+  "or.jp",
+  "com.br",
+  "com.cn",
+  "com.hk",
+  "com.mx",
+  "com.sg",
+  "com.tr",
+  "com.tw",
+  "co.in",
+  "co.kr",
+  "co.za",
+  "github.io",
+  "pages.dev",
+  "workers.dev",
+  "vercel.app",
+  "netlify.app",
+  "web.app",
+  "firebaseapp.com",
+  "herokuapp.com",
+  "fly.dev",
+  "glitch.me",
+  "repl.co",
+  "webflow.io",
+]);
+
+const CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([
+  "ac",
+  "co",
+  "com",
+  "edu",
+  "go",
+  "gov",
+  "net",
+  "ne",
+  "or",
+  "org",
+]);
+
+function clusterSuffixDomain(host) {
+  const labels = host.split(".").filter(Boolean);
+  if (labels.length < 2) return host || null;
+  for (
+    let suffixLabelCount = labels.length;
+    suffixLabelCount >= 2;
+    suffixLabelCount -= 1
+  ) {
+    const suffix = labels.slice(-suffixLabelCount).join(".");
+    if (CLUSTER_MULTI_LABEL_SUFFIXES.has(suffix)) {
+      return labels.length > suffixLabelCount
+        ? labels.slice(-(suffixLabelCount + 1)).join(".")
+        : null;
+    }
+  }
+  const [secondLevel, topLevel] = labels.slice(-2);
+  if (
+    labels.length >= 3 &&
+    topLevel.length === 2 &&
+    CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS.has(secondLevel)
+  ) {
+    return labels.slice(-3).join(".");
+  }
+  return labels.slice(-2).join(".");
+}
+
+// Registrable domain (eTLD+1) of a URL, for the provider shared-team cluster
+// heuristic (issue #347). Returns null on unparseable input or bare shared
+// suffixes that cannot identify a provider team.
 export function clusterDomainFromUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
-    const labels = host.split(".").filter(Boolean);
-    if (labels.length >= 2) return labels.slice(-2).join(".");
-    return host || null;
+    return clusterSuffixDomain(host);
   } catch {
     return null;
   }

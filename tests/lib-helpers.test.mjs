@@ -564,7 +564,7 @@ describe("buildSubnetLineageLinks", () => {
 });
 
 describe("clusterDomainFromUrl", () => {
-  test("returns the last-two-label registrable domain", () => {
+  test("returns the registrable domain for ordinary team domains", () => {
     assert.equal(
       clusterDomainFromUrl("https://docs.all-ways.io/x"),
       "all-ways.io",
@@ -577,6 +577,31 @@ describe("clusterDomainFromUrl", () => {
       clusterDomainFromUrl("https://backprop.finance"),
       "backprop.finance",
     );
+  });
+
+  test("keeps the tenant label for multi-label public and private suffixes", () => {
+    assert.equal(
+      clusterDomainFromUrl("https://team-a.co.uk/docs"),
+      "team-a.co.uk",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://team-b.co.uk/docs"),
+      "team-b.co.uk",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://alice.github.io"),
+      "alice.github.io",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://bob.pages.dev"),
+      "bob.pages.dev",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://team.example.com.ar"),
+      "example.com.ar",
+    );
+    assert.equal(clusterDomainFromUrl("https://co.uk"), null);
+    assert.equal(clusterDomainFromUrl("https://github.io"), null);
   });
   test("returns null for non-URL / non-string input", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);

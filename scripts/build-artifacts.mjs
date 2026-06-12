@@ -664,7 +664,8 @@ const gapsIndex = mergedSubnets.map((subnet) => ({
 
 // Generic hosting/social domains that must NOT form a shared-team cluster — a
 // github.com repo URL is not a shared team. Providers on these fall back to
-// their own id (singleton cluster).
+// their own id (singleton cluster). Multi-tenant hosts are matched by suffix so
+// tenant pages like alice.github.io and bob.github.io cannot imply affiliation.
 const GENERIC_CLUSTER_HOSTS = new Set([
   "github.com",
   "gitlab.com",
@@ -682,6 +683,29 @@ const GENERIC_CLUSTER_HOSTS = new Set([
   "linktr.ee",
   "huggingface.co",
 ]);
+const GENERIC_CLUSTER_HOST_SUFFIXES = new Set([
+  "github.io",
+  "pages.dev",
+  "workers.dev",
+  "vercel.app",
+  "netlify.app",
+  "web.app",
+  "firebaseapp.com",
+  "herokuapp.com",
+  "fly.dev",
+  "glitch.me",
+  "repl.co",
+  "webflow.io",
+]);
+
+function isGenericClusterHost(host) {
+  return (
+    GENERIC_CLUSTER_HOSTS.has(host) ||
+    [...GENERIC_CLUSTER_HOST_SUFFIXES].some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`),
+    )
+  );
+}
 
 // Turn the flat provider directory into the supply-side map of the flywheel
 // (issue #347): attach the netuids each provider operates (from its curated
@@ -712,7 +736,7 @@ const enrichedProviders = providers.map((provider) => {
     surface_count: providerSurfaces.length,
     endpoint_count: (endpointsByProvider.get(provider.id) || []).length,
     cluster_id:
-      clusterDomain && !GENERIC_CLUSTER_HOSTS.has(clusterDomain)
+      clusterDomain && !isGenericClusterHost(clusterDomain)
         ? clusterDomain
         : provider.id,
   };
