@@ -61,6 +61,9 @@ const SUBNET_COLUMNS = [
   "docs_url",
   "dashboard_url",
   "logo_url",
+  "contact_present",
+  "discord",
+  "discord_url",
   "categories",
   "description",
 ];

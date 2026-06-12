@@ -20,6 +20,8 @@ import {
   backfilledIdentityUrl,
   buildTimestamp,
   cleanDescription,
+  nativeContactHandle,
+  nativeContactUrl,
   nativeDisplayName,
   nativeNameQuality,
   readJson,
@@ -144,15 +146,22 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
 }
 
 // Projection identical to the mainnet subnetIndex map in build-artifacts.mjs.
-function buildIndexEntry(subnet) {
+// chainIdentity is the raw on-chain identity for the same netuid: the contact
+// fields (issue #344) are index-only, so they are computed here rather than
+// carried on the full subnet record (which the per-subnet detail embeds).
+function buildIndexEntry(subnet, chainIdentity) {
+  const discordContact = nativeContactHandle(chainIdentity?.discord);
   return {
     block: subnet.block,
     candidate_count: subnet.candidate_count,
     categories: subnet.categories,
+    contact_present: Boolean(chainIdentity?.contact_present),
     coverage_level: subnet.coverage_level,
     curation_level: subnet.curation.level,
     dashboard_url: subnet.dashboard_url,
     description: subnet.description,
+    discord: discordContact,
+    discord_url: nativeContactUrl(discordContact),
     docs_url: subnet.docs_url,
     gap_count: subnet.gaps.missing_kinds.length,
     lifecycle: subnet.lifecycle,
@@ -218,6 +227,12 @@ export async function buildNetworkRegistry({ prefix, snapshotPath }) {
   const subnets = snapshot.subnets
     .map((nativeSubnet) => buildNativeSubnet(nativeSubnet, snapshot))
     .sort((a, b) => a.netuid - b.netuid);
+  const chainIdentityByNetuid = new Map(
+    snapshot.subnets.map((nativeSubnet) => [
+      nativeSubnet.netuid,
+      nativeSubnet.chain_identity,
+    ]),
+  );
 
   const indexPath = artifactOutputPath(`${prefix}/subnets.json`);
   await writeJson(indexPath, {
@@ -226,7 +241,9 @@ export async function buildNetworkRegistry({ prefix, snapshotPath }) {
     network: snapshot.network,
     source: snapshot.source,
     native_snapshot_captured_at: snapshot.captured_at,
-    subnets: subnets.map(buildIndexEntry),
+    subnets: subnets.map((subnet) =>
+      buildIndexEntry(subnet, chainIdentityByNetuid.get(subnet.netuid)),
+    ),
   });
 
   const detailDir = path.dirname(artifactOutputPath(`${prefix}/subnets/0.json`));

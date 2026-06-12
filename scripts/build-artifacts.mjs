@@ -23,6 +23,8 @@ import {
   loadProviders,
   loadSubnets,
   loadVerification,
+  nativeContactHandle,
+  nativeContactUrl,
   nativeDisplayName,
   nativeNameQuality,
   netuidForEvidenceClaim,
@@ -170,36 +172,57 @@ const capturedSchemaDocuments = new Map();
 
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
-const subnetIndex = mergedSubnets.map((subnet) => ({
-  block: subnet.block,
-  candidate_count: subnet.candidate_count,
-  categories: subnet.categories,
-  coverage_level: subnet.coverage_level,
-  curation_level: subnet.curation.level,
-  dashboard_url: subnet.dashboard_url,
-  description: subnet.description,
-  docs_url: subnet.docs_url,
-  gap_count: subnet.gaps.missing_kinds.length,
-  lifecycle: subnet.lifecycle,
-  logo_url: subnet.logo_url,
-  mechanism_count: subnet.mechanism_count,
-  name: subnet.name,
-  native_name: subnet.native_name,
-  native_name_quality: subnet.native_name_quality,
-  native_slug: subnet.native_slug,
-  netuid: subnet.netuid,
-  participant_count: subnet.participant_count,
-  probed_surface_count: subnet.probed_surface_count,
-  registered_at_block: subnet.registered_at_block,
-  slug: subnet.slug,
-  source_repo: subnet.source_repo,
-  status: subnet.status,
-  subnet_type: subnet.subnet_type,
-  surface_count: subnet.surface_count,
-  symbol: subnet.symbol,
-  tempo: subnet.tempo,
-  website_url: subnet.website_url,
-}));
+const nativeByNetuid = new Map(
+  chainSubnets.map((nativeSubnet) => [nativeSubnet.netuid, nativeSubnet]),
+);
+const subnetIndex = mergedSubnets.map((subnet) => {
+  // The Discord contact is on-chain (SubnetIdentitiesV3) and untrusted. Surface
+  // it on the lightweight index (issue #344) so an agent can answer "how do I
+  // reach this team" without fetching detail: `discord` is the allowlisted
+  // handle-or-URL (nativeContactHandle — scheme'd values pass the full
+  // public-URL guard, everything else must look like a plain handle) and
+  // `discord_url` is its explicit-URL subset. Display-only — these never feed
+  // completeness/readiness/gaps (the #343 flywheel-preservation gate). The
+  // overlay discord_url override is forward-compat: no curated overlay carries
+  // one yet, but when one does it wins over the chain value.
+  const chainIdentity = nativeByNetuid.get(subnet.netuid)?.chain_identity;
+  const discordContact = nativeContactHandle(chainIdentity?.discord);
+  return {
+    block: subnet.block,
+    candidate_count: subnet.candidate_count,
+    categories: subnet.categories,
+    contact_present: Boolean(chainIdentity?.contact_present),
+    coverage_level: subnet.coverage_level,
+    curation_level: subnet.curation.level,
+    dashboard_url: subnet.dashboard_url,
+    description: subnet.description,
+    discord: discordContact,
+    discord_url:
+      overlayByNetuid.get(subnet.netuid)?.discord_url ||
+      nativeContactUrl(discordContact),
+    docs_url: subnet.docs_url,
+    gap_count: subnet.gaps.missing_kinds.length,
+    lifecycle: subnet.lifecycle,
+    logo_url: subnet.logo_url,
+    mechanism_count: subnet.mechanism_count,
+    name: subnet.name,
+    native_name: subnet.native_name,
+    native_name_quality: subnet.native_name_quality,
+    native_slug: subnet.native_slug,
+    netuid: subnet.netuid,
+    participant_count: subnet.participant_count,
+    probed_surface_count: subnet.probed_surface_count,
+    registered_at_block: subnet.registered_at_block,
+    slug: subnet.slug,
+    source_repo: subnet.source_repo,
+    status: subnet.status,
+    subnet_type: subnet.subnet_type,
+    surface_count: subnet.surface_count,
+    symbol: subnet.symbol,
+    tempo: subnet.tempo,
+    website_url: subnet.website_url,
+  };
+});
 
 const metagraphLatest = {
   schema_version: 1,
@@ -740,7 +763,10 @@ for (const [netuid, subnetHealth] of healthArtifacts.subnets) {
 for (const [netuid, badge] of healthArtifacts.badges) {
   await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
 }
-coverage.completeness = buildCompletenessSummary(profileArtifacts.profiles);
+coverage.completeness = buildCompletenessSummary(
+  profileArtifacts.profiles,
+  subnetIndex,
+);
 await writeJson(artifactFile("coverage.json"), coverage);
 // Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
 // curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
@@ -5044,7 +5070,7 @@ function classifySubnetStatus({
 // aggregate — the headline "trustworthy coverage completeness" metric. The full
 // per-subnet leaderboard stays queryable at /api/v1/profiles?sort=completeness_score
 // and /metagraph/review/profile-completeness.json.
-function buildCompletenessSummary(profiles) {
+function buildCompletenessSummary(profiles, indexEntries = []) {
   const scored = profiles.filter((profile) =>
     Number.isFinite(profile.completeness_score),
   );
@@ -5103,6 +5129,27 @@ function buildCompletenessSummary(profiles) {
       pct: count ? Math.round((present / count) * 100) : 0,
     };
   }
+
+  // Community reachability dimension (issue #344): how many subnets expose an
+  // on-chain way to reach the team — the `contact_present` flag or a Discord
+  // contact. Counted from the index projection (the allowlisted contact), not
+  // the profile's native_identity, so the reported stat matches exactly what
+  // the public index serves. This is a REPORTED aggregate only; it must never
+  // feed per-subnet completeness/readiness (the #343 flywheel-preservation
+  // gate keys off curated primary_links + verified surfaces, not this stat).
+  const contactByNetuid = new Map(
+    indexEntries.map((entry) => [
+      entry.netuid,
+      Boolean(entry.contact_present || entry.discord),
+    ]),
+  );
+  const communityPresent = scored.filter((profile) =>
+    contactByNetuid.get(profile.netuid),
+  ).length;
+  dimensionCoverage.community = {
+    present: communityPresent,
+    pct: count ? Math.round((communityPresent / count) * 100) : 0,
+  };
 
   return {
     scored_subnet_count: count,

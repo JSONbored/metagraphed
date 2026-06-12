@@ -76,6 +76,20 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(body.data.network, "test");
     assert.equal(body.meta.artifact_path, "/metagraph/testnet/subnets.json");
 
+    // The contact fields (issue #344) must be projected on the testnet index
+    // too, not just mainnet (regression: testnet buildIndexEntry was missed).
+    for (const entry of body.data.subnets) {
+      assert.equal(
+        typeof entry.contact_present,
+        "boolean",
+        `testnet ${entry.netuid}: contact_present must be a boolean`,
+      );
+      assert.ok(
+        "discord" in entry && "discord_url" in entry,
+        `testnet ${entry.netuid}: discord fields must be projected`,
+      );
+    }
+
     // Testnet netuids are independent of mainnet — a testnet subnet exists that
     // mainnet doesn't enumerate, proving cross-network isolation.
     const detail = await get(env, "/api/v1/testnet/subnets/11");

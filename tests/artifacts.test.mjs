@@ -18,6 +18,8 @@ import {
   artifactDirectoryPath,
   artifactFilePath,
   createLocalArtifactEnv,
+  nativeContactHandle,
+  nativeContactUrl,
   publicMetagraphRoot,
   r2StagingRoot,
 } from "../scripts/lib.mjs";
@@ -625,6 +627,67 @@ test("public artifacts are internally consistent", () => {
   );
 
   assert.equal(subnets.subnets.length, native.subnets.length);
+
+  // Chain Discord contact on the index (issue #344). Display-only fields sourced
+  // from on-chain SubnetIdentitiesV3: a raw handle-or-URL (sanitized), a
+  // normalized invite URL, and the contact_present flag.
+  const nativeByNetuid = new Map(
+    native.subnets.map((subnet) => [subnet.netuid, subnet]),
+  );
+  let handleOnlyCount = 0;
+  let discordUrlCount = 0;
+  let contactPresentCount = 0;
+  for (const entry of subnets.subnets) {
+    const chain = nativeByNetuid.get(entry.netuid)?.chain_identity || {};
+    assert.equal(
+      typeof entry.contact_present,
+      "boolean",
+      `subnet ${entry.netuid}: contact_present must be a boolean`,
+    );
+    assert.equal(
+      entry.contact_present,
+      Boolean(chain.contact_present),
+      `subnet ${entry.netuid}: contact_present must mirror the chain flag`,
+    );
+    // discord is an exact, reproducible projection of the allowlisted chain
+    // value, and discord_url is exactly its explicit-URL subset (no curated
+    // overlay carries a discord_url yet — when one does, this needs the
+    // overlay-aware expectation).
+    assert.equal(
+      entry.discord,
+      nativeContactHandle(chain.discord),
+      `subnet ${entry.netuid}: discord must reproduce nativeContactHandle(chain.discord)`,
+    );
+    assert.equal(
+      entry.discord_url,
+      nativeContactUrl(entry.discord),
+      `subnet ${entry.netuid}: discord_url must be the URL subset of discord`,
+    );
+    assert.ok(
+      entry.discord_url === null || /^https?:\/\//.test(entry.discord_url),
+      `subnet ${entry.netuid}: discord_url must be null or an http(s) URL`,
+    );
+    if (entry.discord_url) discordUrlCount += 1;
+    if (entry.discord && !entry.discord_url) handleOnlyCount += 1;
+    if (entry.contact_present) contactPresentCount += 1;
+  }
+  // The whole point of #344: handles (not just invite links) reach a team, and
+  // the contact_present flag is surfaced. Guard against a regression that nulls
+  // everything or only keeps the URL subset.
+  assert.ok(
+    handleOnlyCount > 0,
+    "expected subnets with a Discord handle but no invite URL",
+  );
+  assert.ok(
+    discordUrlCount > 0,
+    "expected subnets with a normalized Discord invite URL",
+  );
+  assert.equal(
+    contactPresentCount,
+    native.subnets.filter((s) => s.chain_identity?.contact_present).length,
+    "contact_present count must match the native snapshot",
+  );
+
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
   assert.equal(
     health.surfaces.length,

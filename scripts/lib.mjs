@@ -920,6 +920,54 @@ export function sanitizeChainText(value) {
   return { text, scrubbed };
 }
 
+// Conservative shape for a Discord-style handle: optional leading @, then a
+// short run of word/period/hyphen chars, optionally a legacy #1234 tag.
+// Anything outside this (spaces, colons, markup, brackets) is rejected, not
+// defanged — a contact field has no business carrying prose.
+const CONTACT_HANDLE_PATTERN = /^@?[a-z0-9][a-z0-9._-]{1,63}(?:#\d{1,6})?$/i;
+// Junk stubs observed in the on-chain discord slot ("deprecated", "None").
+// Exact matches only — substring matching would wrongly drop a real handle
+// that merely contains "deprecated" or "example".
+const CONTACT_HANDLE_JUNK = /^(?:deprecated|none|null|n\/a|tbd|todo)$/i;
+
+// Resolve a subnet's on-chain Discord contact (SubnetIdentitiesV3.discord)
+// for display. It is attacker-controllable free text piped to LLMs (index →
+// /api/v1/subnets → agents), so this is an allowlist, not a defang: a value
+// is either an explicit URL that passes the full public-URL guard, a string
+// that looks like a plain handle, or it is dropped. Deterministic +
+// idempotent so the build and the reproducibility validator never drift.
+export function nativeContactHandle(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = sanitizeChainText(value).text.replace(/\s+/g, " ").trim();
+  if (!cleaned || cleaned.length > 200) return null;
+  // Scheme'd values (https://…, but also javascript:/data:/mailto:) must pass
+  // the same guard as every public identity URL — scheme allowlist, SSRF and
+  // credential checks, placeholder filter — so a hostile URI can never ride
+  // in as a "handle".
+  if (/^[a-z][a-z0-9+.-]*:/i.test(cleaned)) {
+    const normalized = normalizePublicUrl(cleaned);
+    return normalized && !isPlaceholderIdentityUrl(normalized)
+      ? normalized
+      : null;
+  }
+  if (
+    !CONTACT_HANDLE_PATTERN.test(cleaned) ||
+    CONTACT_HANDLE_JUNK.test(cleaned)
+  ) {
+    return null;
+  }
+  return cleaned;
+}
+
+// URL form of a nativeContactHandle result: the contact when it is an explicit
+// URL, else null. The index discord_url deliberately surfaces only scheme'd
+// chain values — normalizePublicUrl alone would puff a dotted handle
+// ("dev.alveuslabs") into a fake domain. Shared by the mainnet and testnet
+// index builders so the two projections cannot drift.
+export function nativeContactUrl(contact) {
+  return contact && /^(?:https?|wss?):\/\//i.test(contact) ? contact : null;
+}
+
 // Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
 // neutralize prompt-injection, strip URLs, collapse whitespace, drop empties.
 // Shared by the build + the reproducibility validator so the two never drift.

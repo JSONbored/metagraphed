@@ -6,6 +6,10 @@
   "completeness": {
     "average_score": 54,
     "dimension_coverage": {
+      "community": {
+        "pct": 67,
+        "present": 87
+      },
       "data-artifact": {
         "pct": 13,
         "present": 17
