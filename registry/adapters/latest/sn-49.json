@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:57.794Z",
+      "captured_at": "2026-06-12T10:46:01.470Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:57.794Z",
+          "captured_at": "2026-06-12T10:46:01.470Z",
           "content_type": "application/json",
           "hash": "bfcc7f251b31e76d787e2bfe8d63ec0b10b60ac87d31f2433b601134fe3e5987",
-          "latency_ms": 107,
+          "latency_ms": 196,
           "name": "Nepher tournament OpenAPI schema",
           "provider": "nepher-robotics",
           "schema_url": "https://tournament-api.nepher.ai/openapi.json",
@@ -68,7 +68,7 @@
       "total_path_count": 137
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:57.794Z",
+      "captured_at": "2026-06-12T10:46:01.470Z",
       "status": "captured",
       "surface_count": 1,
       "surfaces": [
@@ -85,7 +85,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T10:40:05.452Z",
   "netuid": 49,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

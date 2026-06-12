@@ -10679,6 +10679,175 @@
     },
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-docs",
+      "kind": "docs",
+      "name": "gm docs",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "gm OpenAPI JSON",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-swagger",
+      "kind": "openapi",
+      "name": "gm Swagger UI",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "gm Swagger JSON",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-api",
+      "kind": "subnet-api",
+      "name": "gm API",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-common-health",
+      "kind": "subnet-api",
+      "name": "gm health endpoint",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "high",
+      "id": "sn-28-native-chain-website",
+      "kind": "website",
+      "name": "gm website",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
+      "schema_version": 1,
+      "source_tier": "native-chain",
+      "source_type": "subtensor-subnet-identities-v3",
+      "source_url": "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/28",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-28-website-link-saygm-com-website-1",
+      "kind": "website",
+      "name": "gm website page",
+      "netuid": 28,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://saygm.com/",
+      "source_urls": [
+        "https://saygm.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://saygm.com/cdn-cgi/l/email-protection"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-29-backprop-dashboard",
       "kind": "dashboard",
@@ -11168,7 +11337,7 @@
       "confidence": "medium",
       "id": "sn-31-backprop-dashboard",
       "kind": "dashboard",
-      "name": "Recall Backprop Finance dashboard",
+      "name": "rec4ll Backprop Finance dashboard",
       "netuid": 31,
       "provider": "backprop-finance",
       "public_safe": true,
@@ -11177,19 +11346,19 @@
       "schema_version": 1,
       "source_tier": "third-party-index",
       "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/31-recall",
+      "source_url": "https://backprop.finance/dtao/subnets/31-rec4ll",
       "source_urls": [
-        "https://backprop.finance/dtao/subnets/31-recall"
+        "https://backprop.finance/dtao/subnets/31-rec4ll"
       ],
       "state": "schema-valid",
-      "url": "https://backprop.finance/dtao/subnets/31-recall"
+      "url": "https://backprop.finance/dtao/subnets/31-rec4ll"
     },
     {
       "auth_required": false,
       "confidence": "medium",
       "id": "sn-31-subnetradar-dashboard",
       "kind": "dashboard",
-      "name": "Recall SubnetRadar dashboard",
+      "name": "rec4ll SubnetRadar dashboard",
       "netuid": 31,
       "provider": "subnetradar",
       "public_safe": true,
@@ -11210,7 +11379,7 @@
       "confidence": "medium",
       "id": "sn-31-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Recall TaoMarketCap dashboard",
+      "name": "rec4ll TaoMarketCap dashboard",
       "netuid": 31,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -11231,7 +11400,7 @@
       "confidence": "medium",
       "id": "sn-31-taostats-metagraph",
       "kind": "dashboard",
-      "name": "Recall Taostats metagraph",
+      "name": "rec4ll Taostats metagraph",
       "netuid": 31,
       "provider": "taostats",
       "public_safe": true,
@@ -11252,7 +11421,7 @@
       "confidence": "low",
       "id": "sn-31-taopedia-article",
       "kind": "docs",
-      "name": "Recall Taopedia article",
+      "name": "rec4ll Taopedia article",
       "netuid": 31,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -11273,7 +11442,7 @@
       "confidence": "medium",
       "id": "sn-31-tensorplex-docs",
       "kind": "docs",
-      "name": "Recall Tensorplex subnet docs",
+      "name": "rec4ll Tensorplex subnet docs",
       "netuid": 31,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -11435,6 +11604,27 @@
       ],
       "state": "schema-valid",
       "url": "https://its-ai.org/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "provider": "its-ai",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.its-ai.org/"
     },
     {
       "auth_required": false,
@@ -12282,6 +12472,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.0xmarkets.io/",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -20760,6 +20971,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "provider": "ridges",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.ridges.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-62-website-common-openapi-json",
       "kind": "openapi",
       "name": "Ridges OpenAPI JSON",
@@ -26250,27 +26482,6 @@
       ],
       "state": "schema-valid",
       "url": "https://www.byzantiumai.net/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-76-website-link-www-byzantiumai-net-website-1",
-      "kind": "website",
-      "name": "Byzantium website page",
-      "netuid": 76,
-      "provider": "byzantium",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://www.byzantiumai.net/",
-      "source_urls": [
-        "https://www.byzantiumai.net/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.byzantiumai.net/index.html"
     },
     {
       "auth_required": false,
@@ -42530,11 +42741,11 @@
       "url": "https://byteleap.ai/"
     }
   ],
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T10:40:05.452Z",
   "generated_by": "metagraphed-discover-candidates",
-  "native_snapshot_captured_at": "2026-06-12T03:53:10Z",
+  "native_snapshot_captured_at": "2026-06-12T10:40:19Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-12T03:52:59.910Z",
+  "observed_at": "2026-06-12T10:40:05.452Z",
   "schema_version": 1,
   "sources": [
     {

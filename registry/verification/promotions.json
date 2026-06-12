@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2017,
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "candidate_count": 2027,
+  "generated_at": "2026-06-12T10:40:05.452Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-12T03:52:59.910Z",
+  "observed_at": "2026-06-12T10:40:05.452Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -9545,6 +9545,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-28-native-chain-website",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "native-chain",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-28-subnetradar-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9638,6 +9657,139 @@
         "transient_failure": false
       },
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-api",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-docs",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-health",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-swagger",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-link-saygm-com-website-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "failed"
     },
     {
       "candidate_id": "sn-29-backprop-dashboard",
@@ -10645,6 +10797,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 32,
+      "provider": "its-ai",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11243,6 +11414,25 @@
         "transient_failure": false
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 35,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-36-backprop-dashboard",
@@ -18751,6 +18941,25 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 62,
+      "provider": "ridges",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23554,25 +23763,6 @@
         "transient_failure": false
       },
       "status": "failed"
-    },
-    {
-      "candidate_id": "sn-76-website-link-www-byzantiumai-net-website-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 76,
-      "provider": "byzantium",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
     },
     {
       "candidate_id": "sn-77-backprop-dashboard",
@@ -38166,9 +38356,9 @@
   "summary": {
     "by_classification": {
       "auth-required": 9,
-      "content-mismatch": 129,
-      "dead": 396,
-      "live": 1299,
+      "content-mismatch": 134,
+      "dead": 397,
+      "live": 1303,
       "rate-limited": 7,
       "redirected": 141,
       "transient": 4,
@@ -38178,13 +38368,13 @@
     "by_kind": {
       "dashboard": 565,
       "data-artifact": 15,
-      "docs": 418,
-      "openapi": 274,
+      "docs": 422,
+      "openapi": 277,
       "repo-registry": 2,
       "sdk": 2,
       "source-repo": 155,
-      "subnet-api": 217,
-      "website": 369
+      "subnet-api": 219,
+      "website": 370
     },
     "by_provider": {
       "academia": 1,
@@ -38196,7 +38386,7 @@
       "bitads": 8,
       "bitmind": 2,
       "blockmachine": 18,
-      "byzantium": 8,
+      "byzantium": 7,
       "cacheon": 12,
       "chutes": 20,
       "coldint": 1,
@@ -38219,7 +38409,7 @@
       "hone": 12,
       "inference-labs": 11,
       "infinitehash": 8,
-      "its-ai": 18,
+      "its-ai": 19,
       "macrocosmos": 68,
       "mantis": 1,
       "mobiusfund": 13,
@@ -38227,13 +38417,13 @@
       "nepher-robotics": 10,
       "numinous": 13,
       "oneoneone": 1,
-      "opentensor": 415,
+      "opentensor": 424,
       "oro": 16,
       "platform-network": 12,
       "qbittensor-labs": 36,
       "readyai": 3,
       "redteam": 10,
-      "ridges": 8,
+      "ridges": 9,
       "shiftlayer": 1,
       "signalplus": 1,
       "silx-labs": 12,
@@ -38259,7 +38449,7 @@
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1440
+    "promotable_count": 1444
   },
   "verification_finished_at": null,
   "verification_started_at": null

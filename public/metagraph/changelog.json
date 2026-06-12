@@ -3,46 +3,46 @@
     "added": [],
     "modified": [
       {
-        "hash": "1c21fbc96358b274aee93dc2e806e6ac3a7d8b18192d6eaadef8de126fcf8bbe",
+        "hash": "a31b7cbbd6c05f022577dae4db691a35b160744ff243d8edfd20005b4669aca2",
         "path": "agent-catalog.json"
       },
       {
-        "hash": "35a3a87cbf07de81a84e4b1d6a639602b898e4c16e54a35aa0b2e9f7d9b95b3a",
+        "hash": "5d851b7d2c3e0de5e5b00ba2c747751fad4b2952a7a91f3f952d8542b82ab7cb",
         "path": "api-index.json"
       },
       {
-        "hash": "13e4712da120849cad46a3f9a735fd3d1543303376ff1b6b0b60791904c023ea",
+        "hash": "d1b4762bb8b366c5129234b7f8412a78397df42234a3109407204719d69ae6eb",
         "path": "contracts.json"
       },
       {
-        "hash": "4facc310929fd91bbf4d90b5c01ee7a515e5e159fcf1c0a473b51133157228ce",
+        "hash": "ae3dc5257221445c0f25c25c499c37b196e3787390be6f66a1db2ae4913073b6",
         "path": "coverage.json"
       },
       {
-        "hash": "6ff9bb8dbdd7902f936c0ba7325b9cdd926101013b4db328d617a776191a0bdb",
+        "hash": "4aecf4f5e052d483064fb9d5ba4cedcf8a1e3764fa9eb06b7f80e7b11cca4fbd",
         "path": "openapi.json"
       },
       {
-        "hash": "b5a708fa269023ad425b4f8a5fbb567a9279930b9e756f9f6c024de82d3fed6a",
+        "hash": "3b28e5ae409ff8914bbe7fbc598c4c3b936b44f0887f477cd141fdebfcc04b05",
         "path": "operational-surfaces.json"
       },
       {
-        "hash": "e9cb8a0d5d13e1d4d17e2cf125db9251970c0ec257a808a14e56740112f260b0",
+        "hash": "904dabe4ce0b4ad61e2f11a31410f2c33e335dc24cc801be3dc926e3f500d4ae",
         "path": "review/profile-completeness.json"
       },
       {
-        "hash": "6bcfe8a5f57b0bc2e83c0212554fc2feaef963856844d3dcbc609d1b4bdb405c",
+        "hash": "0a0bcb3589cc311a50312fe45cb67bae95112f091d5afe5e256bfb218aed740e",
         "path": "schemas/index.json"
       },
       {
-        "hash": "01d5c2e8f45cbcac07abd33eecbd3933d8a9f7698931a50f599b3375b9103ebb",
+        "hash": "31de78c8156af700e307d0a6b4c3d435c61a87a99a671c1efb9a695b205a2fb0",
         "path": "subnets.json"
       }
     ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T10:40:05.452Z",
   "notes": [
     "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
     "Long-term historical runs are expected to live in R2 under versioned prefixes."
@@ -60,9 +60,9 @@
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 2017,
-        "before": 2020,
-        "delta": -3
+        "after": 2027,
+        "before": 2017,
+        "delta": 10
       },
       "curated_overlay_count": {
         "after": 129,
@@ -76,9 +76,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1143,
-        "before": 1146,
-        "delta": -3
+        "after": 1148,
+        "before": 1143,
+        "delta": 5
       }
     },
     "netuid_added_count": 0,

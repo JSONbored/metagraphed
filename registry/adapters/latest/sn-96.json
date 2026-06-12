@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:58.279Z",
+      "captured_at": "2026-06-12T10:46:01.957Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:58.279Z",
+          "captured_at": "2026-06-12T10:46:01.957Z",
           "content_type": "application/json",
           "hash": "640b104c41c2e9abd1d511aa8b15b8d983c3c0448df3c2219248c8ab60fb1c87",
-          "latency_ms": 424,
+          "latency_ms": 477,
           "name": "Verathos OpenAPI schema",
           "provider": "verathos",
           "schema_url": "https://verathos.ai/openapi.json",
@@ -67,7 +67,7 @@
       "total_path_count": 24
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:58.279Z",
+      "captured_at": "2026-06-12T10:46:01.957Z",
       "status": "captured",
       "surface_count": 1,
       "surfaces": [
@@ -84,7 +84,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T10:40:05.452Z",
   "netuid": 96,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
