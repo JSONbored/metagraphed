@@ -835,3 +835,157 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.match(res.body.result.content[0].text, /invalid_params|non-empty/);
   });
 });
+
+describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
+  const searchAndCatalog = {
+    "/metagraph/search.json": {
+      documents: [
+        {
+          id: "subnet:7",
+          type: "subnet",
+          netuid: 7,
+          slug: "sn-7",
+          title: "Data Universe",
+          subtitle: "data scraping and storage",
+          tokens: ["data", "scraping", "storage"],
+          categories: ["data"],
+          service_kinds: ["subnet-api"],
+        },
+        {
+          id: "subnet:8",
+          type: "subnet",
+          netuid: 8,
+          slug: "sn-8",
+          title: "Unrelated",
+          subtitle: "something else",
+          tokens: ["unrelated"],
+        },
+      ],
+    },
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        {
+          netuid: 7,
+          name: "Data Universe",
+          slug: "sn-7",
+          categories: ["data"],
+          integration_readiness: 70,
+          callable_count: 2,
+          service_kinds: ["subnet-api"],
+          base_url: "https://api.data.io",
+          health: "operational",
+        },
+      ],
+    },
+  };
+
+  test("find_subnet_for_task returns callable matches by keyword (no AI)", async () => {
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "scrape data", limit: 5 },
+      { deps: makeDeps(searchAndCatalog) },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(out.results[0].netuid, 7);
+    assert.equal(out.results[0].base_url, "https://api.data.io");
+    assert.equal(out.results[0].integration_readiness, 70);
+    // subnet 8 is not in the catalog (not callable) so it is excluded.
+    assert.ok(out.results.every((r) => r.netuid !== 8));
+  });
+
+  test("find_subnet_for_task notes when nothing callable matches", async () => {
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "quantum teleportation" },
+      { deps: makeDeps(searchAndCatalog) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.match(out.note, /No callable subnet/);
+  });
+
+  const callDetail = {
+    "/metagraph/agent-catalog/7.json": {
+      netuid: 7,
+      name: "Data Universe",
+      slug: "sn-7",
+      integration_readiness: 70,
+      services: [
+        {
+          surface_id: "sn-7-api",
+          kind: "subnet-api",
+          capability: "Data API",
+          base_url: "https://api.data.io",
+          auth_required: true,
+          auth_schemes: ["apiKey"],
+          schema_url: "https://api.data.io/openapi.json",
+          schema_artifact: "schemas/sn-7-api.json",
+          health: { status: "operational", stale: false },
+          eligibility: { callable: true },
+        },
+      ],
+    },
+    "/metagraph/subnets.json": {
+      subnets: [{ netuid: 7, slug: "sn-7", native_slug: "datauniverse" }],
+    },
+    "/metagraph/agent-catalog/9.json": {
+      netuid: 9,
+      name: "Quiet",
+      slug: "sn-9",
+      integration_readiness: 10,
+      services: [],
+    },
+  };
+
+  test("how_do_i_call returns concrete call instructions by netuid", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 7 },
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.status, 200);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.callable, true);
+    assert.equal(out.services[0].base_url, "https://api.data.io");
+    assert.equal(out.services[0].auth.required, true);
+    assert.deepEqual(out.services[0].auth.schemes, ["apiKey"]);
+    assert.equal(out.services[0].schema.available, true);
+    assert.match(out.services[0].schema.fetch_with, /get_api_schema/);
+    assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
+  });
+
+  test("how_do_i_call resolves a subnet by chain native_slug", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { subnet: "datauniverse" },
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+
+  test("how_do_i_call explains when a subnet exposes nothing callable", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 9 },
+      { deps: makeDeps(callDetail) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.callable, false);
+    assert.equal(out.callable_count, 0);
+    assert.match(out.guidance, /no callable services/i);
+  });
+
+  test("how_do_i_call requires a netuid or subnet reference", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      {},
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid.*subnet|invalid_params/);
+  });
+});

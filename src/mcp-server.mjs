@@ -35,7 +35,10 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
-  "All data is public and read-only.";
+  "For goal-shaped flows, find_subnet_for_task turns a plain-language task into " +
+  "callable subnets and how_do_i_call returns concrete call instructions " +
+  "(base URL, auth, schema, health) for one subnet. All data is public and " +
+  "read-only.";
 
 const JSONRPC_VERSION = "2.0";
 
@@ -95,6 +98,70 @@ async function runAi(fn) {
     if (error?.aiInput) throw toolError("invalid_params", error.message);
     throw error;
   }
+}
+
+// Resolve a subnet reference to a netuid. Accepts a `netuid` integer or a
+// `subnet` string (numeric, curated slug, or chain native_slug). Slug lookup
+// joins the committed index curated-slug-first, then native_slug — the same
+// precedence the REST resolver uses (see lookupSubnetNetuid, #331).
+async function resolveNetuid(ctx, args) {
+  if (Number.isInteger(args?.netuid) && args.netuid >= 0) return args.netuid;
+  const ref = typeof args?.subnet === "string" ? args.subnet.trim() : "";
+  if (ref === "") {
+    throw toolError(
+      "invalid_params",
+      "Provide `netuid` (integer) or `subnet` (slug or chain name).",
+    );
+  }
+  if (/^\d+$/.test(ref)) return Number(ref);
+  const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
+  const subnets = Array.isArray(index.subnets) ? index.subnets : [];
+  const key = ref.toLowerCase();
+  const match =
+    subnets.find(
+      (s) => typeof s.slug === "string" && s.slug.toLowerCase() === key,
+    ) ||
+    subnets.find(
+      (s) =>
+        typeof s.native_slug === "string" &&
+        s.native_slug.toLowerCase() === key,
+    );
+  if (!match) {
+    throw toolError(
+      "not_found",
+      `No subnet matches '${ref}'. Use search_subnets to discover one.`,
+    );
+  }
+  return match.netuid;
+}
+
+// Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
+// the AI layer is available, else keyword overlap over the enriched search index
+// (categories + service_kinds). Returns the discovery mode + ordered candidates.
+async function rankSubnetsForTask(ctx, task, poolSize) {
+  if (aiEnabled(ctx.env)) {
+    try {
+      const out = await semanticSearch(ctx.env, task, {
+        limit: Math.min(poolSize, 20),
+      });
+      const ranked = (out.results || [])
+        .filter((r) => r.type === "subnet" && Number.isInteger(r.netuid))
+        .map((r) => ({ netuid: r.netuid, relevance: r.score }));
+      if (ranked.length > 0) return { mode: "semantic", ranked };
+    } catch {
+      // AI hiccup → fall back to keyword discovery below.
+    }
+  }
+  const index = await loadArtifactData(ctx, "/metagraph/search.json");
+  const terms = queryTerms(task);
+  const docs = Array.isArray(index.documents) ? index.documents : [];
+  const ranked = docs
+    .filter((doc) => doc.type === "subnet")
+    .map((doc) => ({ netuid: doc.netuid, relevance: scoreDocument(doc, terms) }))
+    .filter((entry) => entry.relevance > 0)
+    .sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid)
+    .slice(0, poolSize);
+  return { mode: "keyword", ranked };
 }
 
 function requireNetuid(args) {
@@ -547,6 +614,154 @@ export const MCP_TOOLS = [
       return runAi(() =>
         askQuestion(ctx.env, question, {}, { readArtifact: ctx.readArtifact }),
       );
+    },
+  },
+  {
+    name: "find_subnet_for_task",
+    title: "Find a subnet that can do a task",
+    description:
+      "Goal-shaped discovery: describe a task in plain language ('summarize a " +
+      "PDF', 'generate an image', 'get a price feed') and get the Bittensor " +
+      "subnets that can actually do it — only subnets exposing callable " +
+      "services, each with its integration readiness, callable service kinds, " +
+      "base URL, health, and a next step. Ranks by intent when the AI layer is " +
+      "available, otherwise by keyword. Pair each result with how_do_i_call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task: {
+          type: "string",
+          description:
+            "What you want to accomplish, in plain language.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max subnets to return (1-20, default 5).",
+          minimum: 1,
+          maximum: 20,
+        },
+      },
+      required: ["task"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const task = requireString(args, "task");
+      const limit = clampLimit(args?.limit, 5, 20);
+      const { mode, ranked } = await rankSubnetsForTask(ctx, task, 50);
+      const catalog = await loadArtifactData(
+        ctx,
+        "/metagraph/agent-catalog.json",
+      );
+      const byNetuid = new Map(
+        (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
+      );
+      const results = [];
+      for (const { netuid, relevance } of ranked) {
+        const entry = byNetuid.get(netuid);
+        if (!entry) continue; // Only subnets with callable services can do a task.
+        results.push({
+          netuid,
+          name: entry.name,
+          slug: entry.slug,
+          categories: entry.categories,
+          relevance,
+          integration_readiness: entry.integration_readiness,
+          callable_count: entry.callable_count,
+          service_kinds: entry.service_kinds,
+          base_url: entry.base_url,
+          health: entry.health,
+          next_step: `Call how_do_i_call with netuid ${netuid} for concrete call instructions.`,
+        });
+        if (results.length >= limit) break;
+      }
+      return {
+        task,
+        discovery: mode,
+        count: results.length,
+        results,
+        note:
+          results.length === 0
+            ? "No callable subnet matched this task. Try rephrasing, or use find_subnets_by_capability for a broader keyword search."
+            : undefined,
+      };
+    },
+  },
+  {
+    name: "how_do_i_call",
+    title: "Get concrete call instructions for a subnet",
+    description:
+      "Goal-shaped integration guide for one subnet: how to actually call it. " +
+      "Returns, per callable service, the base URL, whether auth is required " +
+      "(and which schemes), how to fetch its machine-readable schema, and its " +
+      "last-known health — plus next steps. Accepts a netuid or a slug/chain " +
+      "name. When a subnet exposes nothing callable, says so and points to its " +
+      "profile. Pairs with find_subnet_for_task / search_subnets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: {
+          type: "integer",
+          minimum: 0,
+          description: "The subnet's netuid.",
+        },
+        subnet: {
+          type: "string",
+          description:
+            "Subnet slug or chain name (e.g. 'apex'); alternative to netuid.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = await resolveNetuid(ctx, args);
+      const detail = await loadArtifactData(
+        ctx,
+        `/metagraph/agent-catalog/${netuid}.json`,
+      );
+      const services = Array.isArray(detail.services) ? detail.services : [];
+      const callable = services.filter((s) => s.eligibility?.callable);
+      const steps = (callable.length > 0 ? callable : services).map((s) => ({
+        surface_id: s.surface_id,
+        kind: s.kind,
+        capability: s.capability,
+        base_url: s.base_url,
+        callable: Boolean(s.eligibility?.callable),
+        auth: {
+          required: Boolean(s.auth_required),
+          schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
+        },
+        schema: s.schema_artifact
+          ? {
+              available: true,
+              fetch_with: `get_api_schema with surface_id ${s.surface_id}`,
+              schema_url: s.schema_url || null,
+            }
+          : { available: false, schema_url: s.schema_url || null },
+        health: {
+          status: s.health?.status ?? "unknown",
+          stale: s.health?.stale ?? true,
+        },
+      }));
+      const isCallable = callable.length > 0;
+      const schemaStep = steps.find((s) => s.schema.available);
+      return {
+        netuid,
+        name: detail.name,
+        slug: detail.slug,
+        integration_readiness: detail.integration_readiness,
+        callable: isCallable,
+        callable_count: callable.length,
+        guidance: isCallable
+          ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
+          : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
+        services: steps,
+        next_steps: isCallable
+          ? [
+              `get_subnet_health with netuid ${netuid} for live status`,
+              ...(schemaStep ? [schemaStep.schema.fetch_with] : []),
+            ]
+          : [`get_subnet with netuid ${netuid}`],
+      };
     },
   },
 ];

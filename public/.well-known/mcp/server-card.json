@@ -5,7 +5,7 @@
       "listChanged": false
     }
   },
-  "description": "metagraphed is the operational + integration registry for Bittensor subnets: what each of the ~129 subnets exposes (APIs, docs, schemas), whether those surfaces are healthy, and how to call them. Use search_subnets / find_subnets_by_capability to discover by keyword/capability, semantic_search to discover by intent (meaning-based), and ask for a grounded natural-language answer with citations; get_subnet / get_subnet_health for detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. All data is public and read-only.",
+  "description": "metagraphed is the operational + integration registry for Bittensor subnets: what each of the ~129 subnets exposes (APIs, docs, schemas), whether those surfaces are healthy, and how to call them. Use search_subnets / find_subnets_by_capability to discover by keyword/capability, semantic_search to discover by intent (meaning-based), and ask for a grounded natural-language answer with citations; get_subnet / get_subnet_health for detail, list_subnet_apis + get_api_schema to integrate a subnet's API, and get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. For goal-shaped flows, find_subnet_for_task turns a plain-language task into callable subnets and how_do_i_call returns concrete call instructions (base URL, auth, schema, health) for one subnet. All data is public and read-only.",
   "documentation": "https://api.metagraph.sh/llms.txt",
   "endpoint": "https://api.metagraph.sh/mcp",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -226,6 +226,50 @@
       },
       "name": "ask",
       "title": "Ask a grounded question about the registry"
+    },
+    {
+      "description": "Goal-shaped discovery: describe a task in plain language ('summarize a PDF', 'generate an image', 'get a price feed') and get the Bittensor subnets that can actually do it — only subnets exposing callable services, each with its integration readiness, callable service kinds, base URL, health, and a next step. Ranks by intent when the AI layer is available, otherwise by keyword. Pair each result with how_do_i_call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "Max subnets to return (1-20, default 5).",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "task": {
+            "description": "What you want to accomplish, in plain language.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "find_subnet_for_task",
+      "title": "Find a subnet that can do a task"
+    },
+    {
+      "description": "Goal-shaped integration guide for one subnet: how to actually call it. Returns, per callable service, the base URL, whether auth is required (and which schemes), how to fetch its machine-readable schema, and its last-known health — plus next steps. Accepts a netuid or a slug/chain name. When a subnet exposes nothing callable, says so and points to its profile. Pairs with find_subnet_for_task / search_subnets.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "The subnet's netuid.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnet": {
+            "description": "Subnet slug or chain name (e.g. 'apex'); alternative to netuid.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "how_do_i_call",
+      "title": "Get concrete call instructions for a subnet"
     }
   ],
   "transport": "streamable-http",

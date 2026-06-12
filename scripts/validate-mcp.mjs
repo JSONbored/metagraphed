@@ -124,6 +124,23 @@ await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
 
+// Goal-shaped tools work without the AI layer (find_subnet_for_task falls back
+// to keyword discovery; how_do_i_call reads the agent-catalog detail).
+const taskMatch = await callOk("find_subnet_for_task", {
+  task: "data",
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(taskMatch.results),
+  "find_subnet_for_task must return results[]",
+);
+const callGuide = await callOk("how_do_i_call", { netuid: 7 });
+assert.equal(callGuide.netuid, 7, "how_do_i_call must echo the resolved netuid");
+assert.ok(
+  Array.isArray(callGuide.services),
+  "how_do_i_call must return services[]",
+);
+
 // get_best_rpc_endpoint may legitimately return zero eligible endpoints on a
 // cold local build (no live probe KV), but must still succeed structurally.
 const rpc = await callOk("get_best_rpc_endpoint", { limit: 3 });

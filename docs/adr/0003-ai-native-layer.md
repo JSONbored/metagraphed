@@ -44,15 +44,20 @@ contract. No new authority, no new pipeline.
 
 3. **Remote MCP server** (AI-2). `POST /mcp` is a **stateless** Model Context
    Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.mjs`. It
-   exposes eleven read-only tools (`search_subnets`,
+   exposes thirteen read-only tools (`search_subnets`,
    `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`,
    `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,
-   `get_best_rpc_endpoint`, `registry_summary`, `semantic_search`, `ask`) that
-   are thin wrappers over the same artifact/KV readers (and, for the last two,
-   the AI search/RAG layer) the REST routes use (injected as dependencies, so
-   the module stays pure and the resolution is identical). `semantic_search`
-   and `ask` require the AI bindings; they degrade to a graceful `isError`
-   result (pointing at the keyword tools) when the AI layer is unavailable.
+   `get_best_rpc_endpoint`, `registry_summary`, `semantic_search`, `ask`,
+   `find_subnet_for_task`, `how_do_i_call`) that are thin wrappers over the same
+   artifact/KV readers (and, for the AI ones, the AI search/RAG layer) the REST
+   routes use (injected as dependencies, so the module stays pure and the
+   resolution is identical). `semantic_search` and `ask` require the AI
+   bindings; they degrade to a graceful `isError` result (pointing at the
+   keyword tools) when the AI layer is unavailable. The goal-shaped pair —
+   `find_subnet_for_task` (plain-language task → callable subnets) and
+   `how_do_i_call` (one subnet → concrete call instructions) — works with or
+   without AI, using semantic ranking when present and keyword fallback
+   otherwise.
 
 ## Rationale for the key choices
 
