@@ -114,8 +114,19 @@ export function isGeneratedPublicArtifactRelativePath(relativePath = "") {
   return DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+// Friendly key segments for the non-default Bittensor networks. Their data lives
+// under metagraph/{prefix}/... and is R2-only (never committed) — the mainnet
+// (finney) registry stays unprefixed and keeps its existing dual/git/r2 tiers.
+export const NETWORK_KEY_PREFIXES = ["testnet", "local"];
+
 export function artifactStorageTierForRelativePath(relativePath = "") {
   const normalized = artifactRelativePath(relativePath);
+  // Non-default network artifacts (testnet/…, local/…) are R2-only regardless of
+  // what the unprefixed equivalent would be — secondary-network data is large and
+  // sparse, so it is never committed to git.
+  if (NETWORK_KEY_PREFIXES.some((prefix) => normalized.startsWith(`${prefix}/`))) {
+    return ARTIFACT_STORAGE_TIERS.r2;
+  }
   if (R2_ONLY_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return ARTIFACT_STORAGE_TIERS.r2;
   }

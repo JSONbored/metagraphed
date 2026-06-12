@@ -170,6 +170,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return corsPreflight(request);
   }
 
+  // Multi-network addressing: an explicit /{network}/ prefix (mainnet/testnet/
+  // local + finney/test aliases) routes through the network-aware artifact
+  // handler. Bare paths fall through to the full dispatch below unchanged, so
+  // mainnet behaviour is byte-identical to before networks existed.
+  const networkRoute = resolveNetworkPrefix(url);
+  if (networkRoute.explicit) {
+    return handleNetworkScopedRequest(
+      request,
+      env,
+      networkRoute.url,
+      networkRoute.network,
+    );
+  }
+
   if (url.pathname.startsWith("/rpc/v1/")) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
@@ -289,7 +303,77 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   );
 }
 
-async function handleRawArtifactRequest(request, env, url) {
+// Dynamic routes backed by mainnet-only D1/AI/curated data — not partitioned per
+// network, so they 404 under a /{network}/ prefix rather than silently serving
+// mainnet data. Mirrors the special-cased branches in handleRequest.
+function isMainnetOnlyApiPath(pathname) {
+  return (
+    pathname === "/api/v1/events" ||
+    pathname === "/api/v1/ask" ||
+    pathname === "/api/v1/search/semantic" ||
+    pathname === "/api/v1/registry/leaderboards" ||
+    pathname.startsWith("/api/v1/webhooks/") ||
+    TRENDS_PATH_PATTERN.test(pathname) ||
+    PERCENTILES_PATH_PATTERN.test(pathname) ||
+    INCIDENTS_PATH_PATTERN.test(pathname) ||
+    TRAJECTORY_PATH_PATTERN.test(pathname)
+  );
+}
+
+// Handles an explicit /{network}/-prefixed request (URL already prefix-stripped).
+// Only the registry artifact surfaces are network-partitioned; dynamic/AI/live
+// features stay mainnet-only. testnet/local data is R2-only and may not exist yet
+// — readArtifact then returns a clean 404 carrying the requested network.
+async function handleNetworkScopedRequest(request, env, url, network) {
+  if (!["GET", "HEAD"].includes(request.method)) {
+    return errorResponse(
+      "method_not_allowed",
+      "Only GET, HEAD, and OPTIONS are supported.",
+      405,
+      {},
+      { allow: "GET, HEAD, OPTIONS" },
+    );
+  }
+
+  if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
+    if (isMainnetOnlyApiPath(url.pathname)) {
+      return errorResponse(
+        "not_found",
+        `${url.pathname} is only available on mainnet, not the ${network.id} network.`,
+        404,
+        { network: network.id },
+      );
+    }
+    const resolved = await resolveSubnetSlugRoute(
+      env,
+      url,
+      Date.now(),
+      network,
+    );
+    if (resolved.notFound) {
+      return errorResponse(
+        "subnet_not_found",
+        `No subnet matches the slug "${resolved.slug}" on the ${network.id} network.`,
+        404,
+        { slug: resolved.slug, network: network.id },
+      );
+    }
+    return handleApiRequest(request, env, resolved.url, network);
+  }
+
+  if (url.pathname.startsWith("/metagraph/") && url.pathname.endsWith(".json")) {
+    return handleRawArtifactRequest(request, env, url, network);
+  }
+
+  return errorResponse(
+    "not_found",
+    `No network-scoped route matched this path on the ${network.id} network.`,
+    404,
+    { network: network.id },
+  );
+}
+
+async function handleRawArtifactRequest(request, env, url, network = DEFAULT_NETWORK) {
   if (!matchRawArtifact(url.pathname)) {
     return errorResponse(
       "not_found",
@@ -301,10 +385,11 @@ async function handleRawArtifactRequest(request, env, url) {
     );
   }
 
-  const artifact = await readArtifact(env, url.pathname);
+  const networkPath = artifactPathForNetwork(url.pathname, network);
+  const artifact = await readArtifact(env, networkPath);
   if (!artifact.ok) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
-      artifact_path: url.pathname,
+      artifact_path: networkPath,
     });
   }
   // The raw artifact path has no envelope, so direct fetchers of
@@ -446,13 +531,59 @@ function renderBadgeSvg(rawLabel, rawMessage, color) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${message}"><title>${label}: ${message}</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="${totalWidth}" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="${labelWidth}" height="20" fill="#555"/><rect x="${labelWidth}" width="${messageWidth}" height="20" fill="${hex}"/><rect width="${totalWidth}" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="${labelMid}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${labelLen}">${label}</text><text x="${labelMid}" y="140" transform="scale(.1)" textLength="${labelLen}">${label}</text><text aria-hidden="true" x="${messageMid}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${messageLen}">${message}</text><text x="${messageMid}" y="140" transform="scale(.1)" textLength="${messageLen}">${message}</text></g></svg>`;
 }
 
+// Multi-network addressing (cosmos.directory-style). The friendly URL/UI segment
+// (mainnet/testnet/local) maps to the chain-accurate value the data carries
+// (finney/test/local) and to the R2 key prefix for non-default networks. Mainnet
+// is the default: bare /api/v1/... and /metagraph/... resolve to it unprefixed,
+// so every pre-network URL keeps working byte-for-byte. The chain names finney/
+// test are accepted as aliases.
+const NETWORKS = {
+  mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
+  finney: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
+  testnet: { id: "testnet", chain: "test", prefix: "testnet", isDefault: false },
+  test: { id: "testnet", chain: "test", prefix: "testnet", isDefault: false },
+  local: { id: "local", chain: "local", prefix: "local", isDefault: false },
+};
+const DEFAULT_NETWORK = NETWORKS.mainnet;
+// Only an /api/v1/ or /metagraph/ path whose first segment is a known network
+// alias is treated as network-scoped; real routes (subnets, providers, …) never
+// collide with the alias set, so this never shadows an existing path.
+const NETWORK_PREFIX_PATTERN =
+  /^\/(api\/v1|metagraph)\/(mainnet|finney|testnet|test|local)(\/.*|$)/;
+
+// Splits an explicit /{network}/ prefix off the path. Returns the resolved
+// network descriptor + the prefix-stripped URL that all existing dispatch and
+// route matching run against. Bare paths resolve to mainnet with the URL
+// unchanged (explicit:false) — the zero-regression default.
+function resolveNetworkPrefix(url) {
+  const match = NETWORK_PREFIX_PATTERN.exec(url.pathname);
+  if (!match) {
+    return { network: DEFAULT_NETWORK, url, explicit: false };
+  }
+  const rewritten = new URL(url);
+  rewritten.pathname = `/${match[1]}${match[3] && match[3] !== "/" ? match[3] : ""}`;
+  return { network: NETWORKS[match[2]], url: rewritten, explicit: true };
+}
+
+// Inserts the network key segment for non-default networks, so the artifact read
+// targets metagraph/{prefix}/...  (/metagraph/subnets.json + testnet ->
+// /metagraph/testnet/subnets.json). Mainnet (prefix "") is a no-op.
+function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
+  if (!network || !network.prefix) {
+    return artifactPath;
+  }
+  return artifactPath.replace(/^\/metagraph\//, `/metagraph/${network.prefix}/`);
+}
+
 // Friendly per-subnet routes: /api/v1/subnets/<slug>/... resolves to the netuid
 // (e.g. /api/v1/subnets/allways → /api/v1/subnets/7). Worker-only — the slug→
 // netuid map is read from the served subnets.json and cached per isolate; no new
 // committed artifact or route contract.
 const SUBNET_SLUG_ROUTE_PATTERN = /^\/api\/v1\/subnets\/([^/]+)(\/.*)?$/;
 const SUBNET_SLUG_INDEX_TTL_MS = 300_000;
-let subnetSlugIndex = null; // { map: Map<slug, netuid>, builtAt }
+// Per-network slug→netuid index, keyed by network.id (slugs/netuids differ across
+// chains — testnet SN-N is unrelated to mainnet SN-N).
+const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 
 // Leaderboards re-derives a {meta, completeness} projection from the ~600 KB
 // R2 profiles.json; cache the small projection in-isolate (5 min TTL, same as
@@ -461,7 +592,12 @@ let subnetSlugIndex = null; // { map: Map<slug, netuid>, builtAt }
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
-async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
+async function resolveSubnetSlugRoute(
+  env,
+  url,
+  now = Date.now(),
+  network = DEFAULT_NETWORK,
+) {
   const match = SUBNET_SLUG_ROUTE_PATTERN.exec(url.pathname);
   // Not a per-subnet route, or already a numeric netuid → pass through.
   if (!match || /^\d+$/.test(match[1])) {
@@ -471,7 +607,7 @@ async function resolveSubnetSlugRoute(env, url, now = Date.now()) {
   if (slug === null) {
     return { notFound: true, slug: match[1] };
   }
-  const netuid = await lookupSubnetNetuid(env, slug, now);
+  const netuid = await lookupSubnetNetuid(env, slug, now, network);
   if (netuid === null) {
     return { notFound: true, slug };
   }
@@ -491,12 +627,18 @@ function decodeSlugPathSegment(segment) {
   }
 }
 
-async function lookupSubnetNetuid(env, slug, now = Date.now()) {
-  if (
-    !subnetSlugIndex ||
-    now - subnetSlugIndex.builtAt > SUBNET_SLUG_INDEX_TTL_MS
-  ) {
-    const artifact = await readArtifact(env, "/metagraph/subnets.json");
+async function lookupSubnetNetuid(
+  env,
+  slug,
+  now = Date.now(),
+  network = DEFAULT_NETWORK,
+) {
+  const cached = subnetSlugIndexByNetwork.get(network.id);
+  if (!cached || now - cached.builtAt > SUBNET_SLUG_INDEX_TTL_MS) {
+    const artifact = await readArtifact(
+      env,
+      artifactPathForNetwork("/metagraph/subnets.json", network),
+    );
     if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
       const map = new Map();
       for (const subnet of artifact.data.subnets) {
@@ -507,21 +649,26 @@ async function lookupSubnetNetuid(env, slug, now = Date.now()) {
           map.set(subnet.slug.toLowerCase(), subnet.netuid);
         }
       }
-      subnetSlugIndex = { map, builtAt: now };
-    } else if (!subnetSlugIndex) {
+      subnetSlugIndexByNetwork.set(network.id, { map, builtAt: now });
+    } else if (!cached) {
       // Could not load the index and have no prior copy — leave unresolved.
       return null;
     }
   }
-  const netuid = subnetSlugIndex.map.get(slug.toLowerCase());
+  const netuid = subnetSlugIndexByNetwork
+    .get(network.id)
+    ?.map.get(slug.toLowerCase());
   return Number.isInteger(netuid) ? netuid : null;
 }
 
-async function handleApiRequest(request, env, url) {
+async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
   const matched = matchRoute(url.pathname);
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
+  // Mainnet (default) reads the unprefixed artifact (no-op); non-default networks
+  // read metagraph/{prefix}/… — see artifactPathForNetwork.
+  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
 
   // Live operational-health overlay (Phase 3): overlay the fresh 2-minute cron
   // snapshot (KV/D1) onto the static artifact, falling back to static when the
@@ -530,7 +677,11 @@ async function handleApiRequest(request, env, url) {
   // the snapshot is warm (the hot path on the most-hit health endpoint).
   let artifact;
   let live = null;
-  if (matched.id === "health") {
+  if (!network.isDefault) {
+    // Non-default networks serve only the static partitioned artifact; the live
+    // KV/D1 health overlay is mainnet-only.
+    artifact = await readArtifact(env, artifactPath);
+  } else if (matched.id === "health") {
     const current = await readHealthKv(env, KV_HEALTH_CURRENT);
     const liveData = current
       ? buildGlobalHealth(current, { contract_version: contractVersion(env) })
@@ -539,10 +690,10 @@ async function handleApiRequest(request, env, url) {
       live = { data: liveData };
       artifact = { ok: false };
     } else {
-      artifact = await readArtifact(env, matched.artifactPath);
+      artifact = await readArtifact(env, artifactPath);
     }
   } else {
-    artifact = await readArtifact(env, matched.artifactPath);
+    artifact = await readArtifact(env, artifactPath);
     live = await liveHealthOverlay(
       env,
       matched,
@@ -552,7 +703,7 @@ async function handleApiRequest(request, env, url) {
 
   if (!artifact.ok && !live) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
-      artifact_path: matched.artifactPath,
+      artifact_path: artifactPath,
     });
   }
 
@@ -567,7 +718,7 @@ async function handleApiRequest(request, env, url) {
   );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {
-      artifact_path: matched.artifactPath,
+      artifact_path: artifactPath,
       parameter: transformed.error.parameter,
     });
   }
@@ -576,7 +727,7 @@ async function handleApiRequest(request, env, url) {
     {
       data: transformed.data,
       meta: {
-        artifact_path: matched.artifactPath,
+        artifact_path: artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
         generated_at: baseData?.generated_at || null,
