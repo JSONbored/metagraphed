@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-81-website-www-covenant-ai",
+      "kind": "website",
+      "name": "deprecated community website",
+      "netuid": 81,
+      "provider": "one-covenant",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/one-covenant/grail",
+      "source_urls": ["https://github.com/one-covenant/grail"],
+      "state": "schema-valid",
+      "url": "https://www.covenant.ai/"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "{\n\t\"message\": \"api rate limit exceeded for user id 49853598. if you reach out to github support for help, please include the request id beac:25e9aa:3cc0230:e346fb7:6a2c64cf and timestamp 2026-06-12 19:58:07 utc. for more on scraping github and how it may affect your rights, please review our terms of service (https:\\/\\/docs.github.com\\/en\\/site-policy\\/github-terms\\/github-terms-of-service)\",\n\t\"documentation_url\": \"https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting\",\n\t\"status\": \"403\"\n}",
+    "submitted_by_url": "https://github.com/{\n\t\"message\": \"api rate limit exceeded for user id 49853598. if you reach out to github support for help, please include the request id beac:25e9aa:3cc0230:e346fb7:6a2c64cf and timestamp 2026-06-12 19:58:07 utc. for more on scraping github and how it may affect your rights, please review our terms of service (https:\\/\\/docs.github.com\\/en\\/site-policy\\/github-terms\\/github-terms-of-service)\",\n\t\"documentation_url\": \"https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting\",\n\t\"status\": \"403\"\n}"
+  }
+}
