@@ -80,6 +80,11 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/registry/leaderboards",
     );
     assert.equal(leaderboards.res.status, 404);
+
+    // Numeric per-subnet dynamic route (D1-backed) is mainnet-only too.
+    const trends = await get(env, "/api/v1/testnet/subnets/7/health/trends");
+    assert.equal(trends.res.status, 404);
+    assert.equal(trends.body.meta.network, "testnet");
   });
 
   test("raw artifact: mainnet alias serves bare data; testnet 404s", async () => {

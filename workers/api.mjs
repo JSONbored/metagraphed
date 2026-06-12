@@ -358,6 +358,18 @@ async function handleNetworkScopedRequest(request, env, url, network) {
         { slug: resolved.slug, network: network.id },
       );
     }
+    // Re-check after slug→netuid resolution: a slug-form per-subnet route (e.g.
+    // /subnets/<slug>/health/trends) only reveals itself as a mainnet-only
+    // dynamic route once the numeric netuid is filled in. Gate it explicitly
+    // rather than relying on a downstream R2 miss.
+    if (isMainnetOnlyApiPath(resolved.url.pathname)) {
+      return errorResponse(
+        "not_found",
+        `${resolved.url.pathname} is only available on mainnet, not the ${network.id} network.`,
+        404,
+        { network: network.id },
+      );
+    }
     return handleApiRequest(request, env, resolved.url, network);
   }
 
