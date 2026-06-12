@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-87-source-repo-github-com",
+      "kind": "source-repo",
+      "name": "unknown community source-repo",
+      "netuid": 87,
+      "provider": "luminar-network",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/Luminar-Network/luminar-sn",
+      "source_urls": ["https://github.com/Luminar-Network/luminar-sn"],
+      "state": "schema-valid",
+      "url": "https://github.com/Luminar-Network/luminar-sn"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
