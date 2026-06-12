@@ -89,6 +89,18 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(res.status, 404);
   });
 
+  test("local network exposes a client-side dev-mode setup pointer", async () => {
+    const env = createLocalArtifactEnv();
+    const info = await get(env, "/api/v1/local");
+    assert.equal(info.res.status, 200);
+    assert.equal(info.body.data.network, "local");
+    assert.equal(info.body.data.mode, "client-side");
+    assert.match(info.body.data.rpc.ws, /127\.0\.0\.1:9944/);
+    // Data routes under local stay 404 — nothing is hosted for a local chain.
+    const data = await get(env, "/api/v1/local/subnets");
+    assert.equal(data.res.status, 404);
+  });
+
   test("mainnet-only dynamic routes 404 under a network prefix, naming the network", async () => {
     const env = createLocalArtifactEnv();
     const semantic = await get(env, "/api/v1/testnet/search/semantic");

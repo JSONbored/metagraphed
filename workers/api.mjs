@@ -335,6 +335,32 @@ async function handleNetworkScopedRequest(request, env, url, network) {
     );
   }
 
+  // Local dev-mode: /api/v1/local returns the setup pointer (url is stripped, so
+  // the network root is "/api/v1"); any data route under local is a clear no-data
+  // 404 since metagraphed hosts nothing for a developer's local chain.
+  if (network.id === "local") {
+    if (url.pathname === "/api/v1") {
+      return envelopeResponse(
+        request,
+        {
+          data: LOCAL_NETWORK_INFO,
+          meta: {
+            network: "local",
+            contract_version: contractVersion(env),
+            source: "static",
+          },
+        },
+        "short",
+      );
+    }
+    return errorResponse(
+      "not_found",
+      "The local network is a client-side developer chain — metagraphed hosts no data for it. GET /api/v1/local for setup (point your SDK/RPC at ws://127.0.0.1:9944).",
+      404,
+      { network: "local" },
+    );
+  }
+
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
     if (isMainnetOnlyApiPath(url.pathname)) {
       return errorResponse(
@@ -557,6 +583,23 @@ const NETWORKS = {
   local: { id: "local", chain: "local", prefix: "local", isDefault: false },
 };
 const DEFAULT_NETWORK = NETWORKS.mainnet;
+
+// `local` is a per-developer subtensor metagraphed cannot enumerate or host, so
+// instead of registry data /api/v1/local returns the setup pointer: point your
+// SDK/RPC at the local node and use mainnet/testnet here as the reference
+// registry. (cosmos.directory similarly can't host a developer's local chain.)
+const LOCAL_NETWORK_INFO = {
+  network: "local",
+  mode: "client-side",
+  note: "Local is a per-developer subtensor you run yourself — metagraphed hosts no subnet data for it. Point your Bittensor SDK / RPC at your local node; use the mainnet and testnet registries here as the reference.",
+  rpc: { ws: "ws://127.0.0.1:9944", network_arg: "local" },
+  setup: {
+    sdk: "Python bittensor SDK: bt.SubtensorApi(network='local') (or bt.subtensor(network='local')).",
+    run_local_chain:
+      "Run a local subtensor node (the Subtensor repo's localnet script) to expose ws://127.0.0.1:9944 with sudo + fast blocks and free TAO.",
+  },
+  guide: "/skills/bittensor/SKILL.md",
+};
 // Only an /api/v1/ or /metagraph/ path whose first segment is a known network
 // alias is treated as network-scoped; real routes (subnets, providers, …) never
 // collide with the alias set, so this never shadows an existing path.
