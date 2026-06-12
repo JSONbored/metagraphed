@@ -101,18 +101,9 @@ function SubnetsTable() {
   const all = pages.flatMap((p) => (p.data ?? []) as Subnet[]);
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
-  // Mirror the most recently used cursor into the URL so refresh / sharing
-  // restores the same starting page. `data.pageParams` is the canonical
-  // record of which cursors fetched which pages.
-  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
-  useEffect(() => {
-    if (lastPageParam !== search.cursor) {
-      navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, cursor: lastPageParam }) as never,
-        replace: true,
-      });
-    }
-  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Treat the URL cursor as the immutable starting point for this infinite query.
+  // Updating it after fetching more pages changes the query key and drops already
+  // accumulated pages.
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
