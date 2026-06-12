@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T00:00:54.658Z",
+      "captured_at": "2026-06-12T03:58:57.893Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T00:00:54.658Z",
+          "captured_at": "2026-06-12T03:58:57.893Z",
           "content_type": "application/json",
           "hash": "dcdf2ff24fb46cebfcd7f4fdaf01ffaec6ec05f4910a6586308c4af685d643fe",
-          "latency_ms": 175,
+          "latency_ms": 83,
           "name": "Chutes OpenAPI schema",
           "provider": "chutes",
           "schema_url": "https://api.chutes.ai/openapi.json",
@@ -68,7 +68,7 @@
       "total_path_count": 166
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T00:00:54.658Z",
+      "captured_at": "2026-06-12T03:58:57.893Z",
       "status": "captured",
       "surface_count": 3,
       "surfaces": [
@@ -105,7 +105,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-11T23:58:50.356Z",
+  "generated_at": "2026-06-12T03:52:59.910Z",
   "netuid": 64,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

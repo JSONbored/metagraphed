@@ -12,11 +12,11 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-12T00:00:53.123Z",
+      "captured_at": "2026-06-12T03:58:56.589Z",
       "config_hash": "b01218e778bbe3ca0cb432e87470c8c10c47e23ec9682bf6b6ec5d29944b9fe5",
       "content_type": "text/plain; charset=utf-8",
       "issue_discovery_enabled_count": 3,
-      "latency_ms": 70,
+      "latency_ms": 56,
       "maintainer_cut_repo_count": 9,
       "max_maintainer_cut": 0.6,
       "repository_count": 19,
@@ -90,12 +90,12 @@
     },
     "mirror_freshness": {
       "archived": false,
-      "captured_at": "2026-06-12T00:00:53.447Z",
+      "captured_at": "2026-06-12T03:58:56.963Z",
       "default_branch": "test",
       "disabled": false,
       "full_name": "entrius/das-github-mirror",
       "html_url": "https://github.com/entrius/das-github-mirror",
-      "latency_ms": 138,
+      "latency_ms": 166,
       "open_issues_count": 6,
       "pushed_at": "2026-06-08T21:54:26Z",
       "status": "captured",
@@ -105,11 +105,11 @@
     "repository_metadata": {
       "archived_count": 0,
       "auth_status": "ok",
-      "captured_at": "2026-06-12T00:00:53.744Z",
+      "captured_at": "2026-06-12T03:58:57.226Z",
       "captured_count": 19,
       "carried_forward_count": 0,
       "html_fallback_count": 0,
-      "latest_push_at": "2026-06-11T23:55:00Z",
+      "latest_push_at": "2026-06-12T03:50:50Z",
       "rate_limited_or_forbidden_count": 0,
       "repositories": [
         {
@@ -128,7 +128,7 @@
           "full_name": "cogniax/tao-pulse-app",
           "html_url": "https://github.com/cogniax/tao-pulse-app",
           "metadata_level": "github-api",
-          "open_issues_count": 58,
+          "open_issues_count": 59,
           "pushed_at": "2026-06-09T17:54:15Z",
           "topic_count": 0
         },
@@ -149,7 +149,7 @@
           "html_url": "https://github.com/e35ventura/taopedia-articles",
           "metadata_level": "github-api",
           "open_issues_count": 0,
-          "pushed_at": "2026-06-11T22:28:56Z",
+          "pushed_at": "2026-06-12T01:42:38Z",
           "topic_count": 5
         },
         {
@@ -218,8 +218,8 @@
           "full_name": "infiniflow/ragflow",
           "html_url": "https://github.com/infiniflow/ragflow",
           "metadata_level": "github-api",
-          "open_issues_count": 3315,
-          "pushed_at": "2026-06-11T14:19:18Z",
+          "open_issues_count": 3316,
+          "pushed_at": "2026-06-12T03:13:18Z",
           "topic_count": 10
         },
         {
@@ -228,8 +228,8 @@
           "full_name": "JSONbored/awesome-claude",
           "html_url": "https://github.com/JSONbored/awesome-claude",
           "metadata_level": "github-api",
-          "open_issues_count": 267,
-          "pushed_at": "2026-06-11T22:58:14Z",
+          "open_issues_count": 258,
+          "pushed_at": "2026-06-12T02:48:03Z",
           "topic_count": 20
         },
         {
@@ -248,8 +248,8 @@
           "full_name": "MkDev11/gittensor-hub",
           "html_url": "https://github.com/MkDev11/gittensor-hub",
           "metadata_level": "github-api",
-          "open_issues_count": 3,
-          "pushed_at": "2026-06-11T23:54:53Z",
+          "open_issues_count": 1,
+          "pushed_at": "2026-06-12T03:47:03Z",
           "topic_count": 6
         },
         {
@@ -258,8 +258,8 @@
           "full_name": "phase-rs/phase",
           "html_url": "https://github.com/phase-rs/phase",
           "metadata_level": "github-api",
-          "open_issues_count": 552,
-          "pushed_at": "2026-06-11T23:55:00Z",
+          "open_issues_count": 548,
+          "pushed_at": "2026-06-12T03:50:50Z",
           "topic_count": 8
         },
         {
@@ -278,7 +278,7 @@
           "full_name": "touchpilot/touchpilot",
           "html_url": "https://github.com/touchpilot/touchpilot",
           "metadata_level": "github-api",
-          "open_issues_count": 30,
+          "open_issues_count": 31,
           "pushed_at": "2026-06-11T20:54:29Z",
           "topic_count": 0
         },
@@ -288,8 +288,8 @@
           "full_name": "vouchdev/vouch",
           "html_url": "https://github.com/vouchdev/vouch",
           "metadata_level": "github-api",
-          "open_issues_count": 59,
-          "pushed_at": "2026-06-11T23:50:18Z",
+          "open_issues_count": 71,
+          "pushed_at": "2026-06-12T00:00:56Z",
           "topic_count": 0
         },
         {
@@ -298,7 +298,7 @@
           "full_name": "we-promise/sure",
           "html_url": "https://github.com/we-promise/sure",
           "metadata_level": "github-api",
-          "open_issues_count": 383,
+          "open_issues_count": 381,
           "pushed_at": "2026-06-11T19:25:31Z",
           "topic_count": 0
         }
@@ -313,7 +313,7 @@
     "private_dashboards",
     "wallet_data"
   ],
-  "generated_at": "2026-06-11T23:58:50.356Z",
+  "generated_at": "2026-06-12T03:52:59.910Z",
   "netuid": 74,
   "notes": [
     "Gittensor adapter publishes public repository/config aggregates only.",

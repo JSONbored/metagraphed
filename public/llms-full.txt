@@ -2,7 +2,7 @@
 
 > The operational + integration registry for Bittensor subnets — what each subnet exposes (APIs, docs, schemas), whether it's healthy, and how to call it. Machine-readable for AI agents and developers.
 
-metagraphed catalogs the application/operational layer of Bittensor (complementary to chain explorers like taostats): 129 subnets, 1146 public surfaces, live 2-minute health probing. All endpoints are public, read-only JSON under the `{ ok, schema_version, data, meta }` envelope.
+metagraphed catalogs the application/operational layer of Bittensor (complementary to chain explorers like taostats): 129 subnets, 1143 public surfaces, live 2-minute health probing. All endpoints are public, read-only JSON under the `{ ok, schema_version, data, meta }` envelope.
 
 ## Machine entrypoints
 - [OpenAPI 3.1](https://api.metagraph.sh/metagraph/openapi.json): full machine contract for all routes
