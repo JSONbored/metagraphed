@@ -188,8 +188,5 @@ export function resolveBrandOverride(
   if (subnetKey && SUBNET_ICONS_BY_SLUG[subnetKey]) {
     return pickIconSource(SUBNET_ICONS_BY_SLUG[subnetKey], theme);
   }
-  if (subnetKey && PROVIDER_ICONS[subnetKey]) {
-    return pickIconSource(PROVIDER_ICONS[subnetKey], theme);
-  }
   return null;
 }
