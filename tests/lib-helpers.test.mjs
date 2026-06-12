@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import {
   mkdirSync,
+  lstatSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -341,7 +343,10 @@ describe("isPlaceholderIdentityUrl", () => {
     assert.equal(isPlaceholderIdentityUrl("https://example.com"), true);
   });
   test("passes real links and non-strings through as not-placeholder", () => {
-    assert.equal(isPlaceholderIdentityUrl("https://github.com/opentensor/bt"), false);
+    assert.equal(
+      isPlaceholderIdentityUrl("https://github.com/opentensor/bt"),
+      false,
+    );
     assert.equal(isPlaceholderIdentityUrl("https://taofu.xyz"), false);
     assert.equal(isPlaceholderIdentityUrl(null), false);
     assert.equal(isPlaceholderIdentityUrl(undefined), false);
@@ -361,7 +366,10 @@ describe("backfilledIdentityUrl", () => {
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
-    assert.equal(backfilledIdentityUrl(undefined, "nodexo.ai"), "https://nodexo.ai/");
+    assert.equal(
+      backfilledIdentityUrl(undefined, "nodexo.ai"),
+      "https://nodexo.ai/",
+    );
   });
   test("rejects placeholder junk and unusable chain values", () => {
     assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
@@ -575,11 +583,30 @@ describe("buildSubnetLineageLinks", () => {
 });
 
 describe("writeJson (atomic)", () => {
+  test("does not follow a preexisting predictable temp-path symlink", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-symlink-"));
+    const file = path.join(dir, "out.json");
+    const clobberTarget = path.join(dir, "clobbered.txt");
+    const oldPredictableTempPath = `${file}.${process.pid}.0.tmp`;
+    writeFileSync(clobberTarget, "keep me");
+    symlinkSync(clobberTarget, oldPredictableTempPath);
+
+    await writeJson(file, { safe: true });
+
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { safe: true });
+    assert.equal(readFileSync(clobberTarget, "utf8"), "keep me");
+    assert.equal(lstatSync(file).isSymbolicLink(), false);
+    assert.equal(lstatSync(oldPredictableTempPath).isSymbolicLink(), true);
+  });
+
   test("writes JSON atomically via a temp file + rename", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "wj-ok-"));
     const file = path.join(dir, "out.json");
     await writeJson(file, { a: 1, b: [2, 3] });
-    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { a: 1, b: [2, 3] });
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {
+      a: 1,
+      b: [2, 3],
+    });
     assert.ok(readFileSync(file, "utf8").endsWith("\n"));
     // no temp artifact survives a successful write
     assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);

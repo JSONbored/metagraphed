@@ -126,26 +126,29 @@ export async function readArtifactJson(relativePath) {
   return readJson(artifactFilePath(relativePath));
 }
 
-// Monotonic suffix so two writers (or one writer with many files) never collide
-// on a temp name within a process.
-let atomicWriteCounter = 0;
-
-// Write a file atomically: stage to a sibling temp path (same directory, so the
-// same filesystem → rename() is atomic) then rename over the target. A
-// concurrent reader always sees a complete old-or-new file, never the
-// zero-length window a plain truncate-write exposes. This makes the build safe
-// to run while tests / the Worker read the committed artifacts in parallel
-// (fixes the vitest file-scheduling race where a reader saw a half-written
-// subnets.json and 404'd).
+// Write a file atomically: stage inside a private sibling temp directory (same
+// filesystem, so rename() is atomic) then rename over the target. A concurrent
+// reader always sees a complete old-or-new file, never the zero-length window a
+// plain truncate-write exposes. The randomly-created temp directory also avoids
+// following attacker-precreated symlinks at predictable staging paths. This
+// makes the build safe to run while tests / the Worker read the committed
+// artifacts in parallel (fixes the vitest file-scheduling race where a reader
+// saw a half-written subnets.json and 404'd).
 async function atomicWriteFile(filePath, content) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const tempPath = `${filePath}.${process.pid}.${atomicWriteCounter++}.tmp`;
+  const dir = path.dirname(filePath);
+  await fs.mkdir(dir, { recursive: true });
+  const tempDir = await fs.mkdtemp(
+    path.join(dir, `${path.basename(filePath)}.${process.pid}.`),
+  );
+  const tempPath = path.join(tempDir, "write.tmp");
   try {
     await fs.writeFile(tempPath, content, "utf8");
     await fs.rename(tempPath, filePath);
   } catch (error) {
     await fs.rm(tempPath, { force: true }).catch(() => {});
     throw error;
+  } finally {
+    await fs.rm(tempDir, { force: true, recursive: true }).catch(() => {});
   }
 }
 
@@ -1147,7 +1150,10 @@ export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
   const cleaned = cleanDescription(notes);
   if (!cleaned) return null;
   if (cleaned.length <= maxLength) return cleaned;
-  return `${cleaned.slice(0, maxLength).replace(/\s+\S*$/, "").trimEnd()}…`;
+  return `${cleaned
+    .slice(0, maxLength)
+    .replace(/\s+\S*$/, "")
+    .trimEnd()}…`;
 }
 
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
