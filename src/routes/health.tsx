@@ -345,10 +345,11 @@ function SourceHealth({ interval }: { interval: number | false }) {
  *   "endpoint-sn7-allways"                 → "allways"
  *   anything else                          → the raw id
  */
-function hostKeyFromEndpointId(id: string | null | undefined): string {
-  if (!id) return "—";
-  const m = id.match(/^endpoint-sn-?\d+-(.+)$/i);
-  return m ? m[1]! : id;
+function hostKeyFromEndpointId(id: unknown): string {
+  if (id === null || id === undefined || id === "") return "—";
+  const text = String(id);
+  const m = text.match(/^endpoint-sn-?\d+-(.+)$/i);
+  return m ? m[1]! : text;
 }
 
 type SeverityRank = 0 | 1 | 2 | 3;

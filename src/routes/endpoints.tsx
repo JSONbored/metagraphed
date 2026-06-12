@@ -472,10 +472,11 @@ function FilterSelect({
  * Same host-grouping shape as /health so incidents read the same way in
  * both places. State filter chips + show-more toggle.
  */
-function hostKeyFromEndpointId(id: string | null | undefined): string {
-  if (!id) return "—";
-  const m = id.match(/^endpoint-sn-?\d+-(.+)$/i);
-  return m ? m[1]! : id;
+function hostKeyFromEndpointId(id: unknown): string {
+  if (id === null || id === undefined || id === "") return "—";
+  const text = String(id);
+  const m = text.match(/^endpoint-sn-?\d+-(.+)$/i);
+  return m ? m[1]! : text;
 }
 
 function severityRank(state: HealthState | undefined): number {
