@@ -26,7 +26,7 @@ Locked decisions:
 
 - **Edge / moat:** coverage completeness, framed as _trustworthy, verified_
   completeness.
-- **Frontend:** `jsonbored/metagraph-finder` (Lovable-owned) stays a **separate
+- **Frontend:** `jsonbored/metagraphed-ui` (Lovable-owned) stays a **separate
   Cloudflare Worker** from the backend.
 - **Beta differentiator:** enable the read-only RPC proxy (with Cloudflare WAF +
   rate limiting as prerequisites).
@@ -188,7 +188,7 @@ examples):
   route patterns `metagraph.sh/api/*`, `metagraph.sh/metagraph/*`,
   `metagraph.sh/rpc/*`. Keep the `ASSETS` binding only for the compact
   `public/metagraph/*` artifacts. Drop SPA-serving responsibility.
-- **Frontend Worker (`metagraph-finder`)** — its own `wrangler` project, route
+- **Frontend Worker (`metagraphed-ui`)** — its own `wrangler` project, route
   `metagraph.sh/*` (catch-all, lowest precedence). Serves the SPA; its API base
   URL is same-origin `/api/v1`, so no CORS and no cross-origin cookies.
 - Cloudflare matches more-specific routes first, so `/api/*` and friends hit the
@@ -233,7 +233,7 @@ guarantees); and a handful of copy-paste example queries against the live beta.
   probe, time-bounded R2 reads (`r2_timeout` 504), and structured observability
   logging.
 - Restructure routing to two Workers via zone routes; coordinate the
-  `metagraph-finder` Worker project (architecture section). _Gated:_ needs the
+  `metagraphed-ui` Worker project (architecture section). _Gated:_ needs the
   frontend Worker deployed + DNS/zone-route changes, so the `wrangler.jsonc`
   `custom_domain` switch is intentionally not yet applied (it would orphan the
   apex until the UI Worker exists).
@@ -285,7 +285,7 @@ guarantees); and a handful of copy-paste example queries against the live beta.
 
 ## Open coordination items (not blockers)
 
-- Confirm the `metagraph-finder` deploy target (its own Worker project + route).
+- Confirm the `metagraphed-ui` deploy target (its own Worker project + route).
 - Decide whether to publish generated types as an npm package now or hand off
   files for beta.
 - Confirm the Cloudflare plan supports the WAF / Rate Limiting rules the RPC proxy

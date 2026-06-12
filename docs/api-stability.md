@@ -2,7 +2,7 @@
 
 This is the consumer-facing stability contract for the Worker API served from
 `https://api.metagraph.sh/api/v1/*`. It is the reference for the frontend
-(`jsonbored/metagraph-finder`) and any external integrator. The canonical machine
+(`jsonbored/metagraphed-ui`) and any external integrator. The canonical machine
 contract is `public/metagraph/openapi.json` plus the generated
 `generated/metagraphed-api.d.ts` and `generated/metagraphed-client.ts`; this doc
 describes the guarantees around them. Behavior here is implemented in

@@ -166,7 +166,7 @@ The contract chain is:
 
 Zod is not the backend source of truth in v1. If Zod helpers are added later, they should be generated consumer tooling for frontend/runtime form validation, not canonical registry authority.
 
-API consumers (including the separate `metagraph-finder` frontend) should start from `docs/api-stability.md` — the `/api/v1` stability contract covering the response envelope, pagination/sort/filter, cache profiles, `x-metagraph-*` headers, error codes, `meta.published_at` freshness, versioning guarantees, and copy-paste example queries. Generate a typed client from `/metagraph/openapi.json`, or consume the checked-in `generated/metagraphed-api.d.ts` and `generated/metagraphed-client.ts`.
+API consumers (including the separate `metagraphed-ui` frontend) should start from `docs/api-stability.md` — the `/api/v1` stability contract covering the response envelope, pagination/sort/filter, cache profiles, `x-metagraph-*` headers, error codes, `meta.published_at` freshness, versioning guarantees, and copy-paste example queries. Generate a typed client from `/metagraph/openapi.json`, or consume the checked-in `generated/metagraphed-api.d.ts` and `generated/metagraphed-client.ts`.
 
 Worker API routes expose stable envelopes over the same canonical artifacts:
 

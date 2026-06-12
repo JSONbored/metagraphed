@@ -4,7 +4,7 @@ import { DOMAIN_TAGS } from "./domain-tags.mjs";
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
-// (metagraph.sh) is the metagraph-finder UI. PRIMARY_DOMAIN drives the OpenAPI
+// (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
 // server URL and the consumer metadata in contracts.json / api-index.json.
 export const PRIMARY_DOMAIN = "api.metagraph.sh";
 export const API_BASE_PATH = "/api/v1";
