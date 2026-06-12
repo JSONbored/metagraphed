@@ -71,6 +71,21 @@ describe("multi-network routing prefix (Phase 1)", () => {
     );
   });
 
+  test("repeated default aliases are canonicalized without recursive dispatch", async () => {
+    const env = createLocalArtifactEnv();
+    const aliases = Array.from({ length: 12000 }, (_, index) =>
+      index % 2 === 0 ? "mainnet" : "finney",
+    ).join("/");
+    const bare = await get(env, "/api/v1/subnets");
+    const aliased = await get(env, `/api/v1/${aliases}/subnets`);
+
+    assert.equal(aliased.res.status, bare.res.status);
+    assert.equal(
+      aliased.body.data?.subnets?.length,
+      bare.body.data?.subnets?.length,
+    );
+  });
+
   test("mainnet + finney aliases preserve dynamic mainnet routes", async () => {
     const env = createLocalArtifactEnv();
 

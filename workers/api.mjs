@@ -164,7 +164,7 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
 }
 
 export async function handleRequest(request, env = {}, ctx = {}) {
-  const url = new URL(request.url);
+  let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
     return corsPreflight(request);
@@ -177,18 +177,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   const networkRoute = resolveNetworkPrefix(url);
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
-      return handleRequest(
-        new Request(networkRoute.url.toString(), request),
+      url = networkRoute.url;
+      request = new Request(url.toString(), request);
+    } else {
+      return handleNetworkScopedRequest(
+        request,
         env,
-        ctx,
+        networkRoute.url,
+        networkRoute.network,
       );
     }
-    return handleNetworkScopedRequest(
-      request,
-      env,
-      networkRoute.url,
-      networkRoute.network,
-    );
   }
 
   if (url.pathname.startsWith("/rpc/v1/")) {
@@ -626,18 +624,33 @@ const LOCAL_NETWORK_INFO = {
 const NETWORK_PREFIX_PATTERN =
   /^\/(api\/v1|metagraph)\/(mainnet|finney|testnet|test|local)(\/.*|$)/;
 
-// Splits an explicit /{network}/ prefix off the path. Returns the resolved
-// network descriptor + the prefix-stripped URL that all existing dispatch and
-// route matching run against. Bare paths resolve to mainnet with the URL
-// unchanged (explicit:false) — the zero-regression default.
+// Splits explicit /{network}/ prefixes off the path. Default-network aliases
+// (mainnet/finney) are canonicalized iteratively so repeated aliases preserve
+// the old bare-route dispatch without recursively re-entering handleRequest. If
+// a non-default prefix remains after default alias normalization, it is returned
+// for the network-scoped artifact handler. Bare paths resolve to mainnet with
+// the URL unchanged (explicit:false) — the zero-regression default.
 function resolveNetworkPrefix(url) {
-  const match = NETWORK_PREFIX_PATTERN.exec(url.pathname);
-  if (!match) {
-    return { network: DEFAULT_NETWORK, url, explicit: false };
+  let rewritten = url;
+  let explicit = false;
+
+  while (true) {
+    const match = NETWORK_PREFIX_PATTERN.exec(rewritten.pathname);
+    if (!match) {
+      return { network: DEFAULT_NETWORK, url: rewritten, explicit };
+    }
+
+    const network = NETWORKS[match[2]];
+    const nextUrl = new URL(rewritten);
+    nextUrl.pathname = `/${match[1]}${match[3] && match[3] !== "/" ? match[3] : ""}`;
+    explicit = true;
+
+    if (!network.isDefault) {
+      return { network, url: nextUrl, explicit };
+    }
+
+    rewritten = nextUrl;
   }
-  const rewritten = new URL(url);
-  rewritten.pathname = `/${match[1]}${match[3] && match[3] !== "/" ? match[3] : ""}`;
-  return { network: NETWORKS[match[2]], url: rewritten, explicit: true };
 }
 
 // Inserts the network key segment for non-default networks, so the artifact read
