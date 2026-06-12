@@ -167,7 +167,7 @@ export function EndpointsGlance({
         aria-hidden={!open}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="p-3">{fullList()}</div>
+          <div className="p-3">{open ? fullList() : null}</div>
         </div>
       </div>
     </div>
