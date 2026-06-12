@@ -176,6 +176,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // mainnet behaviour is byte-identical to before networks existed.
   const networkRoute = resolveNetworkPrefix(url);
   if (networkRoute.explicit) {
+    if (networkRoute.network.isDefault) {
+      return handleRequest(
+        new Request(networkRoute.url.toString(), request),
+        env,
+        ctx,
+      );
+    }
     return handleNetworkScopedRequest(
       request,
       env,
@@ -399,7 +406,10 @@ async function handleNetworkScopedRequest(request, env, url, network) {
     return handleApiRequest(request, env, resolved.url, network);
   }
 
-  if (url.pathname.startsWith("/metagraph/") && url.pathname.endsWith(".json")) {
+  if (
+    url.pathname.startsWith("/metagraph/") &&
+    url.pathname.endsWith(".json")
+  ) {
     return handleRawArtifactRequest(request, env, url, network);
   }
 
@@ -411,7 +421,12 @@ async function handleNetworkScopedRequest(request, env, url, network) {
   );
 }
 
-async function handleRawArtifactRequest(request, env, url, network = DEFAULT_NETWORK) {
+async function handleRawArtifactRequest(
+  request,
+  env,
+  url,
+  network = DEFAULT_NETWORK,
+) {
   if (!matchRawArtifact(url.pathname)) {
     return errorResponse(
       "not_found",
@@ -578,7 +593,12 @@ function renderBadgeSvg(rawLabel, rawMessage, color) {
 const NETWORKS = {
   mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
   finney: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
-  testnet: { id: "testnet", chain: "test", prefix: "testnet", isDefault: false },
+  testnet: {
+    id: "testnet",
+    chain: "test",
+    prefix: "testnet",
+    isDefault: false,
+  },
   test: { id: "testnet", chain: "test", prefix: "testnet", isDefault: false },
   local: { id: "local", chain: "local", prefix: "local", isDefault: false },
 };
@@ -627,7 +647,10 @@ function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
   if (!network || !network.prefix) {
     return artifactPath;
   }
-  return artifactPath.replace(/^\/metagraph\//, `/metagraph/${network.prefix}/`);
+  return artifactPath.replace(
+    /^\/metagraph\//,
+    `/metagraph/${network.prefix}/`,
+  );
 }
 
 // Friendly per-subnet routes: /api/v1/subnets/<slug>/... resolves to the netuid

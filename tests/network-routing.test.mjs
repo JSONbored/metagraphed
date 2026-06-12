@@ -65,7 +65,53 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const aliased = await get(env, "/api/v1/mainnet/subnets/7");
     assert.equal(bare.res.status, 200);
     assert.equal(aliased.res.status, 200);
-    assert.equal(aliased.body.data?.subnet?.netuid, bare.body.data?.subnet?.netuid);
+    assert.equal(
+      aliased.body.data?.subnet?.netuid,
+      bare.body.data?.subnet?.netuid,
+    );
+  });
+
+  test("mainnet + finney aliases preserve dynamic mainnet routes", async () => {
+    const env = createLocalArtifactEnv();
+
+    for (const route of [
+      "/api/v1/registry/leaderboards",
+      "/api/v1/subnets/7/health/trends",
+    ]) {
+      const bare = await get(env, route);
+      const mainnet = await get(
+        env,
+        route.replace("/api/v1/", "/api/v1/mainnet/"),
+      );
+      const finney = await get(
+        env,
+        route.replace("/api/v1/", "/api/v1/finney/"),
+      );
+
+      assert.equal(
+        mainnet.res.status,
+        bare.res.status,
+        `mainnet alias for ${route}`,
+      );
+      assert.equal(
+        finney.res.status,
+        bare.res.status,
+        `finney alias for ${route}`,
+      );
+    }
+
+    const askInit = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question: "What is subnet 7?" }),
+    };
+    const bareAsk = await get(env, "/api/v1/ask", askInit);
+    const mainnetAsk = await get(env, "/api/v1/mainnet/ask", askInit);
+    const finneyAsk = await get(env, "/api/v1/finney/ask", askInit);
+
+    assert.notEqual(bareAsk.res.status, 405);
+    assert.equal(mainnetAsk.res.status, bareAsk.res.status);
+    assert.equal(finneyAsk.res.status, bareAsk.res.status);
   });
 
   test("testnet route serves network-partitioned data from the testnet key", async () => {
@@ -101,7 +147,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(data.res.status, 404);
   });
 
-  test("mainnet-only dynamic routes 404 under a network prefix, naming the network", async () => {
+  test("mainnet-only dynamic routes 404 under a non-default network prefix, naming the network", async () => {
     const env = createLocalArtifactEnv();
     const semantic = await get(env, "/api/v1/testnet/search/semantic");
     assert.equal(semantic.res.status, 404);
@@ -135,7 +181,11 @@ describe("multi-network routing prefix (Phase 1)", () => {
   test("a real route segment that merely looks adjacent is never shadowed by the alias set", async () => {
     const env = createLocalArtifactEnv();
     // "subnets"/"providers"/"surfaces" are real routes, not network aliases.
-    for (const route of ["/api/v1/subnets", "/api/v1/providers", "/api/v1/surfaces"]) {
+    for (const route of [
+      "/api/v1/subnets",
+      "/api/v1/providers",
+      "/api/v1/surfaces",
+    ]) {
       const { res } = await get(env, route);
       assert.equal(res.status, 200, `${route} should be unaffected`);
     }
