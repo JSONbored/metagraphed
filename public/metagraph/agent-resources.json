@@ -1,0 +1,147 @@
+{
+  "content_hash": "4d424f04be150c0f8365e31ed173b942e306a075b5b6b9b2ac1e10faeba9766d",
+  "copyable_agent": {
+    "description": "Paste-ready system prompt that turns any agent (Claude, Cursor, …) into a metagraphed-powered Bittensor integration agent.",
+    "title": "Bittensor integration agent",
+    "url": "https://api.metagraph.sh/agent.md"
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "mcp": {
+    "endpoint": "https://api.metagraph.sh/mcp",
+    "install": "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp",
+    "server_card": "https://api.metagraph.sh/.well-known/mcp/server-card.json",
+    "tools": [
+      {
+        "name": "search_subnets",
+        "title": "Search Bittensor subnets"
+      },
+      {
+        "name": "find_subnets_by_capability",
+        "title": "Find subnets by capability"
+      },
+      {
+        "name": "get_subnet",
+        "title": "Get subnet overview"
+      },
+      {
+        "name": "get_subnet_health",
+        "title": "Get subnet health"
+      },
+      {
+        "name": "list_subnet_apis",
+        "title": "List a subnet's callable services"
+      },
+      {
+        "name": "get_api_schema",
+        "title": "Get a surface's API schema"
+      },
+      {
+        "name": "get_fixture",
+        "title": "Get a surface's live request/response fixture"
+      },
+      {
+        "name": "get_agent_catalog",
+        "title": "Get the agent capability catalog"
+      },
+      {
+        "name": "get_best_rpc_endpoint",
+        "title": "Get the best Bittensor RPC endpoint"
+      },
+      {
+        "name": "registry_summary",
+        "title": "Get the registry-wide summary"
+      },
+      {
+        "name": "semantic_search",
+        "title": "Semantic search across the registry"
+      },
+      {
+        "name": "ask",
+        "title": "Ask a grounded question about the registry"
+      },
+      {
+        "name": "find_subnet_for_task",
+        "title": "Find a subnet that can do a task"
+      },
+      {
+        "name": "how_do_i_call",
+        "title": "Get concrete call instructions for a subnet"
+      }
+    ],
+    "transport": "streamable-http"
+  },
+  "published_at": null,
+  "resources": [
+    {
+      "id": "agent",
+      "kind": "agent",
+      "title": "Copyable AI agent",
+      "url": "https://api.metagraph.sh/agent.md"
+    },
+    {
+      "id": "skill",
+      "kind": "skill",
+      "title": "Bittensor skill",
+      "url": "https://api.metagraph.sh/skills/bittensor/SKILL.md"
+    },
+    {
+      "id": "llms",
+      "kind": "index",
+      "title": "llms.txt",
+      "url": "https://api.metagraph.sh/llms.txt"
+    },
+    {
+      "id": "llms-full",
+      "kind": "index",
+      "title": "llms-full.txt",
+      "url": "https://api.metagraph.sh/llms-full.txt"
+    },
+    {
+      "id": "openapi",
+      "kind": "contract",
+      "title": "OpenAPI 3.1 contract",
+      "url": "https://api.metagraph.sh/metagraph/openapi.json"
+    },
+    {
+      "id": "agent-catalog",
+      "kind": "api",
+      "title": "Agent capability catalog",
+      "url": "https://api.metagraph.sh/api/v1/agent-catalog"
+    },
+    {
+      "id": "semantic-search",
+      "kind": "api",
+      "title": "Semantic search",
+      "url": "https://api.metagraph.sh/api/v1/search/semantic?q="
+    },
+    {
+      "id": "ask",
+      "kind": "api",
+      "title": "Ask (grounded Q&A)",
+      "url": "https://api.metagraph.sh/api/v1/ask"
+    },
+    {
+      "id": "fixtures",
+      "kind": "api",
+      "title": "Live request/response fixtures",
+      "url": "https://api.metagraph.sh/api/v1/fixtures"
+    },
+    {
+      "id": "lineage",
+      "kind": "api",
+      "title": "Cross-network lineage",
+      "url": "https://api.metagraph.sh/api/v1/lineage"
+    },
+    {
+      "id": "datasets",
+      "kind": "data",
+      "title": "Bulk CSV datasets",
+      "url": "https://api.metagraph.sh/datasets/index.json"
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "callable_service_count": 67,
+    "subnet_count": 129
+  }
+}

@@ -237,6 +237,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Machine index of every AI resource: the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+      "id": "agent-resources",
+      "path": "/metagraph/agent-resources.json",
+      "schema_ref": "#/components/schemas/AgentResourcesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "A captured, sanitized live request/response sample for one surface.",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",

@@ -107,6 +107,9 @@ const DUAL_PATTERNS = [
   // Captured-fixtures index (issue #352): small, agent-facing list of which
   // surfaces have a recorded live sample; the per-surface bodies stay R2-only.
   /^fixtures\.json$/,
+  // AI-resources index: the copyable agent + MCP + skill + APIs in one machine
+  // index; small, agent-facing, committed + mirrored.
+  /^agent-resources\.json$/,
   /^types\.d\.ts$/,
 ];
 

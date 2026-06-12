@@ -228,6 +228,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/agent-resources",
+    (body) => {
+      assert.equal(Array.isArray(body.data.resources), true);
+      assert.equal(Array.isArray(body.data.mcp.tools), true);
+    },
+  ],
+  [
     "/api/v1/review/gaps?limit=3",
     (body) => assert.equal(body.data.priorities.length <= 3, true),
   ],

@@ -1534,6 +1534,68 @@
           }
         ]
       },
+      "AgentResourcesArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["copyable_agent", "mcp", "resources"],
+            "properties": {
+              "published_at": { "type": ["string", "null"] },
+              "content_hash": { "type": "string" },
+              "summary": { "type": "object", "additionalProperties": true },
+              "copyable_agent": {
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "description": { "type": "string" }
+                },
+                "additionalProperties": true
+              },
+              "mcp": {
+                "type": "object",
+                "required": ["endpoint", "install", "tools"],
+                "properties": {
+                  "endpoint": { "type": "string", "format": "uri" },
+                  "transport": { "type": "string" },
+                  "install": { "type": "string" },
+                  "server_card": { "type": "string", "format": "uri" },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["name"],
+                      "properties": {
+                        "name": { "type": "string" },
+                        "title": { "type": ["string", "null"] }
+                      },
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "resources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "title", "url"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "url": { "type": "string", "format": "uri" }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
       "FixturesIndexArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },

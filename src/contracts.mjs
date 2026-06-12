@@ -684,6 +684,12 @@ export const PUBLIC_ARTIFACTS = [
     "FixturesIndexArtifact",
   ),
   artifact(
+    "agent-resources",
+    "/metagraph/agent-resources.json",
+    "Machine index of every AI resource: the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+    "AgentResourcesArtifact",
+  ),
+  artifact(
     "fixture-detail",
     "/metagraph/fixtures/{surface_id}.json",
     "A captured, sanitized live request/response sample for one surface.",
@@ -1150,6 +1156,15 @@ export const API_ROUTES = [
     "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
     "standard",
     ["registry", "api-dx"],
+  ),
+  route(
+    "agent-resources",
+    "GET",
+    "/api/v1/agent-resources",
+    "/metagraph/agent-resources.json",
+    "Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+    "standard",
+    ["api-dx"],
   ),
   route(
     "curation",
