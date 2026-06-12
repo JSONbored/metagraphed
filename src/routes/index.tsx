@@ -7,6 +7,7 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { RegistryPulse } from "@/components/metagraphed/charts/registry-pulse";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
@@ -73,9 +74,11 @@ function OverviewPage() {
             View full registry →
           </Link>
         </div>
-        <Suspense fallback={<TableSkeleton />}>
-          <SubnetPreviewTable />
-        </Suspense>
+        <QueryErrorBoundary>
+          <Suspense fallback={<TableSkeleton />}>
+            <SubnetPreviewTable />
+          </Suspense>
+        </QueryErrorBoundary>
       </section>
     </AppShell>
   );
