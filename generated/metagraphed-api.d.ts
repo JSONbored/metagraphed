@@ -317,7 +317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline). */
+        /** Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline). */
         get: operations["lineage"];
         put?: never;
         post?: never;
@@ -2609,7 +2609,7 @@ export interface components {
             injection_scrubbed?: boolean;
             integration_readiness?: number;
             interface_count?: number;
-            /** @description Cross-network lineage (issue #353): when this mainnet subnet has a testnet counterpart (matched by github_repo or chain name), { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only. */
+            /** @description Cross-network lineage (issue #353): when this mainnet subnet has a maintainer-approved testnet counterpart, { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only. */
             lineage?: ({
                 also_on?: ({
                     /** @enum {unknown} */

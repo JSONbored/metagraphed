@@ -218,10 +218,9 @@ for (const subnet of mergedSubnets) {
   }
 }
 
-// Cross-network lineage (issue #353): join mainnet ↔ testnet on non-placeholder
-// github_repo, else on-chain name — the one mapping a chain explorer can't make.
-// A mainnet subnet with a testnet counterpart "graduated from testnet". Emitted
-// as a standalone /metagraph/lineage.json + onto each mainnet profile.
+// Cross-network lineage (issue #353): publish maintainer-approved mainnet ↔
+// testnet pairs only. On-chain repo/name equality is review evidence, not an
+// authorization mechanism, because public chain metadata is self-declared.
 const testnetSnapshot = await readOptionalJson(
   path.join(repoRoot, "registry/native/test-subnets.json"),
 );
@@ -232,7 +231,14 @@ const testnetByNetuid = new Map(
 const mergedByNetuid = new Map(
   mergedSubnets.map((subnet) => [subnet.netuid, subnet]),
 );
-const lineageLinks = buildSubnetLineageLinks(chainSubnets, testnetSubnets);
+const lineageApprovals = await readOptionalJson(
+  path.join(repoRoot, "registry/lineage.json"),
+);
+const lineageLinks = buildSubnetLineageLinks(
+  chainSubnets,
+  testnetSubnets,
+  lineageApprovals?.links || [],
+);
 const lineageEntries = lineageLinks.map((link) => ({
   mainnet_netuid: link.source_netuid,
   mainnet_name: mergedByNetuid.get(link.source_netuid)?.name || null,
@@ -749,9 +755,9 @@ await writeJson(artifactFile("subnets.json"), {
   subnets: subnetIndex,
 });
 
-// Cross-network lineage map (issue #353): mainnet subnets that have a testnet
-// counterpart (graduated), the join method, and how many testnet subnets are
-// not yet on mainnet (the deploying-soon pipeline).
+// Cross-network lineage map (issue #353): maintainer-approved mainnet subnets
+// that have a testnet counterpart (graduated), the reviewed evidence type, and
+// how many testnet subnets are not yet on mainnet (the deploying-soon pipeline).
 const graduatedMainnetNetuids = new Set(
   lineageEntries.map((entry) => entry.mainnet_netuid),
 );

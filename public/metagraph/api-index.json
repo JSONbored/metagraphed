@@ -1747,7 +1747,7 @@
     {
       "artifact_path": "/metagraph/lineage.json",
       "cache": "standard",
-      "description": "Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).",
+      "description": "Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).",
       "id": "lineage",
       "method": "GET",
       "path": "/api/v1/lineage",

@@ -330,7 +330,10 @@ describe("isPlaceholderIdentityUrl", () => {
     assert.equal(isPlaceholderIdentityUrl("https://example.com"), true);
   });
   test("passes real links and non-strings through as not-placeholder", () => {
-    assert.equal(isPlaceholderIdentityUrl("https://github.com/opentensor/bt"), false);
+    assert.equal(
+      isPlaceholderIdentityUrl("https://github.com/opentensor/bt"),
+      false,
+    );
     assert.equal(isPlaceholderIdentityUrl("https://taofu.xyz"), false);
     assert.equal(isPlaceholderIdentityUrl(null), false);
     assert.equal(isPlaceholderIdentityUrl(undefined), false);
@@ -350,7 +353,10 @@ describe("backfilledIdentityUrl", () => {
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
-    assert.equal(backfilledIdentityUrl(undefined, "nodexo.ai"), "https://nodexo.ai/");
+    assert.equal(
+      backfilledIdentityUrl(undefined, "nodexo.ai"),
+      "https://nodexo.ai/",
+    );
   });
   test("rejects placeholder junk and unusable chain values", () => {
     assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
@@ -528,7 +534,27 @@ describe("buildSubnetLineageLinks", () => {
     chain_identity: { subnet_name: name, github_repo: repo || null },
   });
 
-  test("matches by non-placeholder github_repo (strongest), then chain name", () => {
+  test("publishes only maintainer-approved lineage pairs", () => {
+    const mainnet = [
+      sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
+      sub(4, "Targon", null),
+    ];
+    const testnet = [
+      sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
+      sub(4, "targon", null),
+      sub(999, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
+    ];
+    const links = buildSubnetLineageLinks(mainnet, testnet, [
+      { source_netuid: 4, target_netuid: 4, matched_by: "chain_name" },
+      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+    ]);
+    assert.deepEqual(links, [
+      { source_netuid: 4, target_netuid: 4, matched_by: "chain_name" },
+      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+    ]);
+  });
+
+  test("does not auto-link unapproved repo/name claims", () => {
     const mainnet = [
       sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
       sub(4, "Targon", null),
@@ -537,24 +563,24 @@ describe("buildSubnetLineageLinks", () => {
       sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
       sub(4, "targon", null),
     ];
-    const links = buildSubnetLineageLinks(mainnet, testnet);
-    assert.deepEqual(links, [
-      { source_netuid: 4, target_netuid: 4, matched_by: "chain_name" },
-      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
-    ]);
+    assert.deepEqual(buildSubnetLineageLinks(mainnet, testnet), []);
   });
 
-  test("ignores placeholder repos and generic names", () => {
+  test("ignores approvals for missing subnets or invalid match types", () => {
     const mainnet = [
-      sub(3, "deprecated", "https://github.com/username/repo"),
-      sub(0, "root", null),
+      sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
     ];
     const testnet = [
-      sub(295, "deprecated", "https://github.com/username/repo"),
-      sub(0, "root", null),
+      sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
     ];
-    // placeholder repo + generic names ("root"/"deprecated") must not match
-    assert.deepEqual(buildSubnetLineageLinks(mainnet, testnet), []);
+    assert.deepEqual(
+      buildSubnetLineageLinks(mainnet, testnet, [
+        { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 999, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 383, matched_by: "unreviewed" },
+      ]),
+      [{ source_netuid: 24, target_netuid: 383, matched_by: "github_repo" }],
+    );
   });
 
   test("returns [] for empty inputs", () => {

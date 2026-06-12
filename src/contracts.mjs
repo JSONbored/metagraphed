@@ -674,7 +674,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "lineage",
     "/metagraph/lineage.json",
-    "Cross-network subnet lineage: mainnet subnets matched to their testnet counterpart by github_repo or chain name.",
+    "Cross-network subnet lineage: maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence.",
     "LineageArtifact",
   ),
   artifact(
@@ -1126,7 +1126,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/lineage",
     "/metagraph/lineage.json",
-    "Fetch cross-network subnet lineage: mainnet ↔ testnet identity mapping (graduated subnets + the deploying-soon testnet pipeline).",
+    "Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).",
     "standard",
     ["registry", "multi-network"],
   ),

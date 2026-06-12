@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "notes": "Maintainer-approved cross-network lineage pairs. Builds may only publish lineage links listed here; self-declared on-chain repo/name equality is evidence for review, not authorization to create new links.",
+  "links": [
+    {
+      "mainnet_netuid": 1,
+      "testnet_netuid": 1,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Apex ↔ apex; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 4,
+      "testnet_netuid": 4,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Targon ↔ targon; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 18,
+      "testnet_netuid": 301,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Zeus ↔ zeus; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 24,
+      "testnet_netuid": 383,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Quasar ↔ quasar-test; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 32,
+      "testnet_netuid": 32,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for ItsAI ↔ itsai; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 37,
+      "testnet_netuid": 455,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Aurelius ↔ Aurelius; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 43,
+      "testnet_netuid": 43,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Graphite ↔ graphite; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 50,
+      "testnet_netuid": 247,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Synth ↔ Synth; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 52,
+      "testnet_netuid": 52,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Dojo ↔ dojo; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 55,
+      "testnet_netuid": 289,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for NIOME ↔ Gen Test; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 56,
+      "testnet_netuid": 56,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Gradients ↔ gradients; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 57,
+      "testnet_netuid": 57,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Sparket ↔ gaia; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 59,
+      "testnet_netuid": 288,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Babelbit ↔ babelbit; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 62,
+      "testnet_netuid": 372,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Ridges ↔ ridges; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 64,
+      "testnet_netuid": 64,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Chutes ↔ chutes; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 68,
+      "testnet_netuid": 379,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for NOVA ↔ NOVA; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 69,
+      "testnet_netuid": 69,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for ain ↔ ain; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 79,
+      "testnet_netuid": 366,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for MVTRX ↔ τaos; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 80,
+      "testnet_netuid": 284,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for dogelayer ↔ dogelayer; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 82,
+      "testnet_netuid": 449,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Compelle ↔ Compelle; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 84,
+      "testnet_netuid": 84,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for ansuz ↔ ansuz; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 90,
+      "testnet_netuid": 90,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for DegenBrain ↔ ogham; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 96,
+      "testnet_netuid": 405,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Verathos ↔ verathos; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 98,
+      "testnet_netuid": 374,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for ForeverMoney ↔ forevermoney; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 101,
+      "testnet_netuid": 101,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for eni ↔ eni; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 111,
+      "testnet_netuid": 427,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for oneoneone ↔ oneoneone; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 113,
+      "testnet_netuid": 421,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for TensorUSD ↔ TensorUSD; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 116,
+      "testnet_netuid": 116,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for TaoLend ↔ hard_sign; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 122,
+      "testnet_netuid": 122,
+      "matched_by": "chain_name",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-12T00:00:00.000Z",
+      "notes": "Approved cross-network lineage for Bitrecs ↔ gamma_small; generated equality alone must not create new public lineage links."
+    }
+  ]
+}

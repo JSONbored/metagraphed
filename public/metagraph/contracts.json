@@ -219,7 +219,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Cross-network subnet lineage: mainnet subnets matched to their testnet counterpart by github_repo or chain name.",
+      "description": "Cross-network subnet lineage: maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence.",
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",

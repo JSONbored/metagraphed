@@ -54,7 +54,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
 - `/metagraph/overview/{netuid}.json`: composed per-subnet overview (profile + health + curation + gaps + counts). R2-backed.
 - `/metagraph/registry-summary.json`: registry-wide summary (completeness, top subnets, level counts, latest changes). R2-backed.
-- `/metagraph/lineage.json`: cross-network subnet lineage — mainnet subnets matched to their testnet counterpart by github_repo or chain name, plus the testnet-only (deploying-soon) count.
+- `/metagraph/lineage.json`: cross-network subnet lineage — maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence, plus the testnet-only (deploying-soon) count.
 - `/metagraph/health/latest.json`: latest live or build-time surface health snapshot. R2-backed.
 - `/metagraph/health/summary.json`: global and per-subnet health rollup.
 - `/metagraph/health/history/{date}.json`: compact daily health-history snapshot. R2-backed.
@@ -99,7 +99,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/agent-catalog`: list subnets exposing callable services for AI agents (compact index: service kinds + callable count per subnet).
 - `/api/v1/agent-catalog/{netuid}`: fetch one subnet's agent capability catalog — each callable service with base URL, auth, machine-readable schema, and health/eligibility.
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
-- `/api/v1/lineage`: fetch cross-network subnet lineage (mainnet ↔ testnet identity mapping: graduated subnets + the deploying-soon testnet pipeline).
+- `/api/v1/lineage`: fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `/api/v1/subnets/{netuid}/health/percentiles`: fetch p50/p95/p99 latency percentiles per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/health/incidents`: fetch SLA (uptime ratio) + reconstructed downtime incidents per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/trajectory`: fetch the week-over-week structural trajectory (completeness + counts) from daily snapshots (live from D1).

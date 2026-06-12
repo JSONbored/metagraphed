@@ -752,7 +752,7 @@
           },
           "lineage": {
             "type": ["object", "null"],
-            "description": "Cross-network lineage (issue #353): when this mainnet subnet has a testnet counterpart (matched by github_repo or chain name), { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only.",
+            "description": "Cross-network lineage (issue #353): when this mainnet subnet has a maintainer-approved testnet counterpart, { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only.",
             "properties": {
               "graduated_from_testnet": { "type": "boolean" },
               "also_on": {
