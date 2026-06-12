@@ -751,13 +751,21 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
     ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
-    source_repo: overlay?.source_repo || null,
+    // Mirror mergeSubnet's display backfill (overlay wins, else chain
+    // github_repo, junk-guarded) so the reproducibility check matches.
+    source_repo: backfilledIdentityUrl(
+      overlay?.source_repo,
+      nativeSubnet.chain_identity?.github_repo,
+    ),
     status: nativeSubnet.status,
     subnet_type: nativeSubnet.subnet_type,
     surface_count: surfaceCount,
     symbol: nativeSubnet.symbol,
     tempo: nativeSubnet.tempo,
-    website_url: overlay?.website_url || null,
+    website_url: backfilledIdentityUrl(
+      overlay?.website_url,
+      nativeSubnet.chain_identity?.subnet_url,
+    ),
     curation: overlay?.curation || {
       level: overlay ? "candidate-discovered" : "native",
       review_state: "unreviewed",

@@ -381,6 +381,10 @@ const profileArtifacts = buildSubnetProfileArtifacts({
       subnet.chain_identity || null,
     ]),
   ),
+  // Curated overlays, so primaryLinks/completeness/enrichment keep reading the
+  // overlay-only identity even though the merged subnet display fields are now
+  // chain-backfilled. Keeps the SN74 curation flywheel queue unchanged.
+  overlaysByNetuid: overlayByNetuid,
   probeFinishedAt: healthArtifacts.latest.probe_finished_at || null,
   subnets: mergedSubnets,
   surfaces,
@@ -1452,13 +1456,24 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
     ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,
-    source_repo: overlay?.source_repo || null,
+    // Display value: curated overlay wins; otherwise surface the unverified
+    // on-chain github_repo (junk-guarded by backfilledIdentityUrl). The
+    // curation/enrichment flywheel (buildSubnetProfile's primaryLinks +
+    // buildEnrichmentQueueArtifacts) reads the curated overlay value directly,
+    // so this display backfill does NOT shrink the SN74 curation queue.
+    source_repo: backfilledIdentityUrl(
+      overlay?.source_repo,
+      nativeSubnet.chain_identity?.github_repo,
+    ),
     status: nativeSubnet.status,
     subnet_type: nativeSubnet.subnet_type,
     surface_count: surfaceCount,
     symbol: nativeSubnet.symbol,
     tempo: nativeSubnet.tempo,
-    website_url: overlay?.website_url || null,
+    website_url: backfilledIdentityUrl(
+      overlay?.website_url,
+      nativeSubnet.chain_identity?.subnet_url,
+    ),
     curation: overlay?.curation || {
       level: overlay ? "candidate-discovered" : "native",
       review_state: "unreviewed",
@@ -1555,6 +1570,7 @@ function buildSubnetProfileArtifacts({
   endpoints,
   candidates,
   nativeIdentitiesByNetuid = new Map(),
+  overlaysByNetuid = new Map(),
   healthSurfaces = [],
   probeFinishedAt = null,
 }) {
@@ -1569,6 +1585,7 @@ function buildSubnetProfileArtifacts({
         endpoints: endpointsByNetuid.get(subnet.netuid) || [],
         healthByKind: healthByNetuidAndKind.get(subnet.netuid) || new Map(),
         nativeIdentity: nativeIdentitiesByNetuid.get(subnet.netuid) || null,
+        overlay: overlaysByNetuid.get(subnet.netuid) || null,
         probeFinishedAt,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
@@ -2650,6 +2667,7 @@ function buildSubnetProfile({
   endpoints,
   candidates,
   nativeIdentity,
+  overlay = null,
   healthByKind = new Map(),
   probeFinishedAt = null,
 }) {
@@ -2669,10 +2687,15 @@ function buildSubnetProfile({
     probeFinishedAt,
     staleAfterDays: FRESHNESS_STALE_AFTER_DAYS,
   });
+  // website_url/source_repo read the CURATED overlay value (not the merged
+  // subnet's display field, which is now chain-backfilled) so completeness and
+  // the identity-evidence enrichment queue only credit verified, curated links —
+  // chain-declared links stay curation targets for the SN74 flywheel.
   const primaryLinks = {
-    website_url: subnet.website_url || firstSurfaceUrl(surfaces, "website"),
+    website_url: overlay?.website_url || firstSurfaceUrl(surfaces, "website"),
     docs_url: subnet.docs_url || firstSurfaceUrl(surfaces, "docs"),
-    source_repo: subnet.source_repo || firstSurfaceUrl(surfaces, "source-repo"),
+    source_repo:
+      overlay?.source_repo || firstSurfaceUrl(surfaces, "source-repo"),
     dashboard_url:
       subnet.dashboard_url || firstSurfaceUrl(surfaces, "dashboard"),
   };

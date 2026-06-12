@@ -752,7 +752,7 @@
       "probed_surface_count": 9,
       "registered_at_block": 1970929,
       "slug": "sn-20",
-      "source_repo": null,
+      "source_repo": "https://github.com/RogueTensor/comingsoon",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 9,
@@ -944,7 +944,7 @@
       "surface_count": 9,
       "symbol": "א",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://macrocosmos.ai/sn25"
     },
     {
       "block": 8386984,
@@ -1463,7 +1463,7 @@
       "probed_surface_count": 6,
       "registered_at_block": 3372582,
       "slug": "chunking",
-      "source_repo": null,
+      "source_repo": "https://github.com/VectorChat/chunking_subnet",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 6,
@@ -1915,7 +1915,7 @@
       "probed_surface_count": 7,
       "registered_at_block": 4203869,
       "slug": "efficientfrontier",
-      "source_repo": null,
+      "source_repo": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 7,
@@ -3162,7 +3162,7 @@
       "surface_count": 7,
       "symbol": "ᛒ",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://infinitehash.xyz/"
     },
     {
       "block": 8386984,
@@ -3363,7 +3363,7 @@
       "probed_surface_count": 7,
       "registered_at_block": 5403674,
       "slug": "actual",
-      "source_repo": null,
+      "source_repo": "https://github.com/actual-computer/actual-subnet-95",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 7,
@@ -3737,13 +3737,13 @@
       "probed_surface_count": 5,
       "registered_at_block": 5558480,
       "slug": "sn-106",
-      "source_repo": null,
+      "source_repo": "https://github.com/neuralinternet/SN27",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 5,
       "symbol": "Դ",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://nodexo.ai/"
     },
     {
       "block": 8386984,
@@ -4152,7 +4152,7 @@
       "probed_surface_count": 13,
       "registered_at_block": 5724794,
       "slug": "sn-118",
-      "source_repo": null,
+      "source_repo": "https://github.com/orgs/ditto-assistant/repositories",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 13,
@@ -4186,7 +4186,7 @@
       "probed_surface_count": 5,
       "registered_at_block": 5740660,
       "slug": "satori",
-      "source_repo": null,
+      "source_repo": "https://github.com/Satori119/Satori",
       "status": "active",
       "subnet_type": "application",
       "surface_count": 5,
