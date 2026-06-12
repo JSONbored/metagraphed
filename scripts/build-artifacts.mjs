@@ -895,6 +895,12 @@ const llmsHeader = [
   "- Callable APIs: `GET /api/v1/agent-catalog/{netuid}`, `GET /api/v1/subnets/{netuid}/surfaces`",
   "- Schemas: `GET /api/v1/schemas`, `GET /metagraph/schemas/{surface_id}.json`",
   "- RPC pool: `GET /api/v1/rpc/endpoints`",
+  "",
+  "## Networks (mainnet / testnet / local)",
+  "Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1/{network}/…`. Bare paths default to mainnet, so every URL above is the mainnet view.",
+  "- `mainnet` (alias `finney`): the full registry — curated services, schemas, 2-minute health. The default.",
+  "- `testnet` (alias `test`): native chain registry only — subnet identity from the testnet chain, no curated services/health. Testnet netuids are independent of mainnet. e.g. `GET /api/v1/testnet/subnets`, `GET /api/v1/testnet/subnets/{netuid}`.",
+  "- `local`: a per-developer subtensor metagraphed can't host — `GET /api/v1/local` returns setup guidance (point your SDK/RPC at `ws://127.0.0.1:9944`).",
 ].join("\n");
 const llmsShort = `${llmsHeader}\n\n## Optional\n- [llms-full.txt](${llmsApiBase}/llms-full.txt): expanded index with every subnet + route\n`;
 const llmsSubnetLines = mergedSubnets
