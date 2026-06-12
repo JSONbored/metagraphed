@@ -6699,6 +6699,10 @@
               "null"
             ]
           },
+          "first_party": {
+            "description": "True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness.",
+            "type": "boolean"
+          },
           "gap_count": {
             "minimum": 0,
             "type": "integer"
@@ -6754,6 +6758,11 @@
             "minimum": 0,
             "type": "integer"
           },
+          "official_surface_count": {
+            "description": "Count of operator-official (first-party) curated surfaces for this subnet.",
+            "minimum": 0,
+            "type": "integer"
+          },
           "participant_count": {
             "minimum": 0,
             "type": "integer"
@@ -6763,6 +6772,11 @@
             "type": "integer"
           },
           "registered_at_block": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "registry_observed_count": {
+            "description": "Count of low-trust registry-observed (harvested) surfaces for this subnet.",
             "minimum": 0,
             "type": "integer"
           },
