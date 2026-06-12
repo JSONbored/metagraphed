@@ -6628,6 +6628,12 @@
               "empty"
             ]
           },
+          "native_slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "netuid": {
             "minimum": 0,
             "type": "integer"

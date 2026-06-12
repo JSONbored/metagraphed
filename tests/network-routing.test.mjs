@@ -89,6 +89,24 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(res.status, 404);
   });
 
+  test("subnets resolve by chain name (native_slug) on mainnet + testnet (regression: #331)", async () => {
+    const env = createLocalArtifactEnv();
+    // "apex" is the on-chain name of netuid 1 (curated slug is sn-1) — the name
+    // agents discover it by. Must resolve on both networks, including testnet
+    // where there are no curated overlay slugs at all.
+    const mainnet = await get(env, "/api/v1/subnets/apex");
+    assert.equal(mainnet.res.status, 200);
+    assert.equal(mainnet.body.data.subnet.netuid, 1);
+
+    const testnet = await get(env, "/api/v1/testnet/subnets/apex");
+    assert.equal(testnet.res.status, 200);
+    assert.equal(testnet.body.data.subnet.netuid, 1);
+
+    // The curated/sn-N slug and numeric forms still resolve.
+    assert.equal((await get(env, "/api/v1/subnets/sn-1")).res.status, 200);
+    assert.equal((await get(env, "/api/v1/subnets/7")).res.status, 200);
+  });
+
   test("local network exposes a client-side dev-mode setup pointer", async () => {
     const env = createLocalArtifactEnv();
     const info = await get(env, "/api/v1/local");
