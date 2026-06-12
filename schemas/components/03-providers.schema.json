@@ -58,6 +58,30 @@
           },
           "notes": {
             "type": "string"
+          },
+          "netuids": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "description": "Sorted unique netuids this provider operates a curated surface on (issue #347). Derived/reporting — never feeds completeness."
+          },
+          "subnet_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of distinct subnets this provider operates (netuids.length)."
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of curated surfaces attributed to this provider."
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of live endpoints attributed to this provider."
+          },
+          "cluster_id": {
+            "type": "string",
+            "description": "Shared-team cluster id (registrable domain of team_url/website_url, else the provider id) grouping providers run by the same team (issue #347)."
           }
         },
         "additionalProperties": false

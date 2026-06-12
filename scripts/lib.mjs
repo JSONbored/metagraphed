@@ -982,6 +982,22 @@ export function cleanDescription(value) {
 // vocabulary; re-exported here for the build-side import sites.
 export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
 
+// Naive registrable domain (eTLD+1 by last-two-labels) of a URL, for the
+// provider shared-team cluster heuristic (issue #347). Good enough for the
+// .io/.ai/.com domains Bittensor teams use; not PSL-accurate for multi-part
+// TLDs. Returns null on unparseable input.
+export function clusterDomainFromUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    const labels = host.split(".").filter(Boolean);
+    if (labels.length >= 2) return labels.slice(-2).join(".");
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
 // Build a fallback "what does it do" blurb from curated provider notes when a
 // subnet has no chain/overlay description (issue #346). Sanitized + truncated to
 // a word boundary. This populates a SEPARATE derived_description field — it never

@@ -3341,6 +3341,10 @@
           "authority": {
             "$ref": "#/components/schemas/Authority"
           },
+          "cluster_id": {
+            "description": "Shared-team cluster id (registrable domain of team_url/website_url, else the provider id) grouping providers run by the same team (issue #347).",
+            "type": "string"
+          },
           "contact_url": {
             "format": "uri",
             "type": "string"
@@ -3348,6 +3352,11 @@
           "docs_url": {
             "format": "uri",
             "type": "string"
+          },
+          "endpoint_count": {
+            "description": "Number of live endpoints attributed to this provider.",
+            "minimum": 0,
+            "type": "integer"
           },
           "github_url": {
             "format": "uri",
@@ -3364,6 +3373,14 @@
             "minLength": 1,
             "type": "string"
           },
+          "netuids": {
+            "description": "Sorted unique netuids this provider operates a curated surface on (issue #347). Derived/reporting — never feeds completeness.",
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
           "notes": {
             "type": "string"
           },
@@ -3372,6 +3389,16 @@
           },
           "schema_version": {
             "const": 1
+          },
+          "subnet_count": {
+            "description": "Number of distinct subnets this provider operates (netuids.length).",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_count": {
+            "description": "Number of curated surfaces attributed to this provider.",
+            "minimum": 0,
+            "type": "integer"
           },
           "team_url": {
             "format": "uri",

@@ -1720,19 +1720,29 @@ export interface components {
         };
         Provider: {
             authority: components["schemas"]["Authority"];
+            /** @description Shared-team cluster id (registrable domain of team_url/website_url, else the provider id) grouping providers run by the same team (issue #347). */
+            cluster_id?: string;
             /** Format: uri */
             contact_url?: string;
             /** Format: uri */
             docs_url?: string;
+            /** @description Number of live endpoints attributed to this provider. */
+            endpoint_count?: number;
             /** Format: uri */
             github_url?: string;
             id: string;
             kind: components["schemas"]["ProviderKind"];
             name: string;
+            /** @description Sorted unique netuids this provider operates a curated surface on (issue #347). Derived/reporting — never feeds completeness. */
+            netuids?: number[];
             notes?: string;
             public_notes?: string;
             /** @constant */
             schema_version: 1;
+            /** @description Number of distinct subnets this provider operates (netuids.length). */
+            subnet_count?: number;
+            /** @description Number of curated surfaces attributed to this provider. */
+            surface_count?: number;
             /** Format: uri */
             team_url?: string;
             /** Format: uri */

@@ -610,6 +610,7 @@ test("public artifacts are internally consistent", () => {
   const endpointIncidents = readArtifact("endpoint-incidents.json");
   const rpcEndpointPools = readArtifact("rpc/pools.json");
   const providerEndpoints = readArtifact("providers/allways/endpoints.json");
+  const providersArtifact = readArtifact("providers.json");
   const r2Manifest = readArtifact("r2-manifest.json");
   const schemaDrift = readArtifact("schema-drift.json");
   const schemaIndex = readArtifact("schemas/index.json");
@@ -768,6 +769,54 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     derivedDescCount > 0,
     "expected at least some null-description subnets to get a derived_description",
+  );
+
+  // Provider enrichment (issue #347): each provider record carries the netuids
+  // it operates, counts, and a non-generic cluster id.
+  const GENERIC_CLUSTER_HOSTS = new Set([
+    "github.com",
+    "gitlab.com",
+    "huggingface.co",
+    "discord.com",
+    "discord.gg",
+    "x.com",
+    "twitter.com",
+  ]);
+  let providersWithNetuids = 0;
+  for (const provider of providersArtifact.providers) {
+    assert.ok(
+      Array.isArray(provider.netuids),
+      `provider ${provider.id}: netuids must be an array`,
+    );
+    // sorted, unique, integer
+    const sorted = [...provider.netuids].sort((a, b) => a - b);
+    assert.deepEqual(
+      provider.netuids,
+      sorted,
+      `provider ${provider.id}: sorted`,
+    );
+    assert.equal(
+      provider.netuids.length,
+      new Set(provider.netuids).size,
+      `provider ${provider.id}: netuids unique`,
+    );
+    assert.equal(
+      provider.subnet_count,
+      provider.netuids.length,
+      `provider ${provider.id}: subnet_count == netuids.length`,
+    );
+    assert.equal(typeof provider.surface_count, "number");
+    assert.equal(typeof provider.endpoint_count, "number");
+    assert.equal(typeof provider.cluster_id, "string");
+    assert.ok(
+      !GENERIC_CLUSTER_HOSTS.has(provider.cluster_id),
+      `provider ${provider.id}: cluster_id must not be a generic host`,
+    );
+    if (provider.netuids.length) providersWithNetuids += 1;
+  }
+  assert.ok(
+    providersWithNetuids > 0,
+    "expected providers to be linked to the subnets they operate",
   );
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");

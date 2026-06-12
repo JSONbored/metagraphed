@@ -33,6 +33,7 @@ import {
   normalizePublicUrl,
   publishedAt,
   readJson,
+  clusterDomainFromUrl,
   redactCredentialedUrls,
   sanitizeOpenApiDocument,
   repoRoot,
@@ -571,16 +572,72 @@ const gapsIndex = mergedSubnets.map((subnet) => ({
   slug: subnet.slug,
 }));
 
+// Generic hosting/social domains that must NOT form a shared-team cluster — a
+// github.com repo URL is not a shared team. Providers on these fall back to
+// their own id (singleton cluster).
+const GENERIC_CLUSTER_HOSTS = new Set([
+  "github.com",
+  "gitlab.com",
+  "bitbucket.org",
+  "gitbook.io",
+  "readthedocs.io",
+  "notion.so",
+  "medium.com",
+  "substack.com",
+  "discord.com",
+  "discord.gg",
+  "x.com",
+  "twitter.com",
+  "t.me",
+  "linktr.ee",
+  "huggingface.co",
+]);
+
+// Turn the flat provider directory into the supply-side map of the flywheel
+// (issue #347): attach the netuids each provider operates (from its curated
+// surfaces), the subnet/surface/endpoint counts, and a shared-team cluster id
+// (registrable domain of team_url/website_url, else the provider id). All
+// derived/reporting — none of it feeds completeness.
+const surfacesByProvider = groupBy(surfaces, (surface) => surface.provider);
+const endpointsByProvider = groupBy(
+  endpointResources.endpoints,
+  (endpoint) => endpoint.provider,
+);
+const enrichedProviders = providers.map((provider) => {
+  const providerSurfaces = surfacesByProvider.get(provider.id) || [];
+  const netuids = [
+    ...new Set(
+      providerSurfaces
+        .map((surface) => surface.netuid)
+        .filter((netuid) => Number.isInteger(netuid)),
+    ),
+  ].sort((a, b) => a - b);
+  const clusterDomain = clusterDomainFromUrl(
+    provider.team_url || provider.website_url,
+  );
+  return {
+    ...provider,
+    netuids,
+    subnet_count: netuids.length,
+    surface_count: providerSurfaces.length,
+    endpoint_count: (endpointsByProvider.get(provider.id) || []).length,
+    cluster_id:
+      clusterDomain && !GENERIC_CLUSTER_HOSTS.has(clusterDomain)
+        ? clusterDomain
+        : provider.id,
+  };
+});
+
 await writeJson(artifactFile("providers.json"), {
   schema_version: 1,
   generated_at: generatedAt,
-  providers,
+  providers: enrichedProviders,
 });
 await fs.rm(r2ArtifactDir("providers"), {
   recursive: true,
   force: true,
 });
-for (const provider of providers) {
+for (const provider of enrichedProviders) {
   const providerEndpoints = endpointResources.endpoints.filter(
     (endpoint) => endpoint.provider === provider.id,
   );

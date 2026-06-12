@@ -15,6 +15,7 @@ import {
   deriveDomainTags,
   DOMAIN_TAGS,
   deriveDescriptionFromNotes,
+  clusterDomainFromUrl,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -515,5 +516,27 @@ describe("deriveDescriptionFromNotes", () => {
     assert.equal(deriveDescriptionFromNotes(42), null);
     assert.equal(deriveDescriptionFromNotes(""), null);
     assert.equal(deriveDescriptionFromNotes("   "), null);
+  });
+});
+
+describe("clusterDomainFromUrl", () => {
+  test("returns the last-two-label registrable domain", () => {
+    assert.equal(
+      clusterDomainFromUrl("https://docs.all-ways.io/x"),
+      "all-ways.io",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://www.macrocosmos.ai"),
+      "macrocosmos.ai",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://backprop.finance"),
+      "backprop.finance",
+    );
+  });
+  test("returns null for non-URL / non-string input", () => {
+    assert.equal(clusterDomainFromUrl("not a url"), null);
+    assert.equal(clusterDomainFromUrl(null), null);
+    assert.equal(clusterDomainFromUrl(undefined), null);
   });
 });
