@@ -817,6 +817,7 @@ async function validateGeneratedArtifacts(
 
   const providersArtifact = await readArtifactJson("providers.json");
   const subnetsArtifact = await readArtifactJson("subnets.json");
+  const profilesArtifact = await readArtifactJson("profiles.json");
   const surfacesArtifact = await readArtifactJson("surfaces.json");
   const candidatesArtifact = await readArtifactJson("candidates.json");
   const curationArtifact = await readArtifactJson("curation.json");
@@ -947,6 +948,44 @@ async function validateGeneratedArtifacts(
         continue;
       }
       throw error;
+    }
+  }
+
+  // --- Flywheel-preservation invariant (#343) -------------------------------
+  // completeness_score / missing_* must derive ONLY from curated signals — the
+  // curated `primary_links` and verified surface kinds — never from chain-derived
+  // / backfilled passthrough fields. Otherwise auto-enrichment would silently
+  // satisfy gaps and drain the SN74 curation queue (gaps are the product). This
+  // gates Wave 4 enrichment: (a) re-derive `missing_required` from the profile's
+  // curated inputs and assert it matches, so no hidden field can feed it; and
+  // (b) assert chain-backfilled index links (display-only) never satisfy
+  // completeness. See ADR 0003 / docs/integration-readiness.md.
+  const indexByNetuid = new Map(
+    subnetsArtifact.subnets.map((subnet) => [subnet.netuid, subnet]),
+  );
+  const REQUIRED_IDENTITY = [
+    ["source-repo", "source_repo"],
+    ["website", "website_url"],
+  ];
+  for (const profile of profilesArtifact.profiles) {
+    const links = profile.primary_links || {};
+    const supported = new Set(profile.supported_interface_kinds || []);
+    const expectedMissingRequired = REQUIRED_IDENTITY.filter(
+      ([kind, linkField]) => !(links[linkField] || supported.has(kind)),
+    ).map(([kind]) => kind);
+    assert(
+      stableStringify([...(profile.missing_required || [])].sort()) ===
+        stableStringify(expectedMissingRequired.sort()),
+      `flywheel:${profile.netuid}: missing_required is not reproducible from curated inputs — a derived/passthrough field may be feeding completeness`,
+    );
+    const indexEntry = indexByNetuid.get(profile.netuid);
+    for (const [kind, linkField] of REQUIRED_IDENTITY) {
+      if (indexEntry?.[linkField] && !links[linkField]) {
+        assert(
+          (profile.missing_required || []).includes(kind),
+          `flywheel:${profile.netuid}: chain-backfilled ${linkField} must not satisfy completeness (it must stay in missing_required)`,
+        );
+      }
     }
   }
 
