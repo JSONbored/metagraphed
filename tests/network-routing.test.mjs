@@ -107,6 +107,21 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal((await get(env, "/api/v1/subnets/7")).res.status, 200);
   });
 
+  test("duplicate native_slug aliases are not routed by first artifact order", async () => {
+    const env = createLocalArtifactEnv();
+    // Several committed mainnet entries have native_slug="deprecated"; resolving
+    // that alias would be ambiguous and artifact-order dependent, so it must stay
+    // unavailable while canonical numeric routes continue to work.
+    const ambiguous = await get(env, "/api/v1/subnets/deprecated");
+    assert.equal(ambiguous.res.status, 404);
+
+    for (const netuid of [3, 39, 81]) {
+      const numeric = await get(env, `/api/v1/subnets/${netuid}/health/trends`);
+      assert.equal(numeric.res.status, 200);
+      assert.equal(numeric.body.data.netuid, netuid);
+    }
+  });
+
   test("local network exposes a client-side dev-mode setup pointer", async () => {
     const env = createLocalArtifactEnv();
     const info = await get(env, "/api/v1/local");

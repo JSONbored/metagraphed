@@ -708,14 +708,27 @@ async function lookupSubnetNetuid(
       // Then the chain-name native_slug (e.g. "apex") fills any key it doesn't
       // already own, so subnets resolve by the name agents discover them by —
       // essential on testnet, where there are no curated overlay slugs. A
-      // curated slug always wins a collision.
+      // curated slug always wins a collision, and duplicate native slugs are
+      // suppressed so ambiguous aliases cannot resolve by artifact order.
+      const nativeSlugCounts = new Map();
       for (const subnet of artifact.data.subnets) {
         if (
           typeof subnet.native_slug === "string" &&
-          Number.isInteger(subnet.netuid) &&
-          !map.has(subnet.native_slug.toLowerCase())
+          Number.isInteger(subnet.netuid)
         ) {
-          map.set(subnet.native_slug.toLowerCase(), subnet.netuid);
+          const key = subnet.native_slug.toLowerCase();
+          nativeSlugCounts.set(key, (nativeSlugCounts.get(key) || 0) + 1);
+        }
+      }
+      for (const subnet of artifact.data.subnets) {
+        if (
+          typeof subnet.native_slug === "string" &&
+          Number.isInteger(subnet.netuid)
+        ) {
+          const key = subnet.native_slug.toLowerCase();
+          if (!map.has(key) && nativeSlugCounts.get(key) === 1) {
+            map.set(key, subnet.netuid);
+          }
         }
       }
       subnetSlugIndexByNetwork.set(network.id, { map, builtAt: now });
