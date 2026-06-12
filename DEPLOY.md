@@ -16,8 +16,8 @@ Create → Connect to Git), then configure:
 
 | Setting | Value |
 | --- | --- |
-| **Build command** | `npm install --legacy-peer-deps && npm run build` |
-| **Deploy command** | `npx wrangler deploy` |
+| **Build command** | `npm ci --legacy-peer-deps && npm run build` |
+| **Deploy command** | `npx --yes wrangler@4.90.1 deploy` |
 | **Worker name** | `metagraph-finder` (or accept the auto name `jsonbored-metagraph-finder`) |
 
 ### Build environment variables
@@ -29,15 +29,16 @@ Create → Connect to Git), then configure:
 | `VITE_METAGRAPH_API_BASE` | `https://metagraph.sh` | Backend API base (also the in-code default). |
 
 Notes:
-- `npm install --legacy-peer-deps` is used instead of `bun install` because
-  `bun.lock` pins some public packages (e.g. `@tanstack/zod-adapter`) to
-  Lovable's **private npm mirror**, which 403s outside Lovable's network. All
-  those packages exist on the **public** npm registry, so npm resolves them
-  fine. (Durable alternative if you prefer bun: add a `bunfig.toml` with
-  `registry = "https://registry.npmjs.org"`.)
+- `npm ci --legacy-peer-deps` uses the committed `package-lock.json` instead of
+  re-resolving the caret ranges in `package.json` during production builds. Keep
+  the lockfile updated intentionally with reviewed dependency changes.
+- The deploy command pins Wrangler to an explicit version (`4.90.1`) instead of
+  allowing `npx` to download whichever `wrangler` version is latest at deploy
+  time. Review and update this pinned version deliberately when upgrading
+  Cloudflare tooling.
 - The build emits `dist/server/` (the Worker, entry `index.mjs`) + `dist/client/`
   (static assets), and Nitro auto-generates `dist/server/wrangler.json` +
-  `.wrangler/deploy/config.json`. `npx wrangler deploy` from the repo root
+  `.wrangler/deploy/config.json`. `npx --yes wrangler@4.90.1 deploy` from the repo root
   auto-discovers that config via the redirect — no committed `wrangler.toml`
   needed. (Both are git-ignored build output.)
 - Durable fallback if a future preset version changes the sandbox detection: set
