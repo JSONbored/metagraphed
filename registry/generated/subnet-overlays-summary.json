@@ -24,10 +24,10 @@
       "surface_count": 8
     },
     {
-      "checksum": "137181f4f20bbde51774c482eb3e6deb368baddfc616991b84a4f72a1800ad1c",
+      "checksum": "bb9b1d74edb619aeb2ffd2667ae7bf16fad4afa8d951ac7389ea3fe5cb06b8e3",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
       "checksum": "10e75579f88f49a87682c572788d5b53c7af1cc77258089cb22ecefbaa43ee50",
@@ -234,8 +234,8 @@
       "surface_count": 9
     }
   ],
-  "promoted_surface_count": 317,
+  "promoted_surface_count": 318,
   "schema_version": 1,
   "total_overlay_count": 129,
-  "verification_result_count": 2024
+  "verification_result_count": 2020
 }

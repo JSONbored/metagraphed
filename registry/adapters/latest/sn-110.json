@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-10T19:48:08.624Z",
+      "captured_at": "2026-06-12T00:00:55.523Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-10T19:48:08.624Z",
+          "captured_at": "2026-06-12T00:00:55.523Z",
           "content_type": "application/json",
-          "hash": "9349fecac2f49195397d9afe4a4a57ef893d07c6474559e24d72df8d0fa228d2",
-          "latency_ms": 846,
+          "hash": "345670d60dc27b3e8b4d86d394b3ff9912302d934e7e27efbf516706ebe8dcd5",
+          "latency_ms": 529,
           "name": "Green Compute Gateway OpenAPI schema",
           "provider": "green-compute",
           "schema_url": "https://api.green-compute.com/openapi.json",
@@ -68,7 +68,7 @@
       "total_path_count": 98
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-10T19:48:08.624Z",
+      "captured_at": "2026-06-12T00:00:55.523Z",
       "status": "captured",
       "surface_count": 4,
       "surfaces": [
@@ -115,7 +115,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-10T19:45:54.526Z",
+  "generated_at": "2026-06-11T23:58:50.356Z",
   "netuid": 110,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

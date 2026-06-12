@@ -3,38 +3,46 @@
     "added": [],
     "modified": [
       {
-        "hash": "cab21ad4b0846c7899858b343469057a0c1f60424b97dbbc9c20037b7c89b344",
+        "hash": "c9e5e5844369b38e62d3008136e228064f6127d690c13a3d222ec5daa5adea8a",
+        "path": "agent-catalog.json"
+      },
+      {
+        "hash": "9a4cb356f2a9ec572a5301493f85aaeaac9c47657487ec3549e9f3d9e8088696",
         "path": "api-index.json"
       },
       {
-        "hash": "65c24aa1056a390fdcde61ee3d47a01d0942c425916d4c577105f70009fba98e",
+        "hash": "9c1514214ec6658cc0f866de6a28ba2088125b022fb7eb43e7361142ea088dde",
         "path": "contracts.json"
       },
       {
-        "hash": "d7a3714d2c442292608d89fc2fd258624e428d5eeecd2a4723a1c7c9fe24346c",
+        "hash": "8342f7dd4e1df6cc1a07328b0e5d190f3800bc8a4b7e0dff6ff4d0aa246fe821",
         "path": "coverage.json"
       },
       {
-        "hash": "51c250dec7b34abb599d307613b06c0a1e1cbec403265b6a74188ab025380754",
+        "hash": "ff7c6ddf21183115a5377b7c4bb05fa8dbc987498ebfa3bea7d87cbd4bb489a5",
         "path": "openapi.json"
       },
       {
-        "hash": "4d49e29e40e616761ad384f8a7554b8a6284878a0a194f27bd621dd3fc9ddc14",
+        "hash": "1e937c14c61ede1bff5464bf8c6d9d06616132f389c1b0bc0270f5bd7e5f8c9c",
+        "path": "operational-surfaces.json"
+      },
+      {
+        "hash": "e99bd5b4dbc20a984b91d09f686bdb62ee164610ec89e4cb046d29d8cc63ca6d",
         "path": "review/profile-completeness.json"
       },
       {
-        "hash": "900908fc3c8106ec917c7c4e6114f9f0a8ba078c8e1f44d5dbd4ead72942bc36",
+        "hash": "d97ae1e2f7072dd0ad6ed50b7cb1dd5fcd398dbf8ad6a6a35d60087a390eecec",
         "path": "schemas/index.json"
       },
       {
-        "hash": "4ff1ba8502ef8f428634b13759284364658d95d0adb3c5b9437339ad37873868",
+        "hash": "b7bccd415321a6021e1592603bc2f05669f4ebd9fe3d0235001ce620d57ec63c",
         "path": "subnets.json"
       }
     ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
-  "generated_at": "2026-06-10T19:45:54.526Z",
+  "generated_at": "2026-06-11T23:58:50.356Z",
   "notes": [
     "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
     "Long-term historical runs are expected to live in R2 under versioned prefixes."
@@ -44,23 +52,17 @@
   "subnets": {
     "added": [],
     "removed": [],
-    "renamed": [
-      {
-        "after": "Nodexo",
-        "before": "VoidAI",
-        "netuid": 106
-      }
-    ]
+    "renamed": []
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 7,
+    "artifact_modified_count": 9,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 2024,
-        "before": 2021,
-        "delta": 3
+        "after": 2020,
+        "before": 2024,
+        "delta": -4
       },
       "curated_overlay_count": {
         "after": 129,
@@ -74,13 +76,13 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1140,
-        "before": 1145,
-        "delta": -5
+        "after": 1146,
+        "before": 1140,
+        "delta": 6
       }
     },
     "netuid_added_count": 0,
     "netuid_removed_count": 0,
-    "netuid_renamed_count": 1
+    "netuid_renamed_count": 0
   }
 }

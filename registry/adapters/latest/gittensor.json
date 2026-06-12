@@ -12,11 +12,11 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-10T19:48:05.375Z",
+      "captured_at": "2026-06-12T00:00:53.123Z",
       "config_hash": "b01218e778bbe3ca0cb432e87470c8c10c47e23ec9682bf6b6ec5d29944b9fe5",
       "content_type": "text/plain; charset=utf-8",
       "issue_discovery_enabled_count": 3,
-      "latency_ms": 122,
+      "latency_ms": 70,
       "maintainer_cut_repo_count": 9,
       "max_maintainer_cut": 0.6,
       "repository_count": 19,
@@ -90,12 +90,12 @@
     },
     "mirror_freshness": {
       "archived": false,
-      "captured_at": "2026-06-10T19:48:05.968Z",
+      "captured_at": "2026-06-12T00:00:53.447Z",
       "default_branch": "test",
       "disabled": false,
       "full_name": "entrius/das-github-mirror",
       "html_url": "https://github.com/entrius/das-github-mirror",
-      "latency_ms": 214,
+      "latency_ms": 138,
       "open_issues_count": 6,
       "pushed_at": "2026-06-08T21:54:26Z",
       "status": "captured",
@@ -105,11 +105,11 @@
     "repository_metadata": {
       "archived_count": 0,
       "auth_status": "ok",
-      "captured_at": "2026-06-10T19:48:06.397Z",
+      "captured_at": "2026-06-12T00:00:53.744Z",
       "captured_count": 19,
       "carried_forward_count": 0,
       "html_fallback_count": 0,
-      "latest_push_at": "2026-06-10T19:45:22Z",
+      "latest_push_at": "2026-06-11T23:55:00Z",
       "rate_limited_or_forbidden_count": 0,
       "repositories": [
         {
@@ -118,8 +118,8 @@
           "full_name": "anderdc/social-media-manager",
           "html_url": "https://github.com/anderdc/social-media-manager",
           "metadata_level": "github-api",
-          "open_issues_count": 1,
-          "pushed_at": "2026-06-10T01:07:22Z",
+          "open_issues_count": 0,
+          "pushed_at": "2026-06-11T02:40:35Z",
           "topic_count": 0
         },
         {
@@ -128,7 +128,7 @@
           "full_name": "cogniax/tao-pulse-app",
           "html_url": "https://github.com/cogniax/tao-pulse-app",
           "metadata_level": "github-api",
-          "open_issues_count": 54,
+          "open_issues_count": 58,
           "pushed_at": "2026-06-09T17:54:15Z",
           "topic_count": 0
         },
@@ -138,8 +138,8 @@
           "full_name": "e35ventura/taopedia",
           "html_url": "https://github.com/e35ventura/taopedia",
           "metadata_level": "github-api",
-          "open_issues_count": 2,
-          "pushed_at": "2026-06-10T19:39:40Z",
+          "open_issues_count": 0,
+          "pushed_at": "2026-06-11T23:43:06Z",
           "topic_count": 5
         },
         {
@@ -149,7 +149,7 @@
           "html_url": "https://github.com/e35ventura/taopedia-articles",
           "metadata_level": "github-api",
           "open_issues_count": 0,
-          "pushed_at": "2026-06-10T16:56:22Z",
+          "pushed_at": "2026-06-11T22:28:56Z",
           "topic_count": 5
         },
         {
@@ -158,8 +158,8 @@
           "full_name": "entrius/allways",
           "html_url": "https://github.com/entrius/allways",
           "metadata_level": "github-api",
-          "open_issues_count": 7,
-          "pushed_at": "2026-06-10T02:47:20Z",
+          "open_issues_count": 10,
+          "pushed_at": "2026-06-11T00:47:10Z",
           "topic_count": 0
         },
         {
@@ -178,8 +178,8 @@
           "full_name": "entrius/gittensor",
           "html_url": "https://github.com/entrius/gittensor",
           "metadata_level": "github-api",
-          "open_issues_count": 15,
-          "pushed_at": "2026-06-10T16:49:51Z",
+          "open_issues_count": 16,
+          "pushed_at": "2026-06-11T21:14:55Z",
           "topic_count": 0
         },
         {
@@ -188,8 +188,8 @@
           "full_name": "entrius/gittensor-ui",
           "html_url": "https://github.com/entrius/gittensor-ui",
           "metadata_level": "github-api",
-          "open_issues_count": 19,
-          "pushed_at": "2026-06-08T16:23:45Z",
+          "open_issues_count": 17,
+          "pushed_at": "2026-06-11T17:40:36Z",
           "topic_count": 0
         },
         {
@@ -208,7 +208,7 @@
           "full_name": "GeniePod/genie-claw",
           "html_url": "https://github.com/GeniePod/genie-claw",
           "metadata_level": "github-api",
-          "open_issues_count": 16,
+          "open_issues_count": 17,
           "pushed_at": "2026-06-09T13:38:04Z",
           "topic_count": 11
         },
@@ -218,8 +218,8 @@
           "full_name": "infiniflow/ragflow",
           "html_url": "https://github.com/infiniflow/ragflow",
           "metadata_level": "github-api",
-          "open_issues_count": 3347,
-          "pushed_at": "2026-06-10T14:09:23Z",
+          "open_issues_count": 3315,
+          "pushed_at": "2026-06-11T14:19:18Z",
           "topic_count": 10
         },
         {
@@ -228,8 +228,8 @@
           "full_name": "JSONbored/awesome-claude",
           "html_url": "https://github.com/JSONbored/awesome-claude",
           "metadata_level": "github-api",
-          "open_issues_count": 243,
-          "pushed_at": "2026-06-10T18:08:47Z",
+          "open_issues_count": 267,
+          "pushed_at": "2026-06-11T22:58:14Z",
           "topic_count": 20
         },
         {
@@ -238,8 +238,8 @@
           "full_name": "JSONbored/gittensory",
           "html_url": "https://github.com/JSONbored/gittensory",
           "metadata_level": "github-api",
-          "open_issues_count": 79,
-          "pushed_at": "2026-06-10T18:14:59Z",
+          "open_issues_count": 91,
+          "pushed_at": "2026-06-11T20:16:07Z",
           "topic_count": 0
         },
         {
@@ -248,8 +248,8 @@
           "full_name": "MkDev11/gittensor-hub",
           "html_url": "https://github.com/MkDev11/gittensor-hub",
           "metadata_level": "github-api",
-          "open_issues_count": 2,
-          "pushed_at": "2026-06-10T01:53:46Z",
+          "open_issues_count": 3,
+          "pushed_at": "2026-06-11T23:54:53Z",
           "topic_count": 6
         },
         {
@@ -258,8 +258,8 @@
           "full_name": "phase-rs/phase",
           "html_url": "https://github.com/phase-rs/phase",
           "metadata_level": "github-api",
-          "open_issues_count": 513,
-          "pushed_at": "2026-06-10T19:35:57Z",
+          "open_issues_count": 552,
+          "pushed_at": "2026-06-11T23:55:00Z",
           "topic_count": 8
         },
         {
@@ -268,8 +268,8 @@
           "full_name": "seroperson/jvm-live-reload",
           "html_url": "https://github.com/seroperson/jvm-live-reload",
           "metadata_level": "github-api",
-          "open_issues_count": 22,
-          "pushed_at": "2026-06-07T20:28:26Z",
+          "open_issues_count": 18,
+          "pushed_at": "2026-06-11T15:21:04Z",
           "topic_count": 6
         },
         {
@@ -278,8 +278,8 @@
           "full_name": "touchpilot/touchpilot",
           "html_url": "https://github.com/touchpilot/touchpilot",
           "metadata_level": "github-api",
-          "open_issues_count": 33,
-          "pushed_at": "2026-06-10T14:20:20Z",
+          "open_issues_count": 30,
+          "pushed_at": "2026-06-11T20:54:29Z",
           "topic_count": 0
         },
         {
@@ -289,7 +289,7 @@
           "html_url": "https://github.com/vouchdev/vouch",
           "metadata_level": "github-api",
           "open_issues_count": 59,
-          "pushed_at": "2026-06-10T18:04:19Z",
+          "pushed_at": "2026-06-11T23:50:18Z",
           "topic_count": 0
         },
         {
@@ -298,8 +298,8 @@
           "full_name": "we-promise/sure",
           "html_url": "https://github.com/we-promise/sure",
           "metadata_level": "github-api",
-          "open_issues_count": 392,
-          "pushed_at": "2026-06-10T19:45:22Z",
+          "open_issues_count": 383,
+          "pushed_at": "2026-06-11T19:25:31Z",
           "topic_count": 0
         }
       ],
@@ -313,7 +313,7 @@
     "private_dashboards",
     "wallet_data"
   ],
-  "generated_at": "2026-06-10T19:45:54.526Z",
+  "generated_at": "2026-06-11T23:58:50.356Z",
   "netuid": 74,
   "notes": [
     "Gittensor adapter publishes public repository/config aggregates only.",

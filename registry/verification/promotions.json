@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2024,
-  "generated_at": "2026-06-10T19:45:54.526Z",
+  "candidate_count": 2020,
+  "generated_at": "2026-06-11T23:58:50.356Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-10T19:45:54.526Z",
+  "observed_at": "2026-06-11T23:58:50.356Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -3189,7 +3189,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.9-arm64.dmg",
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.4.1-arm64.dmg",
       "status": "ok"
     },
     {
@@ -3937,6 +3937,25 @@
       "kind": "docs",
       "netuid": 12,
       "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "community-sn-13-sdk-github-com",
+      "classification": "live",
+      "confidence_score": 65,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "sdk",
+      "netuid": 13,
+      "provider": "macrocosmos",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -9398,39 +9417,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-27-native-chain-github",
-      "classification": "dead",
-      "confidence_score": 0,
-      "error": null,
-      "kind": "source-repo",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "public_safe": true,
-        "source_tier": "native-chain"
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-native-chain-website",
-      "classification": "unsupported",
-      "confidence_score": 15,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "website",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
       "candidate_id": "sn-27-subnetradar-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9526,116 +9512,16 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-27-website-common-api",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "subnet-api",
+      "candidate_id": "sn-27-tensorplex-source-repo-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "error": null,
+      "kind": "source-repo",
       "netuid": 27,
-      "provider": "nodexo",
+      "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-website-common-docs",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "docs",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-website-common-health",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "subnet-api",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-website-common-openapi-json",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "openapi",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-website-common-swagger",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "openapi",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-27-website-common-swagger-json",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "openapi",
-      "netuid": 27,
-      "provider": "nodexo",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "status": "failed"
     },
@@ -10759,6 +10645,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 32,
+      "provider": "its-ai",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -10917,6 +10822,25 @@
       "kind": "docs",
       "netuid": 33,
       "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "community-sn-34-sdk-github-com",
+      "classification": "live",
+      "confidence_score": 65,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "sdk",
+      "netuid": 34,
+      "provider": "bitmind",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -11338,6 +11262,25 @@
         "transient_failure": false
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 35,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-36-backprop-dashboard",
@@ -12062,37 +12005,18 @@
     },
     {
       "candidate_id": "sn-38-native-chain-github",
-      "classification": "unsupported",
-      "confidence_score": 20,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 38,
       "provider": "tao-colosseum",
       "quality_signals": {
-        "archived": true,
+        "archived": false,
         "has_default_branch": true,
         "has_recent_push_metadata": true,
         "public_safe": true,
         "source_tier": "native-chain"
-      },
-      "status": "failed"
-    },
-    {
-      "candidate_id": "sn-38-native-chain-website",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "website",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
       },
       "status": "ok"
     },
@@ -12192,135 +12116,19 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-38-website-common-api",
-      "classification": "content-mismatch",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "subnet-api",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-common-docs",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "docs",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-common-health",
-      "classification": "content-mismatch",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "subnet-api",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-common-openapi-json",
-      "classification": "content-mismatch",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "openapi",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-common-swagger",
-      "classification": "content-mismatch",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "openapi",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-common-swagger-json",
-      "classification": "content-mismatch",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "openapi",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-38-website-subdomain-docs-docs-taocolosseum-com",
+      "candidate_id": "sn-38-tensorplex-source-repo-1",
       "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "docs",
+      "confidence_score": 20,
+      "error": null,
+      "kind": "source-repo",
       "netuid": 38,
-      "provider": "tao-colosseum",
+      "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": true,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "status": "failed"
     },
@@ -14758,6 +14566,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-10",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 48,
+      "provider": "qbittensor-labs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
       "classification": "live",
       "confidence_score": 76,
@@ -16863,10 +16690,10 @@
     },
     {
       "candidate_id": "sn-55-website-common-swagger-json",
-      "classification": "dead",
-      "confidence_score": 0,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
       "kind": "openapi",
       "netuid": 55,
       "provider": "opentensor",
@@ -18962,6 +18789,25 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 62,
+      "provider": "ridges",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -19241,6 +19087,25 @@
     },
     {
       "candidate_id": "sn-63-website-link-www-qbittensorlabs-com-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 63,
+      "provider": "qbittensor-labs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-63-website-link-www-qbittensorlabs-com-website-10",
       "classification": "live",
       "confidence_score": 76,
       "content_type": "text/html; charset=utf-8",
@@ -28986,6 +28851,25 @@
     {
       "candidate_id": "sn-95-website-link-actual-inc-website-1",
       "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/markdown; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 95,
+      "provider": "actual-computer",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-95-website-link-actual-inc-website-2",
+      "classification": "live",
       "confidence_score": 76,
       "content_type": "text/html; charset=utf-8",
       "error": null,
@@ -29003,7 +28887,26 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-95-website-link-actual-inc-website-2",
+      "candidate_id": "sn-95-website-link-actual-inc-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 95,
+      "provider": "actual-computer",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-95-website-link-actual-inc-website-4",
       "classification": "redirected",
       "confidence_score": 71,
       "content_type": "text/html; charset=utf-8",
@@ -31500,7 +31403,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://www.djinn.gg/press",
+      "redirect_target": "https://www.djinn.gg/education",
       "status": "ok"
     },
     {
@@ -31620,7 +31523,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://www.djinn.gg/education",
+      "redirect_target": "https://www.djinn.gg/idiot/browse?sport=soccer_fifa_world_cup",
       "status": "ok"
     },
     {
@@ -32270,6 +32173,25 @@
       "content_type": null,
       "error": "probe-failed",
       "kind": "openapi",
+      "netuid": 106,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-106-website-subdomain-docs-docs-nodexo-ai",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
+      "kind": "docs",
       "netuid": 106,
       "provider": "opentensor",
       "quality_signals": {
@@ -38301,34 +38223,35 @@
   "summary": {
     "by_classification": {
       "auth-required": 9,
-      "content-mismatch": 134,
-      "dead": 396,
-      "live": 1294,
+      "content-mismatch": 129,
+      "dead": 395,
+      "live": 1302,
       "rate-limited": 7,
       "redirected": 141,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 37
+      "unsupported": 31
     },
     "by_kind": {
       "dashboard": 565,
       "data-artifact": 15,
-      "docs": 420,
-      "openapi": 280,
+      "docs": 421,
+      "openapi": 274,
       "repo-registry": 2,
-      "source-repo": 154,
-      "subnet-api": 221,
-      "website": 367
+      "sdk": 2,
+      "source-repo": 155,
+      "subnet-api": 217,
+      "website": 369
     },
     "by_provider": {
       "academia": 1,
-      "actual-computer": 10,
+      "actual-computer": 12,
       "adtao": 18,
       "allways": 9,
       "alphacore": 12,
       "backprop-finance": 129,
       "bitads": 8,
-      "bitmind": 1,
+      "bitmind": 2,
       "blockmachine": 18,
       "byzantium": 8,
       "cacheon": 12,
@@ -38353,22 +38276,21 @@
       "hone": 12,
       "inference-labs": 11,
       "infinitehash": 8,
-      "its-ai": 18,
-      "macrocosmos": 67,
+      "its-ai": 19,
+      "macrocosmos": 68,
       "mantis": 1,
       "mobiusfund": 13,
       "natix": 19,
       "nepher-robotics": 10,
-      "nodexo": 8,
       "numinous": 13,
       "oneoneone": 1,
-      "opentensor": 414,
+      "opentensor": 416,
       "oro": 16,
       "platform-network": 12,
-      "qbittensor-labs": 34,
+      "qbittensor-labs": 36,
       "readyai": 3,
       "redteam": 10,
-      "ridges": 8,
+      "ridges": 9,
       "shiftlayer": 1,
       "signalplus": 1,
       "silx-labs": 12,
@@ -38376,7 +38298,7 @@
       "subnetradar": 129,
       "sundae-bar": 18,
       "talisman-ai": 18,
-      "tao-colosseum": 9,
+      "tao-colosseum": 1,
       "taofi": 8,
       "taomarketcap": 131,
       "taopedia-articles": 128,
@@ -38384,7 +38306,7 @@
       "taostats": 129,
       "targon": 18,
       "tensorplex": 2,
-      "tensorplex-subnet-docs": 192,
+      "tensorplex-subnet-docs": 194,
       "tensorusd": 14,
       "trajectoryrl": 12,
       "trishool": 12,
@@ -38394,7 +38316,7 @@
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1435
+    "promotable_count": 1443
   },
   "verification_finished_at": null,
   "verification_started_at": null

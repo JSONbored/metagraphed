@@ -10409,7 +10409,7 @@
       "confidence": "medium",
       "id": "sn-27-backprop-dashboard",
       "kind": "dashboard",
-      "name": "Nodexo Backprop Finance dashboard",
+      "name": "Team TBC Backprop Finance dashboard",
       "netuid": 27,
       "provider": "backprop-finance",
       "public_safe": true,
@@ -10418,19 +10418,19 @@
       "schema_version": 1,
       "source_tier": "third-party-index",
       "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/27-nodexo",
+      "source_url": "https://backprop.finance/dtao/subnets/27-team-tbc",
       "source_urls": [
-        "https://backprop.finance/dtao/subnets/27-nodexo"
+        "https://backprop.finance/dtao/subnets/27-team-tbc"
       ],
       "state": "schema-valid",
-      "url": "https://backprop.finance/dtao/subnets/27-nodexo"
+      "url": "https://backprop.finance/dtao/subnets/27-team-tbc"
     },
     {
       "auth_required": false,
       "confidence": "medium",
       "id": "sn-27-subnetradar-dashboard",
       "kind": "dashboard",
-      "name": "Nodexo SubnetRadar dashboard",
+      "name": "Team TBC SubnetRadar dashboard",
       "netuid": 27,
       "provider": "subnetradar",
       "public_safe": true,
@@ -10451,7 +10451,7 @@
       "confidence": "medium",
       "id": "sn-27-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Nodexo TaoMarketCap dashboard",
+      "name": "Team TBC TaoMarketCap dashboard",
       "netuid": 27,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -10472,7 +10472,7 @@
       "confidence": "medium",
       "id": "sn-27-taostats-metagraph",
       "kind": "dashboard",
-      "name": "Nodexo Taostats metagraph",
+      "name": "Team TBC Taostats metagraph",
       "netuid": 27,
       "provider": "taostats",
       "public_safe": true,
@@ -10493,7 +10493,7 @@
       "confidence": "low",
       "id": "sn-27-taopedia-article",
       "kind": "docs",
-      "name": "Nodexo Taopedia article",
+      "name": "Team TBC Taopedia article",
       "netuid": 27,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -10514,7 +10514,7 @@
       "confidence": "medium",
       "id": "sn-27-tensorplex-docs",
       "kind": "docs",
-      "name": "Nodexo Tensorplex subnet docs",
+      "name": "Team TBC Tensorplex subnet docs",
       "netuid": 27,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -10532,174 +10532,24 @@
     },
     {
       "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-docs",
-      "kind": "docs",
-      "name": "Nodexo docs",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-openapi-json",
-      "kind": "openapi",
-      "name": "Nodexo OpenAPI JSON",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/openapi.json"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-swagger",
-      "kind": "openapi",
-      "name": "Nodexo Swagger UI",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/swagger"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-swagger-json",
-      "kind": "openapi",
-      "name": "Nodexo Swagger JSON",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/swagger.json"
-    },
-    {
-      "auth_required": false,
-      "confidence": "high",
-      "id": "sn-27-native-chain-github",
+      "confidence": "medium",
+      "id": "sn-27-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "name": "Nodexo GitHub source repository",
+      "name": "Team TBC source repository",
       "netuid": 27,
-      "provider": "nodexo",
+      "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
-      "source_tier": "native-chain",
-      "source_type": "subtensor-subnet-identities-v3",
-      "source_url": "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/27",
-        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/neuralinternet/compute-subnet"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-api",
-      "kind": "subnet-api",
-      "name": "Nodexo API",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/api"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-common-health",
-      "kind": "subnet-api",
-      "name": "Nodexo health endpoint",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/health"
-    },
-    {
-      "auth_required": false,
-      "confidence": "high",
-      "id": "sn-27-native-chain-website",
-      "kind": "website",
-      "name": "Nodexo website",
-      "netuid": 27,
-      "provider": "nodexo",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
-      "schema_version": 1,
-      "source_tier": "native-chain",
-      "source_type": "subtensor-subnet-identities-v3",
-      "source_url": "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/27",
-        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
-      ],
-      "state": "schema-valid",
-      "url": "https://nodexo.ai/"
     },
     {
       "auth_required": false,
@@ -11589,6 +11439,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "provider": "its-ai",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-32-website-common-openapi-json",
       "kind": "openapi",
       "name": "ItsAI OpenAPI JSON",
@@ -12432,6 +12303,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.0xmarkets.io/",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -13389,7 +13281,7 @@
       "confidence": "medium",
       "id": "sn-38-backprop-dashboard",
       "kind": "dashboard",
-      "name": "colosseum Backprop Finance dashboard",
+      "name": "ChronoLLM Backprop Finance dashboard",
       "netuid": 38,
       "provider": "backprop-finance",
       "public_safe": true,
@@ -13398,19 +13290,19 @@
       "schema_version": 1,
       "source_tier": "third-party-index",
       "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/38-colosseum",
+      "source_url": "https://backprop.finance/dtao/subnets/38-chronollm",
       "source_urls": [
-        "https://backprop.finance/dtao/subnets/38-colosseum"
+        "https://backprop.finance/dtao/subnets/38-chronollm"
       ],
       "state": "schema-valid",
-      "url": "https://backprop.finance/dtao/subnets/38-colosseum"
+      "url": "https://backprop.finance/dtao/subnets/38-chronollm"
     },
     {
       "auth_required": false,
       "confidence": "medium",
       "id": "sn-38-subnetradar-dashboard",
       "kind": "dashboard",
-      "name": "colosseum SubnetRadar dashboard",
+      "name": "ChronoLLM SubnetRadar dashboard",
       "netuid": 38,
       "provider": "subnetradar",
       "public_safe": true,
@@ -13431,7 +13323,7 @@
       "confidence": "medium",
       "id": "sn-38-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "colosseum TaoMarketCap dashboard",
+      "name": "ChronoLLM TaoMarketCap dashboard",
       "netuid": 38,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -13452,7 +13344,7 @@
       "confidence": "medium",
       "id": "sn-38-taostats-metagraph",
       "kind": "dashboard",
-      "name": "colosseum Taostats metagraph",
+      "name": "ChronoLLM Taostats metagraph",
       "netuid": 38,
       "provider": "taostats",
       "public_safe": true,
@@ -13473,7 +13365,7 @@
       "confidence": "low",
       "id": "sn-38-taopedia-article",
       "kind": "docs",
-      "name": "colosseum Taopedia article",
+      "name": "ChronoLLM Taopedia article",
       "netuid": 38,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -13494,7 +13386,7 @@
       "confidence": "medium",
       "id": "sn-38-tensorplex-docs",
       "kind": "docs",
-      "name": "colosseum Tensorplex subnet docs",
+      "name": "ChronoLLM Tensorplex subnet docs",
       "netuid": 38,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -13512,180 +13404,10 @@
     },
     {
       "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-docs",
-      "kind": "docs",
-      "name": "colosseum docs",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-subdomain-docs-docs-taocolosseum-com",
-      "kind": "docs",
-      "name": "colosseum docs subdomain",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.taocolosseum.com/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-openapi-json",
-      "kind": "openapi",
-      "name": "colosseum OpenAPI JSON",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/openapi.json"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-swagger",
-      "kind": "openapi",
-      "name": "colosseum Swagger UI",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/swagger"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-swagger-json",
-      "kind": "openapi",
-      "name": "colosseum Swagger JSON",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/swagger.json"
-    },
-    {
-      "auth_required": false,
       "confidence": "high",
       "id": "sn-38-native-chain-github",
       "kind": "source-repo",
-      "name": "colosseum GitHub source repository",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from native Subtensor SubnetIdentitiesV3 metadata. Candidate still requires safe probe verification and maintainer review before promotion.",
-      "schema_version": 1,
-      "source_tier": "native-chain",
-      "source_type": "subtensor-subnet-identities-v3",
-      "source_url": "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38",
-        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-api",
-      "kind": "subnet-api",
-      "name": "colosseum API",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/api"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-38-website-common-health",
-      "kind": "subnet-api",
-      "name": "colosseum health endpoint",
-      "netuid": 38,
-      "provider": "tao-colosseum",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.taocolosseum.com/",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/health"
-    },
-    {
-      "auth_required": false,
-      "confidence": "high",
-      "id": "sn-38-native-chain-website",
-      "kind": "website",
-      "name": "colosseum website",
+      "name": "ChronoLLM GitHub source repository",
       "netuid": 38,
       "provider": "tao-colosseum",
       "public_safe": true,
@@ -13700,7 +13422,28 @@
         "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html"
       ],
       "state": "schema-valid",
-      "url": "https://www.taocolosseum.com/"
+      "url": "https://github.com/chronollm/sn38"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "ChronoLLM source repository",
+      "netuid": 38,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
       "auth_required": false,
@@ -16472,6 +16215,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-10",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/rules"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
       "kind": "website",
       "name": "Quantum Compute website page",
@@ -16551,7 +16315,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/enigma/contracts"
+      "url": "https://www.qbittensorlabs.com/enigma/challenges/peaked-circuits"
     },
     {
       "auth_required": false,
@@ -16572,7 +16336,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/terms"
+      "url": "https://www.qbittensorlabs.com/enigma/contracts"
     },
     {
       "auth_required": false,
@@ -16593,7 +16357,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/privacy"
+      "url": "https://www.qbittensorlabs.com/terms"
     },
     {
       "auth_required": false,
@@ -16614,7 +16378,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/payment-processing"
+      "url": "https://www.qbittensorlabs.com/privacy"
     },
     {
       "auth_required": false,
@@ -16635,7 +16399,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/enigma/rules"
+      "url": "https://www.qbittensorlabs.com/payment-processing"
     },
     {
       "auth_required": false,
@@ -21038,6 +20802,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "provider": "ridges",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.ridges.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-62-website-common-openapi-json",
       "kind": "openapi",
       "name": "Ridges OpenAPI JSON",
@@ -21526,6 +21311,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-63-website-link-www-qbittensorlabs-com-website-10",
+      "kind": "website",
+      "name": "Enigma website page",
+      "netuid": 63,
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/rules"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-63-website-link-www-qbittensorlabs-com-website-2",
       "kind": "website",
       "name": "Enigma website page",
@@ -21605,7 +21411,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/enigma/contracts"
+      "url": "https://www.qbittensorlabs.com/enigma/challenges/peaked-circuits"
     },
     {
       "auth_required": false,
@@ -21626,7 +21432,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/terms"
+      "url": "https://www.qbittensorlabs.com/enigma/contracts"
     },
     {
       "auth_required": false,
@@ -21647,7 +21453,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/privacy"
+      "url": "https://www.qbittensorlabs.com/terms"
     },
     {
       "auth_required": false,
@@ -21668,7 +21474,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/payment-processing"
+      "url": "https://www.qbittensorlabs.com/privacy"
     },
     {
       "auth_required": false,
@@ -21689,7 +21495,7 @@
         "https://www.qbittensorlabs.com/"
       ],
       "state": "schema-valid",
-      "url": "https://www.qbittensorlabs.com/enigma/rules"
+      "url": "https://www.qbittensorlabs.com/payment-processing"
     },
     {
       "auth_required": false,
@@ -31116,7 +30922,7 @@
       "confidence": "medium",
       "id": "sn-92-backprop-dashboard",
       "kind": "dashboard",
-      "name": "luis Backprop Finance dashboard",
+      "name": "wgmi Backprop Finance dashboard",
       "netuid": 92,
       "provider": "backprop-finance",
       "public_safe": true,
@@ -31125,19 +30931,19 @@
       "schema_version": 1,
       "source_tier": "third-party-index",
       "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/92-luis",
+      "source_url": "https://backprop.finance/dtao/subnets/92-wgmi",
       "source_urls": [
-        "https://backprop.finance/dtao/subnets/92-luis"
+        "https://backprop.finance/dtao/subnets/92-wgmi"
       ],
       "state": "schema-valid",
-      "url": "https://backprop.finance/dtao/subnets/92-luis"
+      "url": "https://backprop.finance/dtao/subnets/92-wgmi"
     },
     {
       "auth_required": false,
       "confidence": "medium",
       "id": "sn-92-subnetradar-dashboard",
       "kind": "dashboard",
-      "name": "luis SubnetRadar dashboard",
+      "name": "wgmi SubnetRadar dashboard",
       "netuid": 92,
       "provider": "subnetradar",
       "public_safe": true,
@@ -31158,7 +30964,7 @@
       "confidence": "medium",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "luis TaoMarketCap dashboard",
+      "name": "wgmi TaoMarketCap dashboard",
       "netuid": 92,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -31179,7 +30985,7 @@
       "confidence": "medium",
       "id": "sn-92-taostats-metagraph",
       "kind": "dashboard",
-      "name": "luis Taostats metagraph",
+      "name": "wgmi Taostats metagraph",
       "netuid": 92,
       "provider": "taostats",
       "public_safe": true,
@@ -31200,7 +31006,7 @@
       "confidence": "low",
       "id": "sn-92-taopedia-article",
       "kind": "docs",
-      "name": "luis Taopedia article",
+      "name": "wgmi Taopedia article",
       "netuid": 92,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -31221,7 +31027,7 @@
       "confidence": "medium",
       "id": "sn-92-tensorplex-docs",
       "kind": "docs",
-      "name": "luis Tensorplex subnet docs",
+      "name": "wgmi Tensorplex subnet docs",
       "netuid": 92,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -31242,7 +31048,7 @@
       "confidence": "medium",
       "id": "sn-92-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "name": "luis source repository",
+      "name": "wgmi source repository",
       "netuid": 92,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -32355,12 +32161,54 @@
         "https://actual.inc/"
       ],
       "state": "schema-valid",
-      "url": "https://actual.inc/login"
+      "url": "https://actual.inc/llms.txt"
     },
     {
       "auth_required": false,
       "confidence": "low",
       "id": "sn-95-website-link-actual-inc-website-2",
+      "kind": "website",
+      "name": "Actual website page",
+      "netuid": 95,
+      "provider": "actual-computer",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://actual.inc/",
+      "source_urls": [
+        "https://actual.inc/"
+      ],
+      "state": "schema-valid",
+      "url": "https://actual.inc/register"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-95-website-link-actual-inc-website-3",
+      "kind": "website",
+      "name": "Actual website page",
+      "netuid": 95,
+      "provider": "actual-computer",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://actual.inc/",
+      "source_urls": [
+        "https://actual.inc/"
+      ],
+      "state": "schema-valid",
+      "url": "https://actual.inc/login"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-95-website-link-actual-inc-website-4",
       "kind": "website",
       "name": "Actual website page",
       "netuid": 95,
@@ -35142,7 +34990,7 @@
         "https://djinn.gg/"
       ],
       "state": "schema-valid",
-      "url": "https://djinn.gg/press"
+      "url": "https://djinn.gg/education"
     },
     {
       "auth_required": false,
@@ -35268,7 +35116,7 @@
         "https://djinn.gg/"
       ],
       "state": "schema-valid",
-      "url": "https://djinn.gg/education"
+      "url": "https://djinn.gg/idiot/browse?sport=soccer_fifa_world_cup"
     },
     {
       "auth_required": false,
@@ -35858,6 +35706,27 @@
       ],
       "state": "schema-valid",
       "url": "https://nodexo.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-106-website-subdomain-docs-docs-nodexo-ai",
+      "kind": "docs",
+      "name": "Nodexo docs subdomain",
+      "netuid": 106,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://nodexo.ai/",
+      "source_urls": [
+        "https://nodexo.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.nodexo.ai/"
     },
     {
       "auth_required": false,
@@ -42724,11 +42593,11 @@
       "url": "https://byteleap.ai/"
     }
   ],
-  "generated_at": "2026-06-10T19:45:54.526Z",
+  "generated_at": "2026-06-11T23:58:50.356Z",
   "generated_by": "metagraphed-discover-candidates",
-  "native_snapshot_captured_at": "2026-06-10T19:46:19Z",
+  "native_snapshot_captured_at": "2026-06-11T23:59:01Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-10T19:45:54.526Z",
+  "observed_at": "2026-06-11T23:58:50.356Z",
   "schema_version": 1,
   "sources": [
     {
