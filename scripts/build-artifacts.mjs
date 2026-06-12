@@ -11,6 +11,7 @@ import {
   buildEndpointIncidentArtifact,
   buildTimestamp,
   cleanDescription,
+  deriveDescriptionFromNotes,
   deriveDomainTags,
   sanitizeChainText,
   stripUrls,
@@ -176,6 +177,44 @@ await fs.rm(r2OutputRoot, { recursive: true, force: true });
 const nativeByNetuid = new Map(
   chainSubnets.map((nativeSubnet) => [nativeSubnet.netuid, nativeSubnet]),
 );
+
+// Derived-description fallback (issue #346): for subnets with no chain/overlay
+// description, surface a truncated blurb from the curated notes of a provider
+// that operates the subnet (prefer the subnet-team provider, deterministic by
+// id). A SEPARATE field — never the curated description, so the gap stays
+// visible to the SN74 flywheel.
+const providersById = new Map(
+  providers.map((provider) => [provider.id, provider]),
+);
+const providerIdsByNetuid = new Map();
+for (const surface of surfaces) {
+  if (!surface.provider || !Number.isInteger(surface.netuid)) continue;
+  if (!providerIdsByNetuid.has(surface.netuid)) {
+    providerIdsByNetuid.set(surface.netuid, new Set());
+  }
+  providerIdsByNetuid.get(surface.netuid).add(surface.provider);
+}
+const derivedDescriptionByNetuid = new Map();
+for (const subnet of mergedSubnets) {
+  if (subnet.description) continue;
+  const ids = [...(providerIdsByNetuid.get(subnet.netuid) || [])].sort(
+    (a, b) =>
+      (providersById.get(a)?.kind === "subnet-team" ? 0 : 1) -
+        (providersById.get(b)?.kind === "subnet-team" ? 0 : 1) ||
+      a.localeCompare(b),
+  );
+  for (const id of ids) {
+    const provider = providersById.get(id);
+    const derived = deriveDescriptionFromNotes(
+      provider?.public_notes || provider?.notes,
+    );
+    if (derived) {
+      derivedDescriptionByNetuid.set(subnet.netuid, derived);
+      break;
+    }
+  }
+}
+
 const subnetIndex = mergedSubnets.map((subnet) => {
   // The Discord contact is on-chain (SubnetIdentitiesV3) and untrusted. Surface
   // it on the lightweight index (issue #344) so an agent can answer "how do I
@@ -197,6 +236,7 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     curation_level: subnet.curation.level,
     dashboard_url: subnet.dashboard_url,
     derived_categories: subnet.derived_categories,
+    derived_description: derivedDescriptionByNetuid.get(subnet.netuid) || null,
     description: subnet.description,
     discord: discordContact,
     discord_url:
@@ -418,6 +458,7 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   // overlay-only identity even though the merged subnet display fields are now
   // chain-backfilled. Keeps the SN74 curation flywheel queue unchanged.
   overlaysByNetuid: overlayByNetuid,
+  derivedDescriptionByNetuid,
   probeFinishedAt: healthArtifacts.latest.probe_finished_at || null,
   subnets: mergedSubnets,
   surfaces,
@@ -1692,6 +1733,7 @@ function buildSubnetProfileArtifacts({
   candidates,
   nativeIdentitiesByNetuid = new Map(),
   overlaysByNetuid = new Map(),
+  derivedDescriptionByNetuid = new Map(),
   healthSurfaces = [],
   probeFinishedAt = null,
 }) {
@@ -1707,6 +1749,8 @@ function buildSubnetProfileArtifacts({
         healthByKind: healthByNetuidAndKind.get(subnet.netuid) || new Map(),
         nativeIdentity: nativeIdentitiesByNetuid.get(subnet.netuid) || null,
         overlay: overlaysByNetuid.get(subnet.netuid) || null,
+        derivedDescription:
+          derivedDescriptionByNetuid.get(subnet.netuid) || null,
         probeFinishedAt,
         subnet,
         surfaces: surfacesByNetuid.get(subnet.netuid) || [],
@@ -2789,6 +2833,7 @@ function buildSubnetProfile({
   candidates,
   nativeIdentity,
   overlay = null,
+  derivedDescription = null,
   healthByKind = new Map(),
   probeFinishedAt = null,
 }) {
@@ -2861,6 +2906,7 @@ function buildSubnetProfile({
     team: null,
     categories: subnet.categories || [],
     derived_categories: subnet.derived_categories || [],
+    derived_description: derivedDescription,
     primary_links: primaryLinks,
     primary_app_surface: surfaceSummary(primaryAppSurface(surfaces)),
     supported_interface_kinds: supportedKinds,

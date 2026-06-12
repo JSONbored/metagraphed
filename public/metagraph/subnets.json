@@ -26,6 +26,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/0",
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -71,6 +72,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "Open competitions for algorithmic and agentic optimization",
       "discord": "macrocrux",
       "discord_url": null,
@@ -117,6 +119,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": null,
       "description": "Verifiable and distributed inference on Bittensor",
       "discord": null,
       "discord_url": null,
@@ -159,6 +162,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://wandb.ai/tplr/templar",
       "derived_categories": [],
+      "derived_description": null,
       "description": "deprecated",
       "discord": null,
       "discord_url": null,
@@ -201,6 +205,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": null,
       "description": "Incentivized Compute Marketplace powered by the Targon Virtual Machine (TVM).",
       "discord": null,
       "discord_url": null,
@@ -242,6 +247,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/5",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Hone training",
       "discord": null,
       "discord_url": null,
@@ -289,6 +295,7 @@
         "inference",
         "prediction"
       ],
+      "derived_description": null,
       "description": "Numinous is a forecasting protocol whose goal is to aggregate agents into superhuman LLM forecasters.",
       "discord": "amedeo_ma",
       "discord_url": null,
@@ -329,6 +336,7 @@
       "curation_level": "adapter-backed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": null,
       "description": "universal transaction layer",
       "discord": null,
       "discord_url": null,
@@ -372,6 +380,7 @@
       "derived_categories": [
         "finance"
       ],
+      "derived_description": null,
       "description": "The first decentralized & trustless liquidity and execution engine for prop firms and traders",
       "discord": "tl_arrash",
       "discord_url": null,
@@ -415,6 +424,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://iota.macrocosmos.ai/dashboard/mainnet",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The world's first permissionless pipeline parallel training architecture",
       "discord": "macrocrux",
       "discord_url": null,
@@ -457,6 +467,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/10",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Swap is onboarding users to Bittensor.",
       "discord": null,
       "discord_url": null,
@@ -501,6 +512,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "Agentic RL as a Service, Optimize agent trajectories to make agents cheaper, safer, and more reliable.",
       "discord": null,
       "discord_url": null,
@@ -546,6 +558,7 @@
       "derived_categories": [
         "compute"
       ],
+      "derived_description": "Provider entry for Compute Horde SN12 official website and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -592,6 +605,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": null,
       "description": "Scraping the world's social media data",
       "discord": "macrocrux",
       "discord_url": null,
@@ -637,6 +651,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": null,
       "description": "A competition where miners submit containerized inference servers to compete on speed and correctness when serving an open-source model",
       "discord": "https://discord.com/invite/bittensor",
       "discord_url": "https://discord.com/invite/bittensor",
@@ -679,6 +694,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://oroagents.com/",
       "derived_categories": [],
+      "derived_description": null,
       "description": "AI commerce agents",
       "discord": "https://discord.gg/MHqAVWTdka",
       "discord_url": "https://discord.gg/MHqAVWTdka",
@@ -721,6 +737,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/16",
       "derived_categories": [],
+      "derived_description": null,
       "description": "BitAds is a decentralized, Proof of Sale marketing network where merchandisers stake or rent ALPHA to own marketing bandwidth, and miners earn on verified sales.",
       "discord": "https://discord.gg/qasY3HA9F9",
       "discord_url": "https://discord.gg/qasY3HA9F9",
@@ -760,6 +777,7 @@
       "derived_categories": [
         "media"
       ],
+      "derived_description": null,
       "description": "a decentralized 3D content generation competition",
       "discord": null,
       "discord_url": null,
@@ -800,6 +818,7 @@
         "prediction",
         "science"
       ],
+      "derived_description": null,
       "description": "Pushing weather forecasts beyond state-of-the-art",
       "discord": "wouter_orpheusai",
       "discord_url": null,
@@ -842,6 +861,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/19",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Harnessing Bittensor's incentive layer to forge self-optimizing infrastructure.",
       "discord": null,
       "discord_url": null,
@@ -882,6 +902,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/20",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Structured OTC deals for subnet tokens.",
       "discord": null,
       "discord_url": null,
@@ -926,6 +947,7 @@
       "derived_categories": [
         "prediction"
       ],
+      "derived_description": null,
       "description": "Counterfactual impact prediction for advertising interventions",
       "discord": null,
       "discord_url": null,
@@ -974,6 +996,7 @@
       "derived_categories": [
         "search"
       ],
+      "derived_description": null,
       "description": "Decentralized search engine",
       "discord": "https://discord.gg/P44zrJmdFy",
       "discord_url": "https://discord.gg/P44zrJmdFy",
@@ -1016,6 +1039,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://trishool.ai/dashboard",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Trishool is the AI alignment protocol built on Bittensor",
       "discord": "https://discord.com/channels/799672011265015819/1437447445176127618",
       "discord_url": "https://discord.com/channels/799672011265015819/1437447445176127618",
@@ -1060,6 +1084,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/24",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Bittensor subnet built to crush the long-context barrier.",
       "discord": "https://discordapp.com/channels/799672011265015819/1214246819886931988",
       "discord_url": "https://discordapp.com/channels/799672011265015819/1214246819886931988",
@@ -1104,6 +1129,7 @@
       "derived_categories": [
         "compute"
       ],
+      "derived_description": null,
       "description": "Powering decentralized science on Bittensor",
       "discord": "mccrinbc",
       "discord_url": null,
@@ -1141,6 +1167,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/26-perturb",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Decentralized adversarial robustness network",
       "discord": null,
       "discord_url": null,
@@ -1186,6 +1213,7 @@
       "derived_categories": [
         "compute"
       ],
+      "derived_description": "Provider entry for Nodexo Compute / SN27. Official browser-facing website, docs, and console surfaces are tracked, but simple Node/HEAD probes currently receive connection resets and are not treated as healthy monitored endpoints.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1228,6 +1256,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1274,6 +1303,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": "Provider entry for Coldint SN29 website, validator repository, dynamic configuration repository, and referenced public training dataset.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1317,6 +1347,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/30",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The risk intelligence network",
       "discord": null,
       "discord_url": null,
@@ -1362,6 +1393,7 @@
         "inference",
         "search"
       ],
+      "derived_description": null,
       "description": "Recall provides decentralized retrieval-augmented generation to Bittensor. Miners serve embedding models, vector search, and LLM inference. Validators independently evaluate retrieval accuracy and answer quality. The subnet discovers the best RAG pipeline through open competition and routes user queries to the top performers. Think of it as an always-improving, community-owned search engine with citations.",
       "discord": null,
       "discord_url": null,
@@ -1403,6 +1435,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/32",
       "derived_categories": [],
+      "derived_description": null,
       "description": "ItsAI is a bittensor subnet focused on high-quality AI detection for texts. Recognised as the most accurate AI detector by MGTD benchmark.",
       "discord": "https://discord.com/channels/799672011265015819/1215319932062011464",
       "discord_url": "https://discord.com/channels/799672011265015819/1215319932062011464",
@@ -1449,6 +1482,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": "Provider entry for ReadyAI SN33 website, Conversation Genome source repository, public dataset, and generated llms.txt data repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1493,6 +1527,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://app.bitmind.ai/",
       "derived_categories": [],
+      "derived_description": "Provider entry for BitMind SN34 official website, documentation, application, and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1532,6 +1567,7 @@
       "derived_categories": [
         "finance"
       ],
+      "derived_description": null,
       "description": "Liquidity-as-a-Service subnet powering 0xMarkets - a permissionless perp DEX for FX, crypto, and commodities. Deposit USDC. Earn Spread + Fees + Alpha.",
       "discord": "https://0xmarkets.io/discord",
       "discord_url": "https://0xmarkets.io/discord",
@@ -1569,6 +1605,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/36-eirel",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The execution layer for multimodal AI workflows",
       "discord": null,
       "discord_url": null,
@@ -1606,6 +1643,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/37-aurelius",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Decentralized Alignment of Artificial Intelligence",
       "discord": null,
       "discord_url": null,
@@ -1646,6 +1684,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/38",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Competitive training of chronologically consistent Large Language Models",
       "discord": "https://discord.com/channels/799672011265015819/1485634202895519844",
       "discord_url": "https://discord.com/channels/799672011265015819/1485634202895519844",
@@ -1690,6 +1729,7 @@
       "derived_categories": [
         "compute"
       ],
+      "derived_description": null,
       "description": "deprecated",
       "discord": null,
       "discord_url": null,
@@ -1732,6 +1772,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Provider profile for public references that identify VectorChat as the team behind SN40 Chunking. Current official-looking website and source repository evidence is stale or degraded.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1769,6 +1810,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/41-almanac",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Incentivized market intelligence.",
       "discord": null,
       "discord_url": null,
@@ -1816,6 +1858,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": "Provider profile for Gopher AI / SN42. Public surfaces include the developer portal, subnet docs, miner docs, and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1859,6 +1902,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/43",
       "derived_categories": [],
+      "derived_description": "Provider entry for Graphite SN43 official website and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1896,6 +1940,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/44-score",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Making every camera intelligent",
       "discord": null,
       "discord_url": null,
@@ -1937,6 +1982,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/45",
       "derived_categories": [],
+      "derived_description": "Provider entry for Talisman AI SN45 website and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -1974,6 +2020,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/46-zipcode",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The Real Estate Intelligence Network",
       "discord": "https://discord.gg/9Hxmh7H6Pt",
       "discord_url": "https://discord.gg/9Hxmh7H6Pt",
@@ -2017,6 +2064,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": null,
       "description": "A subnet focused on the research, development, and evaluation of evolving AI systems",
       "discord": null,
       "discord_url": null,
@@ -2062,6 +2110,7 @@
       "derived_categories": [
         "compute"
       ],
+      "derived_description": null,
       "description": "Quantum Computing",
       "discord": "qbittensorlabs",
       "discord_url": null,
@@ -2110,6 +2159,7 @@
       "derived_categories": [
         "robotics"
       ],
+      "derived_description": null,
       "description": "Pioneering Simulation-First Robotics Development",
       "discord": "https://discord.gg/nepher",
       "discord_url": "https://discord.gg/nepher",
@@ -2150,6 +2200,7 @@
         "finance",
         "prediction"
       ],
+      "derived_description": null,
       "description": "Predictive intelligence for financial markets and beyond",
       "discord": null,
       "discord_url": null,
@@ -2187,6 +2238,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/51-lium-io",
       "derived_categories": [],
+      "derived_description": null,
       "description": "revolutionizing the democratization of compute",
       "discord": "p383_54249",
       "discord_url": null,
@@ -2230,6 +2282,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/52",
       "derived_categories": [],
+      "derived_description": "Provider entry for Tensorplex Dojo SN52 docs, source repository, UI repository, and worker API repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -2273,6 +2326,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://t.signalplus.com/mining",
       "derived_categories": [],
+      "derived_description": "Provider entry for SignalPlus and SN53 EfficientFrontier. The SignalPlus company website is live; the subnet mining surface currently returns an auth/challenge-style response to simple probes.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -2314,6 +2368,7 @@
         "finance",
         "security"
       ],
+      "derived_description": null,
       "description": "Yanez MIID generates synthetic identities for testing financial crime prevention systems",
       "discord": "https://discord.com/channels/799672011265015819/1351934165964296232",
       "discord_url": "https://discord.com/channels/799672011265015819/1351934165964296232",
@@ -2354,6 +2409,7 @@
         "privacy",
         "science"
       ],
+      "derived_description": null,
       "description": "NIOME is a decentralized AI subnet that enables privacy-safe genomic intelligence by replacing real human genomes with high-fidelity synthetic genomic profiles",
       "discord": "https://discord.gg/7mJkaJZX",
       "discord_url": "https://discord.gg/7mJkaJZX",
@@ -2398,6 +2454,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://backprop.finance/dtao/subnets/56-gradients",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Best AutoML plaftorm in the world",
       "discord": null,
       "discord_url": null,
@@ -2441,6 +2498,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/57",
       "derived_categories": [],
+      "derived_description": "Provider entry for Sparket SN57 official website and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -2486,6 +2544,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/58",
       "derived_categories": [],
+      "derived_description": "Provider entry for Handshake58 SN58 marketplace, API, OpenAPI, and subnet source repositories.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -2526,6 +2585,7 @@
         "inference",
         "prediction"
       ],
+      "derived_description": null,
       "description": "Babelbit: harnessing the predictive power of LLMs to deliver state-of-the-art translation services",
       "discord": "https://discord.com/channels/799672011265015819/1407849009976053832",
       "discord_url": "https://discord.com/channels/799672011265015819/1407849009976053832",
@@ -2565,6 +2625,7 @@
       "derived_categories": [
         "security"
       ],
+      "derived_description": null,
       "description": "find and fix exploits in codebases",
       "discord": "yubo",
       "discord_url": null,
@@ -2611,6 +2672,7 @@
       "derived_categories": [
         "security"
       ],
+      "derived_description": null,
       "description": "\"The RedTeam subnet by Innerworks is a decentralized platform designed to drive innovation in cybersecurity through competitive programming challenges. The subnet incentivizes miners to develop and submit code solutions to various technical challenges, with a focus on enhancing security. These solutions can be integrated into real-world products to improve their security features.\"",
       "discord": "https://discord.com/channels/799672011265015819/1319313447435108413",
       "discord_url": "https://discord.com/channels/799672011265015819/1319313447435108413",
@@ -2654,6 +2716,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "Software Engineering Agents",
       "discord": "https://discord.gg/WeDvTnYDad",
       "discord_url": "https://discord.gg/WeDvTnYDad",
@@ -2696,6 +2759,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/63",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Breaking today to build tomorrow",
       "discord": "qbittensorlabs",
       "discord_url": null,
@@ -2744,6 +2808,7 @@
         "compute",
         "inference"
       ],
+      "derived_description": null,
       "description": "Breakthrough Serverless Compute for AI, At Scale.",
       "discord": "https://discord.gg/chutes",
       "discord_url": "https://discord.gg/chutes",
@@ -2781,6 +2846,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/65-tao-private-network",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Developer-friendly Decentralised VPN infrastructure.",
       "discord": "https://discord.gg/GRVZyPYd6G",
       "discord_url": "https://discord.gg/GRVZyPYd6G",
@@ -2826,6 +2892,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://ninja.arbos.life/",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Distilling software agents",
       "discord": "arbos",
       "discord_url": null,
@@ -2863,6 +2930,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/67-harnyx",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Deep research as a commodity. Faster, cheaper, traceable research — produced by a competitive swarm of miners on Bittensor SN67.",
       "discord": "https://discord.com/channels/799672011265015819/1457737666316472351",
       "discord_url": "https://discord.com/channels/799672011265015819/1457737666316472351",
@@ -2902,6 +2970,7 @@
       "derived_categories": [
         "science"
       ],
+      "derived_description": null,
       "description": "Accelerating drug discovery.",
       "discord": null,
       "discord_url": null,
@@ -2941,6 +3010,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -2980,6 +3050,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": null,
       "description": "The dataset engine of decentralized AI",
       "discord": null,
       "discord_url": null,
@@ -3017,6 +3088,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/71-leadpoet",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Intent-driven AI for modern sales teams.",
       "discord": null,
       "discord_url": null,
@@ -3064,6 +3136,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": null,
       "description": "Powered by NATIX’s Internet of Cameras, StreetVision is advancing autonomous driving, Physical AI, and map-making.",
       "discord": "https://discord.com/channels/799672011265015819/1349122541754515538",
       "discord_url": "https://discord.com/channels/799672011265015819/1349122541754515538",
@@ -3106,6 +3179,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -3148,6 +3222,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "autonomous software development",
       "discord": null,
       "discord_url": null,
@@ -3194,6 +3269,7 @@
       "derived_categories": [
         "storage"
       ],
+      "derived_description": null,
       "description": "Blockchain-backed cloud: storage, VMs, and apps with unmatched transparency, trust, and power.",
       "discord": null,
       "discord_url": null,
@@ -3234,6 +3310,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/76",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Leverage marketing with AI Swarm",
       "discord": "https://discord.com/channels/799672011265015819/1474042162877300776",
       "discord_url": "https://discord.com/channels/799672011265015819/1474042162877300776",
@@ -3273,6 +3350,7 @@
       "derived_categories": [
         "finance"
       ],
+      "derived_description": null,
       "description": "Supply liquidity on external chains via uniswap, incentivize any project",
       "discord": "CreativeBuilds",
       "discord_url": null,
@@ -3312,6 +3390,7 @@
       "derived_categories": [
         "media"
       ],
+      "derived_description": null,
       "description": "The voice layer for decentralized intelligence",
       "discord": "https://discord.gg/TWmfwJAtXG",
       "discord_url": "https://discord.gg/TWmfwJAtXG",
@@ -3353,6 +3432,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/79",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Building a SOTA Exchange for dTAO and Beyond",
       "discord": null,
       "discord_url": null,
@@ -3390,6 +3470,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/80-dogelayer",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Dogelayer is the world's first mining pool enabling Scrypt miners to join Bittensor subnet. Our merged mining technology allows traditional miners to earn Alpha tokens through subnet validation while mining LTC/DOGE",
       "discord": "dogelayer",
       "discord_url": null,
@@ -3433,6 +3514,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://grail-grafana.tplr.ai/",
       "derived_categories": [],
+      "derived_description": null,
       "description": "deprecated",
       "discord": null,
       "discord_url": null,
@@ -3474,6 +3556,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/82",
       "derived_categories": [],
+      "derived_description": null,
       "description": "AIs debate until they are AGI.",
       "discord": null,
       "discord_url": null,
@@ -3511,6 +3594,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/83-cliqueai",
       "derived_categories": [],
+      "derived_description": null,
       "description": "CliqueAI - AI-Powered Maximum Clique Solver Network",
       "discord": "https://discord.com/channels/799672011265015819/1355560253076410428",
       "discord_url": "https://discord.com/channels/799672011265015819/1355560253076410428",
@@ -3555,6 +3639,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/84",
       "derived_categories": [],
+      "derived_description": "Provider entry for ChipForge SN84 official website, documentation, and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -3597,6 +3682,7 @@
       "derived_categories": [
         "media"
       ],
+      "derived_description": null,
       "description": "Next-Generation Video Processing Powered By AI",
       "discord": "https://discord.gg/xhn4jxJMEX",
       "discord_url": "https://discord.gg/xhn4jxJMEX",
@@ -3637,6 +3723,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": null,
       "description": "Methodical. Strong foundation. And...Sr Data Scientist, 4th team member, onboard.",
       "discord": null,
       "discord_url": null,
@@ -3680,6 +3767,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://demo.luminar.network/",
       "derived_categories": [],
+      "derived_description": "Provider entry for Luminar Network SN87 official website, docs, and demo surfaces.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -3726,6 +3814,7 @@
       "derived_categories": [
         "finance"
       ],
+      "derived_description": null,
       "description": "Decentralized AUM",
       "discord": null,
       "discord_url": null,
@@ -3767,6 +3856,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/89",
       "derived_categories": [],
+      "derived_description": null,
       "description": "BTC Pool + Lightning Network",
       "discord": null,
       "discord_url": null,
@@ -3809,6 +3899,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://degenbrain.com/",
       "derived_categories": [],
+      "derived_description": "Provider entry for the SN90 DegenBrain website and public app surfaces. The project website identifies Subnet 90 as DegenBrain/Brain, while native chain identity currently remains ogham.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -3850,6 +3941,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/91",
       "derived_categories": [],
+      "derived_description": null,
       "description": "A new subnet launch on Bitstarter - coming soon!",
       "discord": "officialneeve",
       "discord_url": null,
@@ -3896,6 +3988,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": "Provider-claimed website for Tensorclaw Network / SN92.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -3933,6 +4026,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/93-bitcast",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The Decentralized Creators Economy",
       "discord": null,
       "discord_url": null,
@@ -3970,6 +4064,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/94-bitsota",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Decentralized SoTA Research",
       "discord": "dev.alveuslabs",
       "discord_url": null,
@@ -4014,6 +4109,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": null,
       "description": "Heterogeneous inference network by Actual Computer Inc.",
       "discord": null,
       "discord_url": null,
@@ -4062,6 +4158,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": null,
       "description": "Verified AI inference and training subnet.",
       "discord": null,
       "discord_url": null,
@@ -4099,6 +4196,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/97-albedo",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Alchemical intelligence",
       "discord": "@arbos",
       "discord_url": null,
@@ -4143,6 +4241,7 @@
       "derived_categories": [
         "finance"
       ],
+      "derived_description": null,
       "description": "Decentralized intelligence for advanced liquidity management. Alpha-gated TG",
       "discord": "https://discord.gg/8XuGcpY2w4",
       "discord_url": "https://discord.gg/8XuGcpY2w4",
@@ -4182,6 +4281,7 @@
       "derived_categories": [
         "media"
       ],
+      "derived_description": null,
       "description": "Decentralized Video Generation Platform",
       "discord": null,
       "discord_url": null,
@@ -4225,6 +4325,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/100",
       "derived_categories": [],
+      "derived_description": null,
       "description": "An auto-research subnet where miners compete in multiple challenges to achieve top scores against a synthetic benchmark, driving continuous performance optimization.",
       "discord": "https://discord.platform.network/",
       "discord_url": "https://discord.platform.network/",
@@ -4264,6 +4365,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -4305,6 +4407,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/102",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Contributors train specialized expert modules that are aggregated into powerful AI systems, without massive centralized compute.",
       "discord": "isabella618033",
       "discord_url": null,
@@ -4346,6 +4449,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/103",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Information X Execution",
       "discord": null,
       "discord_url": null,
@@ -4386,6 +4490,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": null,
       "description": "subnet for sale. in the meantime, burning to uid1 and experimentation stops to park subnet until sold.",
       "discord": null,
       "discord_url": null,
@@ -4423,6 +4528,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/105-beam",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Decentralized bandwidth. A global network. Powering the open internet.",
       "discord": "https://discord.com/channels/799672011265015819/1437473346026475702",
       "discord_url": "https://discord.com/channels/799672011265015819/1437473346026475702",
@@ -4460,6 +4566,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/106-nodexo",
       "derived_categories": [],
+      "derived_description": null,
       "description": "tokenized ai compute",
       "discord": "https://discord.gg/fwjBwxUcdX",
       "discord_url": "https://discord.gg/fwjBwxUcdX",
@@ -4499,6 +4606,7 @@
       "derived_categories": [
         "science"
       ],
+      "derived_description": null,
       "description": "The Foundational Layer of Genomics",
       "discord": "https://discord.com/channels/799672011265015819/1467949024769478793",
       "discord_url": "https://discord.com/channels/799672011265015819/1467949024769478793",
@@ -4536,6 +4644,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/108-talkhead",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Talking Head Generation",
       "discord": null,
       "discord_url": null,
@@ -4577,6 +4686,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/109",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Academia: where builders become subnet owners.",
       "discord": "https://discord.gg/R7aD3JA4DN",
       "discord_url": "https://discord.gg/R7aD3JA4DN",
@@ -4621,6 +4731,7 @@
       "derived_categories": [
         "inference"
       ],
+      "derived_description": null,
       "description": "Enterprise Inference Hardware, 100% Green Energy",
       "discord": null,
       "discord_url": null,
@@ -4666,6 +4777,7 @@
       "derived_categories": [
         "data"
       ],
+      "derived_description": "Provider entry for oneoneone SN111 official website and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -4703,6 +4815,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/112-minotaur",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Distributed DEX aggregator and swap intent solver engine",
       "discord": null,
       "discord_url": null,
@@ -4746,6 +4859,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/113",
       "derived_categories": [],
+      "derived_description": null,
       "description": "A reserve-backed stablecoin designed to support 1:1 redeemability for US Dollar within the Bittensor ecosystem.",
       "discord": "https://discord.com/invite/fAHB6N92Qd",
       "discord_url": "https://discord.com/invite/fAHB6N92Qd",
@@ -4788,6 +4902,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://thesoma.ai/dashboard",
       "derived_categories": [],
+      "derived_description": null,
       "description": "AI solutions delivered through MCP infrastructure",
       "discord": "https://discord.gg/durr4Sg6sM",
       "discord_url": "https://discord.gg/durr4Sg6sM",
@@ -4828,6 +4943,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/115",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The First Public Blockchain Designed for AI Agents",
       "discord": null,
       "discord_url": null,
@@ -4870,6 +4986,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Provider entry for TaoLend / SN116. The official website is tracked with probe-derived degraded status when it returns server errors.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -4911,6 +5028,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/117",
       "derived_categories": [],
+      "derived_description": "Provider entry for the BrainPlay SN117 public repository and app surface. SN117 has conflicting public directory evidence, so this provider remains reviewed as an identity-dispute case rather than a fully settled subnet identity.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -4955,6 +5073,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "Open-Source Claude Cowork",
       "discord": "https://discord.gg/qNKYZEMpkD",
       "discord_url": "https://discord.gg/qNKYZEMpkD",
@@ -4995,6 +5114,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": null,
       "description": "Satori constructs a persistent 'Second Life' in Japan. We merge deep AI companionship with authentic Digital Residency, creating a seamless bridge where virtual emotional connections unlock real-world value and physical experiences.",
       "discord": null,
       "discord_url": null,
@@ -5032,6 +5152,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/120-affine",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Reason Mining",
       "discord": "consttt",
       "discord_url": null,
@@ -5075,6 +5196,7 @@
       "derived_categories": [
         "agents"
       ],
+      "derived_description": null,
       "description": "A generalist AI agent designed to execute real business workflows end-to-end.",
       "discord": null,
       "discord_url": null,
@@ -5118,6 +5240,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/122",
       "derived_categories": [],
+      "derived_description": "Provider entry for Bitrecs SN122 official website, documentation, and source repository.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -5159,6 +5282,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://taomarketcap.com/subnets/123",
       "derived_categories": [],
+      "derived_description": "Provider entry for the MANTIS SN123 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -5196,6 +5320,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/124-swarm",
       "derived_categories": [],
+      "derived_description": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -5238,6 +5363,7 @@
       "curation_level": "maintainer-reviewed",
       "dashboard_url": null,
       "derived_categories": [],
+      "derived_description": "Provider profile for 8 Ball / SN125. The public miner repository documents wallet binding, reward mechanics, Polygon contracts, and the 8 Ball website.",
       "description": null,
       "discord": null,
       "discord_url": null,
@@ -5275,6 +5401,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/126-poker44",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Decentralized Poker Platform with Bot Dection",
       "discord": null,
       "discord_url": null,
@@ -5312,6 +5439,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/127-astrid",
       "derived_categories": [],
+      "derived_description": null,
       "description": "The capital axis for Bittensor.",
       "discord": null,
       "discord_url": null,
@@ -5349,6 +5477,7 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/128-byteleap",
       "derived_categories": [],
+      "derived_description": null,
       "description": "Pioneering the Future of Cloud & Blockchain",
       "discord": "https://discord.com/channels/799672011265015819/1387438124132733110",
       "discord_url": "https://discord.com/channels/799672011265015819/1387438124132733110",

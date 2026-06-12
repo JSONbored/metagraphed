@@ -740,6 +740,35 @@ test("public artifacts are internally consistent", () => {
     derivedTagCount > 0,
     "expected at least some subnets to carry a derived domain tag",
   );
+
+  // derived_description (issue #346): a fallback blurb ONLY where the curated
+  // description is null — never alongside a real description, and matching
+  // between index and profile.
+  let derivedDescCount = 0;
+  for (const entry of subnets.subnets) {
+    if (entry.description) {
+      assert.equal(
+        entry.derived_description,
+        null,
+        `subnet ${entry.netuid}: derived_description must be null when description is present`,
+      );
+    } else if (entry.derived_description) {
+      assert.equal(typeof entry.derived_description, "string");
+      derivedDescCount += 1;
+    }
+    const profile = profileByNetuid.get(entry.netuid);
+    if (profile) {
+      assert.equal(
+        profile.derived_description ?? null,
+        entry.derived_description ?? null,
+        `profile ${entry.netuid}: derived_description must match the index`,
+      );
+    }
+  }
+  assert.ok(
+    derivedDescCount > 0,
+    "expected at least some null-description subnets to get a derived_description",
+  );
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");
   const facetSum = Object.values(coverage.domain_coverage).reduce(

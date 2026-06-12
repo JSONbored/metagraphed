@@ -982,6 +982,19 @@ export function cleanDescription(value) {
 // vocabulary; re-exported here for the build-side import sites.
 export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
 
+// Build a fallback "what does it do" blurb from curated provider notes when a
+// subnet has no chain/overlay description (issue #346). Sanitized + truncated to
+// a word boundary. This populates a SEPARATE derived_description field — it never
+// backfills the curated description, so the gap stays visible to the SN74
+// flywheel. Returns null when there is nothing usable.
+export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
+  if (typeof notes !== "string") return null;
+  const cleaned = cleanDescription(notes);
+  if (!cleaned) return null;
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength).replace(/\s+\S*$/, "").trimEnd()}…`;
+}
+
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
 // components.securitySchemes or Swagger 2 securityDefinitions. A spec that
 // declares any security scheme is treated as requiring auth — the fix for

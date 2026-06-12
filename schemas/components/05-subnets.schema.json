@@ -171,6 +171,10 @@
             },
             "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. Filterable via ?domain=."
           },
+          "derived_description": {
+            "type": ["string", "null"],
+            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness."
+          },
           "description": {
             "type": ["string", "null"]
           },
@@ -727,6 +731,10 @@
               "type": "string"
             },
             "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness_score."
+          },
+          "derived_description": {
+            "type": ["string", "null"],
+            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness_score."
           },
           "primary_links": {
             "$ref": "#/components/schemas/SubnetProfilePrimaryLinks"

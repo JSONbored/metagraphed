@@ -6614,6 +6614,13 @@
             },
             "type": "array"
           },
+          "derived_description": {
+            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
             "type": [
               "string",
@@ -6887,6 +6894,13 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "derived_description": {
+            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness_score.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "endpoint_count": {
             "minimum": 0,
