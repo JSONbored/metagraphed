@@ -611,6 +611,56 @@ const LOCAL_NETWORK_INFO = {
   mode: "client-side",
   note: "Local is a per-developer subtensor you run yourself — metagraphed hosts no subnet data for it. Point your Bittensor SDK / RPC at your local node; use the mainnet and testnet registries here as the reference.",
   rpc: { ws: "ws://127.0.0.1:9944", network_arg: "local" },
+  // The full develop-before-mainnet path (issue #354): stand up a local chain,
+  // create a subnet on it, point your code at it, then graduate to testnet and
+  // mainnet. Uses the official opentensor/subtensor localnet (it generates the
+  // chain-spec + funded keys correctly) rather than a bespoke spec.
+  quickstart: {
+    summary:
+      "Stand up a local Bittensor chain, create a subnet on it, and point your SDK at it — develop and test everything before you touch testnet or mainnet.",
+    steps: [
+      {
+        step: 1,
+        title: "Run a local chain",
+        run: "git clone https://github.com/opentensor/subtensor && cd subtensor && ./scripts/localnet.sh --no-purge",
+        detail:
+          "Starts a local subtensor at ws://127.0.0.1:9944 with sudo, fast blocks, and pre-funded Alice/Bob keys (free TAO). First run compiles the node (needs the Rust toolchain + build deps).",
+      },
+      {
+        step: 2,
+        title: "Install the CLI + SDK",
+        run: "pip install bittensor bittensor-cli",
+        detail:
+          "btcli drives chain operations; the bittensor SDK is what your miner/validator/app imports.",
+      },
+      {
+        step: 3,
+        title: "Fund a wallet + create a subnet on the local chain",
+        run: "btcli wallet faucet --network local && btcli subnet create --network local",
+        detail:
+          "The faucet tops up free local TAO; subnet create registers a new netuid on your local chain (instant, free to iterate on).",
+      },
+      {
+        step: 4,
+        title: "Register + point your code at it",
+        run: "btcli subnet register --netuid <N> --network local",
+        detail:
+          "Then in code: bt.SubtensorApi(network='local') (or bt.subtensor(network='local')). Everything you'd do on mainnet works here first.",
+      },
+      {
+        step: 5,
+        title: "Graduate to testnet, then mainnet",
+        run: "Re-run with --network test, then --network finney.",
+        detail:
+          "Use /api/v1/testnet/subnets as the testnet reference and the mainnet registry here as production; /api/v1/lineage tracks which testnet subnets have graduated to mainnet.",
+      },
+    ],
+  },
+  reference: {
+    testnet_subnets: "/api/v1/testnet/subnets",
+    mainnet_subnets: "/api/v1/subnets",
+    lineage: "/api/v1/lineage",
+  },
   setup: {
     sdk: "Python bittensor SDK: bt.SubtensorApi(network='local') (or bt.subtensor(network='local')).",
     run_local_chain:
