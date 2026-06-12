@@ -61,6 +61,67 @@ async function fetchList<T>(
   return { data: arr, meta: res.meta, url: res.url };
 }
 
+interface NormalizedFreshnessSource {
+  name: string;
+  last_seen?: string;
+  stale: boolean;
+  captured: boolean;
+}
+
+function freshnessSourceRecords(raw: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (source): source is Record<string, unknown> =>
+      !!source && typeof source === "object" && !Array.isArray(source),
+  );
+}
+
+function finiteTimestamp(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  return Number.isFinite(Date.parse(value)) ? value : undefined;
+}
+
+function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
+  let staleCount = 0;
+  let ageTotal = 0;
+  let ageCount = 0;
+  let maxAgeSeconds: number | undefined;
+
+  const sources = freshnessSourceRecords(raw).map<NormalizedFreshnessSource>((s) => {
+    const ts = finiteTimestamp(s.as_of) ?? finiteTimestamp(s.timestamp);
+    const ageSec =
+      ts !== undefined ? Math.max(0, Math.round((now - Date.parse(ts)) / 1000)) : undefined;
+
+    if (ageSec !== undefined) {
+      ageTotal += ageSec;
+      ageCount += 1;
+      maxAgeSeconds = maxAgeSeconds === undefined ? ageSec : Math.max(maxAgeSeconds, ageSec);
+    }
+
+    const staleAfterH = Number(s.stale_after_hours);
+    const isStale =
+      (typeof s.stale === "boolean" ? s.stale : false) ||
+      (ageSec !== undefined && Number.isFinite(staleAfterH) && ageSec > staleAfterH * 3600) ||
+      s.status === "stale" ||
+      s.status === "expired";
+    if (isStale) staleCount += 1;
+
+    return {
+      name: (s.id as string) || (s.name as string) || "source",
+      last_seen: ts,
+      stale: isStale,
+      captured: s.status === "captured" || s.status === "ok",
+    };
+  });
+
+  return {
+    avgAgeSeconds: ageCount ? ageTotal / ageCount : undefined,
+    maxAgeSeconds,
+    staleCount,
+    sources,
+  };
+}
+
 /** Fetch detail and pick a known key, falling back to the whole payload. */
 async function fetchDetail<T>(
   path: string,
@@ -89,33 +150,18 @@ export const freshnessQuery = () =>
       const res = await apiFetch<Record<string, unknown>>("/api/v1/freshness", { signal });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const summary = (d.summary as Record<string, unknown> | undefined) ?? {};
-      const sourcesRaw = (d.sources as Array<Record<string, unknown>> | undefined) ?? [];
-      const now = Date.now();
-      const ages: number[] = [];
-      let stale = 0;
-      const sources = sourcesRaw.map((s) => {
-        const ts = (s.as_of as string) || (s.timestamp as string) || null;
-        const ageSec = ts ? Math.max(0, Math.round((now - new Date(ts).getTime()) / 1000)) : null;
-        if (ageSec != null) ages.push(ageSec);
-        const staleAfterH = Number(s.stale_after_hours);
-        const isStale =
-          (typeof s.stale === "boolean" ? (s.stale as boolean) : false) ||
-          (ageSec != null && Number.isFinite(staleAfterH) && ageSec > staleAfterH * 3600) ||
-          s.status === "stale" ||
-          s.status === "expired";
-        if (isStale) stale += 1;
-        return {
-          name: (s.id as string) || (s.name as string) || "source",
-          last_seen: ts ?? undefined,
-          stale: isStale,
-        };
-      });
+      const { sources: _summarySources, ...summaryWithoutSources } = summary;
+      const normalized = normalizeFreshnessSources(d.sources);
       const merged: Freshness = {
-        avg_age_seconds: ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : undefined,
-        max_age_seconds: ages.length ? Math.max(...ages) : undefined,
-        stale_count: stale,
-        sources,
-        ...summary,
+        avg_age_seconds: normalized.avgAgeSeconds,
+        max_age_seconds: normalized.maxAgeSeconds,
+        stale_count: normalized.staleCount,
+        sources: normalized.sources.map(({ name, last_seen, stale }) => ({
+          name,
+          last_seen,
+          stale,
+        })),
+        ...summaryWithoutSources,
       };
       return { data: merged, meta: res.meta, url: res.url };
     },
@@ -178,22 +224,11 @@ export const sourceHealthQuery = () =>
       // (/api/v1/source-health returns providers, surfaced on /providers.)
       const res = await apiFetch<Record<string, unknown>>("/api/v1/freshness", { signal });
       const d = (res.data ?? {}) as Record<string, unknown>;
-      const sourcesRaw = (d.sources as Array<Record<string, unknown>> | undefined) ?? [];
-      const now = Date.now();
-      const rows = sourcesRaw.map((s) => {
-        const ts = (s.as_of as string) || (s.timestamp as string) || null;
-        const ageSec = ts ? Math.max(0, Math.round((now - new Date(ts).getTime()) / 1000)) : null;
-        const staleAfterH = Number(s.stale_after_hours);
-        const isStale =
-          (typeof s.stale === "boolean" ? (s.stale as boolean) : false) ||
-          (ageSec != null && Number.isFinite(staleAfterH) && ageSec > staleAfterH * 3600) ||
-          s.status === "stale" ||
-          s.status === "expired";
-        const captured = s.status === "captured" || s.status === "ok";
+      const rows = normalizeFreshnessSources(d.sources).sources.map((source) => {
         return {
-          name: (s.id as string) || (s.name as string) || "source",
-          ok: captured ? true : isStale ? false : undefined,
-          last_seen: ts ?? undefined,
+          name: source.name,
+          ok: source.captured ? true : source.stale ? false : undefined,
+          last_seen: source.last_seen,
         } as { name: string; ok?: boolean; last_seen?: string };
       });
       return { data: rows, meta: res.meta, url: res.url };
