@@ -1,6 +1,6 @@
 {
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "native_snapshot_captured_at": "2026-06-11T23:59:01Z",
+  "native_snapshot_captured_at": "2026-06-12T03:53:10Z",
   "network": "finney",
   "schema_version": 1,
   "source": {
@@ -13,7 +13,7 @@
   },
   "subnets": [
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 5,
       "categories": [
         "baseline-augmented",
@@ -33,6 +33,7 @@
       "name": "root",
       "native_name": "root",
       "native_name_quality": "chain",
+      "native_slug": "root",
       "netuid": 0,
       "participant_count": 64,
       "probed_surface_count": 17,
@@ -47,7 +48,7 @@
       "website_url": "https://bittensor.com"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 21,
       "categories": [
         "baseline-augmented",
@@ -70,6 +71,7 @@
       "name": "Apex",
       "native_name": "Apex",
       "native_name_quality": "chain",
+      "native_slug": "apex",
       "netuid": 1,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -84,7 +86,7 @@
       "website_url": "https://apex.macrocosmos.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -108,6 +110,7 @@
       "name": "DSperse",
       "native_name": "DSperse",
       "native_name_quality": "chain",
+      "native_slug": "dsperse",
       "netuid": 2,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -122,7 +125,7 @@
       "website_url": "https://subnet2.inferencelabs.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -144,6 +147,7 @@
       "name": "Templar",
       "native_name": "deprecated",
       "native_name_quality": "chain",
+      "native_slug": "deprecated",
       "netuid": 3,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -158,7 +162,7 @@
       "website_url": "https://www.tplr.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -180,6 +184,7 @@
       "name": "Targon",
       "native_name": "Targon",
       "native_name_quality": "chain",
+      "native_slug": "targon",
       "netuid": 4,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -194,7 +199,7 @@
       "website_url": "https://targon.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -215,6 +220,7 @@
       "name": "Hone",
       "native_name": "Hone",
       "native_name_quality": "chain",
+      "native_slug": "hone",
       "netuid": 5,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -229,7 +235,7 @@
       "website_url": "https://www.hone.training/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -253,6 +259,7 @@
       "name": "Numinous",
       "native_name": "Numinous",
       "native_name_quality": "chain",
+      "native_slug": "numinous",
       "netuid": 6,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -267,7 +274,7 @@
       "website_url": "https://numinouslabs.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -287,6 +294,7 @@
       "name": "Allways",
       "native_name": "Allways",
       "native_name_quality": "chain",
+      "native_slug": "allways",
       "netuid": 7,
       "participant_count": 256,
       "probed_surface_count": 21,
@@ -301,7 +309,7 @@
       "website_url": "https://all-ways.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -322,6 +330,7 @@
       "name": "Vanta",
       "native_name": "Vanta",
       "native_name_quality": "chain",
+      "native_slug": "vanta",
       "netuid": 8,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -336,7 +345,7 @@
       "website_url": "https://www.vantanetwork.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -359,6 +368,7 @@
       "name": "iota",
       "native_name": "iota",
       "native_name_quality": "chain",
+      "native_slug": "iota",
       "netuid": 9,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -373,7 +383,7 @@
       "website_url": "https://iota.macrocosmos.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -395,6 +405,7 @@
       "name": "Swap",
       "native_name": "Swap",
       "native_name_quality": "chain",
+      "native_slug": "swap",
       "netuid": 10,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -409,7 +420,7 @@
       "website_url": "https://www.taofi.com/pool"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -431,6 +442,7 @@
       "name": "TrajectoryRL",
       "native_name": "TrajectoryRL",
       "native_name_quality": "chain",
+      "native_slug": "trajectoryrl",
       "netuid": 11,
       "participant_count": 256,
       "probed_surface_count": 12,
@@ -445,7 +457,7 @@
       "website_url": "https://trajrl.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -468,6 +480,7 @@
       "name": "Compute Horde",
       "native_name": "Compute Horde",
       "native_name_quality": "chain",
+      "native_slug": "compute-horde",
       "netuid": 12,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -482,7 +495,7 @@
       "website_url": "https://computehorde.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -506,6 +519,7 @@
       "name": "Data Universe",
       "native_name": "Data Universe",
       "native_name_quality": "chain",
+      "native_slug": "data-universe",
       "netuid": 13,
       "participant_count": 256,
       "probed_surface_count": 14,
@@ -520,7 +534,7 @@
       "website_url": "https://datauniverse.macrocosmos.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-augmented",
@@ -543,6 +557,7 @@
       "name": "Cacheon",
       "native_name": "Cacheon",
       "native_name_quality": "chain",
+      "native_slug": "cacheon",
       "netuid": 14,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -557,7 +572,7 @@
       "website_url": "https://cacheon.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -579,6 +594,7 @@
       "name": "ORO",
       "native_name": "ORO",
       "native_name_quality": "chain",
+      "native_slug": "oro",
       "netuid": 15,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -593,7 +609,7 @@
       "website_url": "https://oroagents.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -615,6 +631,7 @@
       "name": "BitAds",
       "native_name": "BitAds",
       "native_name_quality": "chain",
+      "native_slug": "bitads",
       "netuid": 16,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -629,7 +646,7 @@
       "website_url": "https://bitads.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -646,6 +663,7 @@
       "name": "404—GEN",
       "native_name": "404—GEN",
       "native_name_quality": "chain",
+      "native_slug": "404-gen",
       "netuid": 17,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -660,7 +678,7 @@
       "website_url": "https://www.404.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -677,6 +695,7 @@
       "name": "Zeus",
       "native_name": "Zeus",
       "native_name_quality": "chain",
+      "native_slug": "zeus",
       "netuid": 18,
       "participant_count": 257,
       "probed_surface_count": 8,
@@ -691,7 +710,7 @@
       "website_url": "https://www.zeussubnet.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -713,6 +732,7 @@
       "name": "blockmachine",
       "native_name": "blockmachine",
       "native_name_quality": "chain",
+      "native_slug": "blockmachine",
       "netuid": 19,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -727,7 +747,7 @@
       "website_url": "https://blockmachine.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -747,6 +767,7 @@
       "name": "GroundLayer",
       "native_name": "GroundLayer",
       "native_name_quality": "chain",
+      "native_slug": "groundlayer",
       "netuid": 20,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -761,7 +782,7 @@
       "website_url": "https://www.groundlayer.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "advertising",
@@ -783,6 +804,7 @@
       "name": "AdTAO",
       "native_name": "AdTAO",
       "native_name_quality": "chain",
+      "native_slug": "adtao",
       "netuid": 21,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -797,7 +819,7 @@
       "website_url": "https://adtao.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -823,6 +845,7 @@
       "name": "Desearch",
       "native_name": "Desearch",
       "native_name_quality": "chain",
+      "native_slug": "desearch",
       "netuid": 22,
       "participant_count": 256,
       "probed_surface_count": 15,
@@ -837,7 +860,7 @@
       "website_url": "https://www.desearch.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -859,6 +882,7 @@
       "name": "Trishool",
       "native_name": "Trishool",
       "native_name_quality": "chain",
+      "native_slug": "trishool",
       "netuid": 23,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -873,7 +897,7 @@
       "website_url": "https://trishool.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -897,6 +921,7 @@
       "name": "Quasar",
       "native_name": "Quasar",
       "native_name_quality": "chain",
+      "native_slug": "quasar",
       "netuid": 24,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -911,7 +936,7 @@
       "website_url": "https://silxinc.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -933,6 +958,7 @@
       "name": "Mainframe",
       "native_name": "Mainframe",
       "native_name_quality": "chain",
+      "native_slug": "mainframe",
       "netuid": 25,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -947,7 +973,7 @@
       "website_url": "https://macrocosmos.ai/sn25"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -964,6 +990,7 @@
       "name": "Perturb",
       "native_name": "Perturb",
       "native_name_quality": "chain",
+      "native_slug": "perturb",
       "netuid": 26,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -978,7 +1005,7 @@
       "website_url": "https://www.perturbai.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1001,6 +1028,7 @@
       "name": "Nodexo",
       "native_name": "Team TBC",
       "native_name_quality": "chain",
+      "native_slug": "team-tbc",
       "netuid": 27,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -1015,7 +1043,7 @@
       "website_url": "https://nodexo.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -1037,6 +1065,7 @@
       "name": "gm",
       "native_name": "gm",
       "native_name_quality": "chain",
+      "native_slug": "gm",
       "netuid": 28,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -1051,7 +1080,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -1075,6 +1104,7 @@
       "name": "Coldint",
       "native_name": "Coldint",
       "native_name_quality": "chain",
+      "native_slug": "coldint",
       "netuid": 29,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -1089,7 +1119,7 @@
       "website_url": "https://coldint.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -1112,6 +1142,7 @@
       "name": "Endure Network",
       "native_name": "Endure Network",
       "native_name_quality": "chain",
+      "native_slug": "endure-network",
       "netuid": 30,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1126,7 +1157,7 @@
       "website_url": "https://endure.network/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -1148,6 +1179,7 @@
       "name": "Recall",
       "native_name": "Recall",
       "native_name_quality": "chain",
+      "native_slug": "recall",
       "netuid": 31,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -1162,8 +1194,8 @@
       "website_url": null
     },
     {
-      "block": 8386984,
-      "candidate_count": 25,
+      "block": 8388155,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1183,21 +1215,22 @@
       "name": "ItsAI",
       "native_name": "ItsAI",
       "native_name_quality": "chain",
+      "native_slug": "itsai",
       "netuid": 32,
       "participant_count": 256,
-      "probed_surface_count": 8,
+      "probed_surface_count": 7,
       "registered_at_block": 2515294,
       "slug": "sn-32",
       "source_repo": "https://github.com/It-s-AI/llm-detection",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "ח",
       "tempo": 360,
       "website_url": "https://its-ai.org/en"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 9,
       "categories": [
         "baseline-augmented",
@@ -1221,6 +1254,7 @@
       "name": "ReadyAI",
       "native_name": "ReadyAI",
       "native_name_quality": "chain",
+      "native_slug": "readyai",
       "netuid": 33,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -1235,7 +1269,7 @@
       "website_url": "https://readyai.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -1259,6 +1293,7 @@
       "name": "BitMind",
       "native_name": "BitMind",
       "native_name_quality": "chain",
+      "native_slug": "bitmind",
       "netuid": 34,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -1273,8 +1308,8 @@
       "website_url": "https://bitmind.ai/"
     },
     {
-      "block": 8386984,
-      "candidate_count": 16,
+      "block": 8388155,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -1290,21 +1325,22 @@
       "name": "OxMarkets",
       "native_name": "OxMarkets",
       "native_name_quality": "chain",
+      "native_slug": "oxmarkets",
       "netuid": 35,
       "participant_count": 256,
-      "probed_surface_count": 9,
+      "probed_surface_count": 8,
       "registered_at_block": 3037158,
       "slug": "sn-35",
       "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ך",
       "tempo": 360,
       "website_url": "https://www.0xmarkets.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -1321,6 +1357,7 @@
       "name": "Eirel",
       "native_name": "Eirel",
       "native_name_quality": "chain",
+      "native_slug": "eirel",
       "netuid": 36,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1335,7 +1372,7 @@
       "website_url": "https://eirel.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -1352,6 +1389,7 @@
       "name": "Aurelius",
       "native_name": "Aurelius",
       "native_name_quality": "chain",
+      "native_slug": "aurelius",
       "netuid": 37,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1366,7 +1404,7 @@
       "website_url": "https://aureliusaligned.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -1386,6 +1424,7 @@
       "name": "colosseum",
       "native_name": "ChronoLLM",
       "native_name_quality": "chain",
+      "native_slug": "chronollm",
       "netuid": 38,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1400,7 +1439,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1422,6 +1461,7 @@
       "name": "Basilica",
       "native_name": "deprecated",
       "native_name_quality": "chain",
+      "native_slug": "deprecated",
       "netuid": 39,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1436,7 +1476,7 @@
       "website_url": "https://www.basilica.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1458,6 +1498,7 @@
       "name": "Chunking",
       "native_name": "Chunking",
       "native_name_quality": "chain",
+      "native_slug": "chunking",
       "netuid": 40,
       "participant_count": 256,
       "probed_surface_count": 6,
@@ -1472,7 +1513,7 @@
       "website_url": "https://subnet.chunking.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -1489,6 +1530,7 @@
       "name": "Almanac",
       "native_name": "Almanac",
       "native_name_quality": "chain",
+      "native_slug": "almanac",
       "netuid": 41,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1503,7 +1545,7 @@
       "website_url": "https://almanac.market/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -1528,6 +1570,7 @@
       "name": "Gopher",
       "native_name": "Unknown",
       "native_name_quality": "placeholder",
+      "native_slug": "sn-42",
       "netuid": 42,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -1542,7 +1585,7 @@
       "website_url": "https://developers.gopher-ai.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1565,6 +1608,7 @@
       "name": "Graphite",
       "native_name": "Graphite",
       "native_name_quality": "chain",
+      "native_slug": "graphite",
       "netuid": 43,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1579,7 +1623,7 @@
       "website_url": "https://graphite-ai.net/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -1596,6 +1640,7 @@
       "name": "Score",
       "native_name": "Score",
       "native_name_quality": "chain",
+      "native_slug": "score",
       "netuid": 44,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1610,7 +1655,7 @@
       "website_url": "https://www.wearescore.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -1631,6 +1676,7 @@
       "name": "Talisman AI",
       "native_name": "Talisman AI",
       "native_name_quality": "chain",
+      "native_slug": "talisman-ai",
       "netuid": 45,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -1645,7 +1691,7 @@
       "website_url": "https://ai.talisman.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-curated"
@@ -1662,6 +1708,7 @@
       "name": "Zipcode",
       "native_name": "Zipcode",
       "native_name_quality": "chain",
+      "native_slug": "zipcode",
       "netuid": 46,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -1676,7 +1723,7 @@
       "website_url": "https://zipcode.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 9,
       "categories": [
         "baseline-augmented",
@@ -1697,6 +1744,7 @@
       "name": "EvolAI",
       "native_name": "EvolAI",
       "native_name_quality": "chain",
+      "native_slug": "evolai",
       "netuid": 47,
       "participant_count": 110,
       "probed_surface_count": 9,
@@ -1711,7 +1759,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -1734,6 +1782,7 @@
       "name": "Quantum Compute",
       "native_name": "Quantum Compute",
       "native_name_quality": "chain",
+      "native_slug": "quantum-compute",
       "netuid": 48,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1748,7 +1797,7 @@
       "website_url": "https://www.qbittensorlabs.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -1774,6 +1823,7 @@
       "name": "Nepher Robotics",
       "native_name": "Nepher Robotics",
       "native_name_quality": "chain",
+      "native_slug": "nepher-robotics",
       "netuid": 49,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -1788,7 +1838,7 @@
       "website_url": "https://nepher.ai"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -1805,6 +1855,7 @@
       "name": "Synth",
       "native_name": "Synth",
       "native_name_quality": "chain",
+      "native_slug": "synth",
       "netuid": 50,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -1819,7 +1870,7 @@
       "website_url": "https://synthdata.co/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-curated"
@@ -1836,6 +1887,7 @@
       "name": "lium.io",
       "native_name": "lium.io",
       "native_name_quality": "chain",
+      "native_slug": "lium-io",
       "netuid": 51,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -1850,7 +1902,7 @@
       "website_url": "https://lium.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 11,
       "categories": [
         "baseline-augmented",
@@ -1873,6 +1925,7 @@
       "name": "Dojo",
       "native_name": "Dojo",
       "native_name_quality": "chain",
+      "native_slug": "dojo",
       "netuid": 52,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -1887,7 +1940,7 @@
       "website_url": "https://www.tensorplex.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -1910,6 +1963,7 @@
       "name": "EfficientFrontier",
       "native_name": "EfficientFrontier",
       "native_name_quality": "chain",
+      "native_slug": "efficientfrontier",
       "netuid": 53,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1924,7 +1978,7 @@
       "website_url": "https://www.signalplus.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -1941,6 +1995,7 @@
       "name": "Yanez MIID",
       "native_name": "Yanez MIID",
       "native_name_quality": "chain",
+      "native_slug": "yanez-miid",
       "netuid": 54,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1955,7 +2010,7 @@
       "website_url": "https://www.yanez.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -1972,6 +2027,7 @@
       "name": "NIOME",
       "native_name": "NIOME",
       "native_name_quality": "chain",
+      "native_slug": "niome",
       "netuid": 55,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -1986,7 +2042,7 @@
       "website_url": "https://niome.genomes.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "ai-training",
@@ -2010,6 +2066,7 @@
       "name": "Gradients",
       "native_name": "Gradients",
       "native_name_quality": "chain",
+      "native_slug": "gradients",
       "netuid": 56,
       "participant_count": 256,
       "probed_surface_count": 14,
@@ -2024,7 +2081,7 @@
       "website_url": "https://www.gradients.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2047,6 +2104,7 @@
       "name": "Sparket",
       "native_name": "gaia",
       "native_name_quality": "chain",
+      "native_slug": "gaia",
       "netuid": 57,
       "participant_count": 187,
       "probed_surface_count": 7,
@@ -2061,7 +2119,7 @@
       "website_url": "https://sparket.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 9,
       "categories": [
         "ai-marketplace",
@@ -2086,6 +2144,7 @@
       "name": "Handshake58",
       "native_name": "Pending",
       "native_name_quality": "chain",
+      "native_slug": "pending",
       "netuid": 58,
       "participant_count": 256,
       "probed_surface_count": 13,
@@ -2100,7 +2159,7 @@
       "website_url": "https://handshake58.com"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -2117,6 +2176,7 @@
       "name": "Babelbit",
       "native_name": "Babelbit",
       "native_name_quality": "chain",
+      "native_slug": "babelbit",
       "netuid": 59,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -2131,7 +2191,7 @@
       "website_url": "https://babelbit.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -2148,6 +2208,7 @@
       "name": "Bitsec.ai",
       "native_name": "Bitsec.ai",
       "native_name_quality": "chain",
+      "native_slug": "bitsec-ai",
       "netuid": 60,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -2162,7 +2223,7 @@
       "website_url": "https://bitsec.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -2186,6 +2247,7 @@
       "name": "RedTeam",
       "native_name": "RedTeam",
       "native_name_quality": "chain",
+      "native_slug": "redteam",
       "netuid": 61,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -2200,8 +2262,8 @@
       "website_url": "https://www.theredteam.io/"
     },
     {
-      "block": 8386984,
-      "candidate_count": 15,
+      "block": 8388155,
+      "candidate_count": 14,
       "categories": [
         "agents",
         "baseline-augmented",
@@ -2221,21 +2283,22 @@
       "name": "Ridges",
       "native_name": "Ridges",
       "native_name_quality": "chain",
+      "native_slug": "ridges",
       "netuid": 62,
       "participant_count": 256,
-      "probed_surface_count": 7,
+      "probed_surface_count": 6,
       "registered_at_block": 4474225,
       "slug": "sn-62",
       "source_repo": "https://github.com/ridgesai/ridges",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 7,
+      "surface_count": 6,
       "symbol": "ز",
       "tempo": 360,
       "website_url": "https://www.ridges.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -2257,6 +2320,7 @@
       "name": "Enigma",
       "native_name": "Enigma",
       "native_name_quality": "chain",
+      "native_slug": "enigma",
       "netuid": 63,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -2271,7 +2335,7 @@
       "website_url": "https://www.qbittensorlabs.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 29,
       "categories": [
         "baseline-augmented",
@@ -2296,6 +2360,7 @@
       "name": "Chutes",
       "native_name": "Chutes",
       "native_name_quality": "chain",
+      "native_slug": "chutes",
       "netuid": 64,
       "participant_count": 256,
       "probed_surface_count": 18,
@@ -2310,7 +2375,7 @@
       "website_url": "https://chutes.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -2327,6 +2392,7 @@
       "name": "TAO Private Network",
       "native_name": "TAO Private Network",
       "native_name_quality": "chain",
+      "native_slug": "tao-private-network",
       "netuid": 65,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -2341,7 +2407,7 @@
       "website_url": "https://tpn.taofu.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -2366,6 +2432,7 @@
       "name": "ninja",
       "native_name": "ninja",
       "native_name_quality": "chain",
+      "native_slug": "ninja",
       "netuid": 66,
       "participant_count": 256,
       "probed_surface_count": 12,
@@ -2380,7 +2447,7 @@
       "website_url": "https://ninja.arbos.life/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -2397,6 +2464,7 @@
       "name": "Harnyx",
       "native_name": "Harnyx",
       "native_name_quality": "chain",
+      "native_slug": "harnyx",
       "netuid": 67,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -2411,7 +2479,7 @@
       "website_url": "https://harnyx.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -2428,6 +2496,7 @@
       "name": "NOVA",
       "native_name": "NOVA",
       "native_name_quality": "chain",
+      "native_slug": "nova",
       "netuid": 68,
       "participant_count": 64,
       "probed_surface_count": 9,
@@ -2442,7 +2511,7 @@
       "website_url": "https://www.metanova-labs.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -2461,6 +2530,7 @@
       "name": "ain",
       "native_name": "ain",
       "native_name_quality": "chain",
+      "native_slug": "ain",
       "netuid": 69,
       "participant_count": 162,
       "probed_surface_count": 5,
@@ -2475,7 +2545,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-curated"
@@ -2492,6 +2562,7 @@
       "name": "NexisGen",
       "native_name": "NexisGen",
       "native_name_quality": "chain",
+      "native_slug": "nexisgen",
       "netuid": 70,
       "participant_count": 249,
       "probed_surface_count": 9,
@@ -2506,7 +2577,7 @@
       "website_url": "https://nexisgen.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2523,6 +2594,7 @@
       "name": "Leadpoet",
       "native_name": "Leadpoet",
       "native_name_quality": "chain",
+      "native_slug": "leadpoet",
       "netuid": 71,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -2537,7 +2609,7 @@
       "website_url": "https://leadpoet.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -2562,6 +2634,7 @@
       "name": "StreetVision by NATIX",
       "native_name": "StreetVision by NATIX",
       "native_name_quality": "chain",
+      "native_slug": "streetvision-by-natix",
       "netuid": 72,
       "participant_count": 256,
       "probed_surface_count": 12,
@@ -2576,7 +2649,7 @@
       "website_url": "https://www.natix.network/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2598,6 +2671,7 @@
       "name": "MetaHash",
       "native_name": "Parked",
       "native_name_quality": "chain",
+      "native_slug": "parked",
       "netuid": 73,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -2612,7 +2686,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-augmented",
@@ -2632,6 +2706,7 @@
       "name": "Gittensor",
       "native_name": "Gittensor",
       "native_name_quality": "chain",
+      "native_slug": "gittensor",
       "netuid": 74,
       "participant_count": 256,
       "probed_surface_count": 16,
@@ -2646,7 +2721,7 @@
       "website_url": "https://gittensor.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 26,
       "categories": [
         "baseline-augmented",
@@ -2670,6 +2745,7 @@
       "name": "Hippius",
       "native_name": "Hippius",
       "native_name_quality": "chain",
+      "native_slug": "hippius",
       "netuid": 75,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -2684,7 +2760,7 @@
       "website_url": "https://hippius.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -2704,6 +2780,7 @@
       "name": "Byzantium",
       "native_name": "Byzantium",
       "native_name_quality": "chain",
+      "native_slug": "byzantium",
       "netuid": 76,
       "participant_count": 44,
       "probed_surface_count": 6,
@@ -2718,7 +2795,7 @@
       "website_url": "https://www.byzantiumai.net/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2735,6 +2812,7 @@
       "name": "Liquidity",
       "native_name": "Liquidity",
       "native_name_quality": "chain",
+      "native_slug": "liquidity",
       "netuid": 77,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -2749,7 +2827,7 @@
       "website_url": "https://sn77.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -2766,6 +2844,7 @@
       "name": "Vocence",
       "native_name": "Vocence",
       "native_name_quality": "chain",
+      "native_slug": "vocence",
       "netuid": 78,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -2780,7 +2859,7 @@
       "website_url": "https://www.vocence.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 25,
       "categories": [
         "baseline-augmented",
@@ -2801,6 +2880,7 @@
       "name": "MVTRX",
       "native_name": "MVTRX",
       "native_name_quality": "chain",
+      "native_slug": "mvtrx",
       "netuid": 79,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -2815,7 +2895,7 @@
       "website_url": "https://taos.im/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-curated"
@@ -2832,6 +2912,7 @@
       "name": "dogelayer",
       "native_name": "dogelayer",
       "native_name_quality": "chain",
+      "native_slug": "dogelayer",
       "netuid": 80,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -2846,7 +2927,7 @@
       "website_url": "https://dogelayer.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -2869,6 +2950,7 @@
       "name": "Grail",
       "native_name": "deprecated",
       "native_name_quality": "chain",
+      "native_slug": "deprecated",
       "netuid": 81,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -2883,7 +2965,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 26,
       "categories": [
         "baseline-augmented",
@@ -2904,6 +2986,7 @@
       "name": "Compelle",
       "native_name": "Compelle",
       "native_name_quality": "chain",
+      "native_slug": "compelle",
       "netuid": 82,
       "participant_count": 64,
       "probed_surface_count": 8,
@@ -2918,7 +3001,7 @@
       "website_url": "https://compelle.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-curated"
@@ -2935,6 +3018,7 @@
       "name": "CliqueAI",
       "native_name": "CliqueAI",
       "native_name_quality": "chain",
+      "native_slug": "cliqueai",
       "netuid": 83,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -2949,7 +3033,7 @@
       "website_url": "https://cliqueai.toptensor.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -2973,6 +3057,7 @@
       "name": "ansuz",
       "native_name": "ansuz",
       "native_name_quality": "chain",
+      "native_slug": "ansuz",
       "netuid": 84,
       "participant_count": 64,
       "probed_surface_count": 9,
@@ -2987,7 +3072,7 @@
       "website_url": "https://www.chipforge.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -3007,6 +3092,7 @@
       "name": "Vidaio",
       "native_name": "Vidaio",
       "native_name_quality": "chain",
+      "native_slug": "vidaio",
       "netuid": 85,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3021,7 +3107,7 @@
       "website_url": "https://vidaio.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3041,6 +3127,7 @@
       "name": "Subnet 86",
       "native_name": "⚒",
       "native_name_quality": "placeholder",
+      "native_slug": "sn-86",
       "netuid": 86,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -3055,7 +3142,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3078,6 +3165,7 @@
       "name": "Luminar Network",
       "native_name": "unknown",
       "native_name_quality": "placeholder",
+      "native_slug": "sn-87",
       "netuid": 87,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3092,7 +3180,7 @@
       "website_url": "https://luminar.network/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 19,
       "categories": [
         "baseline-augmented",
@@ -3116,6 +3204,7 @@
       "name": "Investing",
       "native_name": "Investing",
       "native_name_quality": "chain",
+      "native_slug": "investing",
       "netuid": 88,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3130,7 +3219,7 @@
       "website_url": "https://investing88.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 14,
       "categories": [
         "baseline-augmented",
@@ -3151,6 +3240,7 @@
       "name": "InfiniteHash",
       "native_name": "InfiniteHash",
       "native_name_quality": "chain",
+      "native_slug": "infinitehash",
       "netuid": 89,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3165,7 +3255,7 @@
       "website_url": "https://infinitehash.xyz/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3187,6 +3277,7 @@
       "name": "DegenBrain",
       "native_name": "ogham",
       "native_name_quality": "chain",
+      "native_slug": "ogham",
       "netuid": 90,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3201,7 +3292,7 @@
       "website_url": "https://subnet90.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -3222,6 +3313,7 @@
       "name": "Bitstarter #1",
       "native_name": "Bitstarter #1",
       "native_name_quality": "chain",
+      "native_slug": "bitstarter-1",
       "netuid": 91,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -3236,7 +3328,7 @@
       "website_url": "https://bitstarter.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3260,6 +3352,7 @@
       "name": "Tensorclaw",
       "native_name": "wgmi",
       "native_name_quality": "chain",
+      "native_slug": "wgmi",
       "netuid": 92,
       "participant_count": 3,
       "probed_surface_count": 8,
@@ -3274,7 +3367,7 @@
       "website_url": "https://www.tensorclaw.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -3291,6 +3384,7 @@
       "name": "Bitcast",
       "native_name": "Bitcast",
       "native_name_quality": "chain",
+      "native_slug": "bitcast",
       "netuid": 93,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3305,7 +3399,7 @@
       "website_url": "https://stats.bitcast.network/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -3322,6 +3416,7 @@
       "name": "Bitsota",
       "native_name": "Bitsota",
       "native_name_quality": "chain",
+      "native_slug": "bitsota",
       "netuid": 94,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3336,7 +3431,7 @@
       "website_url": "https://bitsota.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-augmented",
@@ -3358,6 +3453,7 @@
       "name": "Actual",
       "native_name": "Actual",
       "native_name_quality": "chain",
+      "native_slug": "actual",
       "netuid": 95,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3372,7 +3468,7 @@
       "website_url": "https://actual.inc/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 16,
       "categories": [
         "baseline-augmented",
@@ -3398,6 +3494,7 @@
       "name": "Verathos",
       "native_name": "Verathos",
       "native_name_quality": "chain",
+      "native_slug": "verathos",
       "netuid": 96,
       "participant_count": 256,
       "probed_surface_count": 12,
@@ -3412,7 +3509,7 @@
       "website_url": "https://verathos.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -3429,6 +3526,7 @@
       "name": "Albedo",
       "native_name": "Albedo",
       "native_name_quality": "chain",
+      "native_slug": "albedo",
       "netuid": 97,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -3443,7 +3541,7 @@
       "website_url": "https://us-east-1.hippius.com/albedo/index.html"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -3465,6 +3563,7 @@
       "name": "ForeverMoney",
       "native_name": "ForeverMoney",
       "native_name_quality": "chain",
+      "native_slug": "forevermoney",
       "netuid": 98,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -3479,7 +3578,7 @@
       "website_url": "https://forevermoney.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -3496,6 +3595,7 @@
       "name": "Leoma",
       "native_name": "Leoma",
       "native_name_quality": "chain",
+      "native_slug": "leoma",
       "netuid": 99,
       "participant_count": 256,
       "probed_surface_count": 10,
@@ -3510,7 +3610,7 @@
       "website_url": "https://leoma.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "ai-research",
@@ -3533,6 +3633,7 @@
       "name": "Plaτform",
       "native_name": "Plaτform",
       "native_name_quality": "chain",
+      "native_slug": "pla-form",
       "netuid": 100,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -3547,7 +3648,7 @@
       "website_url": "https://www.platform.network/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3566,6 +3667,7 @@
       "name": "eni",
       "native_name": "eni",
       "native_name_quality": "chain",
+      "native_slug": "eni",
       "netuid": 101,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -3580,7 +3682,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-augmented",
@@ -3601,6 +3703,7 @@
       "name": "ConnitoAI",
       "native_name": "ConnitoAI",
       "native_name_quality": "chain",
+      "native_slug": "connitoai",
       "netuid": 102,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3615,7 +3718,7 @@
       "website_url": "https://connito.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 23,
       "categories": [
         "baseline-augmented",
@@ -3636,6 +3739,7 @@
       "name": "Djinn",
       "native_name": "Djinn",
       "native_name_quality": "chain",
+      "native_slug": "djinn",
       "netuid": 103,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -3650,7 +3754,7 @@
       "website_url": "https://www.djinn.gg/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -3670,6 +3774,7 @@
       "name": "for sale (burn to uid1)",
       "native_name": "for sale (burn to uid1)",
       "native_name_quality": "chain",
+      "native_slug": "for-sale-burn-to-uid1",
       "netuid": 104,
       "participant_count": 64,
       "probed_surface_count": 5,
@@ -3684,7 +3789,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -3701,6 +3806,7 @@
       "name": "Beam",
       "native_name": "Beam",
       "native_name_quality": "chain",
+      "native_slug": "beam",
       "netuid": 105,
       "participant_count": 256,
       "probed_surface_count": 9,
@@ -3715,7 +3821,7 @@
       "website_url": "https://b1m.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -3732,6 +3838,7 @@
       "name": "Nodexo",
       "native_name": "Nodexo",
       "native_name_quality": "chain",
+      "native_slug": "nodexo",
       "netuid": 106,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -3746,7 +3853,7 @@
       "website_url": "https://nodexo.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 21,
       "categories": [
         "baseline-curated"
@@ -3763,6 +3870,7 @@
       "name": "Minos",
       "native_name": "Minos",
       "native_name_quality": "chain",
+      "native_slug": "minos",
       "netuid": 107,
       "participant_count": 64,
       "probed_surface_count": 11,
@@ -3777,7 +3885,7 @@
       "website_url": "https://theminos.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-curated"
@@ -3794,6 +3902,7 @@
       "name": "TalkHead",
       "native_name": "TalkHead",
       "native_name_quality": "chain",
+      "native_slug": "talkhead",
       "netuid": 108,
       "participant_count": 151,
       "probed_surface_count": 7,
@@ -3808,7 +3917,7 @@
       "website_url": "https://www.talkhead.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3829,6 +3938,7 @@
       "name": "Academia",
       "native_name": "Academia",
       "native_name_quality": "chain",
+      "native_slug": "academia",
       "netuid": 109,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3843,7 +3953,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -3865,6 +3975,7 @@
       "name": "Green Compute",
       "native_name": "Green Compute",
       "native_name_quality": "chain",
+      "native_slug": "green-compute",
       "netuid": 110,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -3879,7 +3990,7 @@
       "website_url": "https://www.green-compute.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -3902,6 +4013,7 @@
       "name": "oneoneone",
       "native_name": "oneoneone",
       "native_name_quality": "chain",
+      "native_slug": "oneoneone",
       "netuid": 111,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -3916,7 +4028,7 @@
       "website_url": "https://oneoneone.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -3933,6 +4045,7 @@
       "name": "minotaur",
       "native_name": "minotaur",
       "native_name_quality": "chain",
+      "native_slug": "minotaur",
       "netuid": 112,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -3947,7 +4060,7 @@
       "website_url": "https://minotaursubnet.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 20,
       "categories": [
         "baseline-augmented",
@@ -3970,6 +4083,7 @@
       "name": "TensorUSD",
       "native_name": "TensorUSD",
       "native_name_quality": "chain",
+      "native_slug": "tensorusd",
       "netuid": 113,
       "participant_count": 135,
       "probed_surface_count": 9,
@@ -3984,7 +4098,7 @@
       "website_url": "https://tensorusd.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 22,
       "categories": [
         "baseline-augmented",
@@ -4006,6 +4120,7 @@
       "name": "SOMA",
       "native_name": "SOMA",
       "native_name_quality": "chain",
+      "native_slug": "soma",
       "netuid": 114,
       "participant_count": 256,
       "probed_surface_count": 11,
@@ -4020,7 +4135,7 @@
       "website_url": "https://thesoma.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -4040,6 +4155,7 @@
       "name": "HashiChain",
       "native_name": "HashiChain",
       "native_name_quality": "chain",
+      "native_slug": "hashichain",
       "netuid": 115,
       "participant_count": 256,
       "probed_surface_count": 6,
@@ -4054,7 +4170,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -4076,6 +4192,7 @@
       "name": "TaoLend",
       "native_name": "hard_sign",
       "native_name_quality": "chain",
+      "native_slug": "hard-sign",
       "netuid": 116,
       "participant_count": 73,
       "probed_surface_count": 6,
@@ -4090,7 +4207,7 @@
       "website_url": "https://taolend.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 8,
       "categories": [
         "baseline-augmented",
@@ -4111,6 +4228,7 @@
       "name": "BrainPlay",
       "native_name": "Unknown",
       "native_name_quality": "placeholder",
+      "native_slug": "sn-117",
       "netuid": 117,
       "participant_count": 97,
       "probed_surface_count": 8,
@@ -4125,7 +4243,7 @@
       "website_url": "https://play.shiftlayer.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 26,
       "categories": [
         "agent-memory",
@@ -4147,6 +4265,7 @@
       "name": "Ditto",
       "native_name": "Ditto",
       "native_name_quality": "chain",
+      "native_slug": "ditto",
       "netuid": 118,
       "participant_count": 256,
       "probed_surface_count": 13,
@@ -4161,7 +4280,7 @@
       "website_url": "https://heyditto.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -4181,6 +4300,7 @@
       "name": "Satori",
       "native_name": "Satori",
       "native_name_quality": "chain",
+      "native_slug": "satori",
       "netuid": 119,
       "participant_count": 256,
       "probed_surface_count": 5,
@@ -4195,7 +4315,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -4212,6 +4332,7 @@
       "name": "Affine",
       "native_name": "Affine",
       "native_name_quality": "chain",
+      "native_slug": "affine",
       "netuid": 120,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -4226,7 +4347,7 @@
       "website_url": "https://www.affine.io/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 24,
       "categories": [
         "baseline-augmented",
@@ -4247,6 +4368,7 @@
       "name": "sundae_bar",
       "native_name": "sundae_bar",
       "native_name_quality": "chain",
+      "native_slug": "sundae-bar",
       "netuid": 121,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -4261,7 +4383,7 @@
       "website_url": "https://www.sundaebar.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -4284,6 +4406,7 @@
       "name": "Bitrecs",
       "native_name": "gamma_small",
       "native_name_quality": "chain",
+      "native_slug": "gamma-small",
       "netuid": 122,
       "participant_count": 2,
       "probed_surface_count": 8,
@@ -4298,7 +4421,7 @@
       "website_url": "https://www.bitrecs.ai/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 7,
       "categories": [
         "baseline-augmented",
@@ -4319,6 +4442,7 @@
       "name": "MANTIS",
       "native_name": "MANTIS",
       "native_name_quality": "chain",
+      "native_slug": "mantis",
       "netuid": 123,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -4333,7 +4457,7 @@
       "website_url": null
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -4350,6 +4474,7 @@
       "name": "Swarm",
       "native_name": "Swarm",
       "native_name_quality": "chain",
+      "native_slug": "swarm",
       "netuid": 124,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -4364,7 +4489,7 @@
       "website_url": "https://www.swarm124.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 6,
       "categories": [
         "baseline-augmented",
@@ -4386,6 +4511,7 @@
       "name": "8 Ball",
       "native_name": "8 Ball",
       "native_name_quality": "chain",
+      "native_slug": "8-ball",
       "netuid": 125,
       "participant_count": 256,
       "probed_surface_count": 8,
@@ -4400,7 +4526,7 @@
       "website_url": "https://8ball125.com/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 18,
       "categories": [
         "baseline-curated"
@@ -4417,6 +4543,7 @@
       "name": "Poker44",
       "native_name": "Poker44",
       "native_name_quality": "chain",
+      "native_slug": "poker44",
       "netuid": 126,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -4431,7 +4558,7 @@
       "website_url": "https://poker44.net/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 17,
       "categories": [
         "baseline-curated"
@@ -4448,6 +4575,7 @@
       "name": "Astrid",
       "native_name": "Astrid",
       "native_name_quality": "chain",
+      "native_slug": "astrid",
       "netuid": 127,
       "participant_count": 256,
       "probed_surface_count": 7,
@@ -4462,7 +4590,7 @@
       "website_url": "https://www.astrid.global/"
     },
     {
-      "block": 8386984,
+      "block": 8388155,
       "candidate_count": 15,
       "categories": [
         "baseline-curated"
@@ -4479,6 +4607,7 @@
       "name": "ByteLeap",
       "native_name": "ByteLeap",
       "native_name_quality": "chain",
+      "native_slug": "byteleap",
       "netuid": 128,
       "participant_count": 256,
       "probed_surface_count": 9,

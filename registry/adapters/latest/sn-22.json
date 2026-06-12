@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T00:00:54.346Z",
+      "captured_at": "2026-06-12T03:58:57.756Z",
       "captured_count": 2,
       "schema_count": 2,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T00:00:54.183Z",
+          "captured_at": "2026-06-12T03:58:57.716Z",
           "content_type": "application/json; charset=utf-8",
           "hash": "fe1a03bb8e620faafb286f53d185dc2e562454f27cd1b707b75d085af223b3d1",
-          "latency_ms": 43,
+          "latency_ms": 44,
           "name": "Desearch OpenAPI schema",
           "provider": "desearch",
           "schema_url": "https://www.desearch.ai/openapi.json",
@@ -61,10 +61,10 @@
         },
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T00:00:54.346Z",
+          "captured_at": "2026-06-12T03:58:57.756Z",
           "content_type": "application/json; charset=utf-8",
           "hash": "fe1a03bb8e620faafb286f53d185dc2e562454f27cd1b707b75d085af223b3d1",
-          "latency_ms": 138,
+          "latency_ms": 51,
           "name": "Desearch OpenAPI JSON",
           "provider": "desearch",
           "schema_url": "https://desearch.ai/openapi.json",
@@ -117,7 +117,7 @@
       "total_path_count": 70
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T00:00:54.346Z",
+      "captured_at": "2026-06-12T03:58:57.756Z",
       "status": "captured",
       "surface_count": 1,
       "surfaces": [
@@ -134,7 +134,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-11T23:58:50.356Z",
+  "generated_at": "2026-06-12T03:52:59.910Z",
   "netuid": 22,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

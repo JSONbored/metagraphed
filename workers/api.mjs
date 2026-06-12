@@ -696,12 +696,26 @@ async function lookupSubnetNetuid(
     );
     if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
       const map = new Map();
+      // Curated slug is canonical — map it first for every subnet.
       for (const subnet of artifact.data.subnets) {
         if (
           typeof subnet.slug === "string" &&
           Number.isInteger(subnet.netuid)
         ) {
           map.set(subnet.slug.toLowerCase(), subnet.netuid);
+        }
+      }
+      // Then the chain-name native_slug (e.g. "apex") fills any key it doesn't
+      // already own, so subnets resolve by the name agents discover them by —
+      // essential on testnet, where there are no curated overlay slugs. A
+      // curated slug always wins a collision.
+      for (const subnet of artifact.data.subnets) {
+        if (
+          typeof subnet.native_slug === "string" &&
+          Number.isInteger(subnet.netuid) &&
+          !map.has(subnet.native_slug.toLowerCase())
+        ) {
+          map.set(subnet.native_slug.toLowerCase(), subnet.netuid);
         }
       }
       subnetSlugIndexByNetwork.set(network.id, { map, builtAt: now });
