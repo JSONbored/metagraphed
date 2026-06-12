@@ -611,6 +611,7 @@ test("public artifacts are internally consistent", () => {
   const rpcEndpointPools = readArtifact("rpc/pools.json");
   const providerEndpoints = readArtifact("providers/allways/endpoints.json");
   const providersArtifact = readArtifact("providers.json");
+  const agentCatalog = readArtifact("agent-catalog.json");
   const r2Manifest = readArtifact("r2-manifest.json");
   const schemaDrift = readArtifact("schema-drift.json");
   const schemaIndex = readArtifact("schemas/index.json");
@@ -853,6 +854,25 @@ test("public artifacts are internally consistent", () => {
     coverage.official_surface_count < coverage.surface_count,
     "first-party surfaces must be an honest subset of all surfaces",
   );
+
+  // Real published_at + deterministic content_hash on agent payloads (issue
+  // #349): generated_at stays the deterministic stamp; published_at is real (or
+  // null), never a misleading 1970 stamp; content_hash is a stable fingerprint.
+  assert.ok(
+    "published_at" in agentCatalog,
+    "agent-catalog must expose published_at",
+  );
+  assert.ok(
+    agentCatalog.published_at === null ||
+      !Number.isNaN(Date.parse(agentCatalog.published_at)),
+    "agent-catalog published_at must be null or a real ISO timestamp",
+  );
+  assert.equal(
+    typeof agentCatalog.content_hash,
+    "string",
+    "agent-catalog must carry a deterministic content_hash",
+  );
+  assert.ok(agentCatalog.content_hash.length >= 16);
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");
   const facetSum = Object.values(coverage.domain_coverage).reduce(

@@ -143,7 +143,9 @@ export function buildDatasetExports({
   surfaces,
   providers,
   generatedAt,
+  publishedAt = null,
   contractVersion,
+  hashJson = null,
 }) {
   const data = { subnets, surfaces, providers };
   const files = [];
@@ -172,7 +174,11 @@ export function buildDatasetExports({
     manifest: {
       schema_version: 1,
       contract_version: contractVersion,
+      // Real publish time + deterministic content fingerprint (issue #349);
+      // generated_at stays the deterministic build stamp.
       generated_at: generatedAt,
+      published_at: publishedAt,
+      content_hash: hashJson ? hashJson(datasets) : null,
       dataset_count: datasets.length,
       datasets,
     },

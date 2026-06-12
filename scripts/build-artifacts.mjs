@@ -1103,14 +1103,23 @@ for (const subnet of mergedSubnets) {
     });
   }
 }
+const agentCatalogSubnets = agentCatalogIndex.sort(
+  (a, b) => a.netuid - b.netuid,
+);
 await writeJson(artifactFile("agent-catalog.json"), {
   schema_version: 1,
   contract_version: contractVersion,
+  // generated_at is the deterministic build stamp (epoch for local/CI builds);
+  // published_at is the real publish time (null until the publish pipeline sets
+  // it) and content_hash is a deterministic fingerprint of the catalog so a
+  // discerning agent reads honest freshness, not a 1970 stamp (issue #349).
   generated_at: generatedAt,
+  published_at: publishedAt(),
+  content_hash: hashJson(agentCatalogSubnets),
   total_subnet_count: mergedSubnets.length,
   subnet_count: agentCatalogIndex.length,
   callable_service_count: callableServiceCount,
-  subnets: agentCatalogIndex.sort((a, b) => a.netuid - b.netuid),
+  subnets: agentCatalogSubnets,
 });
 
 // --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------
@@ -1194,7 +1203,7 @@ const mcpEndpoint = `${llmsApiBase}/mcp`;
 await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
   recursive: true,
 });
-await writeJson(path.join(repoRoot, "public/.well-known/mcp/server-card.json"), {
+const serverCardContent = {
   schema_version: 1,
   name: MCP_SERVER_INFO.name,
   title: MCP_SERVER_INFO.title,
@@ -1208,7 +1217,14 @@ await writeJson(path.join(repoRoot, "public/.well-known/mcp/server-card.json"), 
   authentication: "none",
   capabilities: { tools: { listChanged: false } },
   tools: listToolDefinitions(),
+};
+await writeJson(path.join(repoRoot, "public/.well-known/mcp/server-card.json"), {
+  ...serverCardContent,
+  // Real publish time + deterministic content fingerprint (issue #349) so
+  // agents don't read the deterministic 1970 generated_at as "stale".
   generated_at: generatedAt,
+  published_at: publishedAt(),
+  content_hash: hashJson(serverCardContent),
 });
 await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
   schema_version: 1,
@@ -1232,7 +1248,9 @@ const datasetExports = buildDatasetExports({
   surfaces,
   providers,
   generatedAt,
+  publishedAt: publishedAt(),
   contractVersion,
+  hashJson,
 });
 await fs.rm(path.join(repoRoot, "public/datasets"), {
   recursive: true,

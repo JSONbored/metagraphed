@@ -95,4 +95,26 @@ describe("buildDatasetExports", () => {
   test("deterministic for fixed input", () => {
     assert.deepEqual(buildDatasetExports(input), buildDatasetExports(input));
   });
+
+  test("carries published_at + a deterministic content_hash (#349)", () => {
+    const hashJson = (value) => JSON.stringify(value).length.toString(16);
+    const a = buildDatasetExports({
+      ...input,
+      publishedAt: "2026-06-12T10:00:00.000Z",
+      hashJson,
+    });
+    assert.equal(a.manifest.published_at, "2026-06-12T10:00:00.000Z");
+    assert.equal(a.manifest.content_hash, hashJson(a.manifest.datasets));
+    // generated_at stays the deterministic stamp, independent of published_at
+    assert.equal(a.manifest.generated_at, input.generatedAt);
+    // content_hash ignores published_at — same content, same hash
+    const b = buildDatasetExports({ ...input, publishedAt: null, hashJson });
+    assert.equal(a.manifest.content_hash, b.manifest.content_hash);
+  });
+
+  test("published_at + content_hash default to null without injection", () => {
+    const { manifest } = buildDatasetExports(input);
+    assert.equal(manifest.published_at, null);
+    assert.equal(manifest.content_hash, null);
+  });
 });

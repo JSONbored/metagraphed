@@ -1,7 +1,9 @@
 {
   "callable_service_count": 67,
+  "content_hash": "e1656d71315fad3466ade5c50ec8ab538b325cfc7967572df612aeb896c51bdb",
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
+  "published_at": null,
   "schema_version": 1,
   "subnet_count": 30,
   "subnets": [
