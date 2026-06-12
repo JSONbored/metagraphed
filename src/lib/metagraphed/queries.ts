@@ -531,15 +531,24 @@ function normalizeEndpoint(raw: unknown): Endpoint {
   } as Endpoint;
 }
 
+function isHealthState(v: unknown): v is HealthState {
+  return v === "ok" || v === "warn" || v === "down" || v === "unknown";
+}
+
 function normalizeIncident(raw: unknown): EndpointIncident {
   if (!raw || typeof raw !== "object") return raw as EndpointIncident;
   const i = raw as Record<string, unknown>;
-  // API uses state="active" and a separate status="failed|degraded|ok".
-  // For the UI pill we want a HealthState derived from status/severity.
+  // API uses lifecycle state="active|resolved" and a separate
+  // status="failed|degraded|ok". Some responses already use the frontend
+  // contract state="ok|warn|down|unknown", so preserve those health states.
   const sev = i.severity as string | undefined;
   const sevHealth: HealthState | undefined =
     sev === "critical" ? "down" : sev === "warning" ? "warn" : undefined;
-  const stateHealth = statusToHealth(i.status) ?? sevHealth ?? "unknown";
+  const stateHealth =
+    statusToHealth(i.status) ??
+    sevHealth ??
+    (isHealthState(i.state) ? i.state : undefined) ??
+    "unknown";
   const ended = i.state === "resolved" || i.resolved_at;
   return {
     ...(i as object),
