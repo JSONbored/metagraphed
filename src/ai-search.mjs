@@ -254,7 +254,7 @@ export async function semanticSearch(env, query, options = {}) {
   return { query: q, count: results.length, results, model: EMBED_MODEL };
 }
 
-export function formatAskContextBlock(matches) {
+export function formatAskContextBlock(matches, enrichByNetuid = new Map()) {
   return (matches || [])
     .map((match, i) => {
       const m = match?.metadata || {};
@@ -269,14 +269,54 @@ export function formatAskContextBlock(matches) {
         description: m.subtitle ?? null,
         url: m.url ?? null,
       };
+      // Actionability facets for subnet sources: where to call it, whether it's
+      // up, and how many callable services it exposes — so the model can answer
+      // "how do I use it" not just "what is it". Only present for subnets that
+      // expose callable services (joined from the agent-catalog).
+      const enrich =
+        m.netuid != null ? enrichByNetuid.get(m.netuid) : undefined;
+      if (enrich) {
+        entry.callable_count = enrich.callable_count;
+        entry.base_url = enrich.base_url;
+        entry.health = enrich.health;
+      }
       return JSON.stringify(entry);
     })
     .join("\n");
 }
 
+// Builds a netuid → {callable_count, base_url, health} lookup from the
+// agent-catalog index for enriching /ask context. Best-effort: any read failure
+// degrades to an empty map (context just omits the actionability facets).
+async function loadAskEnrichment(env, deps) {
+  if (typeof deps.readArtifact !== "function") return new Map();
+  try {
+    const catalog = await deps.readArtifact(
+      env,
+      "/metagraph/agent-catalog.json",
+    );
+    const subnets = catalog?.ok ? catalog.data?.subnets : catalog?.subnets;
+    if (!Array.isArray(subnets)) return new Map();
+    return new Map(
+      subnets
+        .filter((entry) => Number.isInteger(entry?.netuid))
+        .map((entry) => [
+          entry.netuid,
+          {
+            callable_count: entry.callable_count ?? 0,
+            base_url: entry.base_url ?? null,
+            health: entry.health ?? "unknown",
+          },
+        ]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 // Grounded question answering (RAG): retrieve top-k registry context, prompt the
 // LLM to answer only from it with bracketed citations.
-export async function askQuestion(env, question, options = {}) {
+export async function askQuestion(env, question, options = {}, deps = {}) {
   const q = typeof question === "string" ? question.trim() : "";
   if (!q) throw aiInputError("Field `question` is required.");
   if (q.length > ASK_MAX_QUESTION_LENGTH) {
@@ -302,7 +342,8 @@ export async function askQuestion(env, question, options = {}) {
       url: metadata.url ?? null,
     };
   });
-  const contextBlock = formatAskContextBlock(matches);
+  const enrichByNetuid = await loadAskEnrichment(env, deps);
+  const contextBlock = formatAskContextBlock(matches, enrichByNetuid);
 
   const messages = [
     { role: "system", content: ASK_SYSTEM_PROMPT },

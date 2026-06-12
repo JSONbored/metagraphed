@@ -712,6 +712,76 @@ describe("ai-search defensive branches", () => {
     assert.equal(out.citations[0].netuid, null);
     assert.equal(out.context_count, 1);
   });
+
+  test("formatAskContextBlock adds actionability facets for enriched subnets", () => {
+    const block = formatAskContextBlock(
+      [{ metadata: { type: "subnet", title: "Apex", netuid: 1 } }],
+      new Map([
+        [1, { callable_count: 2, base_url: "https://api.apex.io", health: "operational" }],
+      ]),
+    );
+    const parsed = JSON.parse(block);
+    assert.equal(parsed.callable_count, 2);
+    assert.equal(parsed.base_url, "https://api.apex.io");
+    assert.equal(parsed.health, "operational");
+  });
+
+  test("formatAskContextBlock omits facets for subnets absent from the catalog", () => {
+    const block = formatAskContextBlock(
+      [{ metadata: { type: "subnet", title: "Quiet", netuid: 99 } }],
+      new Map(),
+    );
+    const parsed = JSON.parse(block);
+    assert.equal("base_url" in parsed, false);
+    assert.equal("callable_count" in parsed, false);
+    assert.equal("health" in parsed, false);
+  });
+
+  test("askQuestion joins the agent-catalog to enrich subnet context", async () => {
+    let askedPath = null;
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const readArtifact = (_env, path) => {
+      askedPath = path;
+      return Promise.resolve({
+        ok: true,
+        data: {
+          subnets: [
+            {
+              netuid: 1,
+              callable_count: 3,
+              base_url: "https://api.one.io",
+              health: "operational",
+            },
+          ],
+        },
+      });
+    };
+    const out = await askQuestion(
+      env,
+      "Which subnet does images?",
+      {},
+      { readArtifact },
+    );
+    assert.equal(askedPath, "/metagraph/agent-catalog.json");
+    assert.ok(out.answer.length > 0);
+    // The enriched facets reach the prompt's context block.
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.at(-1).content;
+    assert.match(userMessage, /api\.one\.io/);
+  });
+
+  test("askQuestion degrades gracefully when the catalog read fails", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const readArtifact = () => Promise.reject(new Error("r2 down"));
+    const out = await askQuestion(
+      env,
+      "Which subnet does images?",
+      {},
+      { readArtifact },
+    );
+    assert.ok(out.answer.length > 0);
+    assert.equal(out.context_count, 3);
+  });
 });
 
 describe("embedding-sync cron", () => {

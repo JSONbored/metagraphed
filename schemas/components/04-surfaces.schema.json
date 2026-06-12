@@ -598,7 +598,9 @@
                     "service_kinds": {
                       "type": "array",
                       "items": { "type": "string" }
-                    }
+                    },
+                    "base_url": { "type": ["string", "null"] },
+                    "health": { "type": "string" }
                   },
                   "additionalProperties": true
                 }

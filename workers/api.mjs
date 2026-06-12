@@ -2359,7 +2359,12 @@ async function handleAskRequest(request, env) {
     );
   }
   try {
-    const data = await askQuestion(env, body?.question, { topK: body?.topK });
+    const data = await askQuestion(
+      env,
+      body?.question,
+      { topK: body?.topK },
+      { readArtifact },
+    );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
     if (error?.aiInput) {

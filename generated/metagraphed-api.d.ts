@@ -909,9 +909,11 @@ export interface components {
             callable_service_count?: number;
             subnet_count: number;
             subnets: ({
+                base_url?: string | null;
                 callable_count?: number;
                 categories?: string[];
                 completeness_score?: number | null;
+                health?: string;
                 integration_readiness?: number;
                 name?: string;
                 netuid: number;

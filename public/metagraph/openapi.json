@@ -78,6 +78,12 @@
                 "items": {
                   "additionalProperties": true,
                   "properties": {
+                    "base_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "callable_count": {
                       "minimum": 0,
                       "type": "integer"
@@ -93,6 +99,9 @@
                         "number",
                         "null"
                       ]
+                    },
+                    "health": {
+                      "type": "string"
                     },
                     "integration_readiness": {
                       "maximum": 100,

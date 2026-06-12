@@ -898,6 +898,13 @@ for (const subnet of mergedSubnets) {
   if (services.length > 0) {
     const callable = services.filter((s) => s.eligibility.callable).length;
     callableServiceCount += callable;
+    // Primary callable surface (first callable, else first overall) — gives the
+    // index a "where do I call this + is it up" rollup so single-read consumers
+    // (e.g. the /ask RAG join) don't have to fan out to per-subnet detail files.
+    const primary =
+      services.find((service) => service.eligibility.callable) ||
+      services[0] ||
+      null;
     agentCatalogIndex.push({
       netuid: subnet.netuid,
       slug: subnet.slug,
@@ -910,6 +917,8 @@ for (const subnet of mergedSubnets) {
       service_count: services.length,
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
+      base_url: primary?.base_url ?? null,
+      health: primary?.health?.status ?? "unknown",
     });
   }
 }

@@ -6,6 +6,7 @@
   "subnet_count": 30,
   "subnets": [
     {
+      "base_url": "https://api.numinouslabs.io/api/health",
       "callable_count": 4,
       "categories": [
         "baseline-augmented",
@@ -18,6 +19,7 @@
         "subnet-api"
       ],
       "completeness_score": 85,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Numinous",
       "netuid": 6,
@@ -42,6 +44,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.all-ways.io/health",
       "callable_count": 13,
       "categories": [
         "baseline-augmented",
@@ -50,6 +53,7 @@
         "subnet-api"
       ],
       "completeness_score": 97,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Allways",
       "netuid": 7,
@@ -75,6 +79,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.desearch.ai",
       "callable_count": 3,
       "categories": [
         "baseline-augmented",
@@ -89,6 +94,7 @@
         "social-data"
       ],
       "completeness_score": 85,
+      "health": "unknown",
       "integration_readiness": 85,
       "name": "Desearch",
       "netuid": 22,
@@ -113,6 +119,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.trishool.ai/",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -123,6 +130,7 @@
         "subnet-api-observed"
       ],
       "completeness_score": 70,
+      "health": "unknown",
       "integration_readiness": 75,
       "name": "Trishool",
       "netuid": 23,
@@ -146,6 +154,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview",
       "callable_count": 3,
       "categories": [
         "baseline-augmented",
@@ -158,6 +167,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Quasar",
       "netuid": 24,
@@ -181,6 +191,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -193,6 +204,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Coldint",
       "netuid": 29,
@@ -216,6 +228,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset",
       "callable_count": 2,
       "categories": [
         "baseline-augmented",
@@ -228,6 +241,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "ReadyAI",
       "netuid": 33,
@@ -251,11 +265,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://zipcode.ai/openapi.json",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "health": "unknown",
       "integration_readiness": 95,
       "name": "Zipcode",
       "netuid": 46,
@@ -279,6 +295,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://huggingface.co/datasets/evolai/universal_qa",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -288,6 +305,7 @@
         "official-source-repo"
       ],
       "completeness_score": 48,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "EvolAI",
       "netuid": 47,
@@ -311,6 +329,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://tournament-api.nepher.ai",
       "callable_count": 2,
       "categories": [
         "baseline-augmented",
@@ -325,6 +344,7 @@
         "tournament"
       ],
       "completeness_score": 85,
+      "health": "unknown",
       "integration_readiness": 85,
       "name": "Nepher Robotics",
       "netuid": 49,
@@ -349,11 +369,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://lium.io/api",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "lium.io",
       "netuid": 51,
@@ -377,6 +399,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.gradients.io/v1/performance/last-boss-battle",
       "callable_count": 5,
       "categories": [
         "ai-training",
@@ -389,6 +412,7 @@
         "operational-interface"
       ],
       "completeness_score": 93,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Gradients",
       "netuid": 56,
@@ -414,6 +438,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://handshake58.com/api/drain/signing",
       "callable_count": 4,
       "categories": [
         "ai-marketplace",
@@ -427,6 +452,7 @@
         "payments"
       ],
       "completeness_score": 85,
+      "health": "unknown",
       "integration_readiness": 90,
       "name": "Handshake58",
       "netuid": 58,
@@ -451,11 +477,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.babelbit.ai/",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Babelbit",
       "netuid": 59,
@@ -479,6 +507,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.chutes.ai/openapi.json",
       "callable_count": 4,
       "categories": [
         "baseline-augmented",
@@ -492,6 +521,7 @@
         "official-website"
       ],
       "completeness_score": 93,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Chutes",
       "netuid": 64,
@@ -517,6 +547,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://ninja.arbos.life/health",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -530,6 +561,7 @@
         "workflow"
       ],
       "completeness_score": 70,
+      "health": "unknown",
       "integration_readiness": 75,
       "name": "ninja",
       "netuid": 66,
@@ -553,11 +585,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://www.metanova-labs.ai/models",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 58,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "NOVA",
       "netuid": 68,
@@ -581,11 +615,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://nexisgen.ai/commission",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 58,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "NexisGen",
       "netuid": 70,
@@ -609,6 +645,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://huggingface.co/natix-network-org",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -622,6 +659,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "StreetVision by NATIX",
       "netuid": 72,
@@ -645,6 +683,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.gittensor.io/swagger-json",
       "callable_count": 2,
       "categories": [
         "baseline-augmented",
@@ -653,6 +692,7 @@
         "repositories"
       ],
       "completeness_score": 83,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Gittensor",
       "netuid": 74,
@@ -677,6 +717,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://simulate.trading/taos-im-paper",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -686,6 +727,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "MVTRX",
       "netuid": 79,
@@ -709,6 +751,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.investing88.ai/assets",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -721,6 +764,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Investing",
       "netuid": 88,
@@ -744,6 +788,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://models.actual.inc/",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -754,6 +799,7 @@
         "official-website"
       ],
       "completeness_score": 48,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Actual",
       "netuid": 95,
@@ -777,6 +823,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.verathos.ai/v1/models",
       "callable_count": 2,
       "categories": [
         "baseline-augmented",
@@ -791,6 +838,7 @@
         "official-website"
       ],
       "completeness_score": 85,
+      "health": "unknown",
       "integration_readiness": 100,
       "name": "Verathos",
       "netuid": 96,
@@ -815,11 +863,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://us-east-1.hippius.com/openapi.json",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "health": "unknown",
       "integration_readiness": 95,
       "name": "Albedo",
       "netuid": 97,
@@ -843,11 +893,13 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.theminos.ai/",
       "callable_count": 1,
       "categories": [
         "baseline-curated"
       ],
       "completeness_score": 65,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Minos",
       "netuid": 107,
@@ -871,6 +923,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://github.com/fx-integral/academia-archives",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -880,6 +933,7 @@
         "official-source-repo"
       ],
       "completeness_score": 48,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Academia",
       "netuid": 109,
@@ -903,6 +957,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://api.green-compute.com/v1/chat/completions",
       "callable_count": 5,
       "categories": [
         "baseline-augmented",
@@ -913,6 +968,7 @@
         "official-website"
       ],
       "completeness_score": 93,
+      "health": "unknown",
       "integration_readiness": 85,
       "name": "Green Compute",
       "netuid": 110,
@@ -938,6 +994,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://thesoma.ai/mcp",
       "callable_count": 1,
       "categories": [
         "baseline-augmented",
@@ -948,6 +1005,7 @@
         "official-website"
       ],
       "completeness_score": 63,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "SOMA",
       "netuid": 114,
@@ -971,6 +1029,7 @@
       "subnet_type": "application"
     },
     {
+      "base_url": "https://heyditto.ai/ditto-vs-frontier-open-models",
       "callable_count": 1,
       "categories": [
         "agent-memory",
@@ -981,6 +1040,7 @@
         "official-website"
       ],
       "completeness_score": 48,
+      "health": "unknown",
       "integration_readiness": 70,
       "name": "Ditto",
       "netuid": 118,
