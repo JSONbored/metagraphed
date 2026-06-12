@@ -5,6 +5,11 @@ import {
   setApiBase,
   onApiBaseChange,
   DEFAULT_API_BASE,
+  getNetwork,
+  setNetwork,
+  onNetworkChange,
+  DEFAULT_NETWORK,
+  type ChainNetwork,
 } from "@/lib/metagraphed/config";
 
 /**
@@ -25,4 +30,23 @@ export function useApiBase() {
   };
 
   return { base, change, isDefault: base === DEFAULT_API_BASE };
+}
+
+/**
+ * Subscribe to the selected chain network (mainnet/testnet). `change()` persists
+ * the choice and invalidates all queries so the app refetches against the new
+ * `/{network}/` data partition on the same API origin.
+ */
+export function useNetwork() {
+  const [network, setNet] = useState<ChainNetwork>(() => getNetwork());
+  const qc = useQueryClient();
+
+  useEffect(() => onNetworkChange((next) => setNet(next)), []);
+
+  const change = (id: string) => {
+    setNetwork(id);
+    qc.invalidateQueries({ queryKey: ["metagraphed"] });
+  };
+
+  return { network, change, isDefault: network.id === DEFAULT_NETWORK.id };
 }

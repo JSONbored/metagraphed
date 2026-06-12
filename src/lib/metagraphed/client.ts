@@ -1,4 +1,4 @@
-import { getApiBase } from "./config";
+import { getApiBase, getNetworkPrefix } from "./config";
 import type { ApiEnvelope, ApiMeta } from "./types";
 
 export class ApiError extends Error {
@@ -23,9 +23,25 @@ export interface ApiResult<T> {
 export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue | QueryValue[]>;
 
+// Inserts the selected chain network's path prefix after /api/v1 or /metagraph
+// (mainnet has prefix "" → no-op). So /api/v1/subnets becomes
+// /api/v1/testnet/subnets when Testnet is selected — same origin, different
+// data partition, matching the backend's /{network}/ routing.
+function applyNetworkPrefix(p: string): string {
+  const prefix = getNetworkPrefix();
+  if (!prefix) return p;
+  for (const root of ["/api/v1", "/metagraph"]) {
+    if (p === root) return `${root}/${prefix}`;
+    if (p.startsWith(`${root}/`)) {
+      return `${root}/${prefix}/${p.slice(root.length + 1)}`;
+    }
+  }
+  return p;
+}
+
 function buildUrl(path: string, params?: QueryParams): string {
   const base = getApiBase().replace(/\/$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
+  const p = applyNetworkPrefix(path.startsWith("/") ? path : `/${path}`);
   const url = new URL(base + p);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
