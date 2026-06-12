@@ -989,3 +989,285 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.match(res.body.result.content[0].text, /netuid.*subnet|invalid_params/);
   });
 });
+
+describe("MCP goal-shaped tools — branch coverage", () => {
+  // Minimal AI env whose vector query returns the given subnet netuids in order.
+  function aiEnvWithMatches(netuids) {
+    return {
+      METAGRAPH_ENABLE_AI: "true",
+      AI: {
+        run(_model, input) {
+          if (input?.text) {
+            return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
+          }
+          return Promise.resolve({ response: "ok" });
+        },
+      },
+      VECTORIZE: {
+        query() {
+          return Promise.resolve({
+            matches: netuids.map((n, i) => ({
+              id: `subnet:${n}`,
+              score: 0.9 - i * 0.01,
+              metadata: {
+                type: "subnet",
+                netuid: n,
+                slug: `sn-${n}`,
+                title: `Subnet ${n}`,
+                subtitle: "summary",
+              },
+            })),
+          });
+        },
+      },
+    };
+  }
+
+  const catalogOnly = {
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        {
+          netuid: 1,
+          name: "One",
+          slug: "sn-1",
+          categories: [],
+          integration_readiness: 80,
+          callable_count: 1,
+          service_kinds: ["openapi"],
+          base_url: "https://one.io",
+          health: "operational",
+        },
+        {
+          netuid: 2,
+          name: "Two",
+          slug: "sn-2",
+          categories: [],
+          integration_readiness: 70,
+          callable_count: 1,
+          service_kinds: ["sse"],
+          base_url: "https://two.io",
+          health: "unknown",
+        },
+      ],
+    },
+  };
+
+  test("find_subnet_for_task: semantic ranking skips non-callable and honors limit", async () => {
+    // netuid 99 is not in the catalog (skipped); limit 1 triggers the early break.
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "generate text", limit: 1 },
+      { deps: makeDeps(catalogOnly), env: aiEnvWithMatches([99, 1, 2]) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "semantic");
+    assert.equal(out.count, 1);
+    assert.equal(out.results[0].netuid, 1);
+  });
+
+  test("find_subnet_for_task: falls back to keyword when semantic search throws", async () => {
+    const env = {
+      METAGRAPH_ENABLE_AI: "true",
+      AI: { run: () => Promise.resolve({ data: [new Array(1024).fill(0)] }) },
+      VECTORIZE: { query: () => Promise.reject(new Error("vectorize down")) },
+    };
+    const deps = makeDeps({
+      "/metagraph/search.json": {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            slug: "sn-1",
+            title: "One",
+            subtitle: "text generation",
+            tokens: ["text", "generation"],
+          },
+        ],
+      },
+      ...catalogOnly,
+    });
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "generation" },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(out.results[0].netuid, 1);
+  });
+
+  const callDetail = {
+    "/metagraph/agent-catalog/7.json": {
+      netuid: 7,
+      name: "Data",
+      slug: "sn-7",
+      integration_readiness: 70,
+      services: [
+        {
+          surface_id: "sn-7-api",
+          kind: "subnet-api",
+          capability: "Data API",
+          base_url: "https://api.data.io",
+          auth_required: true,
+          auth_schemes: ["apiKey"],
+          schema_url: "https://api.data.io/openapi.json",
+          schema_artifact: "schemas/sn-7-api.json",
+          health: { status: "operational", stale: false },
+          eligibility: { callable: true },
+        },
+      ],
+    },
+    "/metagraph/agent-catalog/3.json": {
+      netuid: 3,
+      name: "Bare",
+      slug: "sn-3",
+      integration_readiness: 40,
+      services: [
+        {
+          surface_id: "sn-3-sse",
+          kind: "sse",
+          capability: "Stream",
+          base_url: "https://s3.io",
+          auth_required: false,
+          auth_schemes: [],
+          schema_url: null,
+          schema_artifact: null,
+          health: {},
+          eligibility: { callable: true },
+        },
+      ],
+    },
+    "/metagraph/subnets.json": {
+      subnets: [{ netuid: 7, slug: "sn-7", native_slug: "datauniverse" }],
+    },
+  };
+
+  test("how_do_i_call resolves a numeric subnet string", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { subnet: "7" },
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+
+  test("how_do_i_call resolves a curated slug", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { subnet: "sn-7" },
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+
+  test("how_do_i_call errors on an unknown subnet reference", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { subnet: "does-not-exist" },
+      { deps: makeDeps(callDetail) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No subnet matches|not_found/);
+  });
+
+  test("find_subnet_for_task uses keyword when semantic returns no subnet hits", async () => {
+    const env = {
+      METAGRAPH_ENABLE_AI: "true",
+      AI: { run: () => Promise.resolve({ data: [new Array(1024).fill(0)] }) },
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const deps = makeDeps({
+      "/metagraph/search.json": {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            slug: "sn-1",
+            title: "One",
+            subtitle: "text generation",
+            tokens: ["text", "generation"],
+          },
+        ],
+      },
+      ...catalogOnly,
+    });
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "generation" },
+      { deps, env },
+    );
+    assert.equal(res.body.result.structuredContent.discovery, "keyword");
+  });
+
+  test("how_do_i_call reports a no-auth, no-schema service cleanly", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 3 },
+      { deps: makeDeps(callDetail) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.callable, true);
+    assert.equal(out.services[0].auth.required, false);
+    assert.equal(out.services[0].schema.available, false);
+    assert.equal(out.services[0].health.status, "unknown");
+    assert.ok(out.next_steps.every((s) => !/get_api_schema/.test(s)));
+  });
+
+  test("how_do_i_call tolerates a detail with no services array", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 5 },
+      { deps: makeDeps({ "/metagraph/agent-catalog/5.json": { netuid: 5, name: "X", slug: "sn-5", integration_readiness: 0 } }) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.callable, false);
+    assert.deepEqual(out.services, []);
+  });
+
+  test("how_do_i_call handles a callable service missing auth_schemes + schema_url", async () => {
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 4 },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog/4.json": {
+            netuid: 4,
+            name: "Y",
+            slug: "sn-4",
+            integration_readiness: 50,
+            services: [
+              {
+                surface_id: "sn-4-api",
+                kind: "openapi",
+                capability: "Y API",
+                base_url: "https://y.io",
+                auth_required: true,
+                schema_artifact: "schemas/sn-4-api.json",
+                schema_url: null,
+                health: { status: "operational" },
+                eligibility: { callable: true },
+              },
+            ],
+          },
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.services[0].auth.schemes, []);
+    assert.equal(out.services[0].schema.available, true);
+    assert.equal(out.services[0].schema.schema_url, null);
+  });
+
+  test("find_subnet_for_task tolerates a catalog with no subnets field", async () => {
+    const env = aiEnvWithMatches([1, 2]);
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "anything" },
+      { deps: makeDeps({ "/metagraph/agent-catalog.json": {} }), env },
+    );
+    assert.equal(res.body.result.structuredContent.count, 0);
+  });
+
+});
