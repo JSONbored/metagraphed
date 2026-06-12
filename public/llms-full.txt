@@ -9,6 +9,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 ## Machine entrypoints
 - [OpenAPI 3.1](https://api.metagraph.sh/metagraph/openapi.json): full machine contract for all routes
 - [Agent capability catalog](https://api.metagraph.sh/api/v1/agent-catalog): per-subnet callable services + their schemas + health
+- [Copyable AI agent](https://api.metagraph.sh/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](https://api.metagraph.sh/api/v1/agent-resources).
 - [MCP server](https://api.metagraph.sh/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: `claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp`
 - [MCP server card](https://api.metagraph.sh/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)
 - [Bittensor skill](https://api.metagraph.sh/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"
@@ -183,6 +184,8 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/coverage` — Fetch registry coverage summary.
 - `GET /api/v1/registry/summary` — Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `GET /api/v1/lineage` — Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
+- `GET /api/v1/fixtures` — Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.
+- `GET /api/v1/agent-resources` — Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.
 - `GET /api/v1/curation` — Fetch curation states by subnet.
 - `GET /api/v1/gaps` — Fetch interface gap report.
 - `GET /api/v1/review/gaps` — Fetch contributor-targeted subnet gap priorities.

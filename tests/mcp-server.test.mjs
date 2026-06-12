@@ -574,6 +574,37 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(res.body.result.content[0].text.includes("invalid"));
   });
 
+  test("get_fixture returns a captured live sample by surface_id (#352)", async () => {
+    const fixtureDeps = makeDeps({
+      "/metagraph/fixtures/allways-api-health.json": {
+        surface_id: "allways-api-health",
+        netuid: 7,
+        kind: "subnet-api",
+        request: { method: "GET", url: "https://api.all-ways.io/health" },
+        response: { status: 200, body: { ok: true } },
+      },
+    });
+    const res = await callTool(
+      "get_fixture",
+      { surface_id: "allways-api-health" },
+      { deps: fixtureDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.response.status, 200);
+    assert.deepEqual(out.response.body, { ok: true });
+    assert.equal(out.request.method, "GET");
+  });
+
+  test("get_fixture rejects path-traversal surface ids (#352)", async () => {
+    const res = await callTool(
+      "get_fixture",
+      { surface_id: "../secrets" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("invalid"));
+  });
+
   test("get_agent_catalog returns the global catalog with no netuid", async () => {
     const res = await callTool("get_agent_catalog", {}, { deps });
     assert.ok(Array.isArray(res.body.result.structuredContent.subnets));

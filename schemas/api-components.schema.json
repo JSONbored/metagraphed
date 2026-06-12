@@ -276,6 +276,129 @@
           }
         ]
       },
+      "AgentResourcesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "content_hash": {
+                "type": "string"
+              },
+              "copyable_agent": {
+                "additionalProperties": true,
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              },
+              "mcp": {
+                "additionalProperties": true,
+                "properties": {
+                  "endpoint": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "install": {
+                    "type": "string"
+                  },
+                  "server_card": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "tools": {
+                    "items": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "transport": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "endpoint",
+                  "install",
+                  "tools"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resources": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "url"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            },
+            "required": [
+              "copyable_agent",
+              "mcp",
+              "resources"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ApiIndexArtifact": {
         "allOf": [
           {
@@ -1963,6 +2086,74 @@
             },
             "required": [
               "claims"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "FixturesIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "fixture_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixtures": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "captured_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "response_status": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "subnet_slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "netuid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "fixture_count",
+              "fixtures"
             ],
             "type": "object"
           }

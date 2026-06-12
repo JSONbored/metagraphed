@@ -177,6 +177,27 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "fixtures-index",
+      "path": "/metagraph/fixtures.json",
+      "schema_ref": "#/components/schemas/FixturesIndexArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "agent-resources",
+      "path": "/metagraph/agent-resources.json",
+      "schema_ref": "#/components/schemas/AgentResourcesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "fixture-detail",
+      "path": "/metagraph/fixtures/{surface_id}.json",
+      "schema_ref": "#/components/schemas/JsonObject",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "curation",
       "path": "/metagraph/curation.json",
       "schema_ref": "#/components/schemas/CurationArtifact",
@@ -1751,6 +1772,30 @@
       "id": "lineage",
       "method": "GET",
       "path": "/api/v1/lineage",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/fixtures.json",
+      "cache": "standard",
+      "description": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+      "id": "fixtures",
+      "method": "GET",
+      "path": "/api/v1/fixtures",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/agent-resources.json",
+      "cache": "standard",
+      "description": "Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+      "id": "agent-resources",
+      "method": "GET",
+      "path": "/api/v1/agent-resources",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

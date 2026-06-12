@@ -1,4 +1,13 @@
 import assert from "node:assert/strict";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, test } from "vitest";
 import {
   stripUrls,
@@ -17,6 +26,8 @@ import {
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
+  sanitizeFixtureBody,
+  writeJson,
 } from "../scripts/lib.mjs";
 
 describe("stripUrls", () => {
@@ -589,8 +600,75 @@ describe("buildSubnetLineageLinks", () => {
   });
 });
 
+describe("writeJson (atomic)", () => {
+  test("writes JSON atomically via a temp file + rename", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-ok-"));
+    const file = path.join(dir, "out.json");
+    await writeJson(file, { a: 1, b: [2, 3] });
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { a: 1, b: [2, 3] });
+    assert.ok(readFileSync(file, "utf8").endsWith("\n"));
+    // no temp artifact survives a successful write
+    assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);
+  });
+
+  test("rethrows and cleans up the temp file when the rename fails", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-fail-"));
+    // target is a non-empty directory → rename(tempFile, dir) fails
+    const target = path.join(dir, "blocked");
+    mkdirSync(target);
+    writeFileSync(path.join(target, "child"), "x");
+    await assert.rejects(() => writeJson(target, { a: 1 }));
+    // the staged *.tmp must not be left behind
+    assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);
+  });
+});
+
+describe("sanitizeFixtureBody (#352)", () => {
+  test("redacts sensitive keys anywhere in the tree", () => {
+    const out = sanitizeFixtureBody({
+      ok: true,
+      api_key: "sk-live-123",
+      nested: { authorization: "Bearer abc", access_token: "xyz", value: 1 },
+      list: [{ password: "p", keep: "ok" }],
+    });
+    assert.equal(out.api_key, "[redacted]");
+    assert.equal(out.nested.authorization, "[redacted]");
+    assert.equal(out.nested.access_token, "[redacted]");
+    assert.equal(out.nested.value, 1);
+    assert.equal(out.list[0].password, "[redacted]");
+    assert.equal(out.list[0].keep, "ok");
+    assert.equal(out.ok, true);
+  });
+  test("strips credentials from URL strings", () => {
+    const out = sanitizeFixtureBody({
+      url: "https://user:secret@api.example.io/x?token=abc",
+    });
+    assert.ok(!out.url.includes("secret"));
+    assert.ok(!out.url.includes("token=abc"));
+  });
+  test("bounds array length, string length, depth, and key count", () => {
+    const out = sanitizeFixtureBody(
+      {
+        big: "x".repeat(50),
+        arr: Array.from({ length: 10 }, (_, i) => i),
+        deep: { a: { b: { c: { d: "too deep" } } } },
+      },
+      { maxArray: 3, maxString: 10, maxDepth: 2, maxKeys: 60 },
+    );
+    assert.ok(out.big.endsWith("…[truncated]"));
+    assert.equal(out.arr.length, 4); // 3 + a "+N more" marker
+    assert.match(out.arr[3], /\+7 more/);
+    assert.equal(out.deep.a.b, "[truncated: max depth]");
+  });
+  test("passes through primitives and tolerates non-objects", () => {
+    assert.equal(sanitizeFixtureBody(42), 42);
+    assert.equal(sanitizeFixtureBody(null), null);
+    assert.equal(sanitizeFixtureBody("plain"), "plain");
+  });
+});
+
 describe("clusterDomainFromUrl", () => {
-  test("returns the last-two-label registrable domain", () => {
+  test("returns the registrable domain for ordinary team domains", () => {
     assert.equal(
       clusterDomainFromUrl("https://docs.all-ways.io/x"),
       "all-ways.io",
@@ -603,6 +681,31 @@ describe("clusterDomainFromUrl", () => {
       clusterDomainFromUrl("https://backprop.finance"),
       "backprop.finance",
     );
+  });
+
+  test("keeps the tenant label for multi-label public and private suffixes", () => {
+    assert.equal(
+      clusterDomainFromUrl("https://team-a.co.uk/docs"),
+      "team-a.co.uk",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://team-b.co.uk/docs"),
+      "team-b.co.uk",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://alice.github.io"),
+      "alice.github.io",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://bob.pages.dev"),
+      "bob.pages.dev",
+    );
+    assert.equal(
+      clusterDomainFromUrl("https://team.example.com.ar"),
+      "example.com.ar",
+    );
+    assert.equal(clusterDomainFromUrl("https://co.uk"), null);
+    assert.equal(clusterDomainFromUrl("https://github.io"), null);
   });
   test("returns null for non-URL / non-string input", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);

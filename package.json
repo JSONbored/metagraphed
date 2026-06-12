@@ -32,6 +32,8 @@
     "review:promote:dry-run": "node scripts/promote-reviewed.mjs --dry-run",
     "schemas:snapshot": "node scripts/snapshot-openapi.mjs --write",
     "schemas:snapshot:dry-run": "node scripts/snapshot-openapi.mjs --dry-run",
+    "capture:fixtures": "node scripts/capture-fixtures.mjs --write",
+    "capture:fixtures:dry-run": "node scripts/capture-fixtures.mjs --dry-run",
     "schemas:bundle": "node scripts/bundle-schemas.mjs --write",
     "schemas:bundle:check": "node scripts/bundle-schemas.mjs",
     "adapters:snapshot": "node scripts/snapshot-adapters.mjs --write",

@@ -4,7 +4,7 @@ import { DOMAIN_TAGS } from "./domain-tags.mjs";
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
-// (metagraph.sh) is the metagraph-finder UI. PRIMARY_DOMAIN drives the OpenAPI
+// (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
 // server URL and the consumer metadata in contracts.json / api-index.json.
 export const PRIMARY_DOMAIN = "api.metagraph.sh";
 export const API_BASE_PATH = "/api/v1";
@@ -678,6 +678,24 @@ export const PUBLIC_ARTIFACTS = [
     "LineageArtifact",
   ),
   artifact(
+    "fixtures-index",
+    "/metagraph/fixtures.json",
+    "Index of captured live request/response fixtures (which surfaces carry a sanitized sample).",
+    "FixturesIndexArtifact",
+  ),
+  artifact(
+    "agent-resources",
+    "/metagraph/agent-resources.json",
+    "Machine index of every AI resource: the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+    "AgentResourcesArtifact",
+  ),
+  artifact(
+    "fixture-detail",
+    "/metagraph/fixtures/{surface_id}.json",
+    "A captured, sanitized live request/response sample for one surface.",
+    "JsonObject",
+  ),
+  artifact(
     "curation",
     "/metagraph/curation.json",
     "Curation state and gaps for every active subnet.",
@@ -1129,6 +1147,24 @@ export const API_ROUTES = [
     "Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).",
     "standard",
     ["registry", "multi-network"],
+  ),
+  route(
+    "fixtures",
+    "GET",
+    "/api/v1/fixtures",
+    "/metagraph/fixtures.json",
+    "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+    "standard",
+    ["registry", "api-dx"],
+  ),
+  route(
+    "agent-resources",
+    "GET",
+    "/api/v1/agent-resources",
+    "/metagraph/agent-resources.json",
+    "Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
+    "standard",
+    ["api-dx"],
   ),
   route(
     "curation",

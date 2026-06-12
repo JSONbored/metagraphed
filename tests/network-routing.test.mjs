@@ -204,6 +204,22 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(info.body.data.network, "local");
     assert.equal(info.body.data.mode, "client-side");
     assert.match(info.body.data.rpc.ws, /127\.0\.0\.1:9944/);
+    // Develop-before-mainnet quickstart (issue #354): real ordered steps + the
+    // testnet/mainnet/lineage references, not just a ws:// URL.
+    const steps = info.body.data.quickstart?.steps;
+    assert.ok(Array.isArray(steps) && steps.length >= 4);
+    assert.deepEqual(
+      steps.map((s) => s.step),
+      steps.map((_, i) => i + 1),
+    );
+    assert.ok(steps.every((s) => s.title && s.run && s.detail));
+    assert.ok(steps.some((s) => /localnet\.sh/.test(s.run)));
+    assert.ok(steps.some((s) => /btcli subnet create/.test(s.run)));
+    assert.equal(info.body.data.reference.lineage, "/api/v1/lineage");
+    assert.equal(
+      info.body.data.reference.testnet_subnets,
+      "/api/v1/testnet/subnets",
+    );
     // Data routes under local stay 404 — nothing is hosted for a local chain.
     const data = await get(env, "/api/v1/local/subnets");
     assert.equal(data.res.status, 404);

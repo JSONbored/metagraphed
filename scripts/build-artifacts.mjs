@@ -175,6 +175,29 @@ const capturedSchemaDocuments = new Map();
   }
 }
 
+// Captured live request/response fixtures (issue #352), written to R2 staging by
+// the network capture:fixtures step. Preserve them across the wipe so the build
+// can re-serve fixtures/{surface_id}.json + index them in the committed
+// fixtures.json. Absent on a pure deterministic build (no capture run) → an
+// empty index, populated on the next refresh (same model as schemas).
+const capturedFixtures = new Map();
+{
+  const fixturesDir = path.join(r2OutputRoot, "fixtures");
+  let fixtureFiles;
+  try {
+    fixtureFiles = await fs.readdir(fixturesDir);
+  } catch {
+    fixtureFiles = [];
+  }
+  for (const file of fixtureFiles) {
+    if (!file.endsWith(".json") || file === "index.json") continue;
+    const existing = await readOptionalJson(path.join(fixturesDir, file));
+    if (existing?.surface_id) {
+      capturedFixtures.set(existing.surface_id, existing);
+    }
+  }
+}
+
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
 const nativeByNetuid = new Map(
@@ -670,7 +693,8 @@ const gapsIndex = mergedSubnets.map((subnet) => ({
 
 // Generic hosting/social domains that must NOT form a shared-team cluster — a
 // github.com repo URL is not a shared team. Providers on these fall back to
-// their own id (singleton cluster).
+// their own id (singleton cluster). Multi-tenant hosts are matched by suffix so
+// tenant pages like alice.github.io and bob.github.io cannot imply affiliation.
 const GENERIC_CLUSTER_HOSTS = new Set([
   "github.com",
   "gitlab.com",
@@ -688,6 +712,29 @@ const GENERIC_CLUSTER_HOSTS = new Set([
   "linktr.ee",
   "huggingface.co",
 ]);
+const GENERIC_CLUSTER_HOST_SUFFIXES = new Set([
+  "github.io",
+  "pages.dev",
+  "workers.dev",
+  "vercel.app",
+  "netlify.app",
+  "web.app",
+  "firebaseapp.com",
+  "herokuapp.com",
+  "fly.dev",
+  "glitch.me",
+  "repl.co",
+  "webflow.io",
+]);
+
+function isGenericClusterHost(host) {
+  return (
+    GENERIC_CLUSTER_HOSTS.has(host) ||
+    [...GENERIC_CLUSTER_HOST_SUFFIXES].some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`),
+    )
+  );
+}
 
 // Turn the flat provider directory into the supply-side map of the flywheel
 // (issue #347): attach the netuids each provider operates (from its curated
@@ -718,7 +765,7 @@ const enrichedProviders = providers.map((provider) => {
     surface_count: providerSurfaces.length,
     endpoint_count: (endpointsByProvider.get(provider.id) || []).length,
     cluster_id:
-      clusterDomain && !GENERIC_CLUSTER_HOSTS.has(clusterDomain)
+      clusterDomain && !isGenericClusterHost(clusterDomain)
         ? clusterDomain
         : provider.id,
   };
@@ -1217,6 +1264,7 @@ const llmsHeader = [
   "## Machine entrypoints",
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
+  `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
@@ -1315,6 +1363,109 @@ await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
       card: "/.well-known/mcp/server-card.json",
     },
   ],
+});
+
+// One machine-readable index of every AI resource (the copyable agent, the MCP
+// server + its live tool list, the skill, llms.txt, OpenAPI, the agent-facing
+// APIs). Powers the UI "Agents" page and lets an agent self-discover what's
+// available. The MCP tool list comes from listToolDefinitions() so it can never
+// drift from what POST /mcp advertises.
+const agentResourcesContent = {
+  summary: {
+    subnet_count: mergedSubnets.length,
+    callable_service_count: callableServiceCount,
+  },
+  copyable_agent: {
+    title: "Bittensor integration agent",
+    url: `${llmsApiBase}/agent.md`,
+    description:
+      "Paste-ready system prompt that turns any agent (Claude, Cursor, …) into a metagraphed-powered Bittensor integration agent.",
+  },
+  mcp: {
+    endpoint: mcpEndpoint,
+    transport: "streamable-http",
+    install: `claude mcp add --transport http metagraphed ${mcpEndpoint}`,
+    server_card: `${llmsApiBase}/.well-known/mcp/server-card.json`,
+    tools: listToolDefinitions().map((tool) => ({
+      name: tool.name,
+      title: tool.title || null,
+    })),
+  },
+  resources: [
+    {
+      id: "agent",
+      title: "Copyable AI agent",
+      kind: "agent",
+      url: `${llmsApiBase}/agent.md`,
+    },
+    {
+      id: "skill",
+      title: "Bittensor skill",
+      kind: "skill",
+      url: `${llmsApiBase}/skills/bittensor/SKILL.md`,
+    },
+    {
+      id: "llms",
+      title: "llms.txt",
+      kind: "index",
+      url: `${llmsApiBase}/llms.txt`,
+    },
+    {
+      id: "llms-full",
+      title: "llms-full.txt",
+      kind: "index",
+      url: `${llmsApiBase}/llms-full.txt`,
+    },
+    {
+      id: "openapi",
+      title: "OpenAPI 3.1 contract",
+      kind: "contract",
+      url: `${llmsApiBase}/metagraph/openapi.json`,
+    },
+    {
+      id: "agent-catalog",
+      title: "Agent capability catalog",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/agent-catalog`,
+    },
+    {
+      id: "semantic-search",
+      title: "Semantic search",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/search/semantic?q=`,
+    },
+    {
+      id: "ask",
+      title: "Ask (grounded Q&A)",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/ask`,
+    },
+    {
+      id: "fixtures",
+      title: "Live request/response fixtures",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/fixtures`,
+    },
+    {
+      id: "lineage",
+      title: "Cross-network lineage",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/lineage`,
+    },
+    {
+      id: "datasets",
+      title: "Bulk CSV datasets",
+      kind: "data",
+      url: `${llmsApiBase}/datasets/index.json`,
+    },
+  ],
+};
+await writeJson(artifactFile("agent-resources.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  published_at: publishedAt(),
+  content_hash: hashJson(agentResourcesContent),
+  ...agentResourcesContent,
 });
 
 // Bulk datasets (CSV + NDJSON) + manifest — whole-registry snapshots for
@@ -1499,6 +1650,33 @@ for (const entry of schemaIndexArtifact.schemas || []) {
     document ? { ...entry.snapshot, document } : entry.snapshot,
   );
 }
+
+// Re-serve captured live fixtures (issue #352) + a committed fixtures.json index
+// (which surfaces have a sample + when). The per-surface fixtures/{id}.json is
+// R2-only (like the schema detail); the small index is committed so agents can
+// discover what's available, and get_fixture reads the detail.
+await fs.rm(r2ArtifactDir("fixtures"), { recursive: true, force: true });
+const fixtureIndexEntries = [...capturedFixtures.values()]
+  .map((fixture) => ({
+    surface_id: fixture.surface_id,
+    netuid: fixture.netuid,
+    subnet_slug: fixture.subnet_slug || null,
+    kind: fixture.kind,
+    captured_at: fixture.captured_at || null,
+    response_status: fixture.response?.status ?? null,
+  }))
+  .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+for (const fixture of capturedFixtures.values()) {
+  await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
+}
+await writeJson(artifactFile("fixtures.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  published_at: publishedAt(),
+  fixture_count: fixtureIndexEntries.length,
+  fixtures: fixtureIndexEntries,
+});
+
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,

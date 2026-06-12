@@ -102,4 +102,5 @@ jobs:
           git push origin "$RELEASE_TAG"
           gh release create "$RELEASE_TAG" \
             --title "metagraphed (Python) v$RELEASE_VERSION" \
+            --generate-notes \
             --notes "Published \`metagraphed==$RELEASE_VERSION\` to PyPI via OIDC Trusted Publishing. https://pypi.org/project/metagraphed/$RELEASE_VERSION/"

@@ -126,9 +126,31 @@ export async function readArtifactJson(relativePath) {
   return readJson(artifactFilePath(relativePath));
 }
 
-export async function writeJson(filePath, value) {
+// Monotonic suffix so two writers (or one writer with many files) never collide
+// on a temp name within a process.
+let atomicWriteCounter = 0;
+
+// Write a file atomically: stage to a sibling temp path (same directory, so the
+// same filesystem → rename() is atomic) then rename over the target. A
+// concurrent reader always sees a complete old-or-new file, never the
+// zero-length window a plain truncate-write exposes. This makes the build safe
+// to run while tests / the Worker read the committed artifacts in parallel
+// (fixes the vitest file-scheduling race where a reader saw a half-written
+// subnets.json and 404'd).
+async function atomicWriteFile(filePath, content) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, `${stableStringify(value)}\n`, "utf8");
+  const tempPath = `${filePath}.${process.pid}.${atomicWriteCounter++}.tmp`;
+  try {
+    await fs.writeFile(tempPath, content, "utf8");
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function writeJson(filePath, value) {
+  await atomicWriteFile(filePath, `${stableStringify(value)}\n`);
 }
 
 // String-aware JSONC comment stripper. Unlike a naive regex, it never treats
@@ -195,8 +217,7 @@ export async function formatRepositoryJson(value) {
 }
 
 export async function writeRepositoryJson(filePath, value) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, await formatRepositoryJson(value), "utf8");
+  await atomicWriteFile(filePath, await formatRepositoryJson(value));
 }
 
 export function artifactFilePath(relativePath, options = {}) {
@@ -752,6 +773,52 @@ export function redactCredentialedUrls(value) {
   return typeof value === "string" ? redactCredentialedUrl(value) : value;
 }
 
+// Keys whose VALUES are redacted from a captured live response before it is
+// committed as a fixture (issue #352) — credentials/secrets that a subnet API
+// might echo back. Matched whole-word/segment, case-insensitive.
+const FIXTURE_SENSITIVE_KEY =
+  /(^|[_-])(token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token)([_-]|$)/i;
+
+// Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
+// single live sample can be committed as a fixture (issue #352). Redacts
+// sensitive keys + credentialed URLs, and bounds depth / array length / string
+// length / key count so a hostile or huge response can never bloat the artifact
+// or smuggle secrets. Deterministic + pure. Returns the bounded, redacted value.
+export function sanitizeFixtureBody(
+  value,
+  { maxDepth = 6, maxArray = 20, maxString = 500, maxKeys = 60 } = {},
+) {
+  const walk = (node, depth) => {
+    if (depth > maxDepth) return "[truncated: max depth]";
+    if (typeof node === "string") {
+      const redacted = redactCredentialedUrl(node);
+      return redacted.length > maxString
+        ? `${redacted.slice(0, maxString)}…[truncated]`
+        : redacted;
+    }
+    if (Array.isArray(node)) {
+      const out = node.slice(0, maxArray).map((item) => walk(item, depth + 1));
+      if (node.length > maxArray) out.push(`[+${node.length - maxArray} more]`);
+      return out;
+    }
+    if (node && typeof node === "object") {
+      const out = {};
+      const entries = Object.entries(node);
+      for (const [key, nested] of entries.slice(0, maxKeys)) {
+        out[key] = FIXTURE_SENSITIVE_KEY.test(key)
+          ? "[redacted]"
+          : walk(nested, depth + 1);
+      }
+      if (entries.length > maxKeys) {
+        out["…"] = `[+${entries.length - maxKeys} more keys]`;
+      }
+      return out;
+    }
+    return node;
+  };
+  return walk(value, 0);
+}
+
 export function normalizePublicUrl(value) {
   if (typeof value !== "string") {
     return null;
@@ -1034,17 +1101,115 @@ export function buildSubnetLineageLinks(
   );
 }
 
-// Naive registrable domain (eTLD+1 by last-two-labels) of a URL, for the
-// provider shared-team cluster heuristic (issue #347). Good enough for the
-// .io/.ai/.com domains Bittensor teams use; not PSL-accurate for multi-part
-// TLDs. Returns null on unparseable input.
+// Public/private suffixes that make the last-two-label heuristic unsafe for
+// provider shared-team clustering. This deliberately covers common multi-label
+// Public Suffix List rules and private multi-tenant hosts used for documentation
+// or app/site hosting; matched hosts cluster on the tenant label, not the shared
+// suffix (for example team-a.co.uk, not co.uk).
+const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
+  "ac.uk",
+  "co.uk",
+  "gov.uk",
+  "ltd.uk",
+  "me.uk",
+  "net.uk",
+  "nhs.uk",
+  "org.uk",
+  "plc.uk",
+  "sch.uk",
+  "asn.au",
+  "com.au",
+  "edu.au",
+  "gov.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "geek.nz",
+  "gen.nz",
+  "govt.nz",
+  "iwi.nz",
+  "maori.nz",
+  "net.nz",
+  "org.nz",
+  "school.nz",
+  "ac.jp",
+  "co.jp",
+  "ed.jp",
+  "go.jp",
+  "gr.jp",
+  "ne.jp",
+  "or.jp",
+  "com.br",
+  "com.cn",
+  "com.hk",
+  "com.mx",
+  "com.sg",
+  "com.tr",
+  "com.tw",
+  "co.in",
+  "co.kr",
+  "co.za",
+  "github.io",
+  "pages.dev",
+  "workers.dev",
+  "vercel.app",
+  "netlify.app",
+  "web.app",
+  "firebaseapp.com",
+  "herokuapp.com",
+  "fly.dev",
+  "glitch.me",
+  "repl.co",
+  "webflow.io",
+]);
+
+const CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([
+  "ac",
+  "co",
+  "com",
+  "edu",
+  "go",
+  "gov",
+  "net",
+  "ne",
+  "or",
+  "org",
+]);
+
+function clusterSuffixDomain(host) {
+  const labels = host.split(".").filter(Boolean);
+  if (labels.length < 2) return host || null;
+  for (
+    let suffixLabelCount = labels.length;
+    suffixLabelCount >= 2;
+    suffixLabelCount -= 1
+  ) {
+    const suffix = labels.slice(-suffixLabelCount).join(".");
+    if (CLUSTER_MULTI_LABEL_SUFFIXES.has(suffix)) {
+      return labels.length > suffixLabelCount
+        ? labels.slice(-(suffixLabelCount + 1)).join(".")
+        : null;
+    }
+  }
+  const [secondLevel, topLevel] = labels.slice(-2);
+  if (
+    labels.length >= 3 &&
+    topLevel.length === 2 &&
+    CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS.has(secondLevel)
+  ) {
+    return labels.slice(-3).join(".");
+  }
+  return labels.slice(-2).join(".");
+}
+
+// Registrable domain (eTLD+1) of a URL, for the provider shared-team cluster
+// heuristic (issue #347). Returns null on unparseable input or bare shared
+// suffixes that cannot identify a provider team.
 export function clusterDomainFromUrl(value) {
   if (typeof value !== "string") return null;
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
-    const labels = host.split(".").filter(Boolean);
-    if (labels.length >= 2) return labels.slice(-2).join(".");
-    return host || null;
+    return clusterSuffixDomain(host);
   } catch {
     return null;
   }

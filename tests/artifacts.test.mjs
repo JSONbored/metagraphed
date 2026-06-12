@@ -613,6 +613,8 @@ test("public artifacts are internally consistent", () => {
   const providersArtifact = readArtifact("providers.json");
   const agentCatalog = readArtifact("agent-catalog.json");
   const lineage = readArtifact("lineage.json");
+  const fixturesIndex = readArtifact("fixtures.json");
+  const agentResources = readArtifact("agent-resources.json");
   const r2Manifest = readArtifact("r2-manifest.json");
   const schemaDrift = readArtifact("schema-drift.json");
   const schemaIndex = readArtifact("schemas/index.json");
@@ -784,6 +786,13 @@ test("public artifacts are internally consistent", () => {
     "x.com",
     "twitter.com",
   ]);
+  const GENERIC_CLUSTER_HOST_SUFFIXES = [
+    "github.io",
+    "pages.dev",
+    "workers.dev",
+    "vercel.app",
+    "netlify.app",
+  ];
   let providersWithNetuids = 0;
   for (const provider of providersArtifact.providers) {
     assert.ok(
@@ -813,6 +822,14 @@ test("public artifacts are internally consistent", () => {
     assert.ok(
       !GENERIC_CLUSTER_HOSTS.has(provider.cluster_id),
       `provider ${provider.id}: cluster_id must not be a generic host`,
+    );
+    assert.ok(
+      !GENERIC_CLUSTER_HOST_SUFFIXES.some(
+        (suffix) =>
+          provider.cluster_id === suffix ||
+          provider.cluster_id.endsWith(`.${suffix}`),
+      ),
+      `provider ${provider.id}: cluster_id must not be a multi-tenant host`,
     );
     if (provider.netuids.length) providersWithNetuids += 1;
   }
@@ -890,6 +907,27 @@ test("public artifacts are internally consistent", () => {
     lineageMainnetNetuids.add(link.mainnet_netuid);
   }
   assert.equal(lineage.graduated_subnet_count, lineageMainnetNetuids.size);
+
+  // Captured-fixtures index (issue #352): well-formed and self-consistent. The
+  // deterministic build has no capture, so the count is 0 here; the per-surface
+  // bodies + populated index arrive via the capture:fixtures refresh step.
+  assert.equal(typeof fixturesIndex.fixture_count, "number");
+  assert.equal(Array.isArray(fixturesIndex.fixtures), true);
+  assert.equal(fixturesIndex.fixture_count, fixturesIndex.fixtures.length);
+
+  // AI-resources index: the copyable agent + the live MCP tool list + resources.
+  assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);
+  assert.match(agentResources.mcp.install, /^claude mcp add/);
+  assert.ok(agentResources.mcp.tools.length > 5, "expected MCP tools listed");
+  assert.ok(
+    agentResources.mcp.tools.some((t) => t.name === "how_do_i_call"),
+    "MCP tool list must reflect the live server tools",
+  );
+  assert.ok(
+    agentResources.resources.some((r) => r.id === "agent"),
+    "resources must include the copyable agent",
+  );
+  assert.ok(agentResources.resources.every((r) => r.id && r.title && r.url));
   // every profile that claims to have graduated appears in the lineage artifact
   for (const profile of profiles.profiles) {
     if (profile.lineage) {

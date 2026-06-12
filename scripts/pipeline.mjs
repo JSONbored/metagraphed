@@ -102,6 +102,7 @@ function refreshCommands(refreshTimestamp) {
     step("adapters:snapshot", refreshEnv),
     step("build", refreshEnv),
     step("schemas:snapshot", refreshEnv),
+    step("capture:fixtures", refreshEnv),
   ];
 
   if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
@@ -109,6 +110,7 @@ function refreshCommands(refreshTimestamp) {
       step("probes:smoke", refreshEnv),
       step("build", refreshEnv),
       step("schemas:snapshot", refreshEnv),
+      step("capture:fixtures", refreshEnv),
       step("build-summary:refresh", refreshEnv),
     );
   }

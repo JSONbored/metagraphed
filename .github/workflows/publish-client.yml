@@ -124,4 +124,5 @@ jobs:
           git push origin "$RELEASE_TAG"
           gh release create "$RELEASE_TAG" \
             --title "@jsonbored/metagraphed v$RELEASE_VERSION" \
+            --generate-notes \
             --notes "Published \`@jsonbored/metagraphed@$RELEASE_VERSION\` to npm with provenance via OIDC trusted publishing. https://www.npmjs.com/package/@jsonbored/metagraphed/v/$RELEASE_VERSION"
