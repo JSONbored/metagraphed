@@ -64,6 +64,17 @@ A good candidate PR is small: one public URL, one source URL proving the claim, 
 - Don't invent API/status surfaces a subnet doesn't publish.
 - Schema-valid ≠ accepted. A private review gate makes the final call.
 
+**Accepted vs rejected at a glance** — the visible checklist (the final merge decision is the review gate's):
+
+| ✅ Tends to get accepted                                                                                             | ❌ Gets closed / routed to manual                                                                              |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Exactly one `registry/candidates/community/*.json` (or `providers/community/*.json`)                                 | Touches generated artifacts, scripts, or workflows ([#296](https://github.com/JSONbored/metagraphed/pull/296)) |
+| A public `url` **plus** a `source_url` that proves the claim                                                         | `source_url` 404s or doesn't back the claim ([#328](https://github.com/JSONbored/metagraphed/pull/328))        |
+| An auto-review `kind` (docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk, example) | A surface the subnet already exposes — duplicate ([#90](https://github.com/JSONbored/metagraphed/pull/90))     |
+| `auth_required: false`, `public_safe: true`, an active netuid, a registered provider                                 | Secrets/PATs/wallet paths, private/localhost URLs, or base-layer RPC/WSS/archive                               |
+
+A clean accepted example to copy: [#87](https://github.com/JSONbored/metagraphed/pull/87).
+
 Prefer issues? Use the `interface-submission`, `profile-correction`, `endpoint-submission`, `provider-submission`, or `status-report` template — an approved issue opens the candidate PR for you. Full contract in [`docs/submission-gate.md`](docs/submission-gate.md).
 
 ## Pull requests

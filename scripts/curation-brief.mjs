@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { repoRoot, stableStringify } from "./lib.mjs";
+import { artifactFilePath, stableStringify } from "./lib.mjs";
 
 const args = new Set(process.argv.slice(2));
 const jsonMode = args.has("--json");
@@ -294,11 +293,27 @@ function formatCandidateSamples(row) {
 }
 
 async function readArtifact(relativePath) {
-  return JSON.parse(
-    await readFile(path.join(repoRoot, "public/metagraph", relativePath), {
-      encoding: "utf8",
-    }),
-  );
+  // Resolve by storage tier: git-tier artifacts (coverage.json,
+  // review/profile-completeness.json) live in public/metagraph; the R2-only
+  // enrichment-queue artifacts (gap-priorities, adapter-candidates,
+  // enrichment-queue, enrichment-targets) are written to the dist staging tree
+  // during a build. artifactFilePath() prefers the staged copy and falls back
+  // to public, so a post-build run finds everything.
+  const filePath = artifactFilePath(relativePath);
+  try {
+    return JSON.parse(await readFile(filePath, { encoding: "utf8" }));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(
+        `Curation brief artifact not found: ${relativePath}. Run \`npm run build\` ` +
+          `first — the enrichment-queue artifacts are generated into the R2 staging ` +
+          `tree (dist/metagraph-r2/metagraph). Or query the live queue at ` +
+          `https://api.metagraph.sh/api/v1/review/enrichment-targets.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
 }
 
 function valueAfter(flag) {
