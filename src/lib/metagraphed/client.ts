@@ -43,6 +43,12 @@ function buildUrl(path: string, params?: QueryParams): string {
   return url.toString();
 }
 
+function redactUrlForError(url: string): string {
+  const redacted = new URL(url);
+  redacted.search = "";
+  return redacted.toString();
+}
+
 /**
  * Fetch a JSON envelope from the Metagraphed API and unwrap it.
  * Tolerates plain (non-enveloped) JSON by treating the whole body as `data`.
@@ -62,7 +68,7 @@ export async function apiFetch<T>(
   } catch (err) {
     throw new ApiError((err as Error).message || "Network error", {
       status: 0,
-      url,
+      url: redactUrlForError(url),
     });
   }
 
@@ -81,7 +87,7 @@ export async function apiFetch<T>(
     throw new ApiError(env?.error?.message || res.statusText || "Request failed", {
       status: res.status,
       code: env?.error?.code,
-      url,
+      url: redactUrlForError(url),
     });
   }
 
@@ -92,7 +98,7 @@ export async function apiFetch<T>(
       throw new ApiError(env.error?.message || "API returned ok:false", {
         status: res.status,
         code: env.error?.code,
-        url,
+        url: redactUrlForError(url),
       });
     }
     return { data: env.data, meta: env.meta ?? {}, url };

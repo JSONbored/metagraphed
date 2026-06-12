@@ -48,16 +48,85 @@ function githubOrgFromUrl(input?: string | null): string | null {
   }
 }
 
-function duckDuckGoUrl(host: string): string {
-  return `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`;
-}
-
-function googleS2Url(host: string, size = 128): string {
-  return `https://www.google.com/s2/favicons?sz=${size}&domain=${encodeURIComponent(host)}`;
-}
-
 function githubAvatarUrl(org: string, size = 192): string {
   return `https://github.com/${encodeURIComponent(org)}.png?size=${size}`;
+}
+
+const LOCAL_HOSTNAMES = new Set(["localhost", "localhost.localdomain"]);
+
+function normaliseImageHostname(hostname: string): string {
+  return hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
+}
+
+function isBlockedIpv4(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const value = Number(part);
+    return value >= 0 && value <= 255 ? value : null;
+  });
+  if (octets.some((v) => v === null)) return false;
+  const [a, b] = octets as [number, number, number, number];
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b! >= 64 && b! <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b! >= 16 && b! <= 31) ||
+    (a === 192 && b === 0) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && octets[2] === 100) ||
+    (a === 203 && b === 0 && octets[2] === 113) ||
+    a! >= 224
+  );
+}
+
+function isBlockedIpv6(hostname: string): boolean {
+  if (!hostname.includes(":")) return false;
+  return (
+    hostname === "" ||
+    hostname === "::" ||
+    hostname === "::1" ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd") ||
+    hostname.startsWith("fe8") ||
+    hostname.startsWith("fe9") ||
+    hostname.startsWith("fea") ||
+    hostname.startsWith("feb") ||
+    hostname.startsWith("ff") ||
+    hostname.startsWith("::ffff:")
+  );
+}
+
+/**
+ * Validate untrusted image sources before they reach <img src>. Registry /
+ * provider metadata is attacker-controllable, so every candidate in the
+ * resolution chain must be a public http(s) URL — no localhost, .local,
+ * private/reserved IPv4, or IPv6 ULA/link-local/loopback/mapped targets.
+ */
+function safeImageUrl(input?: string | null): string | null {
+  const raw = String(input ?? "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    if (parsed.username || parsed.password) return null;
+    const hostname = normaliseImageHostname(parsed.hostname);
+    if (!hostname) return null;
+    if (LOCAL_HOSTNAMES.has(hostname)) return null;
+    if (hostname.endsWith(".localhost") || hostname.endsWith(".local")) return null;
+    if (isBlockedIpv4(hostname) || isBlockedIpv6(hostname)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 interface ChainInputs {
@@ -79,9 +148,10 @@ function buildCandidateChain({
 }: ChainInputs): string[] {
   const out: string[] = [];
   const push = (u: string | null | undefined) => {
-    if (!u) return;
-    if (failedUrls.has(u)) return;
-    if (!out.includes(u)) out.push(u);
+    const safe = safeImageUrl(u);
+    if (!safe) return;
+    if (failedUrls.has(safe)) return;
+    if (!out.includes(safe)) out.push(safe);
   };
 
   push(pickIconSource(iconUrl, theme));
@@ -93,10 +163,6 @@ function buildCandidateChain({
   const repoOrg = githubOrgFromUrl(repoUrl);
   if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
 
-  if (host) {
-    push(duckDuckGoUrl(host));
-    push(googleS2Url(host, 128));
-  }
   return out;
 }
 
@@ -125,8 +191,7 @@ export function prefetchBrandIcon(
   });
   const first = chain[0];
   if (!first) return;
-  if (prefetched.has(first) || failedUrls.has(first) || loadedUrls.has(first))
-    return;
+  if (prefetched.has(first) || failedUrls.has(first) || loadedUrls.has(first)) return;
   prefetched.add(first);
   try {
     const img = new Image();
@@ -141,7 +206,7 @@ export function prefetchBrandIcon(
 }
 
 function monogramFor(name?: string | null, fallback?: string | number | null): string {
-  const source = (name ?? "").trim();
+  const source = typeof name === "string" ? name.trim() : "";
   if (source) {
     const parts = source.split(/\s+/).filter(Boolean);
     if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();

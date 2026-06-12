@@ -8,15 +8,16 @@
  *   2. Curated frontend overrides defined below.
  *   3. Icon proxy at `VITE_ICON_PROXY_URL` (when configured). See contract.
  *   4. GitHub org avatar derived from a `repo` URL.
- *   5. DuckDuckGo icons service.
- *   6. Google S2 favicons at sz=128.
- *   7. Monogram tile.
+ *   5. Monogram tile.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  *  ICON PROXY CONTRACT (backend owns the implementation, lives outside this repo)
  *
  *    GET {VITE_ICON_PROXY_URL}?host={domain}&size={px}&theme={light|dark}
  *
+ *    - Frontend only sends validated public http/https domains. Backend must
+ *      independently reject localhost, IP literals, private/reserved DNS
+ *      results, redirects to unsafe targets, and abusive request rates.
  *    - Returns 200 with image/png or image/svg+xml; payload MUST be square
  *      and have width/height >= `size` (we reject anything smaller).
  *    - Returns 404 when no usable source can be resolved.
@@ -46,14 +47,58 @@ export interface BrandOverrideLookup {
 export const ICON_PROXY_URL: string | null =
   (import.meta.env.VITE_ICON_PROXY_URL as string | undefined)?.trim() || null;
 
+const BLOCKED_PROXY_TLDS = new Set(["localhost", "local", "internal"]);
+
+function isIpLiteral(host: string): boolean {
+  if (host.startsWith("[") && host.endsWith("]")) return true;
+  if (host.includes(":")) return true;
+  const parts = host.split(".");
+  if (parts.length !== 4 || parts.some((p) => !/^\d+$/.test(p))) return false;
+  return parts.every((p) => {
+    const n = Number(p);
+    return Number.isInteger(n) && n >= 0 && n <= 255;
+  });
+}
+
+/**
+ * Normalise + validate a hostname before forwarding it to the icon proxy.
+ * The frontend only sends public-looking DNS names; the proxy service must
+ * still independently enforce DNS resolution checks, private-IP filtering,
+ * redirects, and rate limits before fetching remote icons.
+ */
+export function normalizePublicProxyHost(host: string | null | undefined): string | null {
+  const normalized = String(host ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.$/, "");
+  if (!normalized || normalized.length > 253) return null;
+  if (isIpLiteral(normalized)) return null;
+  const labels = normalized.split(".");
+  if (labels.length < 2) return null;
+  const tld = labels[labels.length - 1];
+  if (!tld || BLOCKED_PROXY_TLDS.has(tld)) return null;
+  const ok = labels.every(
+    (l) =>
+      l.length > 0 &&
+      l.length <= 63 &&
+      /^[a-z0-9-]+$/.test(l) &&
+      !l.startsWith("-") &&
+      !l.endsWith("-"),
+  );
+  return ok ? normalized : null;
+}
+
 export function buildProxyIconUrl(
   host: string,
   size: number,
   theme: ResolvedTheme = "light",
 ): string | null {
   if (!ICON_PROXY_URL) return null;
+  const safeHost = normalizePublicProxyHost(host);
+  if (!safeHost) return null;
   const u = new URL(ICON_PROXY_URL);
-  u.searchParams.set("host", host);
+  u.searchParams.set("host", safeHost);
   u.searchParams.set("size", String(size));
   u.searchParams.set("theme", theme);
   return u.toString();
