@@ -61,7 +61,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   });
 
   const allRows = useMemo<EvidenceItem[]>(
-    () => (query.data?.pages.flatMap((p) => p.items) ?? []),
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
     [query.data],
   );
 
@@ -70,7 +70,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
 
   const sources = useMemo(() => {
     const set = new Set<string>();
-    for (const r of allRows) set.add(r.source ?? "unknown");
+    for (const r of allRows) set.add(sourceLabel(r));
     return Array.from(set).sort();
   }, [allRows]);
 
@@ -85,14 +85,12 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   }
   if (allRows.length === 0) return <EmptyState title="No evidence recorded" />;
 
-  const filtered = sourceFilter
-    ? allRows.filter((r) => (r.source ?? "unknown") === sourceFilter)
-    : allRows;
+  const filtered = sourceFilter ? allRows.filter((r) => sourceLabel(r) === sourceFilter) : allRows;
 
   // Group by source label, with items sorted by recency inside each group.
   const groups = new Map<string, EvidenceItem[]>();
   for (const r of filtered) {
-    const key = r.source ?? "unknown";
+    const key = sourceLabel(r);
     const arr = groups.get(key) ?? [];
     arr.push(r);
     groups.set(key, arr);
@@ -150,9 +148,13 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
               {source}
             </span>
             <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
-              <span>latest <TimeAgo at={items[0]?.recorded_at} /></span>
+              <span>
+                latest <TimeAgo at={items[0]?.recorded_at} />
+              </span>
               <span>·</span>
-              <span>{items.length} item{items.length === 1 ? "" : "s"}</span>
+              <span>
+                {items.length} item{items.length === 1 ? "" : "s"}
+              </span>
             </span>
           </div>
           <ul className="flex flex-wrap gap-1.5">
@@ -162,10 +164,12 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                   content={
                     <div className="space-y-1.5">
                       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                        {item.source ?? "source"}
+                        {sourceLabel(item)}
                         {item.netuid != null ? <> · SN{item.netuid}</> : null}
                       </div>
-                      {item.note ? <div className="text-[12px] text-ink-strong">{item.note}</div> : null}
+                      {item.note ? (
+                        <div className="text-[12px] text-ink-strong">{item.note}</div>
+                      ) : null}
                       {item.url ? (
                         <div className="font-mono text-[10px] text-ink break-all">{item.url}</div>
                       ) : null}
@@ -216,6 +220,11 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   );
 }
 
+function sourceLabel(item: EvidenceItem): string {
+  const source = (item as { source?: unknown }).source;
+  return typeof source === "string" && source.length > 0 ? source : "unknown";
+}
+
 function recordedTime(item?: EvidenceItem): number {
   if (!item?.recorded_at) return 0;
   const t = Date.parse(item.recorded_at);
@@ -227,7 +236,10 @@ function shortLabel(item: EvidenceItem): string {
   if (item.url) {
     try {
       const u = new URL(item.url);
-      return u.hostname.replace(/^www\./, "") + (u.pathname && u.pathname !== "/" ? u.pathname.slice(0, 24) : "");
+      return (
+        u.hostname.replace(/^www\./, "") +
+        (u.pathname && u.pathname !== "/" ? u.pathname.slice(0, 24) : "")
+      );
     } catch {
       return item.url.slice(0, 32);
     }
