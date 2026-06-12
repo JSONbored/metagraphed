@@ -46,7 +46,11 @@ export function ShareButton({ url, label = "Share view", className }: Props) {
           className,
         )}
       >
-        {copied ? <Check className="size-3 text-health-ok" /> : <Share2 className="size-3 text-ink-muted" />}
+        {copied ? (
+          <Check className="size-3 text-health-ok" />
+        ) : (
+          <Share2 className="size-3 text-ink-muted" />
+        )}
         {copied ? "Link copied" : label}
       </button>
       {/* Screen-reader status — visually hidden, polite live region. */}

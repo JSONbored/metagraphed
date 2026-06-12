@@ -29,7 +29,11 @@ export const Route = createFileRoute("/surfaces")({
   head: () => ({
     meta: [
       { title: "Surfaces — Metagraphed" },
-      { name: "description", content: "Verified public interfaces across Bittensor subnets: APIs, docs, dashboards, repos, SDKs." },
+      {
+        name: "description",
+        content:
+          "Verified public interfaces across Bittensor subnets: APIs, docs, dashboards, repos, SDKs.",
+      },
     ],
   }),
   component: SurfacesPage,
@@ -97,9 +101,7 @@ function SurfacesTable() {
     isFetching,
   } = useSuspenseInfiniteQuery(surfacesInfiniteQuery(baseParams, search.cursor));
 
-  const pages = data.pages as Array<
-    (typeof data.pages)[number] & { cursorInvalid?: boolean }
-  >;
+  const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const cursorInvalid = !!pages[pages.length - 1]?.cursorInvalid;
   const all = pages.flatMap((p) => (p.data ?? []) as Surface[]);
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
@@ -107,7 +109,9 @@ function SurfacesTable() {
   const kindOptions = useMemo(() => {
     const set = new Set<string>();
     for (const s of all) if (s.kind) set.add(s.kind);
-    return Array.from(set).sort().map((v) => ({ value: v, label: v }));
+    return Array.from(set)
+      .sort()
+      .map((v) => ({ value: v, label: v }));
   }, [all]);
 
   const providerOptions = useMemo(() => {
@@ -116,13 +120,14 @@ function SurfacesTable() {
       const p = s.provider_slug ?? s.provider;
       if (p) set.add(p);
     }
-    return Array.from(set).sort().map((v) => ({ value: v, label: v }));
+    return Array.from(set)
+      .sort()
+      .map((v) => ({ value: v, label: v }));
   }, [all]);
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, ...patch, cursor: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
     });
 
   const onSort = (field: string) =>
@@ -137,18 +142,38 @@ function SurfacesTable() {
     });
 
   const filtered = all.filter((s) => {
-    if (!matchesQuery([s.name, s.url, s.provider, s.provider_slug, s.netuid], search.q)) return false;
+    if (!matchesQuery([s.name, s.url, s.provider, s.provider_slug, s.netuid], search.q))
+      return false;
     if (search.kind && s.kind !== search.kind) return false;
     if (search.provider && (s.provider_slug ?? s.provider) !== search.provider) return false;
     return true;
   });
-  const rows = sortBy(filtered, search.sort, search.order, (row, key) => (row as Record<string, unknown>)[key]);
+  const rows = sortBy(
+    filtered,
+    search.sort,
+    search.order,
+    (row, key) => (row as Record<string, unknown>)[key],
+  );
 
   const filters = (
     <>
-      <SearchInput value={search.q} onChange={(v) => setSearch({ q: v })} placeholder="Search by name, URL, provider, or netuid" />
-      <SelectFilter label="kind" value={search.kind} onChange={(v) => setSearch({ kind: v })} options={kindOptions} />
-      <SelectFilter label="provider" value={search.provider} onChange={(v) => setSearch({ provider: v })} options={providerOptions} />
+      <SearchInput
+        value={search.q}
+        onChange={(v) => setSearch({ q: v })}
+        placeholder="Search by name, URL, provider, or netuid"
+      />
+      <SelectFilter
+        label="kind"
+        value={search.kind}
+        onChange={(v) => setSearch({ kind: v })}
+        options={kindOptions}
+      />
+      <SelectFilter
+        label="provider"
+        value={search.provider}
+        onChange={(v) => setSearch({ provider: v })}
+        options={providerOptions}
+      />
       <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>
   );
@@ -170,7 +195,11 @@ function SurfacesTable() {
           <div className="mt-1 font-medium text-ink-strong truncate">{s.name ?? "—"}</div>
           {s.url ? (
             <div className="mt-1 text-[12px] truncate">
-              <ExternalLink href={s.url} authRequired={s.auth_required} publicSafe={s.public_safe ?? true}>
+              <ExternalLink
+                href={s.url}
+                authRequired={s.auth_required}
+                publicSafe={s.public_safe ?? true}
+              >
                 {s.url}
               </ExternalLink>
             </div>
@@ -178,14 +207,24 @@ function SurfacesTable() {
           <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
             <span>
               {s.netuid != null ? (
-                <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }}>#{String(s.netuid).padStart(3, "0")}</Link>
-              ) : "—"}
+                <Link to="/subnets/$netuid" params={{ netuid: s.netuid }}>
+                  #{String(s.netuid).padStart(3, "0")}
+                </Link>
+              ) : (
+                "—"
+              )}
               {" · "}
               {s.provider_slug ? (
-                <Link to="/providers/$slug" params={{ slug: s.provider_slug }}>{s.provider ?? s.provider_slug}</Link>
-              ) : (s.provider ?? "—")}
+                <Link to="/providers/$slug" params={{ slug: s.provider_slug }}>
+                  {s.provider ?? s.provider_slug}
+                </Link>
+              ) : (
+                (s.provider ?? "—")
+              )}
             </span>
-            <span><TimeAgo at={s.updated_at} /></span>
+            <span>
+              <TimeAgo at={s.updated_at} />
+            </span>
           </div>
         </div>
       ))}
@@ -193,13 +232,46 @@ function SurfacesTable() {
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50">
             <tr>
-              <th className="px-3 py-2"><SortHeader label="Netuid" field="netuid" active={search.sort === "netuid"} order={search.order} onSort={onSort} /></th>
-              <th className="px-3 py-2"><SortHeader label="Kind" field="kind" active={search.sort === "kind"} order={search.order} onSort={onSort} /></th>
-              <th className="px-3 py-2"><SortHeader label="Name" field="name" active={search.sort === "name"} order={search.order} onSort={onSort} /></th>
+              <th className="px-3 py-2">
+                <SortHeader
+                  label="Netuid"
+                  field="netuid"
+                  active={search.sort === "netuid"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-3 py-2">
+                <SortHeader
+                  label="Kind"
+                  field="kind"
+                  active={search.sort === "kind"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-3 py-2">
+                <SortHeader
+                  label="Name"
+                  field="name"
+                  active={search.sort === "name"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
               <th className="px-3 py-2">URL</th>
               <th className="px-3 py-2">Provider</th>
               <th className="px-3 py-2">Curation</th>
-              <th className="px-3 py-2 text-right"><SortHeader label="Updated" field="updated_at" active={search.sort === "updated_at"} order={search.order} onSort={onSort} align="right" /></th>
+              <th className="px-3 py-2 text-right">
+                <SortHeader
+                  label="Updated"
+                  field="updated_at"
+                  active={search.sort === "updated_at"}
+                  order={search.order}
+                  onSort={onSort}
+                  align="right"
+                />
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -207,19 +279,51 @@ function SurfacesTable() {
               <tr key={s.id} className="hover:bg-surface/40">
                 <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
                   {s.netuid != null ? (
-                    <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="hover:text-ink-strong">{String(s.netuid).padStart(3, "0")}</Link>
-                  ) : "—"}
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="hover:text-ink-strong"
+                    >
+                      {String(s.netuid).padStart(3, "0")}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-3 py-2 font-mono text-[11px]">{s.kind ?? "—"}</td>
                 <td className="px-3 py-2 font-medium text-ink-strong">{s.name ?? "—"}</td>
-                <td className="px-3 py-2 text-[12px]">{s.url ? <ExternalLink href={s.url} authRequired={s.auth_required} publicSafe={s.public_safe ?? true}>{s.url}</ExternalLink> : "—"}</td>
+                <td className="px-3 py-2 text-[12px]">
+                  {s.url ? (
+                    <ExternalLink
+                      href={s.url}
+                      authRequired={s.auth_required}
+                      publicSafe={s.public_safe ?? true}
+                    >
+                      {s.url}
+                    </ExternalLink>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="px-3 py-2 text-[12px]">
                   {s.provider_slug ? (
-                    <Link to="/providers/$slug" params={{ slug: s.provider_slug }} className="hover:underline">{s.provider ?? s.provider_slug}</Link>
-                  ) : (s.provider ?? "—")}
+                    <Link
+                      to="/providers/$slug"
+                      params={{ slug: s.provider_slug }}
+                      className="hover:underline"
+                    >
+                      {s.provider ?? s.provider_slug}
+                    </Link>
+                  ) : (
+                    (s.provider ?? "—")
+                  )}
                 </td>
-                <td className="px-3 py-2"><CurationChip level={s.curation_level} /></td>
-                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.updated_at} /></td>
+                <td className="px-3 py-2">
+                  <CurationChip level={s.curation_level} />
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
+                  <TimeAgo at={s.updated_at} />
+                </td>
               </tr>
             ))}
           </tbody>

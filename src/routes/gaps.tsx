@@ -133,7 +133,7 @@ function GapsList() {
                 {g.netuid != null ? (
                   <Link
                     to="/subnets/$netuid"
-                    params={{ netuid: String(g.netuid) }}
+                    params={{ netuid: g.netuid }}
                     className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
                   >
                     SN{g.netuid}
@@ -168,7 +168,7 @@ function CompletenessList() {
         >
           <Link
             to="/subnets/$netuid"
-            params={{ netuid: String(r.netuid) }}
+            params={{ netuid: r.netuid }}
             className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12"
           >
             SN{r.netuid}
@@ -201,7 +201,7 @@ function AdapterCandidates() {
         >
           <Link
             to="/subnets/$netuid"
-            params={{ netuid: String(r.netuid) }}
+            params={{ netuid: r.netuid }}
             className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12"
           >
             SN{r.netuid}
@@ -239,7 +239,7 @@ function EnrichmentQueue() {
                 {r.netuid != null ? (
                   <Link
                     to="/subnets/$netuid"
-                    params={{ netuid: String(r.netuid) }}
+                    params={{ netuid: r.netuid }}
                     className="hover:text-ink-strong"
                   >
                     SN{r.netuid}

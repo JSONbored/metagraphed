@@ -53,12 +53,20 @@ function OverviewPage() {
           Featured adapter-backed pilots
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <PilotCard slug="allways" netuid={7} title="Allways" subtitle="SN7" />
-          </Suspense>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <PilotCard slug="gittensor" netuid={74} title="Gittensor" subtitle="SN74" />
-          </Suspense>
+          <QueryErrorBoundary
+            fallback={() => <PilotCardFallback netuid={7} title="Allways" subtitle="SN7" />}
+          >
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <PilotCard slug="allways" netuid={7} title="Allways" subtitle="SN7" />
+            </Suspense>
+          </QueryErrorBoundary>
+          <QueryErrorBoundary
+            fallback={() => <PilotCardFallback netuid={74} title="Gittensor" subtitle="SN74" />}
+          >
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <PilotCard slug="gittensor" netuid={74} title="Gittensor" subtitle="SN74" />
+            </Suspense>
+          </QueryErrorBoundary>
         </div>
       </section>
 
@@ -147,42 +155,43 @@ function StatStrip() {
   );
 }
 
-function PilotCard({
-  slug,
-  netuid,
-  title,
-  subtitle,
-}: {
+type PilotProps = {
   slug: string;
   netuid: number;
   title: string;
   subtitle: string;
-}) {
-  let snapshot;
-  try {
-    snapshot = useSuspenseQuery(adapterQuery(slug)).data;
-  } catch (e) {
-    return (
-      <Link
-        to="/subnets/$netuid"
-        params={{ netuid: String(netuid) }}
-        className="block rounded border border-border bg-card p-4 hover:border-ink/30 transition-colors"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {subtitle}
-            </div>
-            <div className="font-display text-lg font-semibold text-ink-strong">{title}</div>
+};
+
+// Rendered by the QueryErrorBoundary when the adapter snapshot fails to load —
+// the card still links through to the subnet page instead of erroring the row.
+function PilotCardFallback({ netuid, title, subtitle }: Omit<PilotProps, "slug">) {
+  return (
+    <Link
+      to="/subnets/$netuid"
+      params={{ netuid }}
+      className="block rounded border border-border bg-card p-4 hover:border-ink/30 transition-colors"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            {subtitle}
           </div>
-          <CurationChip level="adapter-backed" />
+          <div className="font-display text-lg font-semibold text-ink-strong">{title}</div>
         </div>
-        <p className="mt-2 text-xs text-ink-muted">
-          Pilot adapter — open the subnet page for surfaces, endpoints, and evidence.
-        </p>
-      </Link>
-    );
-  }
+        <CurationChip level="adapter-backed" />
+      </div>
+      <p className="mt-2 text-xs text-ink-muted">
+        Pilot adapter — open the subnet page for surfaces, endpoints, and evidence.
+      </p>
+    </Link>
+  );
+}
+
+function PilotCard({ slug, netuid, title, subtitle }: PilotProps) {
+  // useSuspenseQuery must run unconditionally (no try/catch — that breaks the
+  // Rules of Hooks and swallows the Suspense promise). Loading is handled by the
+  // wrapping <Suspense>, errors by the wrapping <QueryErrorBoundary>.
+  const snapshot = useSuspenseQuery(adapterQuery(slug)).data;
 
   const generated = snapshot.meta?.generated_at;
   const metrics = (snapshot.data?.metrics ?? {}) as Record<string, unknown>;
@@ -191,7 +200,7 @@ function PilotCard({
   return (
     <Link
       to="/subnets/$netuid"
-      params={{ netuid: String(netuid) }}
+      params={{ netuid: netuid }}
       className="block rounded border border-border bg-card p-4 hover:border-ink/30 transition-colors"
     >
       <div className="flex items-center justify-between mb-3">
@@ -291,7 +300,7 @@ function SubnetPreviewTable() {
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
-                      params={{ netuid: String(s.netuid) }}
+                      params={{ netuid: s.netuid }}
                       className="hover:text-ink-strong"
                     >
                       {String(s.netuid).padStart(3, "0")}
@@ -302,7 +311,7 @@ function SubnetPreviewTable() {
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
-                      params={{ netuid: String(s.netuid) }}
+                      params={{ netuid: s.netuid }}
                       className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
                     >
                       <BrandIcon

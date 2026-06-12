@@ -57,9 +57,7 @@ export function ListShell({
               {footer}
             </div>
           </div>
-          {cards && footer ? (
-            <div className="md:hidden mt-3">{footer}</div>
-          ) : null}
+          {cards && footer ? <div className="md:hidden mt-3">{footer}</div> : null}
         </div>
       )}
     </div>
@@ -121,7 +119,11 @@ export function LoadMore({
   // Skeleton "incoming rows" while a fetch is in flight.
   if (isLoading) {
     return (
-      <div className="border-t border-border bg-surface/30 p-3 space-y-1.5" aria-live="polite" aria-busy="true">
+      <div
+        className="border-t border-border bg-surface/30 p-3 space-y-1.5"
+        aria-live="polite"
+        aria-busy="true"
+      >
         <span className="sr-only">Loading more results…</span>
         <Skeleton className="h-7 w-full" />
         <Skeleton className="h-7 w-full" />

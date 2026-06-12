@@ -1,8 +1,8 @@
-# Deploying metagraph-finder to Cloudflare (Workers Builds)
+# Deploying metagraphed-ui to Cloudflare (Workers Builds)
 
 This frontend deploys as a **Cloudflare Worker** (TanStack Start SSR via Nitro's
-`cloudflare-module` preset) alongside the `metagraphed` backend, so the UI and
-API share the `metagraph.sh` origin (same-origin, no CORS).
+`cloudflare-module` preset). It serves the `metagraph.sh` apex and consumes the
+`metagraphed` backend API on the separate `api.metagraph.sh` subdomain.
 
 **Lovable stays in control of the app code.** Nothing here touches
 `vite.config.ts`, `src/`, or any Vite plugin — the Cloudflare build is enabled
@@ -14,21 +14,22 @@ edits are unaffected.
 Connect this GitHub repo to **Workers Builds** (Cloudflare dashboard → Workers →
 Create → Connect to Git), then configure:
 
-| Setting | Value |
-| --- | --- |
-| **Build command** | `npm ci --legacy-peer-deps && npm run build` |
-| **Deploy command** | `npx --yes wrangler@4.90.1 deploy` |
-| **Worker name** | `metagraph-finder` (or accept the auto name `jsonbored-metagraph-finder`) |
+| Setting            | Value                                                                 |
+| ------------------ | --------------------------------------------------------------------- |
+| **Build command**  | `npm ci --legacy-peer-deps && npm run build`                          |
+| **Deploy command** | `npx --yes wrangler@4.90.1 deploy`                                    |
+| **Worker name**    | `metagraphed-ui` (or accept the auto name `jsonbored-metagraphed-ui`) |
 
 ### Build environment variables
 
-| Var | Value | Why |
-| --- | --- | --- |
-| `LOVABLE_SANDBOX` | `1` | Force-enables Nitro's `cloudflare-module` build outside Lovable's own environment (the preset otherwise skips Nitro and emits a static-only client build). |
-| `NITRO_PRESET` | `cloudflare-module` | Explicit Cloudflare Worker target (this is also the default). |
-| `VITE_METAGRAPH_API_BASE` | `https://metagraph.sh` | Backend API base (also the in-code default). |
+| Var                       | Value                      | Why                                                                                                                                                        |
+| ------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOVABLE_SANDBOX`         | `1`                        | Force-enables Nitro's `cloudflare-module` build outside Lovable's own environment (the preset otherwise skips Nitro and emits a static-only client build). |
+| `NITRO_PRESET`            | `cloudflare-module`        | Explicit Cloudflare Worker target (this is also the default).                                                                                              |
+| `VITE_METAGRAPH_API_BASE` | `https://api.metagraph.sh` | Backend API base. Optional — this is also the in-code default (`src/lib/metagraphed/config.ts`).                                                           |
 
 Notes:
+
 - `npm ci --legacy-peer-deps` uses the committed `package-lock.json` instead of
   re-resolving the caret ranges in `package.json` during production builds. Keep
   the lockfile updated intentionally with reviewed dependency changes.
@@ -45,17 +46,14 @@ Notes:
   `nitro: true` inside the existing `defineConfig({ ... })` in `vite.config.ts`
   (the documented escape hatch) instead of `LOVABLE_SANDBOX=1`.
 
-## Routing (apex cutover)
+## Routing
 
-Initially the Worker is reachable at `metagraph-finder.<account>.workers.dev`
-(verify all pages load live data from `https://metagraph.sh`). To serve the UI
-at the bare apex:
+`metagraph.sh` is attached to this Worker as a Cloudflare **Custom Domain**
+(Workers & Pages → `metagraphed-ui` → Domains), so the bare apex serves the UI
+and Cloudflare manages the apex DNS record + TLS certificate automatically. The
+Worker is also always reachable at `metagraphed-ui.<account>.workers.dev`, plus
+per-branch preview URLs at `*-metagraphed-ui.<account>.workers.dev`.
 
-1. Backend (`metagraphed`) switches `wrangler.jsonc` from `custom_domain: true`
-   to zone routes (`metagraph.sh/api/*`, `/rpc/*`, `/metagraph/*`, `/health`).
-2. This Worker takes the catch-all route **`metagraph.sh/*`** (Worker → Triggers
-   → Routes, or `routes` in the deploy). Cloudflare matches more-specific routes
-   first, so `/api/*` etc. hit the backend and everything else renders the UI.
-3. Ensure `metagraph.sh` has a **proxied** DNS record and remove the backend's
-   old custom domain. Do the swap in one short window so the apex is never
-   orphaned.
+The backend (`metagraphed`) is a **separate** Worker on the `api.metagraph.sh`
+subdomain — the UI apex and the API are distinct hostnames, so there is no
+path-based route splitting to configure on this Worker.

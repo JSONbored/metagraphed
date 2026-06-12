@@ -11,11 +11,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { classNames } from "@/lib/metagraphed/format";
-import {
-  endpointsQuery,
-  endpointIncidentsQuery,
-  rpcPoolsQuery,
-} from "@/lib/metagraphed/queries";
+import { endpointsQuery, endpointIncidentsQuery, rpcPoolsQuery } from "@/lib/metagraphed/queries";
 
 import type { Endpoint, EndpointIncident, HealthState, RpcPool } from "@/lib/metagraphed/types";
 
@@ -177,15 +173,7 @@ function EndpointsTable() {
       if (provider && (e.provider ?? e.provider_slug) !== provider) return false;
       if (health && (e.health ?? "unknown") !== health) return false;
       if (!needle) return true;
-      return [
-        e.url,
-        e.provider,
-        e.provider_slug,
-        e.region,
-        String(e.netuid ?? ""),
-        e.kind,
-        e.id,
-      ]
+      return [e.url, e.provider, e.provider_slug, e.region, String(e.netuid ?? ""), e.kind, e.id]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(needle));
     });
@@ -292,14 +280,59 @@ function EndpointsTable() {
             <table className="w-full text-sm">
               <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
                 <tr>
-                  <Th label="Netuid" k="netuid" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
-                  <Th label="Kind" k="kind" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <Th
+                    label="Netuid"
+                    k="netuid"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                  />
+                  <Th
+                    label="Kind"
+                    k="kind"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                  />
                   <th className="px-3 py-2 text-left">URL</th>
-                  <Th label="Provider" k="provider" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
-                  <Th label="Region" k="region" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
-                  <Th label="Health" k="health" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} align="center" />
-                  <Th label="Latency" k="latency" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} align="right" />
-                  <Th label="Probed" k="probed" sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} align="right" />
+                  <Th
+                    label="Provider"
+                    k="provider"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                  />
+                  <Th
+                    label="Region"
+                    k="region"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                  />
+                  <Th
+                    label="Health"
+                    k="health"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                    align="center"
+                  />
+                  <Th
+                    label="Latency"
+                    k="latency"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <Th
+                    label="Probed"
+                    k="probed"
+                    sortKey={sortKey}
+                    sortOrder={sortOrder}
+                    onSort={toggleSort}
+                    align="right"
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -309,7 +342,7 @@ function EndpointsTable() {
                       {e.netuid != null ? (
                         <Link
                           to="/subnets/$netuid"
-                          params={{ netuid: String(e.netuid) }}
+                          params={{ netuid: e.netuid }}
                           className="hover:text-ink-strong"
                         >
                           {String(e.netuid).padStart(3, "0")}
@@ -339,7 +372,9 @@ function EndpointsTable() {
                         "—"
                       )}
                     </td>
-                    <td className="px-3 py-2 text-[12px]">{e.provider ?? e.provider_slug ?? "—"}</td>
+                    <td className="px-3 py-2 text-[12px]">
+                      {e.provider ?? e.provider_slug ?? "—"}
+                    </td>
                     <td className="px-3 py-2 text-[12px]">{e.region ?? "—"}</td>
                     <td className="px-3 py-2 text-center">
                       <HealthPill state={e.health} />

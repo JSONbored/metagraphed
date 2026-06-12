@@ -33,13 +33,7 @@ function driftTone(status?: string): string {
  *  - `compact` shows a one-line summary suitable for the Overview tab.
  *  - Without it, renders a full per-schema list.
  */
-export function SchemaDriftSummary({
-  netuid,
-  compact,
-}: {
-  netuid: number;
-  compact?: boolean;
-}) {
+export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compact?: boolean }) {
   const { data, meta } = useSuspenseQuery(subnetSchemasQuery(netuid)).data;
   const schemas = data ?? [];
   const generated = meta?.generated_at;
@@ -74,13 +68,11 @@ export function SchemaDriftSummary({
             <span className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong">
               Schema drift
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">
-              {schemas.length} tracked
-            </span>
+            <span className="font-mono text-[10px] text-ink-muted">{schemas.length} tracked</span>
           </div>
           <Link
             to="/subnets/$netuid"
-            params={{ netuid: String(netuid) }}
+            params={{ netuid: netuid }}
             search={(prev: Record<string, unknown>) => ({ ...prev, tab: "schemas" })}
             className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
           >
@@ -141,12 +133,7 @@ export function SchemaDriftSummary({
           </div>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {s.url ? (
-              <CopyableCode
-                label="schema"
-                value={s.url}
-                truncate={false}
-                className="w-full"
-              />
+              <CopyableCode label="schema" value={s.url} truncate={false} className="w-full" />
             ) : null}
             {s.artifact_path ? (
               <CopyableCode

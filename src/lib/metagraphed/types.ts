@@ -29,7 +29,6 @@ export interface ApiMeta {
   [key: string]: unknown;
 }
 
-
 export interface ApiEnvelope<T> {
   ok: boolean;
   data: T;

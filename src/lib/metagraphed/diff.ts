@@ -39,7 +39,11 @@ export function lineDiff(a: string, b: string): DiffLine[] {
   return out;
 }
 
-export function diffStats(lines: DiffLine[]): { added: number; removed: number; unchanged: number } {
+export function diffStats(lines: DiffLine[]): {
+  added: number;
+  removed: number;
+  unchanged: number;
+} {
   let added = 0,
     removed = 0,
     unchanged = 0;

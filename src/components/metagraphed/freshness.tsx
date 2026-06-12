@@ -20,11 +20,7 @@ export function FreshnessIndicator({ at, thresholdMs, className, dotOnly }: Prop
   useEffect(() => setMounted(true), []);
   const missing = at == null;
   const stale = !missing && isStaleFreshness(at, thresholdMs);
-  const cls = missing
-    ? "bg-health-unknown"
-    : stale
-      ? "bg-health-warn"
-      : "bg-health-ok";
+  const cls = missing ? "bg-health-unknown" : stale ? "bg-health-warn" : "bg-health-ok";
   const rel = mounted ? formatRelative(at) : "";
   const title = missing
     ? "No freshness data"
@@ -41,10 +37,7 @@ export function FreshnessIndicator({ at, thresholdMs, className, dotOnly }: Prop
     >
       <span className={classNames("size-1.5 rounded-full", cls)} />
       {!dotOnly ? (
-        <span
-          className="font-mono text-[10px] text-ink-muted"
-          suppressHydrationWarning
-        >
+        <span className="font-mono text-[10px] text-ink-muted" suppressHydrationWarning>
           {rel}
         </span>
       ) : null}

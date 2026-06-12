@@ -24,13 +24,10 @@ export function IncidentCard({ incident }: { incident: EndpointIncident }) {
             ongoing ? "text-health-down" : "text-ink-muted"
           }`}
         >
-          {ongoing ? "ongoing" : "resolved"} ·{" "}
-          {durationLabel(i.started_at, i.ended_at)}
+          {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
         </span>
       </div>
-      {i.message ? (
-        <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p>
-      ) : null}
+      {i.message ? <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p> : null}
       <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
         <span>
           started <TimeAgo at={i.started_at} />

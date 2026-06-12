@@ -41,7 +41,13 @@ export function SettingsPopover() {
         <Section label="Theme">
           <SegmentedRow>
             {THEMES.map(({ id, label, Icon }) => (
-              <SegmentBtn key={id} active={choice === id} onClick={() => setChoice(id)} label={label} title={`${label} theme`}>
+              <SegmentBtn
+                key={id}
+                active={choice === id}
+                onClick={() => setChoice(id)}
+                label={label}
+                title={`${label} theme`}
+              >
                 <Icon className="size-3.5" aria-hidden="true" />
                 <span>{label}</span>
               </SegmentBtn>
@@ -52,7 +58,13 @@ export function SettingsPopover() {
         <Section label="Density" sub="Affects health KPIs and list tables.">
           <SegmentedRow>
             {DENSITIES.map(({ id, label, Icon, hint }) => (
-              <SegmentBtn key={id} active={density === id} onClick={() => setDensity(id)} label={hint} title={hint}>
+              <SegmentBtn
+                key={id}
+                active={density === id}
+                onClick={() => setDensity(id)}
+                label={hint}
+                title={hint}
+              >
                 <Icon className="size-3.5" aria-hidden="true" />
                 <span>{label}</span>
               </SegmentBtn>
@@ -83,7 +95,15 @@ export function SettingsPopover() {
   );
 }
 
-function Section({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+function Section({
+  label,
+  sub,
+  children,
+}: {
+  label: string;
+  sub?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">

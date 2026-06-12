@@ -109,8 +109,10 @@ function readId(): HealthPaletteId {
 }
 
 function cssFor(p: HealthPaletteDef): string {
-  return `:root{--health-ok:${p.light.ok};--health-warn:${p.light.warn};--health-down:${p.light.down};--health-unknown:${p.light.unknown};}` +
-    `.dark{--health-ok:${p.dark.ok};--health-warn:${p.dark.warn};--health-down:${p.dark.down};--health-unknown:${p.dark.unknown};}`;
+  return (
+    `:root{--health-ok:${p.light.ok};--health-warn:${p.light.warn};--health-down:${p.light.down};--health-unknown:${p.light.unknown};}` +
+    `.dark{--health-ok:${p.dark.ok};--health-warn:${p.dark.warn};--health-down:${p.dark.down};--health-unknown:${p.dark.unknown};}`
+  );
 }
 
 function apply(id: HealthPaletteId) {
@@ -147,7 +149,11 @@ export function useHealthPalette() {
   const [paletteId, setPaletteIdState] = useState<HealthPaletteId>(() => readId());
   useEffect(() => apply(paletteId), [paletteId]);
   const setPalette = useCallback((id: HealthPaletteId) => {
-    try { window.localStorage.setItem(STORAGE_KEY, id); } catch {}
+    try {
+      window.localStorage.setItem(STORAGE_KEY, id);
+    } catch {
+      // ignore: persistence is best-effort (private mode / storage disabled)
+    }
     setPaletteIdState(id);
   }, []);
   return { paletteId, setPalette };

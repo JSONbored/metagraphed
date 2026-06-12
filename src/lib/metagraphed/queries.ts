@@ -255,10 +255,7 @@ function normalizeSubnet(raw: unknown): Subnet {
     surfaces_count: (s.surfaces_count as number) ?? (s.surface_count as number),
     candidates_count: (s.candidates_count as number) ?? (s.candidate_count as number),
     health: (s.health as HealthState) ?? statusToHealth(s.status),
-    updated_at:
-      (s.updated_at as string) ??
-      (s.last_checked as string) ??
-      (s.last_ok as string),
+    updated_at: (s.updated_at as string) ?? (s.last_checked as string) ?? (s.last_ok as string),
   } as Subnet;
 }
 
@@ -310,8 +307,10 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
   const completenessRatio =
     typeof score === "number" ? Math.max(0, Math.min(1, score / 100)) : undefined;
   const curation = (subnet.curation as Record<string, unknown> | undefined) ?? {};
-  const gaps = (subnet.gaps as Record<string, unknown> | undefined) ??
-    (root.gaps as Record<string, unknown> | undefined) ?? {};
+  const gaps =
+    (subnet.gaps as Record<string, unknown> | undefined) ??
+    (root.gaps as Record<string, unknown> | undefined) ??
+    {};
 
   const website = pickStr(links.website_url, links.website, subnet.website_url);
   const docs = pickStr(links.docs_url, links.docs, subnet.docs_url);
@@ -343,7 +342,8 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     dashboard,
     primary_links: { website, docs, repo, dashboard },
     // curation
-    curation_level: (profile.curation_level as CurationLevel) ??
+    curation_level:
+      (profile.curation_level as CurationLevel) ??
       (subnet.curation_level as CurationLevel) ??
       ((curation.level as CurationLevel) || undefined),
     coverage_level: subnet.coverage_level as SubnetProfile["coverage_level"],
@@ -359,13 +359,11 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     candidate_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
     candidates_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
     monitored_endpoint_count: profile.monitored_endpoint_count as number | undefined,
-    operational_interface_kinds:
-      (profile.operational_interface_kinds as string[]) ?? [],
+    operational_interface_kinds: (profile.operational_interface_kinds as string[]) ?? [],
     supported_interface_kinds:
-      (profile.supported_interface_kinds as string[]) ??
-      (gaps.supported_kinds as string[]) ??
-      [],
-    missing_kinds: (gaps.missing_kinds as string[]) ?? (profile.missing_operational as string[]) ?? [],
+      (profile.supported_interface_kinds as string[]) ?? (gaps.supported_kinds as string[]) ?? [],
+    missing_kinds:
+      (gaps.missing_kinds as string[]) ?? (profile.missing_operational as string[]) ?? [],
     gap_notes: (gaps.gap_notes as string[]) ?? [],
     primary_app_surface: profile.primary_app_surface as PrimaryAppSurface | undefined,
     // embedded
@@ -417,7 +415,9 @@ export const subnetHealthQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-health", netuid),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/health`, { signal });
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/health`, {
+        signal,
+      });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const summary = (d.summary as Record<string, unknown> | undefined) ?? {};
       const merged = normalizeHealthBlock({ ...d, ...summary });
@@ -474,8 +474,7 @@ function validateNextCursor(
     if (sentCursor && s === sentCursor) return { cursor: null, invalid: true };
     return { cursor: s };
   }
-  if (import.meta.env?.DEV)
-    console.warn("[metagraphed] next_cursor has unexpected shape:", raw);
+  if (import.meta.env?.DEV) console.warn("[metagraphed] next_cursor has unexpected shape:", raw);
   return { cursor: null, invalid: true };
 }
 
@@ -500,10 +499,7 @@ async function fetchInfinitePage<T>(
 }
 
 /** Server-driven cursor-paginated subnets. */
-export const subnetsInfiniteQuery = (
-  baseParams: QueryParams = {},
-  initialCursor = "",
-) =>
+export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
   infiniteQueryOptions({
     queryKey: k("subnets-infinite", baseParams, initialCursor),
     initialPageParam: initialCursor,
@@ -525,15 +521,18 @@ export const subnetsInfiniteQuery = (
   });
 
 /** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (
-  baseParams: QueryParams = {},
-  initialCursor = "",
-) =>
+export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
   infiniteQueryOptions({
     queryKey: k("surfaces-infinite", baseParams, initialCursor),
     initialPageParam: initialCursor,
     queryFn: ({ pageParam, signal }) =>
-      fetchInfinitePage<Surface>("/api/v1/surfaces", "surfaces", baseParams, pageParam as string, signal),
+      fetchInfinitePage<Surface>(
+        "/api/v1/surfaces",
+        "surfaces",
+        baseParams,
+        pageParam as string,
+        signal,
+      ),
     getNextPageParam: (last) => {
       const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
       return nc ?? undefined;
@@ -544,8 +543,7 @@ export const surfacesInfiniteQuery = (
 function statusToHealth(v: unknown): HealthState | undefined {
   if (typeof v !== "string") return undefined;
   if (v === "ok" || v === "live") return "ok";
-  if (v === "degraded" || v === "warn" || v === "redirected" || v === "transient")
-    return "warn";
+  if (v === "degraded" || v === "warn" || v === "redirected" || v === "transient") return "warn";
   if (v === "failed" || v === "down" || v === "unsupported") return "down";
   return "unknown";
 }
@@ -557,12 +555,9 @@ function normalizeEndpoint(raw: unknown): Endpoint {
     ...(e as object),
     id: e.id as string,
     health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
-    provider_slug:
-      (e.provider_slug as string) ?? (e.provider as string) ?? (e.operator as string),
+    provider_slug: (e.provider_slug as string) ?? (e.provider as string) ?? (e.operator as string),
     last_probed_at:
-      (e.last_probed_at as string) ??
-      (e.last_checked as string) ??
-      (e.observed_at as string),
+      (e.last_probed_at as string) ?? (e.last_checked as string) ?? (e.observed_at as string),
   } as Endpoint;
 }
 
@@ -590,10 +585,7 @@ function normalizeIncident(raw: unknown): EndpointIncident {
     id: i.id as string,
     state: stateHealth,
     message: (i.message as string) ?? (i.reason as string),
-    started_at:
-      (i.started_at as string) ??
-      (i.detected_at as string) ??
-      (i.observed_at as string),
+    started_at: (i.started_at as string) ?? (i.detected_at as string) ?? (i.observed_at as string),
     ended_at:
       (i.ended_at as string | null | undefined) ??
       (i.resolved_at as string | null | undefined) ??
@@ -678,12 +670,7 @@ export const providersQuery = () =>
   queryOptions({
     queryKey: k("providers"),
     queryFn: async ({ signal }) => {
-      const res = await fetchList<unknown>(
-        "/api/v1/providers",
-        "providers",
-        undefined,
-        signal,
-      );
+      const res = await fetchList<unknown>("/api/v1/providers", "providers", undefined, signal);
       return { ...res, data: res.data.map(normalizeProviderListItem) } as ApiResult<Provider[]>;
     },
     staleTime: STALE_MED,
@@ -742,7 +729,6 @@ export const providerCountsQuery = () =>
     },
     staleTime: STALE_MED,
   });
-
 
 function normalizeProvider(raw: unknown, slug: string): Provider {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
@@ -857,10 +843,7 @@ function normalizeSchema(raw: unknown): SchemaInfo {
       (s.id as string) ??
       (s.surface_id as string) ??
       `${(s.netuid as number) ?? "?"}-${(s.path as string) ?? (s.url as string) ?? "schema"}`,
-    name:
-      (snap.title as string) ??
-      (s.name as string) ??
-      (s.surface_id as string),
+    name: (snap.title as string) ?? (s.name as string) ?? (s.surface_id as string),
     url: (s.schema_url as string) ?? (s.url as string) ?? (s.surface_url as string),
     netuid: (s.netuid as number) ?? (snap.netuid as number),
     surface_id: (s.surface_id as string) ?? (snap.surface_id as string),

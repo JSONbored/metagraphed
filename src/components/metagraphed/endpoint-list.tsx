@@ -43,7 +43,7 @@ export function EndpointList({
                       {e.netuid != null ? (
                         <Link
                           to="/subnets/$netuid"
-                          params={{ netuid: String(e.netuid) }}
+                          params={{ netuid: e.netuid }}
                           className="hover:text-ink-strong"
                         >
                           {String(e.netuid).padStart(3, "0")}
@@ -93,10 +93,7 @@ export function EndpointList({
       {/* Mobile stacked cards */}
       <ul className="md:hidden space-y-2">
         {rows.map((e) => (
-          <li
-            key={e.id}
-            className="rounded-lg border border-border bg-card p-3"
-          >
+          <li key={e.id} className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -106,16 +103,14 @@ export function EndpointList({
                   {showNetuid && e.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
-                      params={{ netuid: String(e.netuid) }}
+                      params={{ netuid: e.netuid }}
                       className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
                     >
                       sn{String(e.netuid).padStart(3, "0")}
                     </Link>
                   ) : null}
                 </div>
-                <div className="font-mono text-[11px] text-ink break-all">
-                  {e.url ?? "—"}
-                </div>
+                <div className="font-mono text-[11px] text-ink break-all">{e.url ?? "—"}</div>
               </div>
               <HealthDot state={e.health} />
             </div>

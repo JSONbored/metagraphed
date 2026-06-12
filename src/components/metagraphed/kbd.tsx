@@ -1,13 +1,7 @@
 import type { ReactNode } from "react";
 import { classNames } from "@/lib/metagraphed/format";
 
-export function Kbd({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <kbd
       className={classNames(

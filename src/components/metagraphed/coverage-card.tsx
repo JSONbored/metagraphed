@@ -28,7 +28,9 @@ export function CoverageCard({
   gapNotes,
 }: CoverageCardProps) {
   const pct =
-    typeof completeness === "number" ? Math.round(Math.max(0, Math.min(1, completeness)) * 100) : null;
+    typeof completeness === "number"
+      ? Math.round(Math.max(0, Math.min(1, completeness)) * 100)
+      : null;
 
   return (
     <section className="rounded border border-border bg-card p-3">
@@ -72,10 +74,7 @@ export function CoverageCard({
             aria-valuemin={0}
             aria-valuemax={100}
           >
-            <div
-              className="h-full bg-ink-strong transition-all"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full bg-ink-strong transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
       ) : null}

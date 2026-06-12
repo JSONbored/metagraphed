@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "metagraphed-ui",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -191,13 +191,7 @@ export function PageSizeSelect({
  * Calls `onReset` to let the route decide which keys to clear (typically
  * search, sort, filters, and cursor; preserves user's page-size choice).
  */
-export function ResetFiltersButton({
-  active,
-  onReset,
-}: {
-  active: boolean;
-  onReset: () => void;
-}) {
+export function ResetFiltersButton({ active, onReset }: { active: boolean; onReset: () => void }) {
   if (!active) return null;
   return (
     <button

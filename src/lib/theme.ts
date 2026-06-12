@@ -46,7 +46,11 @@ export const THEME_BOOTSTRAP_SCRIPT = `(() => {
 export function useTheme() {
   const [choice, setChoiceState] = useState<ThemeChoice>(() => readChoice());
   const [resolved, setResolved] = useState<ResolvedTheme>(() =>
-    typeof document === "undefined" ? "light" : (document.documentElement.classList.contains("dark") ? "dark" : "light"),
+    typeof document === "undefined"
+      ? "light"
+      : document.documentElement.classList.contains("dark")
+        ? "dark"
+        : "light",
   );
 
   // Apply choice + listen to system changes while in `system` mode.

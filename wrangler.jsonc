@@ -6,10 +6,10 @@
   // dist/server/wrangler.json at build time, so it owns the build-coupled bits
   // (main, assets, compatibility_date/flags, rules) while this file owns the
   // deploy identity + observability. The `name` is the critical fix: without it
-  // Nitro auto-names the Worker `jsonbored-metagraph-finder`, so `wrangler
-  // deploy` would create a NEW worker and never update the live `metagraph-finder`
+  // Nitro auto-names the Worker `jsonbored-metagraphed-ui`, so `wrangler
+  // deploy` would create a NEW worker and never update the live `metagraphed-ui`
   // worker that holds the `metagraph.sh/*` route.
-  "name": "metagraph-finder",
+  "name": "metagraphed-ui",
   // Run the SSR Worker in the Cloudflare PoP nearest the data it talks to
   // (api.metagraph.sh), not nearest the visitor — lowers SSR fetch latency.
   "placement": { "mode": "smart" },
@@ -21,11 +21,11 @@
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,
-      "invocation_logs": true
+      "invocation_logs": true,
     },
     "traces": {
       "enabled": true,
-      "head_sampling_rate": 1
-    }
-  }
+      "head_sampling_rate": 1,
+    },
+  },
 }

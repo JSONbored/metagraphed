@@ -57,10 +57,7 @@ export function classNames(...parts: Array<string | false | null | undefined>): 
  * "5h 39m", or "2d 4h". Used for freshness / age numbers that would
  * otherwise display as raw seconds (e.g. "20363s").
  */
-export function humaniseSeconds(
-  sec: number | null | undefined,
-  fallback = "—",
-): string {
+export function humaniseSeconds(sec: number | null | undefined, fallback = "—"): string {
   if (sec === null || sec === undefined || !Number.isFinite(sec)) return fallback;
   const s = Math.max(0, Math.round(sec));
   if (s < 60) return `${s}s`;
@@ -83,10 +80,7 @@ export function humaniseSeconds(
  * Compute a compact "elapsed" label between two ISO timestamps. If `end`
  * is null/undefined the duration runs to now (useful for ongoing incidents).
  */
-export function durationLabel(
-  start?: string | null,
-  end?: string | null,
-): string {
+export function durationLabel(start?: string | null, end?: string | null): string {
   if (!start) return "—";
   const sMs = Date.parse(start);
   if (!Number.isFinite(sMs)) return "—";

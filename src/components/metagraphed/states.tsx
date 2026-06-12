@@ -90,9 +90,7 @@ export function EmptyState({
       {action ? (
         <a
           href={action.href}
-          {...(action.external
-            ? { target: "_blank", rel: "noopener noreferrer" }
-            : {})}
+          {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           className="mt-3 inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
         >
           {action.label}
@@ -111,8 +109,8 @@ export function StaleBanner({ generatedAt }: { generatedAt?: string }) {
       <span>
         {usableGeneratedAt ? (
           <>
-            Data may be stale — last generated <TimeAgo at={usableGeneratedAt} />
-            {" "}({new Date(usableGeneratedAt).toLocaleString()}).
+            Data may be stale — last generated <TimeAgo at={usableGeneratedAt} /> (
+            {new Date(usableGeneratedAt).toLocaleString()}).
           </>
         ) : (
           "Data freshness is unknown — no usable generation timestamp was provided."
@@ -131,13 +129,13 @@ export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
  * pages. Keep labels identical everywhere so the UI feels consistent.
  */
 export const RECOVERY = {
-  schemas:   { label: "Browse all schemas",   href: "/schemas" },
+  schemas: { label: "Browse all schemas", href: "/schemas" },
   endpoints: { label: "Browse all endpoints", href: "/endpoints" },
   providers: { label: "Browse all providers", href: "/providers" },
-  subnets:   { label: "Browse all subnets",   href: "/subnets" },
-  surfaces:  { label: "Browse all surfaces",  href: "/surfaces" },
-  openapi:   { label: "Open API reference",   href: "/schemas#openapi" },
-  gaps:      { label: "Browse registry gaps", href: "/gaps" },
+  subnets: { label: "Browse all subnets", href: "/subnets" },
+  surfaces: { label: "Browse all surfaces", href: "/surfaces" },
+  openapi: { label: "Open API reference", href: "/schemas#openapi" },
+  gaps: { label: "Browse registry gaps", href: "/gaps" },
 } as const;
 
 export function PageHeading({

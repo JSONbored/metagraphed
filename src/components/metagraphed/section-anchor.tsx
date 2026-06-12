@@ -42,11 +42,7 @@ export function SectionAnchor({
   };
 
   return (
-    <section
-      id={id}
-      data-section-anchor
-      className={classNames("mg-section scroll-mt-32")}
-    >
+    <section id={id} data-section-anchor className={classNames("mg-section scroll-mt-32")}>
       <div className="mb-3 flex items-baseline gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
@@ -63,9 +59,7 @@ export function SectionAnchor({
               {copied ? <Check className="size-3.5 text-accent" /> : <Link2 className="size-3.5" />}
             </button>
           </div>
-          {subtitle ? (
-            <p className="mt-0.5 text-[11px] text-ink-muted">{subtitle}</p>
-          ) : null}
+          {subtitle ? <p className="mt-0.5 text-[11px] text-ink-muted">{subtitle}</p> : null}
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>

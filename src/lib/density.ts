@@ -29,7 +29,11 @@ export function useDensity() {
   const [density, setDensityState] = useState<Density>(() => readChoice());
   useEffect(() => apply(density), [density]);
   const setDensity = useCallback((d: Density) => {
-    try { window.localStorage.setItem(STORAGE_KEY, d); } catch {}
+    try {
+      window.localStorage.setItem(STORAGE_KEY, d);
+    } catch {
+      // ignore: persistence is best-effort (private mode / storage disabled)
+    }
     setDensityState(d);
   }, []);
   return { density, setDensity };

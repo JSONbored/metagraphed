@@ -11,10 +11,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
  *   /subnets/7?tab=overview#endpoints
  * even when the section actually lives under a different tab.
  */
-export function useHashScroll(
-  activeTab: string,
-  sectionToTab: Record<string, string>,
-) {
+export function useHashScroll(activeTab: string, sectionToTab: Record<string, string>) {
   const navigate = useNavigate();
   const hash = useRouterState({ select: (s) => s.location.hash });
 

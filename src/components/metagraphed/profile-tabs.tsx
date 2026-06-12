@@ -13,13 +13,7 @@ export interface ProfileTabSpec {
  * parent route works) and updates it on change. Sticks under the app
  * header for cosmos-directory-style profile navigation.
  */
-export function ProfileTabs({
-  tabs,
-  defaultTab,
-}: {
-  tabs: ProfileTabSpec[];
-  defaultTab?: string;
-}) {
+export function ProfileTabs({ tabs, defaultTab }: { tabs: ProfileTabSpec[]; defaultTab?: string }) {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const active = (search.tab as string) || defaultTab || tabs[0]?.id;

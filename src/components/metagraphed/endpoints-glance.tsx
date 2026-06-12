@@ -18,17 +18,14 @@ const BUCKETS: Bucket[] = [
     key: "rpc",
     label: "Root RPC / WSS",
     icon: Radio,
-    match: (e) =>
-      ["rpc", "wss", "archive"].includes(String(e.kind ?? "").toLowerCase()),
+    match: (e) => ["rpc", "wss", "archive"].includes(String(e.kind ?? "").toLowerCase()),
   },
   {
     key: "data",
     label: "SSE / Data",
     icon: Database,
     match: (e) =>
-      ["sse", "data", "stream", "ws", "websocket"].includes(
-        String(e.kind ?? "").toLowerCase(),
-      ),
+      ["sse", "data", "stream", "ws", "websocket"].includes(String(e.kind ?? "").toLowerCase()),
   },
   {
     key: "incidents",
@@ -115,10 +112,7 @@ export function EndpointsGlance({
           const top = items[0];
           const Icon = b.icon;
           return (
-            <li
-              key={b.key}
-              className="flex items-center gap-3 px-4 py-3 min-h-11"
-            >
+            <li key={b.key} className="flex items-center gap-3 px-4 py-3 min-h-11">
               <Icon className="size-3.5 shrink-0 text-ink-muted" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">

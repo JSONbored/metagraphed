@@ -89,9 +89,7 @@ export function ProfileHero({
                 <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
                   {s.value}
                 </div>
-                {s.hint ? (
-                  <div className="mt-0.5 text-[10px] text-ink-muted">{s.hint}</div>
-                ) : null}
+                {s.hint ? <div className="mt-0.5 text-[10px] text-ink-muted">{s.hint}</div> : null}
               </div>
             ))}
           </div>

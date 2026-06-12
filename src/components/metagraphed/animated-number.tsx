@@ -17,8 +17,7 @@ interface Props {
   className?: string;
 }
 
-const defaultFormat: Formatter = (n) =>
-  new Intl.NumberFormat("en-US").format(Math.round(n));
+const defaultFormat: Formatter = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;

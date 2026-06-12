@@ -205,7 +205,7 @@ function SubnetsTable() {
         <Link
           key={s.netuid}
           to="/subnets/$netuid"
-          params={{ netuid: String(s.netuid) }}
+          params={{ netuid: s.netuid }}
           className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
         >
           <div className="flex items-center justify-between gap-2">
@@ -322,7 +322,7 @@ function SubnetsTable() {
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
-                      params={{ netuid: String(s.netuid) }}
+                      params={{ netuid: s.netuid }}
                       className="hover:text-ink-strong"
                     >
                       {String(s.netuid).padStart(3, "0")}
@@ -333,7 +333,7 @@ function SubnetsTable() {
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
-                      params={{ netuid: String(s.netuid) }}
+                      params={{ netuid: s.netuid }}
                       className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
                     >
                       <BrandIcon

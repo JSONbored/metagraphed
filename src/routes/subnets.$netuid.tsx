@@ -6,7 +6,13 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { EmptyState, PageHeading, Skeleton, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  PageHeading,
+  Skeleton,
+  StaleBanner,
+  RECOVERY,
+} from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
@@ -58,7 +64,10 @@ export const Route = createFileRoute("/subnets/$netuid")({
   component: SubnetDetailPage,
   notFoundComponent: () => (
     <AppShell>
-      <PageHeading title="Subnet not found" description="No active Finney netuid matches this URL." />
+      <PageHeading
+        title="Subnet not found"
+        description="No active Finney netuid matches this URL."
+      />
       <Link to="/subnets" className="text-sm underline">
         Back to registry
       </Link>
@@ -171,9 +180,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {
             label: "Completeness",
             value:
-              profile?.completeness != null
-                ? `${Math.round(profile.completeness * 100)}%`
-                : "",
+              profile?.completeness != null ? `${Math.round(profile.completeness * 100)}%` : "",
           },
         ]}
         banner={stale ? <StaleBanner generatedAt={meta?.generated_at} /> : null}
@@ -281,8 +288,7 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         </QueryErrorBoundary>
       </SectionAnchor>
 
-      {(profile?.missing_kinds?.length ?? 0) > 0 ||
-      (profile?.gap_notes?.length ?? 0) > 0 ? (
+      {(profile?.missing_kinds?.length ?? 0) > 0 || (profile?.gap_notes?.length ?? 0) > 0 ? (
         <GapsPanel profile={profile} compact />
       ) : null}
     </>
@@ -350,7 +356,9 @@ function HCell({
     <div className="rounded border border-border bg-surface/30 p-2">
       <div className="flex items-center gap-1.5">
         <span className={classNames("size-1.5 rounded-full", color, pulse && "mg-pulse")} />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          {label}
+        </span>
       </div>
       <div className="mt-0.5 font-display text-sm font-semibold text-ink-strong tabular-nums">
         {value}
@@ -457,8 +465,8 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
       <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 text-[11px] text-ink-muted flex items-start gap-2">
         <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
         <span>
-          Candidates are discovered automatically and have not been verified by a maintainer.
-          Submit corrections via the public repo.
+          Candidates are discovered automatically and have not been verified by a maintainer. Submit
+          corrections via the public repo.
         </span>
       </div>
       <QueryErrorBoundary>
@@ -470,13 +478,7 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
   );
 }
 
-function GapsPanel({
-  profile,
-  compact,
-}: {
-  profile?: SubnetProfile;
-  compact?: boolean;
-}) {
+function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: boolean }) {
   const missing = profile?.missing_kinds ?? [];
   const notes = profile?.gap_notes ?? [];
   if (missing.length === 0 && notes.length === 0) {

@@ -2,7 +2,13 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, PageHeading, Skeleton, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  PageHeading,
+  Skeleton,
+  StaleBanner,
+  RECOVERY,
+} from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ProfileHero } from "@/components/metagraphed/profile-hero";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
@@ -263,7 +269,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
           <li key={netuid}>
             <Link
               to="/subnets/$netuid"
-              params={{ netuid: String(netuid) }}
+              params={{ netuid: netuid }}
               className="block rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
             >
               <div className="flex items-baseline justify-between">
@@ -290,13 +296,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
   );
 }
 
-function BreakdownCard({
-  title,
-  data,
-}: {
-  title: string;
-  data: Record<string, number>;
-}) {
+function BreakdownCard({ title, data }: { title: string; data: Record<string, number> }) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   if (entries.length === 0) return null;
   const max = Math.max(...entries.map((e) => e[1]));

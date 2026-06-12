@@ -85,13 +85,7 @@ export function HealthDot({
  * Back-compat: HealthPill now renders as a labeled dot. Existing call sites
  * keep working; the visual is unified across the app.
  */
-export function HealthPill({
-  state,
-  label,
-}: {
-  state?: HealthState | string;
-  label?: string;
-}) {
+export function HealthPill({ state, label }: { state?: HealthState | string; label?: string }) {
   if (label) {
     return (
       <span className="inline-flex items-center gap-1.5">
@@ -115,7 +109,8 @@ const curationCls: Record<CurationLevel, string> = {
   native: "bg-curation-native text-paper border-curation-native",
   "candidate-discovered": "bg-transparent text-ink-muted border-dashed border-ink-subtle",
   "machine-verified": "bg-curation-machine/10 text-curation-machine border-curation-machine/30",
-  "maintainer-reviewed": "bg-curation-verified/10 text-curation-verified border-curation-verified/30",
+  "maintainer-reviewed":
+    "bg-curation-verified/10 text-curation-verified border-curation-verified/30",
   "adapter-backed": "bg-curation-pilot/10 text-curation-pilot border-curation-pilot/30",
 };
 
