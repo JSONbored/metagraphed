@@ -1030,6 +1030,11 @@ export interface components {
         };
         /** @enum {unknown} */
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
+        /**
+         * @description Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.
+         * @enum {unknown}
+         */
+        BittensorNetwork: "finney" | "test" | "local";
         BuildSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
             artifact_budgets?: components["schemas"]["ArtifactSizeBudget"][];
             artifact_count: number;
@@ -1160,8 +1165,7 @@ export interface components {
             native_only_with_candidates: number;
             native_only_without_candidates: number;
             native_snapshot_captured_at: string;
-            /** @constant */
-            network: "finney";
+            network: components["schemas"]["BittensorNetwork"];
             probed_count: number;
             probed_surface_count: number;
             root_subnet_count: number;
@@ -1306,8 +1310,7 @@ export interface components {
             /** @enum {unknown} */
             monitoring_status: "monitored" | "not_monitored";
             netuid: number;
-            /** @constant */
-            network?: "finney";
+            network?: components["schemas"]["BittensorNetwork"];
             observed_at: string | null;
             operator: string;
             pool_eligibility_reasons?: string[];
@@ -2189,8 +2192,7 @@ export interface components {
                 [key: string]: boolean;
             } | string[] | null;
             netuid?: number;
-            /** @constant */
-            network: "finney";
+            network: components["schemas"]["BittensorNetwork"];
             observed_at: string | null;
             provider: string;
             public_safe?: boolean;
@@ -2646,8 +2648,7 @@ export interface components {
             url: string;
         } | null;
         SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
-            /** @constant */
-            network: "finney";
+            network: components["schemas"]["BittensorNetwork"];
             source: {
                 [key: string]: unknown;
             };

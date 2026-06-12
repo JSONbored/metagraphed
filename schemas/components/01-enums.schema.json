@@ -123,6 +123,10 @@
       },
       "SubnetType": {
         "enum": ["root", "application"]
+      },
+      "BittensorNetwork": {
+        "description": "Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.",
+        "enum": ["finney", "test", "local"]
       }
     }
   }

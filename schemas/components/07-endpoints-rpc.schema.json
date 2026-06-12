@@ -58,7 +58,7 @@
             "$ref": "#/components/schemas/Classification"
           },
           "network": {
-            "const": "finney"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "chain": {
             "const": "bittensor"
@@ -316,7 +316,7 @@
             "const": "bittensor"
           },
           "network": {
-            "const": "finney"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"

@@ -916,7 +916,7 @@
             "required": ["network", "source", "subnets"],
             "properties": {
               "network": {
-                "const": "finney"
+                "$ref": "#/components/schemas/BittensorNetwork"
               },
               "source": {
                 "type": "object",
@@ -1089,7 +1089,7 @@
                 "type": "string"
               },
               "network": {
-                "const": "finney"
+                "$ref": "#/components/schemas/BittensorNetwork"
               },
               "probed_count": {
                 "type": "integer",

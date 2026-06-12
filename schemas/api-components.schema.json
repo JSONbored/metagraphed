@@ -538,6 +538,14 @@
           "registry-observed"
         ]
       },
+      "BittensorNetwork": {
+        "description": "Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.",
+        "enum": [
+          "finney",
+          "test",
+          "local"
+        ]
+      },
       "BuildSummaryArtifact": {
         "allOf": [
           {
@@ -1030,7 +1038,7 @@
                 "type": "string"
               },
               "network": {
-                "const": "finney"
+                "$ref": "#/components/schemas/BittensorNetwork"
               },
               "probed_count": {
                 "minimum": 0,
@@ -1661,7 +1669,7 @@
             "type": "integer"
           },
           "network": {
-            "const": "finney"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "observed_at": {
             "type": [
@@ -5424,7 +5432,7 @@
             "type": "integer"
           },
           "network": {
-            "const": "finney"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "observed_at": {
             "type": [
@@ -7460,7 +7468,7 @@
             "additionalProperties": true,
             "properties": {
               "network": {
-                "const": "finney"
+                "$ref": "#/components/schemas/BittensorNetwork"
               },
               "source": {
                 "additionalProperties": true,
