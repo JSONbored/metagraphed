@@ -1,0 +1,9 @@
+{
+  "authority": "community",
+  "id": "covenant",
+  "kind": "subnet-team",
+  "name": "Covenant AI",
+  "notes": "SN81 (Grail) — part of the Covenant AI ecosystem (also Templar, Basilica). Verified: www.covenant.ai lists Grail.",
+  "schema_version": 1,
+  "website_url": "https://www.covenant.ai"
+}
