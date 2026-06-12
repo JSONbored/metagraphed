@@ -7,6 +7,8 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { RegistryPulse } from "@/components/metagraphed/charts/registry-pulse";
+import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   coverageQuery,
   freshnessQuery,
@@ -43,7 +45,7 @@ function OverviewPage() {
       />
 
       <StatStrip />
-
+      <RegistryPulse />
 
       <section className="mt-8">
         <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-3">
@@ -78,9 +80,6 @@ function OverviewPage() {
     </AppShell>
   );
 }
-
-
-
 
 function StatCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -286,29 +285,33 @@ function SubnetPreviewTable() {
             {subnets.slice(0, 12).map((s) => (
               <tr key={s.netuid} className="hover:bg-surface/40 transition-colors">
                 <td className="px-4 py-2.5 font-mono text-[12px] text-ink-muted">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: String(s.netuid) }}
-                    className="hover:text-ink-strong"
-                  >
-                    {String(s.netuid).padStart(3, "0")}
-                  </Link>
+                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: String(s.netuid) }}
+                      className="hover:text-ink-strong"
+                    >
+                      {String(s.netuid).padStart(3, "0")}
+                    </Link>
+                  </EntityHoverCard>
                 </td>
                 <td className="px-4 py-2.5">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: String(s.netuid) }}
-                    className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                  >
-                    <BrandIcon
-                      size={20}
-                      name={s.name ?? `Subnet ${s.netuid}`}
-                      fallback={s.netuid}
-                      url={s.website}
-                      netuid={s.netuid}
-                    />
-                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                  </Link>
+                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: String(s.netuid) }}
+                      className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                    >
+                      <BrandIcon
+                        size={20}
+                        name={s.name ?? `Subnet ${s.netuid}`}
+                        fallback={s.netuid}
+                        url={s.website}
+                        netuid={s.netuid}
+                      />
+                      <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                    </Link>
+                  </EntityHoverCard>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
                   {s.symbol ?? "—"}
@@ -341,7 +344,9 @@ function SubnetPreviewTable() {
             view all
           </Link>
         </span>
-        <button onClick={() => refetch()} className="hover:text-ink-strong">refresh</button>
+        <button onClick={() => refetch()} className="hover:text-ink-strong">
+          refresh
+        </button>
       </div>
     </div>
   );

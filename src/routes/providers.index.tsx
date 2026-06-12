@@ -9,6 +9,9 @@ import { EmptyState, PageHeading, StaleBanner } from "@/components/metagraphed/s
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { providersQuery, providerCountsQuery } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/providers/")({
@@ -17,8 +20,7 @@ export const Route = createFileRoute("/providers/")({
       { title: "Providers — Metagraphed" },
       {
         name: "description",
-        content:
-          "Subnet teams, infrastructure providers, docs registries, and resource sources.",
+        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
       },
     ],
   }),
@@ -177,6 +179,8 @@ function ProvidersGrid() {
     <div className="space-y-3">
       {stale ? <StaleBanner generatedAt={generatedAt} /> : null}
 
+      <ProviderOverview providers={rows} counts={counts} />
+
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
@@ -190,7 +194,12 @@ function ProvidersGrid() {
           />
         </div>
         <Selector label="Kind" value={kind} onChange={setKind} options={kinds} />
-        <Selector label="Authority" value={authority} onChange={setAuthority} options={authorities} />
+        <Selector
+          label="Authority"
+          value={authority}
+          onChange={setAuthority}
+          options={authorities}
+        />
         <Selector
           label="Sort"
           value={sortKey}
@@ -230,86 +239,89 @@ function ProvidersGrid() {
             const docsHost = maskHost(p.docs);
             const isOfficial = p.authority === "official";
             return (
-              <Link
-                key={p.slug}
-                to="/providers/$slug"
-                params={{ slug: p.slug }}
-                className={classNames(
-                  "group block rounded-lg border border-border bg-card p-4 transition-colors",
-                  "hover:border-accent/60 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent)_25%,transparent)]",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <BrandIcon
-                      url={p.website ?? p.homepage}
-                      iconUrl={p.icon_url}
-                      repoUrl={p.repo}
-                      providerSlug={p.slug}
-                      name={p.name ?? p.slug}
-                      fallback={p.slug}
-                      size={36}
-                    />
-                    <div className="min-w-0">
-                      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                        {p.kind ?? "provider"}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {isOfficial ? (
-                          <span
-                            aria-label="Official provider"
-                            title="Official"
-                            className="inline-block size-1.5 rounded-full bg-accent shrink-0"
-                          />
-                        ) : null}
-                        <div className="font-display text-base font-semibold text-ink-strong line-clamp-2 leading-tight">
-                          {p.name ?? p.slug}
+              <EntityHoverCard key={p.slug} kind="provider" slug={p.slug}>
+                <Link
+                  to="/providers/$slug"
+                  params={{ slug: p.slug }}
+                  className={classNames(
+                    "group block rounded-lg border border-border bg-card p-4 transition-colors",
+                    "hover:border-accent/60 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent)_25%,transparent)]",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <BrandIcon
+                        url={p.website ?? p.homepage}
+                        iconUrl={p.icon_url}
+                        repoUrl={p.repo}
+                        providerSlug={p.slug}
+                        name={p.name ?? p.slug}
+                        fallback={p.slug}
+                        size={36}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                          {p.kind ?? "provider"}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {isOfficial ? (
+                            <span
+                              aria-label="Official provider"
+                              title="Official"
+                              className="inline-block size-1.5 rounded-full bg-accent shrink-0"
+                            />
+                          ) : null}
+                          <div className="font-display text-base font-semibold text-ink-strong line-clamp-2 leading-tight">
+                            {p.name ?? p.slug}
+                          </div>
+                        </div>
+                        <div className="font-mono text-[10px] text-ink-muted truncate">
+                          {p.slug}
                         </div>
                       </div>
-                      <div className="font-mono text-[10px] text-ink-muted truncate">{p.slug}</div>
                     </div>
+                    {p.authority ? (
+                      <span
+                        className={classNames(
+                          "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5 shrink-0",
+                          authorityTone(p.authority),
+                        )}
+                      >
+                        {p.authority}
+                      </span>
+                    ) : null}
                   </div>
-                  {p.authority ? (
-                    <span
-                      className={classNames(
-                        "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5 shrink-0",
-                        authorityTone(p.authority),
-                      )}
-                    >
-                      {p.authority}
-                    </span>
+                  {p.notes ? (
+                    <p className="mt-3 text-[12px] text-ink-muted leading-relaxed line-clamp-2">
+                      {p.notes}
+                    </p>
                   ) : null}
-                </div>
-                {p.notes ? (
-                  <p className="mt-3 text-[12px] text-ink-muted leading-relaxed line-clamp-2">
-                    {p.notes}
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
-                  {webHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <Globe className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{webHost}</span>
-                    </span>
-                  ) : null}
-                  {repoHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <Github className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{repoHost}</span>
-                    </span>
-                  ) : null}
-                  {docsHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <BookOpen className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{docsHost}</span>
-                    </span>
-                  ) : null}
-                  {!webHost && !repoHost && !docsHost ? (
-                    <span className="font-mono text-[10px]">no public links yet</span>
-                  ) : null}
-                </div>
-                <ProviderCountsRow counts={counts[p.slug]} />
-              </Link>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+                    {webHost ? (
+                      <span className="inline-flex items-center gap-1 min-w-0">
+                        <Globe className="size-3 shrink-0" />
+                        <span className="font-mono truncate max-w-[18ch]">{webHost}</span>
+                      </span>
+                    ) : null}
+                    {repoHost ? (
+                      <span className="inline-flex items-center gap-1 min-w-0">
+                        <Github className="size-3 shrink-0" />
+                        <span className="font-mono truncate max-w-[18ch]">{repoHost}</span>
+                      </span>
+                    ) : null}
+                    {docsHost ? (
+                      <span className="inline-flex items-center gap-1 min-w-0">
+                        <BookOpen className="size-3 shrink-0" />
+                        <span className="font-mono truncate max-w-[18ch]">{docsHost}</span>
+                      </span>
+                    ) : null}
+                    {!webHost && !repoHost && !docsHost ? (
+                      <span className="font-mono text-[10px]">no public links yet</span>
+                    ) : null}
+                  </div>
+                  <ProviderCountsRow counts={counts[p.slug]} />
+                </Link>
+              </EntityHoverCard>
             );
           })}
         </div>
@@ -382,6 +394,103 @@ function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; va
       >
         {value > 0 ? value : "—"}
       </span>
+    </div>
+  );
+}
+
+function ProviderOverview({
+  providers,
+  counts,
+}: {
+  providers: Provider[];
+  counts: Record<string, { surfaces: number; endpoints: number; subnets: number }>;
+}) {
+  const kinds = providers.reduce<Record<string, number>>((acc, p) => {
+    const k = p.kind ?? "other";
+    acc[k] = (acc[k] ?? 0) + 1;
+    return acc;
+  }, {});
+  const kindPalette = ["#7aa2ff", "#34d399", "#f59e0b", "#c084fc", "#f472b6", "#94a3b8"];
+  const kindSegs = Object.entries(kinds)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value], i) => ({ label, value, color: kindPalette[i % kindPalette.length]! }));
+
+  const endpointStatus = providers.reduce(
+    (acc, p) => {
+      const s = p.endpoint_summary?.by_status ?? {};
+      acc.ok += s.ok ?? 0;
+      acc.warn += s.degraded ?? s.warn ?? 0;
+      acc.down += s.failed ?? s.down ?? 0;
+      acc.unknown += s.unknown ?? 0;
+      return acc;
+    },
+    { ok: 0, warn: 0, down: 0, unknown: 0 },
+  );
+  const statusSegs = [
+    { label: "OK", value: endpointStatus.ok, color: "var(--health-ok, #22c55e)" },
+    { label: "Warn", value: endpointStatus.warn, color: "var(--health-warn, #f59e0b)" },
+    { label: "Down", value: endpointStatus.down, color: "var(--health-down, #ef4444)" },
+    { label: "Unknown", value: endpointStatus.unknown, color: "var(--ink-muted, #94a3b8)" },
+  ].filter((s) => s.value > 0);
+
+  // Top providers by endpoint count, as a sparkline of counts.
+  const topCounts = providers
+    .map((p) => counts[p.slug]?.endpoints ?? 0)
+    .sort((a, b) => b - a)
+    .slice(0, 20);
+  const totalEndpoints = providers.reduce((a, p) => a + (counts[p.slug]?.endpoints ?? 0), 0);
+
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
+        <Donut
+          segments={kindSegs}
+          size={88}
+          strokeWidth={11}
+          centerLabel={String(providers.length)}
+          centerSub="providers"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+            By kind
+          </div>
+          <DonutLegend segments={kindSegs.slice(0, 5)} />
+        </div>
+      </div>
+      <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
+        <Donut
+          segments={statusSegs}
+          size={88}
+          strokeWidth={11}
+          centerLabel={String(
+            endpointStatus.ok + endpointStatus.warn + endpointStatus.down + endpointStatus.unknown,
+          )}
+          centerSub="endpoints"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+            Endpoint health
+          </div>
+          <DonutLegend segments={statusSegs} />
+        </div>
+      </div>
+      <div className="rounded border border-border bg-card p-3">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+          Top providers · endpoints
+        </div>
+        <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
+          {totalEndpoints}
+        </div>
+        <Sparkline
+          values={topCounts}
+          width={260}
+          height={48}
+          ariaLabel="Top providers by endpoint count"
+        />
+        <div className="mt-1 font-mono text-[10px] text-ink-muted">
+          across {providers.length} providers
+        </div>
+      </div>
     </div>
   );
 }

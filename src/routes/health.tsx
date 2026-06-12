@@ -9,6 +9,8 @@ import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/met
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
+import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import {
   healthQuery,
   freshnessQuery,
@@ -104,7 +106,9 @@ function HealthPage() {
           </QueryErrorBoundary>
         </section>
       </div>
-      <ApiSourceFooter paths={["/api/v1/health", "/api/v1/freshness", "/api/v1/endpoint-incidents"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/health", "/api/v1/freshness", "/api/v1/endpoint-incidents"]}
+      />
     </AppShell>
   );
 }
@@ -224,32 +228,53 @@ function GlobalHealth({ interval }: { interval: number | false }) {
   const h = hRes.data;
   const f = fRes.data;
   const stale = isStaleFreshness(hRes.meta?.generated_at);
+  const segs = [
+    { label: "OK", value: h?.ok ?? 0, color: "var(--health-ok, #22c55e)" },
+    { label: "Warn", value: h?.warn ?? 0, color: "var(--health-warn, #f59e0b)" },
+    { label: "Down", value: h?.down ?? 0, color: "var(--health-down, #ef4444)" },
+    { label: "Unknown", value: h?.unknown ?? 0, color: "var(--ink-muted, #94a3b8)" },
+  ].filter((s) => s.value > 0);
+  const uptimePct = h?.uptime_24h != null ? (h.uptime_24h * 100).toFixed(2) + "%" : "—";
+  const sourceAges =
+    (f?.sources ?? [])
+      .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
+      .filter((v): v is number => typeof v === "number") ?? [];
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {stale ? <StaleBanner generatedAt={hRes.meta?.generated_at} /> : null}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border border border-border rounded overflow-hidden">
-        <Cell label="OK" num={h?.ok} accent="text-health-ok" />
-        <Cell label="Warn" num={h?.warn} accent="text-health-warn" />
-        <Cell label="Down" num={h?.down} accent="text-health-down" />
-        <Cell label="Unknown" num={h?.unknown} accent="text-ink-muted" />
-        <Cell
-          label="Uptime 24h"
-          num={h?.uptime_24h != null ? h.uptime_24h * 100 : null}
-          format={(n) => `${n.toFixed(2)}%`}
-        />
-      </div>
-      <div className="grid grid-cols-3 gap-px bg-border border border-border rounded overflow-hidden">
-        <Cell
-          label="Avg age"
-          num={f?.avg_age_seconds}
-          format={(n) => humaniseSeconds(n)}
-        />
-        <Cell
-          label="Max age"
-          num={f?.max_age_seconds}
-          format={(n) => humaniseSeconds(n)}
-        />
-        <Cell label="Stale sources" num={f?.stale_count} />
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
+          <Donut
+            segments={segs}
+            size={96}
+            strokeWidth={12}
+            centerLabel={uptimePct}
+            centerSub="uptime 24h"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+              Status mix
+            </div>
+            <DonutLegend segments={segs} />
+          </div>
+        </div>
+        <div className="rounded border border-border bg-card p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+            Source freshness
+          </div>
+          <Sparkline values={sourceAges} width={280} height={56} ariaLabel="Source freshness" />
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => humaniseSeconds(n)} />
+            <Cell label="Max age" num={f?.max_age_seconds} format={(n) => humaniseSeconds(n)} />
+            <Cell label="Stale" num={f?.stale_count} />
+          </div>
+        </div>
+        <div className="rounded border border-border bg-card p-3 grid grid-cols-2 gap-2">
+          <Cell label="OK" num={h?.ok} accent="text-health-ok" />
+          <Cell label="Warn" num={h?.warn} accent="text-health-warn" />
+          <Cell label="Down" num={h?.down} accent="text-health-down" />
+          <Cell label="Unknown" num={h?.unknown} accent="text-ink-muted" />
+        </div>
       </div>
       <div className="text-[11px] font-mono text-ink-muted">
         snapshot <TimeAgo at={hRes.meta?.generated_at} />
@@ -272,7 +297,9 @@ function Cell({
   return (
     <div className="bg-card p-3 mg-kpi">
       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
-      <div className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}>
+      <div
+        className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}
+      >
         <AnimatedNumber value={num} format={format} />
       </div>
     </div>
@@ -375,6 +402,22 @@ function Incidents({ interval }: { interval: number | false }) {
     return out;
   }, [filtered]);
 
+  // 14-day incident sparkline (count of incidents per day, oldest first).
+  const incidentsByDay = useMemo(() => {
+    const buckets = new Map<string, number>();
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setUTCDate(d.getUTCDate() - i);
+      buckets.set(d.toISOString().slice(0, 10), 0);
+    }
+    for (const r of rows) {
+      const key = r.started_at?.slice(0, 10);
+      if (key && buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+    return Array.from(buckets.values());
+  }, [rows]);
+
   if (rows.length === 0) return <EmptyState title="No recent incidents" />;
 
   const visibleGroups = showAll ? groups : groups.slice(0, INCIDENT_INITIAL_VISIBLE);
@@ -400,6 +443,24 @@ function Incidents({ interval }: { interval: number | false }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-3 rounded border border-border bg-card p-3">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            Incidents · 14d
+          </div>
+          <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
+            {rows.length}
+          </div>
+        </div>
+        <Sparkline
+          values={incidentsByDay}
+          width={220}
+          height={36}
+          color="var(--health-down, #ef4444)"
+          ariaLabel="Incidents over time"
+          className="ml-auto"
+        />
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
         {FILTER_OPTIONS.map((opt) => (
           <button
@@ -437,10 +498,7 @@ function Incidents({ interval }: { interval: number | false }) {
                 return <IncidentCard key={g.host} incident={g.items[0]!} />;
               }
               return (
-                <li
-                  key={g.host}
-                  className="rounded border border-border bg-card overflow-hidden"
-                >
+                <li key={g.host} className="rounded border border-border bg-card overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setOpenGroups((s) => ({ ...s, [g.host]: !open }))}
@@ -453,9 +511,7 @@ function Incidents({ interval }: { interval: number | false }) {
                       <ChevronRight className="size-3.5 text-ink-muted shrink-0" />
                     )}
                     <HealthPill state={g.dominantState} />
-                    <span className="font-mono text-[12px] text-ink-strong truncate">
-                      {g.host}
-                    </span>
+                    <span className="font-mono text-[12px] text-ink-strong truncate">{g.host}</span>
                     <span className="ml-auto inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
@@ -481,9 +537,7 @@ function Incidents({ interval }: { interval: number | false }) {
               onClick={() => setShowAll((v) => !v)}
               className="block w-full rounded border border-border bg-card px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 min-h-9"
             >
-              {showAll
-                ? "Show fewer"
-                : `Show all ${groups.length} grouped incidents`}
+              {showAll ? "Show fewer" : `Show all ${groups.length} grouped incidents`}
             </button>
           ) : null}
         </>

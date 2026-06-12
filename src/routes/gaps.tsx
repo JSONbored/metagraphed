@@ -19,7 +19,11 @@ export const Route = createFileRoute("/gaps")({
   head: () => ({
     meta: [
       { title: "Gaps — Metagraphed" },
-      { name: "description", content: "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo." },
+      {
+        name: "description",
+        content:
+          "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
+      },
     ],
   }),
   component: GapsPage,
@@ -32,11 +36,22 @@ function GapsPage() {
         eyebrow="Operations"
         title="Registry gaps"
         description="Public read-only view of missing resources and enrichment priorities. Submit corrections through the GitHub repo."
-        right={<ExternalLink href={GITHUB_REPO} className="text-xs">github</ExternalLink>}
+        right={
+          <ExternalLink href={GITHUB_REPO} className="text-xs">
+            github
+          </ExternalLink>
+        }
       />
-      <div className="space-y-8">
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-16 w-full" />}>
+          <GapsKpiStrip />
+        </Suspense>
+      </QueryErrorBoundary>
+      <div className="mt-6 space-y-8">
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Open gaps</h2>
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+            Open gaps
+          </h2>
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <GapsList />
@@ -45,7 +60,9 @@ function GapsPage() {
         </section>
         <section className="grid gap-6 lg:grid-cols-2">
           <div>
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Profile completeness</h2>
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+              Profile completeness
+            </h2>
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <CompletenessList />
@@ -53,7 +70,9 @@ function GapsPage() {
             </QueryErrorBoundary>
           </div>
           <div>
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Adapter candidates</h2>
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+              Adapter candidates
+            </h2>
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <AdapterCandidates />
@@ -62,7 +81,9 @@ function GapsPage() {
           </div>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">Enrichment queue</h2>
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+            Enrichment queue
+          </h2>
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <EnrichmentQueue />
@@ -70,7 +91,14 @@ function GapsPage() {
           </QueryErrorBoundary>
         </section>
       </div>
-      <ApiSourceFooter paths={["/api/v1/gaps", "/api/v1/review/profile-completeness", "/api/v1/review/adapter-candidates", "/api/v1/review/enrichment-queue"]} />
+      <ApiSourceFooter
+        paths={[
+          "/api/v1/gaps",
+          "/api/v1/review/profile-completeness",
+          "/api/v1/review/adapter-candidates",
+          "/api/v1/review/enrichment-queue",
+        ]}
+      />
     </AppShell>
   );
 }
@@ -92,17 +120,33 @@ function GapsList() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${severityCls(g.severity)}`}>
+                <span
+                  className={`rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${severityCls(g.severity)}`}
+                >
                   {g.severity ?? "low"}
                 </span>
-                {g.category ? <span className="font-mono text-[10px] uppercase text-ink-muted">{g.category}</span> : null}
+                {g.category ? (
+                  <span className="font-mono text-[10px] uppercase text-ink-muted">
+                    {g.category}
+                  </span>
+                ) : null}
                 {g.netuid != null ? (
-                  <Link to="/subnets/$netuid" params={{ netuid: String(g.netuid) }} className="font-mono text-[10px] text-ink-muted hover:text-ink-strong">SN{g.netuid}</Link>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: String(g.netuid) }}
+                    className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
+                  >
+                    SN{g.netuid}
+                  </Link>
                 ) : null}
               </div>
               <div className="font-medium text-ink-strong">{g.title ?? g.id}</div>
-              {g.description ? <p className="mt-1 text-xs text-ink-muted">{g.description}</p> : null}
-              {g.suggested_action ? <p className="mt-1 text-xs text-ink">↳ {g.suggested_action}</p> : null}
+              {g.description ? (
+                <p className="mt-1 text-xs text-ink-muted">{g.description}</p>
+              ) : null}
+              {g.suggested_action ? (
+                <p className="mt-1 text-xs text-ink">↳ {g.suggested_action}</p>
+              ) : null}
             </div>
           </div>
         </li>
@@ -118,12 +162,26 @@ function CompletenessList() {
   return (
     <ul className="space-y-1.5">
       {rows.slice(0, 20).map((r) => (
-        <li key={r.netuid} className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2">
-          <Link to="/subnets/$netuid" params={{ netuid: String(r.netuid) }} className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12">SN{r.netuid}</Link>
+        <li
+          key={r.netuid}
+          className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2"
+        >
+          <Link
+            to="/subnets/$netuid"
+            params={{ netuid: String(r.netuid) }}
+            className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12"
+          >
+            SN{r.netuid}
+          </Link>
           <div className="flex-1 h-1.5 rounded bg-surface overflow-hidden">
-            <div className="h-full bg-ink-strong" style={{ width: `${Math.round((r.completeness ?? 0) * 100)}%` }} />
+            <div
+              className="h-full bg-ink-strong"
+              style={{ width: `${Math.round((r.completeness ?? 0) * 100)}%` }}
+            />
           </div>
-          <span className="font-mono text-[11px] text-ink-strong w-10 text-right">{Math.round((r.completeness ?? 0) * 100)}%</span>
+          <span className="font-mono text-[11px] text-ink-strong w-10 text-right">
+            {Math.round((r.completeness ?? 0) * 100)}%
+          </span>
         </li>
       ))}
     </ul>
@@ -137,10 +195,21 @@ function AdapterCandidates() {
   return (
     <ul className="space-y-1.5">
       {rows.map((r, i) => (
-        <li key={`${r.netuid}-${i}`} className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2">
-          <Link to="/subnets/$netuid" params={{ netuid: String(r.netuid) }} className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12">SN{r.netuid}</Link>
+        <li
+          key={`${r.netuid}-${i}`}
+          className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2"
+        >
+          <Link
+            to="/subnets/$netuid"
+            params={{ netuid: String(r.netuid) }}
+            className="font-mono text-[11px] text-ink-muted hover:text-ink-strong w-12"
+          >
+            SN{r.netuid}
+          </Link>
           <span className="flex-1 text-xs text-ink">{r.reason ?? "—"}</span>
-          {r.score != null ? <span className="font-mono text-[11px] text-ink-strong">{r.score.toFixed(2)}</span> : null}
+          {r.score != null ? (
+            <span className="font-mono text-[11px] text-ink-strong">{r.score.toFixed(2)}</span>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -167,7 +236,17 @@ function EnrichmentQueue() {
             <tr key={r.id}>
               <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">{r.id}</td>
               <td className="px-3 py-2 font-mono text-[11px]">
-                {r.netuid != null ? <Link to="/subnets/$netuid" params={{ netuid: String(r.netuid) }} className="hover:text-ink-strong">SN{r.netuid}</Link> : "—"}
+                {r.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: String(r.netuid) }}
+                    className="hover:text-ink-strong"
+                  >
+                    SN{r.netuid}
+                  </Link>
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="px-3 py-2 font-mono text-[11px]">{r.priority ?? "—"}</td>
               <td className="px-3 py-2 text-[12px] text-ink-muted">{r.note ?? "—"}</td>
@@ -175,6 +254,44 @@ function EnrichmentQueue() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function GapsKpiStrip() {
+  const gaps = useSuspenseQuery(gapsQuery()).data.data as Gap[] | undefined;
+  const completeness = useSuspenseQuery(reviewProfileCompletenessQuery()).data.data ?? [];
+  const queue = useSuspenseQuery(reviewEnrichmentQueueQuery()).data.data ?? [];
+  const rows = gaps ?? [];
+  const high = rows.filter((g) => g.severity === "high").length;
+  const medium = rows.filter((g) => g.severity === "medium").length;
+  const avgComp =
+    completeness.length > 0
+      ? Math.round(
+          (completeness.reduce((a, r) => a + (r.completeness ?? 0), 0) / completeness.length) * 100,
+        )
+      : null;
+  const stats: Array<{ label: string; value: string; tone?: string }> = [
+    { label: "Open gaps", value: String(rows.length) },
+    { label: "High severity", value: String(high), tone: high ? "text-health-down" : undefined },
+    { label: "Medium", value: String(medium), tone: medium ? "text-health-warn" : undefined },
+    { label: "Avg completeness", value: avgComp != null ? `${avgComp}%` : "—" },
+    { label: "Queue depth", value: String(queue.length) },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border border border-border rounded overflow-hidden">
+      {stats.map((s) => (
+        <div key={s.label} className="bg-card p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            {s.label}
+          </div>
+          <div
+            className={`font-display text-xl font-semibold tabular-nums ${s.tone ?? "text-ink-strong"}`}
+          >
+            {s.value}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

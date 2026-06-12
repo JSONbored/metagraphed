@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
+import { useCopy } from "@/hooks/use-copy";
 
 interface Props {
   value: string;
@@ -10,39 +10,49 @@ interface Props {
 }
 
 export function CopyableCode({ value, label, className, truncate = true }: Props) {
-  const [copied, setCopied] = useState(false);
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch {
-      /* ignore */
-    }
-  };
+  const { copied, copy } = useCopy({ label: label ?? "value" });
 
   return (
     <button
       type="button"
-      onClick={onCopy}
+      onClick={() => copy(value)}
       title={value}
+      aria-label={copied ? "Copied" : `Copy ${label ?? "value"}`}
       className={classNames(
-        "group inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
+        "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
         className,
       )}
     >
       {label ? (
-        <span className="text-ink-muted uppercase tracking-wider text-[10px]">{label}</span>
+        <span className="shrink-0 text-ink-muted uppercase tracking-wider text-[10px]">
+          {label}
+        </span>
       ) : null}
-      <code className={classNames("text-ink-strong", truncate && "truncate max-w-[28ch]")}>
+      <code
+        className={classNames(
+          "min-w-0 text-ink-strong",
+          truncate ? "truncate" : "truncate sm:whitespace-normal sm:break-all",
+        )}
+      >
         {value}
       </code>
-      {copied ? (
-        <Check className="size-3 text-health-ok" />
-      ) : (
-        <Copy className="size-3 text-ink-muted group-hover:text-ink" />
-      )}
+      <span
+        className="relative inline-flex size-3 shrink-0 items-center justify-center"
+        aria-hidden
+      >
+        <Check
+          className={classNames(
+            "absolute size-3 text-health-ok transition-all duration-150",
+            copied ? "scale-100 opacity-100" : "scale-50 opacity-0",
+          )}
+        />
+        <Copy
+          className={classNames(
+            "absolute size-3 text-ink-muted group-hover:text-ink transition-all duration-150",
+            copied ? "scale-50 opacity-0" : "scale-100 opacity-100",
+          )}
+        />
+      </span>
     </button>
   );
 }

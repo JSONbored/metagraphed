@@ -7,7 +7,6 @@ import {
   AlertOctagon,
   ChevronRight,
   Compass,
-  Database,
   FileCode,
   Home,
   Info,
@@ -21,6 +20,8 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { useApiBase } from "@/hooks/use-api-base";
+import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
 import { Kbd } from "./kbd";
@@ -90,8 +91,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           <ul className="space-y-0.5">
             {section.items.map((item) => {
               const active =
-                pathname === item.to ||
-                (item.to !== "/" && pathname.startsWith(item.to + "/"));
+                pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to + "/"));
               const Icon = item.icon;
               return (
                 <li key={item.to}>
@@ -101,9 +101,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                     aria-current={active ? "page" : undefined}
                     className={classNames(
                       "flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors min-h-9",
-                      active
-                        ? "bg-ink-strong text-paper"
-                        : "text-ink hover:bg-surface",
+                      active ? "bg-ink-strong text-paper" : "text-ink hover:bg-surface",
                     )}
                   >
                     <Icon className="size-3.5 opacity-70" />
@@ -123,15 +121,14 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="p-5">
-        <Link
-          to="/"
-          onClick={onNavigate}
-          className="flex items-center gap-2 group"
-        >
+        <Link to="/" onClick={onNavigate} className="flex items-center gap-2 group">
           <span className="size-5 bg-ink-strong rounded-sm" aria-hidden />
           <span className="font-display text-base font-semibold tracking-tight text-ink-strong inline-flex items-baseline gap-0.5">
             Metagraphed
-            <span aria-hidden className="inline-block size-1.5 rounded-full bg-accent translate-y-[-0.15em]" />
+            <span
+              aria-hidden
+              className="inline-block size-1.5 rounded-full bg-accent translate-y-[-0.15em]"
+            />
           </span>
         </Link>
         <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted flex items-center gap-1">
@@ -141,13 +138,24 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex-1 overflow-y-auto px-3 pb-4">
         <NavList onNavigate={onNavigate} />
       </div>
-      <div className="border-t border-border bg-surface/40 p-3">
+      <div className="border-t border-border bg-surface/40 p-3 min-w-0">
         <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
           API base
         </div>
-        <CopyableCode value={`${API_BASE}/api/v1`} truncate={false} className="w-full text-[10px]" />
+        <ApiBaseRow />
       </div>
     </div>
+  );
+}
+
+function ApiBaseRow() {
+  const { base } = useApiBase();
+  return (
+    <CopyableCode
+      value={`${base}/api/v1`}
+      truncate={true}
+      className="w-full max-w-full text-[10px]"
+    />
   );
 }
 
@@ -160,11 +168,14 @@ interface SearchHit {
   slug?: string;
 }
 
-function resolveHref(hit: SearchHit): { to: string; params?: Record<string, string> } | { external: string } {
+function resolveHref(
+  hit: SearchHit,
+): { to: string; params?: Record<string, string> } | { external: string } {
   const kind = (hit.kind ?? "").toLowerCase();
   if (kind === "subnet" && hit.netuid != null)
     return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
-  if (kind === "provider" && hit.slug) return { to: "/providers/$slug", params: { slug: hit.slug } };
+  if (kind === "provider" && hit.slug)
+    return { to: "/providers/$slug", params: { slug: hit.slug } };
   if (kind === "surface") return { to: "/surfaces" };
   if (kind === "endpoint") return { to: "/endpoints" };
   if (hit.netuid != null) return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
@@ -227,10 +238,7 @@ function GlobalSearch() {
     function onKey(e: KeyboardEvent) {
       const tgt = e.target as HTMLElement | null;
       const inField =
-        tgt &&
-        (tgt.tagName === "INPUT" ||
-          tgt.tagName === "TEXTAREA" ||
-          tgt.isContentEditable);
+        tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         inputRef.current?.focus();
@@ -348,10 +356,7 @@ function GlobalSearch() {
           className="absolute left-0 right-0 top-full mt-1 max-h-[70vh] overflow-y-auto rounded border border-border bg-paper shadow-lg z-40"
         >
           {isFetching ? (
-            <div
-              className="h-0.5 w-full overflow-hidden bg-surface"
-              aria-hidden
-            >
+            <div className="h-0.5 w-full overflow-hidden bg-surface" aria-hidden>
               <div className="h-full w-1/3 bg-accent animate-[mg-loader_1.1s_ease-in-out_infinite]" />
             </div>
           ) : null}
@@ -560,10 +565,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile sidebar */}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-ink-strong/40"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="absolute inset-0 bg-ink-strong/40" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[80vw] border-r border-border bg-paper">
             <div className="flex justify-end p-2">
               <button
@@ -589,7 +591,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="size-4" />
             </button>
-            <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-xs text-ink-muted min-w-0">
+            <nav
+              aria-label="Breadcrumb"
+              className="hidden md:flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
+            >
               {crumbs.map((c, i) => (
                 <span key={c.to} className="flex items-center gap-1.5 min-w-0">
                   {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
@@ -609,12 +614,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <GlobalSearch />
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden lg:inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                <Database className="size-3" /> Finney
-              </span>
-              <span className="hidden lg:inline-flex items-center rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Unofficial
-              </span>
+              <NetworkSwitcher />
               <SettingsPopover />
             </div>
           </div>
@@ -628,7 +628,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             metadata. Unofficial — not a block explorer.
           </div>
           <div className="font-mono">
-            data: <a href={`${API_BASE}/api/v1`} className="underline" target="_blank" rel="noreferrer">{API_BASE}/api/v1</a>
+            data:{" "}
+            <a href={`${API_BASE}/api/v1`} className="underline" target="_blank" rel="noreferrer">
+              {API_BASE}/api/v1
+            </a>
           </div>
         </footer>
       </div>

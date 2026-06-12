@@ -10,6 +10,7 @@ import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -94,9 +95,7 @@ function SubnetsTable() {
     isFetching,
   } = useSuspenseInfiniteQuery(subnetsInfiniteQuery(baseParams, search.cursor));
 
-  const pages = data.pages as Array<
-    (typeof data.pages)[number] & { cursorInvalid?: boolean }
-  >;
+  const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
   const all = pages.flatMap((p) => (p.data ?? []) as Subnet[]);
@@ -109,8 +108,7 @@ function SubnetsTable() {
   useEffect(() => {
     if (lastPageParam !== search.cursor) {
       navigate({
-        search: (prev: Record<string, unknown>) =>
-          ({ ...prev, cursor: lastPageParam }) as never,
+        search: (prev: Record<string, unknown>) => ({ ...prev, cursor: lastPageParam }) as never,
         replace: true,
       });
     }
@@ -118,8 +116,7 @@ function SubnetsTable() {
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, ...patch, cursor: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
     });
 
   const onSort = (field: string) =>
@@ -139,8 +136,11 @@ function SubnetsTable() {
     if (search.health && s.health !== search.health) return false;
     return true;
   });
-  const rows = sortBy(filtered, search.sort, search.order, (row, key) =>
-    (row as Record<string, unknown>)[key],
+  const rows = sortBy(
+    filtered,
+    search.sort,
+    search.order,
+    (row, key) => (row as Record<string, unknown>)[key],
   );
 
   // Warm the favicon cache for visible rows during idle time so scrolling
@@ -159,12 +159,11 @@ function SubnetsTable() {
     });
     return () => {
       const cic =
-        (window as unknown as { cancelIdleCallback?: (h: number) => void })
-          .cancelIdleCallback ?? window.clearTimeout;
+        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback ??
+        window.clearTimeout;
       cic(handle as number);
     };
   }, [rows]);
-
 
   const filters = (
     <>
@@ -243,52 +242,139 @@ function SubnetsTable() {
           <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
             <span>{formatNumber(s.participants)} participants</span>
             <span>{s.surfaces_count ?? 0} surfaces</span>
-            <span><TimeAgo at={s.updated_at ?? s.freshness} /></span>
+            <span>
+              <TimeAgo at={s.updated_at ?? s.freshness} />
+            </span>
           </div>
-          <div className="mt-1.5"><CurationChip level={s.curation_level} /></div>
+          <div className="mt-1.5">
+            <CurationChip level={s.curation_level} />
+          </div>
         </Link>
       ))}
       table={
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50">
             <tr>
-              <th className="px-4 py-2.5"><SortHeader label="UID" field="netuid" active={search.sort === "netuid"} order={search.order} onSort={onSort} /></th>
-              <th className="px-4 py-2.5"><SortHeader label="Name" field="name" active={search.sort === "name"} order={search.order} onSort={onSort} /></th>
-              <th className="px-4 py-2.5"><SortHeader label="Symbol" field="symbol" active={search.sort === "symbol"} order={search.order} onSort={onSort} /></th>
-              <th className="px-4 py-2.5 text-right"><SortHeader label="Participants" field="participants" active={search.sort === "participants"} order={search.order} onSort={onSort} align="right" /></th>
-              <th className="px-4 py-2.5"><SortHeader label="Curation" field="curation_level" active={search.sort === "curation_level"} order={search.order} onSort={onSort} /></th>
-              <th className="px-4 py-2.5 text-right"><SortHeader label="Surfaces" field="surfaces_count" active={search.sort === "surfaces_count"} order={search.order} onSort={onSort} align="right" /></th>
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="UID"
+                  field="netuid"
+                  active={search.sort === "netuid"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="Name"
+                  field="name"
+                  active={search.sort === "name"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="Symbol"
+                  field="symbol"
+                  active={search.sort === "symbol"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-4 py-2.5 text-right">
+                <SortHeader
+                  label="Participants"
+                  field="participants"
+                  active={search.sort === "participants"}
+                  order={search.order}
+                  onSort={onSort}
+                  align="right"
+                />
+              </th>
+              <th className="px-4 py-2.5">
+                <SortHeader
+                  label="Curation"
+                  field="curation_level"
+                  active={search.sort === "curation_level"}
+                  order={search.order}
+                  onSort={onSort}
+                />
+              </th>
+              <th className="px-4 py-2.5 text-right">
+                <SortHeader
+                  label="Surfaces"
+                  field="surfaces_count"
+                  active={search.sort === "surfaces_count"}
+                  order={search.order}
+                  onSort={onSort}
+                  align="right"
+                />
+              </th>
               <th className="px-4 py-2.5">Health</th>
-              <th className="px-4 py-2.5 text-right"><SortHeader label="Updated" field="updated_at" active={search.sort === "updated_at"} order={search.order} onSort={onSort} align="right" /></th>
+              <th className="px-4 py-2.5 text-right">
+                <SortHeader
+                  label="Updated"
+                  field="updated_at"
+                  active={search.sort === "updated_at"}
+                  order={search.order}
+                  onSort={onSort}
+                  align="right"
+                />
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((s) => (
               <tr key={s.netuid} className="hover:bg-surface/40">
                 <td className="px-4 py-2.5 font-mono text-[12px] text-ink-muted">
-                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="hover:text-ink-strong">
-                    {String(s.netuid).padStart(3, "0")}
-                  </Link>
+                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: String(s.netuid) }}
+                      className="hover:text-ink-strong"
+                    >
+                      {String(s.netuid).padStart(3, "0")}
+                    </Link>
+                  </EntityHoverCard>
                 </td>
                 <td className="px-4 py-2.5">
-                  <Link to="/subnets/$netuid" params={{ netuid: String(s.netuid) }} className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline">
-                    <BrandIcon
-                      url={s.website}
-                      iconUrl={s.icon_url}
-                      netuid={s.netuid}
-                      name={s.name}
-                      fallback={s.netuid}
-                      size={20}
-                    />
-                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                  </Link>
+                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: String(s.netuid) }}
+                      className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                    >
+                      <BrandIcon
+                        url={s.website}
+                        iconUrl={s.icon_url}
+                        netuid={s.netuid}
+                        name={s.name}
+                        fallback={s.netuid}
+                        size={20}
+                      />
+                      <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                    </Link>
+                  </EntityHoverCard>
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">{s.symbol ?? "—"}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px]">{formatNumber(s.participants)}</td>
-                <td className="px-4 py-2.5"><CurationChip level={s.curation_level} /></td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px]">{s.surfaces_count ?? "—"}</td>
-                <td className="px-4 py-2.5"><HealthPill state={s.health} /></td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.updated_at ?? s.freshness} /></td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {s.symbol ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[12px]">
+                  {formatNumber(s.participants)}
+                </td>
+                <td className="px-4 py-2.5">
+                  <CurationChip level={s.curation_level} />
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[12px]">
+                  {s.surfaces_count ?? "—"}
+                </td>
+                <td className="px-4 py-2.5">
+                  <HealthPill state={s.health} />
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                  <TimeAgo at={s.updated_at ?? s.freshness} />
+                </td>
               </tr>
             ))}
           </tbody>

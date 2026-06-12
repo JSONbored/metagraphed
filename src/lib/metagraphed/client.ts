@@ -1,4 +1,4 @@
-import { API_BASE } from "./config";
+import { getApiBase } from "./config";
 import type { ApiEnvelope, ApiMeta } from "./types";
 
 export class ApiError extends Error {
@@ -24,7 +24,7 @@ export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue | QueryValue[]>;
 
 function buildUrl(path: string, params?: QueryParams): string {
-  const base = API_BASE.replace(/\/$/, "");
+  const base = getApiBase().replace(/\/$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
   const url = new URL(base + p);
   if (params) {
