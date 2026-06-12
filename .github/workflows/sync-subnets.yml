@@ -76,7 +76,7 @@ jobs:
             registry/adapters/latest
             registry/candidates/generated
             registry/generated
-            registry/native/finney-subnets.json
+            registry/native
             registry/subnets
             registry/verification
           )
@@ -84,7 +84,7 @@ jobs:
           while IFS= read -r file; do
             [ -n "$file" ] || continue
             case "$file" in
-              public/metagraph/*|public/.well-known/*|public/datasets/*|public/skills/*|public/llms.txt|public/llms-full.txt|public/robots.txt|public/sitemap.xml|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/finney-subnets.json|registry/subnets/*|registry/verification/*) ;;
+              public/metagraph/*|public/.well-known/*|public/datasets/*|public/skills/*|public/llms.txt|public/llms-full.txt|public/robots.txt|public/sitemap.xml|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/*|registry/subnets/*|registry/verification/*) ;;
               *)
                 echo "Unexpected untracked file outside the sync allowlist: $file" >&2
                 exit 1
@@ -96,7 +96,7 @@ jobs:
           while IFS= read -r file; do
             [ -n "$file" ] || continue
             case "$file" in
-              public/metagraph/*|public/.well-known/*|public/datasets/*|public/skills/*|public/llms.txt|public/llms-full.txt|public/robots.txt|public/sitemap.xml|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/finney-subnets.json|registry/subnets/*|registry/verification/*) ;;
+              public/metagraph/*|public/.well-known/*|public/datasets/*|public/skills/*|public/llms.txt|public/llms-full.txt|public/robots.txt|public/sitemap.xml|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/*|registry/subnets/*|registry/verification/*) ;;
               *)
                 echo "Unexpected generated change outside the sync allowlist: $file" >&2
                 exit 1

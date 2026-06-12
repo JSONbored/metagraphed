@@ -1,9 +1,21 @@
+import path from "node:path";
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeAll, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.mjs";
+import { buildNetworkRegistry } from "../scripts/build-network-registry.mjs";
 
 const ORIGIN = "https://api.metagraph.sh";
+
+// Build the testnet registry from the committed snapshot so the data-present
+// assertions don't depend on a prior `npm run build`. `local` is intentionally
+// never built — it stays the no-data network for the 404 cases.
+beforeAll(async () => {
+  await buildNetworkRegistry({
+    prefix: "testnet",
+    snapshotPath: path.join(repoRoot, "registry/native/test-subnets.json"),
+  });
+});
 
 async function get(env, pathname, init) {
   const res = await handleRequest(
@@ -56,14 +68,22 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(aliased.body.data?.subnet?.netuid, bare.body.data?.subnet?.netuid);
   });
 
-  test("testnet route 404s cleanly when no testnet data is published, targeting the partitioned key", async () => {
+  test("testnet route serves network-partitioned data from the testnet key", async () => {
     const env = createLocalArtifactEnv();
     const { res, body } = await get(env, "/api/v1/testnet/subnets");
-    assert.equal(res.status, 404);
-    assert.match(body.meta.artifact_path, /\/metagraph\/testnet\//);
+    assert.equal(res.status, 200);
+    assert.ok(body.data.subnets.length > 50);
+    assert.equal(body.data.network, "test");
+    assert.equal(body.meta.artifact_path, "/metagraph/testnet/subnets.json");
+
+    // Testnet netuids are independent of mainnet — a testnet subnet exists that
+    // mainnet doesn't enumerate, proving cross-network isolation.
+    const detail = await get(env, "/api/v1/testnet/subnets/11");
+    assert.equal(detail.res.status, 200);
+    assert.equal(detail.body.data.subnet.netuid, 11);
   });
 
-  test("local network route 404s cleanly", async () => {
+  test("local network route 404s cleanly (no data published)", async () => {
     const env = createLocalArtifactEnv();
     const { res } = await get(env, "/api/v1/local/coverage");
     assert.equal(res.status, 404);
@@ -87,14 +107,17 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(trends.body.meta.network, "testnet");
   });
 
-  test("raw artifact: mainnet alias serves bare data; testnet 404s", async () => {
+  test("raw artifact: mainnet alias and testnet both serve their partitioned data", async () => {
     const env = createLocalArtifactEnv();
     const mainnet = await get(env, "/metagraph/mainnet/subnets.json");
     assert.equal(mainnet.res.status, 200);
     assert.ok(Array.isArray(mainnet.body.subnets));
 
     const testnet = await get(env, "/metagraph/testnet/subnets.json");
-    assert.equal(testnet.res.status, 404);
+    assert.equal(testnet.res.status, 200);
+    assert.equal(testnet.body.network, "test");
+    // Distinct registries — testnet has its own (larger) subnet set.
+    assert.notEqual(testnet.body.subnets.length, mainnet.body.subnets.length);
   });
 
   test("a real route segment that merely looks adjacent is never shadowed by the alias set", async () => {

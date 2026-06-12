@@ -12,11 +12,19 @@ const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const snapshotPath = path.join(repoRoot, "registry/native/finney-subnets.json");
+const testnetSnapshotPath = path.join(
+  repoRoot,
+  "registry/native/test-subnets.json",
+);
 
-const snapshot = fetchNativeSnapshot();
-const existing = await readExistingSnapshot();
+const snapshot = fetchNativeSnapshot("finney");
+const existing = await readExistingSnapshot(snapshotPath);
 const tmcCount = await fetchTaoMarketCapCount();
 const diff = diffSnapshots(existing, snapshot);
+
+// Testnet is a best-effort SECONDARY registry — a testnet RPC failure must never
+// block the critical finney sync. Opt out with METAGRAPH_SKIP_TESTNET_SYNC=1.
+const testnetSnapshot = fetchTestnetSnapshot();
 
 const summary = {
   mode: dryRun ? "dry-run" : "write",
@@ -34,13 +42,39 @@ const summary = {
     min: Math.min(...snapshot.subnets.map((subnet) => subnet.block)),
     max: Math.max(...snapshot.subnets.map((subnet) => subnet.block)),
   },
+  testnet: testnetSnapshot
+    ? {
+        network: testnetSnapshot.network,
+        captured_at: testnetSnapshot.captured_at,
+        native_subnet_count: testnetSnapshot.subnets.length,
+      }
+    : { skipped: true },
 };
 
 if (!dryRun) {
   await writeJson(snapshotPath, snapshot);
+  if (testnetSnapshot) {
+    await writeJson(testnetSnapshotPath, testnetSnapshot);
+  }
 }
 
 console.log(stableStringify(summary));
+
+// Best-effort testnet capture: never throws (a failure is logged + skipped so
+// the finney sync still succeeds).
+function fetchTestnetSnapshot() {
+  if (process.env.METAGRAPH_SKIP_TESTNET_SYNC === "1") {
+    return null;
+  }
+  try {
+    return fetchNativeSnapshot("test");
+  } catch (error) {
+    console.warn(
+      `::warning::testnet native fetch failed (best-effort; finney sync unaffected): ${error.message}`,
+    );
+    return null;
+  }
+}
 
 // Synchronous backoff between retries (spawnSync is blocking; Atomics.wait gives
 // a clean sync sleep without a busy-loop).
@@ -51,7 +85,7 @@ function sleepSync(ms) {
 // The chain RPC the Bittensor SDK hits is rate-limited and occasionally flaky —
 // the failure mode that previously stalled the sync for ~40h and cascaded into a
 // blocked publish. Retry with exponential backoff before giving up.
-function fetchNativeSnapshot() {
+function fetchNativeSnapshot(network = "finney") {
   const maxAttempts = Number(process.env.METAGRAPH_NATIVE_FETCH_ATTEMPTS) || 3;
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -63,7 +97,7 @@ function fetchNativeSnapshot() {
         "python",
         "scripts/fetch-native-subnets.py",
         "--network",
-        "finney",
+        network,
       ],
       {
         cwd: repoRoot,
@@ -119,9 +153,9 @@ function fetchNativeSnapshot() {
   throw lastError;
 }
 
-async function readExistingSnapshot() {
+async function readExistingSnapshot(snapshotFilePath) {
   try {
-    return await readJson(snapshotPath);
+    return await readJson(snapshotFilePath);
   } catch (error) {
     if (error.code === "ENOENT") {
       return { subnets: [] };

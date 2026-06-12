@@ -60,6 +60,10 @@ function localSteps() {
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs", {
       METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     }),
+    // After build-artifacts (which wipes the R2 staging root) and before
+    // r2-manifest: build the non-default network registries (testnet) into the
+    // R2 staging tree so they're picked up by the manifest + upload.
+    nodeStep("build-network-registries", "scripts/build-network-registry.mjs"),
     nodeStep("generate-types", "scripts/generate-types.mjs"),
     nodeStep("generate-client", "scripts/generate-client.mjs", "--write"),
     nodeStep("r2-manifest", "scripts/r2-manifest.mjs", "--write"),
@@ -94,6 +98,8 @@ function productionSteps() {
         METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
       },
     ),
+    // After the final build-artifacts (R2 staging wipe) and before r2-manifest.
+    nodeStep("build-network-registries", "scripts/build-network-registry.mjs"),
     nodeStep("generate-types", "scripts/generate-types.mjs"),
     nodeStep("generate-client", "scripts/generate-client.mjs", "--write"),
     nodeStep("r2-manifest", "scripts/r2-manifest.mjs", "--write"),
