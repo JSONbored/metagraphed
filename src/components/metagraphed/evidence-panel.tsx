@@ -15,13 +15,23 @@ interface Props {
 }
 
 type SortMode = "recent" | "source" | "count";
+type EvidenceCursor = string | number | null;
+
+function nextEvidenceCursor(meta?: ApiMeta): string | number | undefined {
+  const next = meta?.next_cursor ?? meta?.pagination?.next_cursor;
+  if (typeof next === "string") {
+    const trimmed = next.trim();
+    return trimmed ? trimmed : undefined;
+  }
+  return typeof next === "number" && Number.isFinite(next) ? next : undefined;
+}
 
 /**
  * Grouped evidence/source panel.
  *
  * Uses cursor-based pagination (?limit=&cursor=) against /api/v1/evidence and
- * exposes a "Load more" control that walks meta.pagination.next_cursor. The
- * panel also supports a source-type filter and group sort.
+ * exposes a "Load more" control that walks the next cursor returned in API
+ * metadata. The panel also supports a source-type filter and group sort.
  */
 export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   const [sourceFilter, setSourceFilter] = useState<string>("");
@@ -29,9 +39,10 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
 
   const query = useInfiniteQuery({
     queryKey: ["metagraphed", "evidence", { netuid: netuid ?? null, pageSize }],
-    initialPageParam: 0 as number,
+    initialPageParam: null as EvidenceCursor,
     queryFn: async ({ pageParam, signal }) => {
-      const params: Record<string, string | number> = { limit: pageSize, cursor: pageParam };
+      const params: Record<string, string | number> = { limit: pageSize };
+      if (pageParam != null) params.cursor = pageParam;
       if (netuid != null) params.netuid = netuid;
       const res = await apiFetch<unknown>("/api/v1/evidence", { params, signal });
       const raw = res.data as unknown;
@@ -44,10 +55,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       }
       return { items, meta: res.meta as ApiMeta };
     },
-    getNextPageParam: (last) => {
-      const next = last.meta?.pagination?.next_cursor;
-      return typeof next === "number" ? next : undefined;
-    },
+    getNextPageParam: (last) => nextEvidenceCursor(last.meta),
     retry: 0,
     staleTime: 5 * 60_000,
   });
@@ -57,7 +65,8 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
     [query.data],
   );
 
-  const totalKnown = query.data?.pages[0]?.meta?.pagination?.total;
+  const totalKnown =
+    query.data?.pages[0]?.meta?.pagination?.total ?? query.data?.pages[0]?.meta?.total;
 
   const sources = useMemo(() => {
     const set = new Set<string>();

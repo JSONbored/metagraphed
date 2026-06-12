@@ -7,8 +7,8 @@ export interface ApiPagination {
   total?: number;
   returned?: number;
   limit?: number;
-  cursor?: number;
-  next_cursor?: number;
+  cursor?: string | number | null;
+  next_cursor?: string | number | null;
   sort?: string | null;
   order?: "asc" | "desc";
 }
@@ -20,9 +20,9 @@ export interface ApiMeta {
   generated_at?: string;
   source?: string;
   stale?: boolean;
-  cursor?: string | null;
-  next_cursor?: string | null;
-  prev_cursor?: string | null;
+  cursor?: string | number | null;
+  next_cursor?: string | number | null;
+  prev_cursor?: string | number | null;
   count?: number;
   total?: number;
   pagination?: ApiPagination;
