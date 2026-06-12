@@ -1,309 +1,105 @@
+<div align="center">
+
 # Metagraphed
 
-Every subnet, metagraphed.
+### Every subnet, metagraphed.
 
-Metagraphed is an unofficial operational registry for Bittensor subnet interfaces, health, schemas, and public access metadata.
+The Bittensor subnet integration registry. For every subnet it answers: **what does it expose** (public APIs, docs, schemas), **is it healthy**, and **how do I call it** — machine-readable, for AI agents and developers alike.
 
-The native Bittensor metagraph tells you what is happening at the subnet protocol layer. Metagraphed adds the missing builder-facing layer around it: public APIs, OpenAPI/Swagger surfaces, dashboards, repositories, endpoint health, probe history, schema drift, and access notes.
+[![Website](https://img.shields.io/badge/website-metagraph.sh-111?logo=cloudflare&logoColor=white)](https://metagraph.sh)
+[![MCP](https://img.shields.io/badge/MCP-api.metagraph.sh%2Fmcp-7c3aed)](https://api.metagraph.sh/mcp)
+[![npm](https://img.shields.io/npm/v/@jsonbored/metagraphed?logo=npm&label=npm)](https://www.npmjs.com/package/@jsonbored/metagraphed)
+[![PyPI](https://img.shields.io/pypi/v/metagraphed?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/metagraphed/)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](./LICENSE)
 
-## Domains
+</div>
 
-- `metagraph.sh` is the main product and public artifact surface.
-- `subnet.health` is not used for Metagraphed v1.
+---
 
-Example routes:
+## What it is
 
-- `https://metagraph.sh/subnets/7`
-- `https://api.metagraph.sh/metagraph/subnets.json`
-- `https://api.metagraph.sh/metagraph/health/subnets/7.json`
-- `https://api.metagraph.sh/metagraph/health/badges/7.json`
+The native Bittensor metagraph tells you what's happening at the protocol layer. Metagraphed adds the **builder-facing layer it lacks** — a registry of public subnet interfaces, endpoint health, and machine-readable schemas, built for **integration developers** (often reached through their AI agents) who need to discover and call subnet APIs.
 
-## What This Is
+> **Not** an official OpenTensor/Bittensor project · **not** a replacement for the native metagraph · **not** an alpha/price dashboard · **not** a wallet, validator, or credential tool.
 
-- a registry of public subnet interfaces;
-- a deterministic JSON artifact generator;
-- a probe surface for safe public endpoints;
-- a status layer for APIs, schemas, and public data surfaces;
-- a Cloudflare-backed API/cache/history layer;
-- a foundation for future hosted/cache/load-balanced subnet access.
+The web UI lives at **[metagraph.sh](https://metagraph.sh)**. The API is served from **`https://api.metagraph.sh`** (REST under `/api/v1`, artifacts under `/metagraph`).
 
-## What This Is Not
+## Quickstart
 
-- not an official OpenTensor or Bittensor project;
-- not a replacement for the native Bittensor metagraph;
-- not another alpha dashboard, docs encyclopedia, or generic RPC provider;
-- not a validator credential, wallet, or private scoring mirror.
+Three ways to use Metagraphed. Pick one.
 
-## Use It From An Agent (MCP)
+#### 🤖 AI agent (MCP)
 
-metagraphed is agent-native. Point any MCP client at the public, read-only
-Streamable-HTTP endpoint and your agent can query the registry as tools:
+Agent-native, public, read-only, Streamable-HTTP. 14 tools to discover a subnet, check if it's up, and learn how to call it.
 
-```
+```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
-For Cursor / other clients, add an MCP server with url
-`https://api.metagraph.sh/mcp` and transport `streamable-http`. The nine tools
-(`search_subnets`, `find_subnets_by_capability`, `get_subnet`,
-`get_subnet_health`, `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,
-`get_best_rpc_endpoint`, `registry_summary`) let an agent discover a subnet,
-check whether it's up, and learn how to call its API.
+> Cursor / other clients: add an MCP server with url `https://api.metagraph.sh/mcp`, transport `streamable-http`.
+>
+> Tools: `search_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call`
 
-- Server descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`
-- Drop-in "bittensor in a box" skill: `https://api.metagraph.sh/skills/bittensor/SKILL.md`
-- Machine index for any LLM/crawler: `https://api.metagraph.sh/llms.txt`
+#### 📦 Typed client
 
-## Registry Coverage
-
-Metagraphed is chain-first:
-
-- every active Finney netuid gets a native chain entry from decoded Bittensor/Subtensor data;
-- root `netuid: 0` is included and labeled as root/system;
-- root `netuid: 0` carries Bittensor base-layer RPC/WSS endpoint surfaces;
-- generalized endpoint resources normalize base-layer RPC/WSS and subnet-app/API/docs/data surfaces without pretending every subnet has Cosmos-style RPC/API/gRPC/seed endpoints;
-- curated overlays add public interface metadata after machine verification or maintainer review;
-- third-party APIs are enrichment/candidate sources, not canonical existence sources.
-- generated candidates capture public-source leads, but only live/redirected public-safe candidates become promoted surfaces.
-
-Coverage levels:
-
-- `native-only`: chain-derived subnet entry, no verified public interface metadata yet;
-- `manifested`: curated interface metadata exists, but no default probe is enabled;
-- `probed`: curated interface metadata exists and at least one safe read-only probe is configured.
-
-Curation levels:
-
-- `native`: chain-derived only;
-- `candidate-discovered`: public-source leads exist but are not verified;
-- `machine-verified`: live public surfaces were safely probed and promoted;
-- `maintainer-reviewed`: a human reviewed the overlay;
-- `adapter-backed`: subnet-specific public data dimensions are modeled.
-
-## Pilot Overlays
-
-The initial rich overlays track:
-
-- Allways SN7: API health, protocol state, network overview, miners, leaderboard, reliability, events, crown data, and SSE.
-- Gittensor SN74: public docs, repository registration surfaces, public master repository weights, bounty/contribution metadata concepts, maintainer-cut metadata, and public-safe aggregate registry surfaces.
-
-Credentialed flows, wallet paths, validator-sensitive internals, private dashboards, and token-gated data are intentionally out of scope.
-
-## Artifact Contract
-
-Generated public artifact routes live under `/metagraph/*`. Compact indexes and contracts are checked in under `public/metagraph`; high-churn detail, health, verification, schema, adapter, and per-subnet files are written to the ignored R2 staging tree under `dist/metagraph-r2/metagraph` and uploaded to R2. The Worker keeps the same public paths either way.
-
-- `/metagraph/contracts.json`
-- `/metagraph/providers.json`
-- `/metagraph/providers/{slug}.json`
-- `/metagraph/providers/{slug}/endpoints.json`
-- `/metagraph/api-index.json`
-- `/metagraph/openapi.json`
-- `/metagraph/types.d.ts`
-- `/metagraph/changelog.json`
-- `/metagraph/subnets.json`
-- `/metagraph/subnets/{netuid}.json`
-- `/metagraph/surfaces.json`
-- `/metagraph/surfaces/{netuid}.json`
-- `/metagraph/endpoints.json`
-- `/metagraph/endpoints/{netuid}.json`
-- `/metagraph/candidates.json`
-- `/metagraph/candidates/{netuid}.json`
-- `/metagraph/review-queue.json`
-- `/metagraph/search.json`
-- `/metagraph/coverage.json`
-- `/metagraph/curation.json`
-- `/metagraph/gaps.json`
-- `/metagraph/verification/latest.json`
-- `/metagraph/verification/subnets/{netuid}.json`
-- `/metagraph/freshness.json`
-- `/metagraph/source-health.json`
-- `/metagraph/source-snapshots.json`
-- `/metagraph/evidence-ledger.json`
-- `/metagraph/health/latest.json`
-- `/metagraph/health/summary.json`
-- `/metagraph/health/history/{date}.json`
-- `/metagraph/health/subnets/{netuid}.json`
-- `/metagraph/health/badges/{netuid}.json`
-- `/metagraph/rpc-endpoints.json`
-- `/metagraph/rpc/pools.json`
-- `/metagraph/endpoint-pools.json`
-- `/metagraph/schema-drift.json`
-- `/metagraph/schemas/index.json`
-- `/metagraph/adapters/{slug}.json`
-- `/metagraph/r2-manifest.json`
-- `/metagraph/review/curation.json`
-- `/metagraph/review/gap-priorities.json`
-- `/metagraph/review/adapter-candidates.json`
-- `/metagraph/review/maintainer-decisions.json`
-- `/metagraph/build-summary.json`
-
-The generated files are deterministic and suitable for static hosting, R2-backed serving, CI review, and downstream consumption. Artifact contracts include `storage_tier` so validators, OpenAPI generation, R2 upload, and Worker loading agree on where each artifact belongs.
-
-## Status Badges
-
-Every subnet has a self-hosted SVG health badge (no third-party badge service):
-
-```markdown
-![Allways SN7 health](https://api.metagraph.sh/metagraph/health/badges/7.svg)
-```
-
-Badges render from the published `/metagraph/health/badges/{netuid}.json`
-artifact (`ok`/`degraded`/`failed`/`unknown`, probe-derived). Embedding one in a
-subnet README links back to its Metagraphed coverage.
-
-## Contract Source Of Truth
-
-Metagraphed uses JSON Schema as the canonical public/runtime contract. Contributors should edit modular schemas under `schemas/components/*.schema.json`, then run `npm run schemas:bundle` and `npm run build`.
-
-The contract chain is:
-
-- modular JSON Schema components are canonical;
-- `schemas/api-components.schema.json` is a generated bundle;
-- `/metagraph/openapi.json` is generated from the schema bundle plus route metadata;
-- `/metagraph/types.d.ts` and `generated/metagraphed-api.d.ts` are generated from OpenAPI;
-- `generated/metagraphed-client.ts` is a generated TypeScript frontend handoff helper.
-
-Zod is not the backend source of truth in v1. If Zod helpers are added later, they should be generated consumer tooling for frontend/runtime form validation, not canonical registry authority.
-
-API consumers (including the separate `metagraphed-ui` frontend) should start from `docs/api-stability.md` — the `/api/v1` stability contract covering the response envelope, pagination/sort/filter, cache profiles, `x-metagraph-*` headers, error codes, `meta.published_at` freshness, versioning guarantees, and copy-paste example queries. Generate a typed client from `/metagraph/openapi.json`, or consume the checked-in `generated/metagraphed-api.d.ts` and `generated/metagraphed-client.ts`.
-
-Worker API routes expose stable envelopes over the same canonical artifacts:
-
-- `/api/v1`
-- `/api/v1/subnets`
-- `/api/v1/subnets/{netuid}`
-- `/api/v1/profiles`
-- `/api/v1/subnets/{netuid}/profile`
-- `/api/v1/surfaces`
-- `/api/v1/subnets/{netuid}/surfaces`
-- `/api/v1/endpoints`
-- `/api/v1/subnets/{netuid}/endpoints`
-- `/api/v1/candidates`
-- `/api/v1/subnets/{netuid}/candidates`
-- `/api/v1/providers`
-- `/api/v1/providers/{slug}`
-- `/api/v1/providers/{slug}/endpoints`
-- `/api/v1/coverage`
-- `/api/v1/curation`
-- `/api/v1/gaps`
-- `/api/v1/review/gaps`
-- `/api/v1/review/profile-completeness`
-- `/api/v1/review/adapter-candidates`
-- `/api/v1/health`
-- `/api/v1/health/history/{date}`
-- `/api/v1/subnets/{netuid}/health`
-- `/api/v1/freshness`
-- `/api/v1/source-health`
-- `/api/v1/evidence`
-- `/api/v1/changelog`
-- `/api/v1/source-snapshots`
-- `/api/v1/rpc/endpoints`
-- `/api/v1/rpc/pools`
-- `/api/v1/endpoint-pools`
-- `/api/v1/endpoint-incidents`
-- `/api/v1/schemas`
-- `/api/v1/adapters/{slug}`
-- `/api/v1/search`
-- `/api/v1/contracts`
-- `/api/v1/openapi.json`
-- `/api/v1/build`
-
-## Local Commands
+Generated from the OpenAPI contract, published with provenance.
 
 ```bash
-npm run validate
-npm test
-npm run build
-npm run scan:public-safety
-npm run sync:subnets:dry-run
-npm run discover:candidates:dry-run
-npm run verify:candidates:dry-run
-npm run curate:baseline:dry-run
-npm run review:promote:dry-run
-npm run schemas:snapshot:dry-run
-npm run schemas:bundle
-npm run adapters:snapshot:dry-run
-npm run validate:schemas
-npm run validate:api
-npm run validate:contract-drift
-npm run validate:schema-enums
-npm run validate:openapi-examples
-npm run validate:generated-client
-npm run contract:summary
-npm run validate:docs
-npm run validate:intake
-npm run validate:workflows
-npm run submission:pr -- --changed-files changed-files.txt
-npm run curation:brief
-npm run endpoint:brief
-npm run endpoint:ops:brief
-npm run r2:manifest:dry-run
-npm run r2:download:dry-run
-npm run kv:publish:dry-run
-npm run worker:deploy:dry-run
-npm run probes:smoke
+npm i @jsonbored/metagraphed   # JS/TS
+pip install metagraphed        # Python
 ```
 
-`sync:subnets` uses the Bittensor Python SDK through `uvx` to fetch decoded native Finney subnet metadata without committing Python dependencies to this repo.
+#### 🌐 REST
 
-`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`. Current sources include TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, Backprop Finance dTAO dashboard routes, Taostats metagraph dashboard routes, GitHub README links, and public project websites. Third-party dashboards are enrichment candidates only, not chain or identity authority. GitHub README-derived links are intentionally capped, de-duplicated by kind/domain, and limited to project-affiliated provenance so broad reference docs do not flood refresh PRs.
+Stable JSON envelope `{ ok, data, meta, error }`. OpenAPI at [`/metagraph/openapi.json`](https://api.metagraph.sh/metagraph/openapi.json).
 
-`verify:candidates` safely checks candidate URLs, writes a compact promotion snapshot to `registry/verification/promotions.json`, and stages the full volatile verification run outside Git for R2.
+```bash
+curl https://api.metagraph.sh/api/v1/subnets
+```
 
-`curate:baseline` derives generated baseline overlays for every active netuid that does not already have a hand-curated overlay. Git stores only a compact checksum summary; the expanded generated overlay bundle is staged outside Git for R2.
+## For agents
 
-`review:promote` applies public-safe maintainer review decisions from `registry/reviews/maintainer-reviewed.json`.
+| Resource              | URL                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Copyable agent prompt | [`/agent.md`](https://api.metagraph.sh/agent.md)                                             |
+| Machine index         | [`/llms.txt`](https://api.metagraph.sh/llms.txt)                                             |
+| Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)           |
+| Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json) |
 
-`curation:brief` summarizes the lowest-completeness subnets, highest-priority curation gaps, and adapter candidates for GitHub-native contributor targeting.
+## This repo
 
-`endpoint:brief` summarizes monitored endpoint resources, root RPC/WSS/archive advisory pools, provider scores, active incidents, and the disabled proxy contract. It is an operator aid over existing artifacts, not a separate API or health authority.
-
-`schemas:snapshot` captures machine-readable OpenAPI/Swagger schema summaries and drift state.
-
-Local generated artifacts use a deterministic timestamp by default. Set `METAGRAPH_BUILD_TIMESTAMP=<iso-8601>` only when a refresh needs an explicit shared timestamp across discovery, build, schema, and R2 manifest steps.
-
-`schemas:bundle` bundles canonical modular JSON Schema components into `schemas/api-components.schema.json`.
-
-`validate:contract-drift`, `validate:schema-enums`, `validate:openapi-examples`, and `validate:generated-client` enforce schema/OpenAPI/type/client parity.
-
-`contract:summary` compares the bundled schema against a base ref and classifies contract changes as additive, risky, or breaking for PR review.
-
-`adapters:snapshot` captures safe Allways/Gittensor public adapter summaries without raw wallet, miner, PAT, or validator-local payloads.
-
-`probes:smoke` performs read-only checks against public surfaces. It does not submit transactions, mutate subnet state, send wallet data, or use credentials.
-
-`r2:manifest` generates the Cloudflare R2 upload manifest from compact Git artifacts plus the ignored R2 staging tree. `r2:upload` is delta-based by default, using `latest/r2-manifest.json` to skip unchanged artifacts while refreshing R2 control files on full uploads. Smoke uploads with `METAGRAPH_R2_UPLOAD_LIMIT` upload only the limited artifact subset and intentionally skip control files so `latest/r2-manifest.json` never advertises artifacts that were not uploaded. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
-
-## Community Submissions
-
-Metagraphed supports PR-first and issue-first UGC for public subnet interface corrections. Direct UGC PRs must change exactly one `registry/candidates/community/*.json` file and no generated artifacts. Public preflight returns broad states (`submit_pr`, `fix_required`, `route_away`, `manual_review`); private gate scoring and merge heuristics are intentionally not committed.
-
-Use `npm run curation:brief` to generate a current Markdown curation queue from
-the existing profile completeness, gap priority, adapter candidate, and coverage
-artifacts. The curation playbook lives in `docs/curation-playbook.md`.
-
-See `docs/submission-gate.md` and `CONTRIBUTING.md` for the submission contract.
-
-## Repository Layout
+Cloudflare Worker API + Node build scripts. **Schema-first**: JSON Schema is the canonical contract → OpenAPI → types/clients. Artifacts are deterministic JSON; data refreshes on a schedule to R2/KV.
 
 ```text
-docs/                 product and operating notes
-registry/native/      generated chain-derived subnet snapshots
-registry/candidates/  unverified interface candidates pending review
-registry/providers/   provider metadata
-registry/reviews/     public-safe maintainer review decisions
-registry/subnets/     curated subnet interface overlays
-registry/verification/ generated candidate verification snapshots
-schemas/              public JSON schema contracts
-scripts/              validation, artifact generation, probe, and safety scripts
-generated/            generated TypeScript handoff types and client helpers
-workers/              Cloudflare Worker API routes over static artifacts
-public/metagraph/     compact generated JSON artifacts and public contracts
-dist/metagraph-r2/    ignored R2 staging tree for volatile/detail artifacts
-tests/                node test runner checks
+docs/              product + operating notes (start here)
+registry/          subnet overlays, candidates, community submissions
+schemas/           canonical JSON Schema components
+scripts/           validation, generation, probe, safety
+workers/           Cloudflare Worker API routes
+public/metagraph/  compact generated artifacts + contracts
+generated/         generated TypeScript types + client
 ```
+
+Deeper docs: [`docs/api-stability.md`](docs/api-stability.md) (the `/api/v1` contract), [`docs/submission-gate.md`](docs/submission-gate.md), [`docs/curation-playbook.md`](docs/curation-playbook.md).
+
+## Contributing
+
+Issues are labeled `good first issue` and `help wanted` — start there.
+
+- **Schema-first edits** require `npm run build` (regenerates `openapi.json` + types).
+- **Community submissions** are PR-first: touch exactly one `registry/candidates/community/*.json` file, no generated artifacts.
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/submission-gate.md).
+
+## Related
+
+- **Frontend** — [JSONbored/metagraphed-ui](https://github.com/JSONbored/metagraphed-ui): the web app at [metagraph.sh](https://metagraph.sh). Vite + React 19 + TanStack Start, deployed as a Cloudflare Worker. Holds no subnet data — it renders what this backend serves.
 
 ## License
 
-MIT
+The backend (Cloudflare Worker + build pipeline) is **[AGPL-3.0](./LICENSE)**. The
+published client SDKs are permissively licensed so you can embed them freely —
+[`packages/client`](./packages/client) (npm) and [`python/`](./python) (PyPI) are
+**[Apache-2.0](./packages/client/LICENSE)**.
+
+© 2026 JSONbored

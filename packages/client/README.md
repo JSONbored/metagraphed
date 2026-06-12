@@ -45,3 +45,8 @@ for the envelope, pagination, caching, error codes, and `x-metagraph-*` headers.
 
 The package tracks the `/api/v1` contract; changes within v1 are additive. The
 exported types are regenerated from `openapi.json` on each release.
+
+## License
+
+Apache-2.0 — see [LICENSE](./LICENSE). (The metagraphed backend itself is
+AGPL-3.0; this client SDK is permissively licensed so you can embed it freely.)

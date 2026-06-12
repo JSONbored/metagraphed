@@ -1,223 +1,82 @@
-# Contributing To Metagraphed
+# Contributing to Metagraphed
 
-Metagraphed is a backend-first operational registry for Bittensor subnet interfaces. The source of truth is reviewed JSON in this repo; generated artifacts under `public/metagraph` are projections of that source.
+Metagraphed is the Bittensor subnet integration registry — every subnet, metagraphed. This is the backend: a Cloudflare Worker API plus Node build scripts. **JSON Schema is the canonical contract** → OpenAPI → typed clients. Generated artifacts under `public/metagraph/` are projections of reviewed source, never hand-authored truth.
 
-## Local Checks
+Live: [metagraph.sh](https://metagraph.sh) · API [api.metagraph.sh](https://api.metagraph.sh) · License AGPL-3.0 (Apache-2.0 client SDKs)
+
+Two kinds of contribution, two paths:
+
+- **Code / schema changes** → normal feature PR, run the gates below.
+- **Community data** → one candidate JSON file, see [Community submissions](#community-submissions).
+
+## Setup & gates
 
 Use Node 22.
 
 ```bash
-npm ci
-npm run pipeline:check
-```
-
-Before opening a PR that changes public contracts, also run:
-
-```bash
-npm run test:coverage
-git diff --check
-```
-
-For smaller changes, run the focused checks that match the files you touched:
-
-```bash
+npm install
+npm test
 npm run validate
-npm run validate:schemas
-npm run validate:api
-npm run validate:openapi
-npm run worker:test
-npm run scan:public-safety
+npm run build
 ```
 
-## Registry Data Rules
+`npm run validate` runs schema, API, and OpenAPI checks. For a full local data pipeline run, use `npm run pipeline:check`. Match focused checks to what you touch (`npm run validate:schemas`, `validate:api`, `validate:openapi`, `worker:test`) rather than running everything.
 
-- Native subnet existence comes from the Bittensor/Finney chain snapshot.
-- Public interface metadata comes from curated overlays or reviewed candidate records.
-- Third-party directories, docs, GitHub READMEs, and websites are enrichment sources only.
-- Do not add secrets, PATs, wallet paths, private dashboards, private URLs, validator-local state, or credentialed API flows.
-- Do not invent API/status surfaces for subnets that do not publish them.
-- Preserve raw native chain values separately from curated display metadata.
-- Treat duplicate `netuid + kind + URL` records as data-quality bugs.
+## Schema-first rule
 
-## Community Intake
+The contract is generated, so you never edit it by hand:
 
-Community submissions can become candidates, not direct registry truth. There are
-two supported paths:
+1. Edit the source under `schemas/` or `schemas/components/`.
+2. Run `npm run build` to regenerate `openapi.json` and the types/clients.
+3. **Commit the regenerated artifacts in the same PR.**
 
-- PR-first: add exactly one `registry/candidates/community/*.json` candidate
-  document or exactly one `registry/providers/community/*.json` provider
-  profile document and no other files.
-- Issue-first: submit an `interface-submission`, `profile-correction`,
-  `endpoint-submission`, `provider-submission`, or `status-report` issue and
-  let the import/review workflow create the candidate PR after approval.
-- Endpoint/provider/status issues: submit endpoint resources, provider profiles,
-  or status reports through the matching issue template. These create review or
-  re-probe work; they do not directly change observed health.
+Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the source of truth; everything downstream follows.
 
-## What To Submit First
+## Where to start
 
-The most useful contributions are public operational facts that close real
-registry gaps:
+- **Issues** labeled [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) and [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted) are scoped and ready.
+- **Data gaps** — generate the current curation queue: `npm run curation:brief` (add `-- --limit 20` for more, `-- --json` for machine-readable). Start with profile-light subnets: directory-only entries, missing websites or source repos, public APIs with no OpenAPI metadata yet. See [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
-- official docs;
-- official website;
-- source repository;
-- dashboard or explorer;
-- OpenAPI/Swagger schema URL;
-- public subnet API URL;
-- SSE endpoint;
-- public data artifact;
-- SDK or example repository.
+## Community submissions
 
-Start with subnets that are still profile-light: directory-only entries,
-subnets missing websites or source repos, and subnets with public APIs that do
-not yet have OpenAPI/schema metadata in Metagraphed.
+Community data becomes a reviewed **candidate**, not direct registry truth. PR-first is the simplest path:
 
-Generate the current queue with:
+> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts.
+
+Generate a candidate locally:
 
 ```bash
-npm run curation:brief
+npm run candidate:new -- \
+  --netuid 7 --kind docs \
+  --url https://docs.example.com \
+  --source-url https://github.com/example/project \
+  --provider community --submitted-by <github-login> --write
 ```
 
-The curation playbook is in `docs/curation-playbook.md`.
+A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 
-Good direct candidate PRs are small: exactly one public URL, one public source
-URL proving the claim, one active netuid, and no generated artifacts.
+**Routes to manual review** (still welcome, just won't auto-merge): provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes.
 
-## Auto-Reviewed vs Manual
+**Hard boundaries:**
 
-Safe direct candidate PRs can be AI-reviewed by the private Metagraphed gate and
-may be merged automatically by the GitHub App after public checks pass. These
-are usually app-layer or docs/data surfaces such as `docs`, `website`,
-`source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`,
-`sdk`, `example`, and `repo-registry`.
+- Health, uptime, latency, incidents, and pool eligibility are **probe-derived only**. Reports can trigger a re-probe; they can never set observed state.
+- No secrets, PATs, wallet paths, private URLs, or validator-local data.
+- Don't invent API/status surfaces a subnet doesn't publish.
+- Schema-valid ≠ accepted. A private review gate makes the final call.
 
-The gate still routes higher-risk or ambiguous submissions to manual review:
+Prefer issues? Use the `interface-submission`, `profile-correction`, `endpoint-submission`, `provider-submission`, or `status-report` template — an approved issue opens the candidate PR for you. Full contract in [`docs/submission-gate.md`](docs/submission-gate.md).
 
-- provider/operator profiles;
-- Bittensor base-layer `subtensor-rpc`, `subtensor-wss`, or `archive`
-  endpoints;
-- authenticated or paid APIs;
-- unknown providers/operators;
-- adapter requests;
-- endpoint status reports;
-- identity disputes or conflicting official sources.
+## Pull requests
 
-Do not submit health, uptime, latency, incident, or pool-eligibility values.
-Those are generated only from Metagraphed probes and adapters. Status reports
-can trigger review or a future re-probe, but they cannot change observed
-operational state directly.
+- Short and focused, Conventional Commit-style titles.
+- Include the validation commands you ran in the PR body.
+- No local paths, machine-specific setup, env dumps, or private notes.
+- Keep UI/frontend work out of this repo — it owns backend data contracts and generated JSON. The web app lives at [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
 
-You can generate a direct candidate PR file locally:
+## Deeper docs
 
-```bash
-npm run candidate:new -- --netuid 7 --kind docs --url https://docs.all-ways.io/community-submission-example --source-url https://docs.all-ways.io/how-it-works.html --provider allways --submitted-by <github-login> --write
-```
+- [`docs/submission-gate.md`](docs/submission-gate.md) — full community submission contract.
+- [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
+- [`docs/api-stability.md`](docs/api-stability.md) — API/contract stability guarantees.
 
-You can generate a direct provider profile review file locally:
-
-```bash
-npm run provider:new -- --id example-operator --name "Example Operator" --kind infrastructure-provider --website-url https://example.com --docs-url https://docs.example.com --github-url https://github.com/example --contact-url https://example.com/contact --submitted-by <github-login> --write
-```
-
-Example payloads live under `docs/examples/submissions`.
-Useful examples include direct candidates, endpoint resources, OpenAPI/schema
-URLs, provider profiles, profile/source corrections, and status reports.
-
-Live PR references:
-
-- AI-merged safe candidate example:
-  https://github.com/JSONbored/metagraphed/pull/96
-- Manual-review direct candidate example:
-  https://github.com/JSONbored/metagraphed/pull/84
-- Closed duplicate candidate example:
-  https://github.com/JSONbored/metagraphed/pull/105
-
-Do not include generated `public/metagraph/**` artifacts, native snapshots,
-workflow/script changes, secrets, wallet/PAT material, private URLs, or
-validator-local data in UGC submissions.
-
-The public submission gate performs deterministic checks first:
-
-- active Finney netuid;
-- supported surface kind;
-- registered provider;
-- public-safe interface and source URLs;
-- one candidate per submission;
-- one provider profile per provider submission;
-- no duplicate curated surface or candidate;
-- submitter provenance for direct PRs;
-- no generated artifact edits.
-
-Provider profile submissions are review inputs only. They cannot claim official
-authority, cannot make endpoints pool-eligible, and cannot directly edit
-canonical `registry/providers/*.json` entries.
-
-Passing public preflight routes the submission into private gate review. The
-private reviewer may merge/import clean submissions, close hard failures, or
-route rare edge cases to manual review. Public comments expose broad reason
-categories only; private scoring prompts, thresholds, and corpus weights are not
-part of the public repo.
-
-Maintainer automation branches such as `codex/*` are intentionally ignored by
-the private UGC gate. Contributor examples should use normal feature branches
-with one candidate or provider file.
-
-Status reports never set uptime, latency, health status, incident state, or pool
-eligibility. They can only trigger review or a future re-probe; operational state
-comes from Metagraphed probes and adapters.
-
-Profile/source corrections are welcome for official websites, docs, source
-repos, dashboards, OpenAPI/schema URLs, SDKs, examples, or public data artifacts.
-Approved corrections improve profile completeness and gap reports; they do not
-override native chain state or observed endpoint health.
-
-The issue import flow is:
-
-1. Submit an `interface-submission` issue.
-2. `intake:dry-run` parses and validates the issue.
-3. The submission gate reviews source facts and safety.
-4. The gate or a maintainer applies `metagraphed-import-approved`.
-5. The import workflow opens a PR.
-6. Normal validation plus gate review decide whether it merges.
-
-Schema-valid does not mean accepted.
-
-## Generated Artifacts
-
-Avoid hand-editing `public/metagraph` unless you are correcting a stale derived artifact that cannot be regenerated without unrelated live-probe churn. Prefer changing canonical registry source and rebuilding.
-
-Use:
-
-```bash
-npm run pipeline:refresh
-```
-
-for full local refreshes. Set `METAGRAPH_WRITE_PROBE_RESULTS=1` only when you intentionally want live probe artifacts updated.
-
-Production publishes can require freshness gates:
-
-```bash
-METAGRAPH_REQUIRE_PROBE_HEALTH=1 METAGRAPH_REQUIRE_FRESHNESS=1 npm run validate
-```
-
-Freshness is exposed in `/metagraph/freshness.json` and `/api/v1/freshness`.
-Required publish lanes include native subnet data, candidate discovery,
-candidate verification, probe-derived health, and adapter snapshots.
-
-### Publish timing
-
-When your change merges, Cloudflare Workers Builds deploys the Worker and the
-compact contract artifacts in `public/metagraph` immediately. The high-churn data
-— `search`, `profiles`, `surfaces`, `evidence-ledger`, `freshness`, `curation` —
-is **R2-only** and republished on a ~6h schedule, so a newly imported subnet can
-take up to ~6 hours to appear in those indexes and in the completeness
-leaderboard (`/api/v1/profiles?sort=completeness_score`). The compact
-`subnets`/`coverage` digests refresh with the build.
-
-## Pull Requests
-
-- Use short, focused PRs with Conventional Commit-style titles.
-- Include the relevant validation commands in the PR body.
-- Do not include local paths, machine-specific setup, raw environment dumps, or private research notes.
-- Keep UI/frontend work out of this repo; this repo owns backend data contracts and generated JSON.
+By contributing you agree your work is released under the repository's [AGPL-3.0 License](LICENSE) — or Apache-2.0 for contributions to the client SDKs under `packages/client/` and `python/`.

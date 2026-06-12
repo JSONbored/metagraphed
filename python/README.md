@@ -54,4 +54,4 @@ backend's [API stability policy](https://github.com/JSONbored/metagraphed/blob/m
 
 ## License
 
-MIT
+Apache-2.0 — see [LICENSE](./LICENSE). (The metagraphed backend itself is AGPL-3.0; this client SDK is permissively licensed so you can embed it freely.)

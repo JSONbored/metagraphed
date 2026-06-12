@@ -2,18 +2,26 @@
 
 Metagraphed publishes public operational metadata only.
 
+## Reporting a Vulnerability
+
+**Report security vulnerabilities privately** via GitHub's "Report a vulnerability" (private security advisories):
+
+**https://github.com/JSONbored/metagraphed/security/advisories/new**
+
+Never open a public issue for anything that could expose secrets, credentials, wallets, private infrastructure, or unsafe write access. The private advisory channel lets us triage and ship a fix before details are public.
+
+For **non-sensitive** public endpoint/status corrections (e.g. a stale URL or a wrong health status), use the status issue template instead.
+
+## Supported Versions
+
+Metagraphed is a continuously deployed service. Security fixes land on `main` and ship via the standard deploy pipeline; only the latest release of the published clients (`@jsonbored/metagraphed` on npm, `metagraphed` on PyPI) is supported.
+
 ## Do Not Submit
 
 - secrets, tokens, PATs, API keys, signed URLs, or webhook URLs;
 - wallet paths, seed phrases, hotkeys, coldkeys, keypairs, validator-local state, or private scoring inputs;
 - private dashboards, private IPs, localhost URLs, internal hostnames, or credentialed endpoints;
 - write/mutating RPC examples.
-
-## Reporting Issues
-
-For public endpoint/status corrections, use the status issue template.
-
-For anything that could expose secrets, credentials, wallets, private infrastructure, or unsafe write access, do not paste sensitive details into a public issue. Open a minimal public issue that says sensitive details are available privately, or contact the maintainer directly.
 
 ## RPC Proxy Boundary
 

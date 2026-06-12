@@ -24,25 +24,17 @@ for (const route of API_ROUTES) {
   );
 }
 
+// The README is intentionally minimal + quickstart-first; the exhaustive route
+// and artifact coverage is enforced in docs/backend-artifact-contracts.md (the
+// checks above). Here we only guard that the key live-resource pointers a
+// reader needs stay present in the README.
 for (const requiredReadmeText of [
-  "/api/v1/openapi.json",
-  "/api/v1/endpoints",
-  "/api/v1/subnets/{netuid}/endpoints",
-  "/api/v1/providers/{slug}/endpoints",
-  "/api/v1/health/history/{date}",
-  "/api/v1/subnets/{netuid}/surfaces",
-  "/metagraph/endpoints.json",
-  "/metagraph/endpoint-pools.json",
-  "/metagraph/health/history/{date}.json",
-  "/metagraph/types.d.ts",
-  "generated/metagraphed-client.ts",
-  "npm run schemas:bundle",
-  "npm run validate:contract-drift",
-  "npm run validate:schema-enums",
-  "npm run validate:openapi-examples",
-  "npm run validate:generated-client",
-  "npm run contract:summary",
-  "Zod is not the backend source of truth",
+  "metagraph.sh",
+  "api.metagraph.sh/mcp",
+  "@jsonbored/metagraphed",
+  "pip install metagraphed",
+  "/metagraph/openapi.json",
+  "docs/api-stability.md",
 ]) {
   check(
     README_HAS(requiredReadmeText),
