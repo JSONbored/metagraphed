@@ -11439,6 +11439,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "provider": "its-ai",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-32-website-common-openapi-json",
       "kind": "openapi",
       "name": "ItsAI OpenAPI JSON",
@@ -12282,6 +12303,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.0xmarkets.io/",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -20760,6 +20802,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "provider": "ridges",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.ridges.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-62-website-common-openapi-json",
       "kind": "openapi",
       "name": "Ridges OpenAPI JSON",
@@ -26250,27 +26313,6 @@
       ],
       "state": "schema-valid",
       "url": "https://www.byzantiumai.net/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-76-website-link-www-byzantiumai-net-website-1",
-      "kind": "website",
-      "name": "Byzantium website page",
-      "netuid": 76,
-      "provider": "byzantium",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://www.byzantiumai.net/",
-      "source_urls": [
-        "https://www.byzantiumai.net/"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.byzantiumai.net/index.html"
     },
     {
       "auth_required": false,
@@ -42530,11 +42572,11 @@
       "url": "https://byteleap.ai/"
     }
   ],
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T05:02:25.027Z",
   "generated_by": "metagraphed-discover-candidates",
-  "native_snapshot_captured_at": "2026-06-12T03:53:10Z",
+  "native_snapshot_captured_at": "2026-06-12T05:02:39Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-12T03:52:59.910Z",
+  "observed_at": "2026-06-12T05:02:25.027Z",
   "schema_version": 1,
   "sources": [
     {

@@ -3,53 +3,35 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:57.893Z",
+      "captured_at": "2026-06-12T05:08:29.090Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:57.893Z",
+          "captured_at": "2026-06-12T05:08:29.090Z",
           "content_type": "application/json",
-          "hash": "dcdf2ff24fb46cebfcd7f4fdaf01ffaec6ec05f4910a6586308c4af685d643fe",
-          "latency_ms": 83,
+          "hash": "5211f7459dea685a291e0e4c40bc72a3b01213c0daff2030cbaf0775a354d090",
+          "latency_ms": 77,
           "name": "Chutes OpenAPI schema",
           "provider": "chutes",
           "schema_url": "https://api.chutes.ai/openapi.json",
           "shape": {
-            "component_schema_count": 95,
+            "component_schema_count": 2,
             "has_global_security": false,
             "method_counts": {
-              "delete": 14,
-              "get": 114,
-              "patch": 2,
-              "post": 52,
-              "put": 9
+              "delete": 1,
+              "get": 1,
+              "head": 1,
+              "patch": 1,
+              "post": 1,
+              "put": 1
             },
             "openapi_version": "3.1.0",
-            "operation_count": 191,
-            "path_count": 166,
+            "operation_count": 6,
+            "path_count": 1,
             "sample_paths": [
-              "/.well-known/openid-configuration",
-              "/_metrics",
-              "/api_keys/",
-              "/api_keys/{api_key_id}",
-              "/audit/",
-              "/audit/download",
-              "/audit/miner_data",
-              "/bounties/",
-              "/bounties/{chute_id}/increase",
-              "/chutes/",
-              "/chutes/affine_available",
-              "/chutes/boosted",
-              "/chutes/code/{chute_id}",
-              "/chutes/diffusion",
-              "/chutes/gpu_count_history",
-              "/chutes/make_public",
-              "/chutes/miner_means",
-              "/chutes/miner_means/{chute_id}",
-              "/chutes/miner_means/{chute_id}.{ext}",
-              "/chutes/rolling_updates"
+              "{path}"
             ],
             "security_scheme_count": 1,
             "server_count": 0,
@@ -64,11 +46,11 @@
         }
       ],
       "status": "captured",
-      "total_operation_count": 191,
-      "total_path_count": 166
+      "total_operation_count": 6,
+      "total_path_count": 1
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:57.893Z",
+      "captured_at": "2026-06-12T05:08:29.090Z",
       "status": "captured",
       "surface_count": 3,
       "surfaces": [
@@ -105,7 +87,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T05:02:25.027Z",
   "netuid": 64,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

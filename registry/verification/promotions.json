@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2017,
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "candidate_count": 2019,
+  "generated_at": "2026-06-12T05:02:25.027Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-12T03:52:59.910Z",
+  "observed_at": "2026-06-12T05:02:25.027Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -10645,6 +10645,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 32,
+      "provider": "its-ai",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11243,6 +11262,25 @@
         "transient_failure": false
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 35,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-36-backprop-dashboard",
@@ -18751,6 +18789,25 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 62,
+      "provider": "ridges",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23556,25 +23613,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-76-website-link-www-byzantiumai-net-website-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 76,
-      "provider": "byzantium",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-77-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -26648,22 +26686,22 @@
     },
     {
       "candidate_id": "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
-      "classification": "content-mismatch",
+      "classification": "timeout",
       "confidence_score": 0,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
+      "content_type": null,
+      "error": "probe-failed",
       "kind": "subnet-api",
       "netuid": 88,
       "provider": "mobiusfund",
       "quality_signals": {
-        "content_type_matches_kind": false,
+        "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
-        "transient_failure": false
+        "transient_failure": true
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-88-native-chain-github",
@@ -38166,11 +38204,12 @@
   "summary": {
     "by_classification": {
       "auth-required": 9,
-      "content-mismatch": 129,
+      "content-mismatch": 128,
       "dead": 396,
-      "live": 1299,
+      "live": 1301,
       "rate-limited": 7,
       "redirected": 141,
+      "timeout": 1,
       "transient": 4,
       "unsafe": 2,
       "unsupported": 30
@@ -38178,13 +38217,13 @@
     "by_kind": {
       "dashboard": 565,
       "data-artifact": 15,
-      "docs": 418,
+      "docs": 421,
       "openapi": 274,
       "repo-registry": 2,
       "sdk": 2,
       "source-repo": 155,
       "subnet-api": 217,
-      "website": 369
+      "website": 368
     },
     "by_provider": {
       "academia": 1,
@@ -38196,7 +38235,7 @@
       "bitads": 8,
       "bitmind": 2,
       "blockmachine": 18,
-      "byzantium": 8,
+      "byzantium": 7,
       "cacheon": 12,
       "chutes": 20,
       "coldint": 1,
@@ -38219,7 +38258,7 @@
       "hone": 12,
       "inference-labs": 11,
       "infinitehash": 8,
-      "its-ai": 18,
+      "its-ai": 19,
       "macrocosmos": 68,
       "mantis": 1,
       "mobiusfund": 13,
@@ -38227,13 +38266,13 @@
       "nepher-robotics": 10,
       "numinous": 13,
       "oneoneone": 1,
-      "opentensor": 415,
+      "opentensor": 416,
       "oro": 16,
       "platform-network": 12,
       "qbittensor-labs": 36,
       "readyai": 3,
       "redteam": 10,
-      "ridges": 8,
+      "ridges": 9,
       "shiftlayer": 1,
       "signalplus": 1,
       "silx-labs": 12,
@@ -38259,7 +38298,7 @@
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1440
+    "promotable_count": 1442
   },
   "verification_finished_at": null,
   "verification_started_at": null

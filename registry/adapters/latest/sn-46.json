@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:57.703Z",
+      "captured_at": "2026-06-12T05:08:28.845Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:57.703Z",
+          "captured_at": "2026-06-12T05:08:28.845Z",
           "content_type": "application/json; charset=utf-8",
           "hash": "7ac38e88eaafa60fd41edce90d2d1774cd50647d71e85ef3be36f0779808068b",
-          "latency_ms": 29,
+          "latency_ms": 56,
           "name": "Zipcode OpenAPI JSON",
           "provider": "opentensor",
           "schema_url": "https://zipcode.ai/openapi.json",
@@ -68,13 +68,13 @@
       "total_path_count": 41
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:57.703Z",
+      "captured_at": "2026-06-12T05:08:28.845Z",
       "status": "captured",
       "surface_count": 0,
       "surfaces": []
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T05:02:25.027Z",
   "netuid": 46,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

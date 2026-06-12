@@ -12,11 +12,11 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-12T03:58:56.589Z",
+      "captured_at": "2026-06-12T05:08:28.032Z",
       "config_hash": "b01218e778bbe3ca0cb432e87470c8c10c47e23ec9682bf6b6ec5d29944b9fe5",
       "content_type": "text/plain; charset=utf-8",
       "issue_discovery_enabled_count": 3,
-      "latency_ms": 56,
+      "latency_ms": 74,
       "maintainer_cut_repo_count": 9,
       "max_maintainer_cut": 0.6,
       "repository_count": 19,
@@ -90,12 +90,12 @@
     },
     "mirror_freshness": {
       "archived": false,
-      "captured_at": "2026-06-12T03:58:56.963Z",
+      "captured_at": "2026-06-12T05:08:28.438Z",
       "default_branch": "test",
       "disabled": false,
       "full_name": "entrius/das-github-mirror",
       "html_url": "https://github.com/entrius/das-github-mirror",
-      "latency_ms": 166,
+      "latency_ms": 170,
       "open_issues_count": 6,
       "pushed_at": "2026-06-08T21:54:26Z",
       "status": "captured",
@@ -105,11 +105,11 @@
     "repository_metadata": {
       "archived_count": 0,
       "auth_status": "ok",
-      "captured_at": "2026-06-12T03:58:57.226Z",
+      "captured_at": "2026-06-12T05:08:28.704Z",
       "captured_count": 19,
       "carried_forward_count": 0,
       "html_fallback_count": 0,
-      "latest_push_at": "2026-06-12T03:50:50Z",
+      "latest_push_at": "2026-06-12T05:05:24Z",
       "rate_limited_or_forbidden_count": 0,
       "repositories": [
         {
@@ -228,8 +228,8 @@
           "full_name": "JSONbored/awesome-claude",
           "html_url": "https://github.com/JSONbored/awesome-claude",
           "metadata_level": "github-api",
-          "open_issues_count": 258,
-          "pushed_at": "2026-06-12T02:48:03Z",
+          "open_issues_count": 260,
+          "pushed_at": "2026-06-12T04:06:18Z",
           "topic_count": 20
         },
         {
@@ -248,7 +248,7 @@
           "full_name": "MkDev11/gittensor-hub",
           "html_url": "https://github.com/MkDev11/gittensor-hub",
           "metadata_level": "github-api",
-          "open_issues_count": 1,
+          "open_issues_count": 2,
           "pushed_at": "2026-06-12T03:47:03Z",
           "topic_count": 6
         },
@@ -258,8 +258,8 @@
           "full_name": "phase-rs/phase",
           "html_url": "https://github.com/phase-rs/phase",
           "metadata_level": "github-api",
-          "open_issues_count": 548,
-          "pushed_at": "2026-06-12T03:50:50Z",
+          "open_issues_count": 547,
+          "pushed_at": "2026-06-12T04:49:55Z",
           "topic_count": 8
         },
         {
@@ -278,7 +278,7 @@
           "full_name": "touchpilot/touchpilot",
           "html_url": "https://github.com/touchpilot/touchpilot",
           "metadata_level": "github-api",
-          "open_issues_count": 31,
+          "open_issues_count": 32,
           "pushed_at": "2026-06-11T20:54:29Z",
           "topic_count": 0
         },
@@ -299,7 +299,7 @@
           "html_url": "https://github.com/we-promise/sure",
           "metadata_level": "github-api",
           "open_issues_count": 381,
-          "pushed_at": "2026-06-11T19:25:31Z",
+          "pushed_at": "2026-06-12T05:05:24Z",
           "topic_count": 0
         }
       ],
@@ -313,7 +313,7 @@
     "private_dashboards",
     "wallet_data"
   ],
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-12T05:02:25.027Z",
   "netuid": 74,
   "notes": [
     "Gittensor adapter publishes public repository/config aggregates only.",
