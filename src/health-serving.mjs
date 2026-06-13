@@ -545,4 +545,167 @@ function shiftDate(isoDate, days) {
   return new Date(base).toISOString().slice(0, 10);
 }
 
+// --- Live-everywhere health resolution + composed-artifact overlays ----------
+// Health must never be served from a build-time artifact. resolveLiveHealth
+// returns the freshest live snapshot — KV health:current first, then a
+// reconstruction from D1 surface_status (latest per-surface) when KV is cold —
+// or null when no live source exists (callers then serve `unknown`, never a
+// baked value). The overlay helpers below are pure: they take the resolved
+// snapshot and replace the embedded health on composed artifacts.
+
+function liveFromD1Rows(rows) {
+  const surfaces = rows.map((r) => ({
+    surface_id: r.surface_id,
+    netuid: r.netuid,
+    kind: r.kind,
+    provider: r.provider,
+    url: r.url,
+    status: r.status,
+    classification: r.classification,
+    latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
+    status_code: Number.isInteger(r.status_code) ? r.status_code : null,
+    last_checked: Number.isFinite(r.last_checked)
+      ? new Date(r.last_checked).toISOString()
+      : null,
+    last_ok: Number.isFinite(r.last_ok)
+      ? new Date(r.last_ok).toISOString()
+      : null,
+  }));
+  const byNetuid = new Map();
+  for (const row of surfaces) {
+    const group = byNetuid.get(row.netuid) || [];
+    group.push(row);
+    byNetuid.set(row.netuid, group);
+  }
+  const subnets = [...byNetuid.entries()]
+    .map(([netuid, group]) => ({ netuid, ...summarizeRows(group) }))
+    .sort((a, b) => a.netuid - b.netuid);
+  const lastRun = latestIso(surfaces.map((s) => s.last_checked));
+  return {
+    schema_version: 1,
+    generated_at: lastRun,
+    last_run_at: lastRun,
+    source: "live-d1-fallback",
+    health_source: "live-d1-fallback",
+    summary: { surface_count: surfaces.length },
+    subnets,
+    surfaces,
+  };
+}
+
+export async function resolveLiveHealth({ readHealthKv, env, db } = {}) {
+  if (typeof readHealthKv === "function" && env) {
+    try {
+      const current = await readHealthKv(env, "health:current");
+      if (current && Array.isArray(current.surfaces)) {
+        return { ...current, health_source: "live-cron-prober" };
+      }
+    } catch {
+      // fall through to D1
+    }
+  }
+  const database = db || env?.METAGRAPH_HEALTH_DB;
+  if (database?.prepare) {
+    try {
+      const { results } = await database
+        .prepare(
+          `SELECT surface_id, netuid, kind, provider, url, status, classification,
+                  latency_ms, status_code, last_checked, last_ok
+           FROM surface_status`,
+        )
+        .all();
+      if (Array.isArray(results) && results.length) {
+        return liveFromD1Rows(results);
+      }
+    } catch {
+      // fall through to null (caller serves `unknown`)
+    }
+  }
+  return null;
+}
+
+// Overlay the live per-subnet operational rollup onto a composed overview
+// artifact's `health`. Returns null only when there is no live snapshot at all
+// (caller falls back); when the snapshot exists but the subnet has no probed
+// surfaces, health is `unknown` — never the baked value.
+export function overlayOverviewHealth(staticOverview, live, netuid) {
+  if (!live || !Array.isArray(live.subnets)) return null;
+  const summary = live.subnets.find((entry) => entry.netuid === netuid) || null;
+  return {
+    ...(staticOverview || { netuid }),
+    health: summary
+      ? { netuid, ...summary, observed_by: "live-cron-prober" }
+      : { netuid, status: "unknown", surface_count: 0 },
+    operational_observed_at: live.last_run_at || null,
+    health_source: live.health_source || "live-cron-prober",
+  };
+}
+
+// Overlay live per-service health + recomputed call eligibility onto an agent
+// catalog detail artifact. Structural fields (base_url, auth, schema) are kept;
+// `health` and `eligibility.callable` become live (callable now = live status
+// not failed AND not classified dead/unsafe). Catalog services are already a
+// public-safe subset at build time, so structural callability is implied.
+export function overlayCatalogDetail(staticDetail, live, netuid) {
+  if (!live || !Array.isArray(live.surfaces)) return null;
+  const liveById = new Map();
+  for (const row of live.surfaces) {
+    if (row.netuid === netuid) liveById.set(row.surface_id, row);
+  }
+  const services = (staticDetail?.services || []).map((service) => {
+    const row = liveById.get(service.surface_id) || null;
+    const status = row ? row.status : "unknown";
+    const classification = row
+      ? row.classification
+      : (service.health?.classification ?? null);
+    const callableNow =
+      Boolean(row) &&
+      status !== "failed" &&
+      classification !== "dead" &&
+      classification !== "unsafe";
+    return {
+      ...service,
+      health: {
+        status,
+        classification,
+        latency_ms: row ? row.latency_ms : null,
+        last_ok: row ? row.last_ok : null,
+        last_checked: row ? row.last_checked : null,
+        stale: false,
+        observed_by: row ? "live-cron-prober" : "unavailable",
+      },
+      eligibility: {
+        ...(service.eligibility || {}),
+        callable: callableNow,
+        live_status: status,
+      },
+    };
+  });
+  return {
+    ...staticDetail,
+    services,
+    operational_observed_at: live.last_run_at || null,
+    health_source: live.health_source || "live-cron-prober",
+  };
+}
+
+// Overlay each agent-catalog index entry's `health` (a per-subnet status string)
+// from the live snapshot. Structural counts are left untouched.
+export function overlayCatalogIndex(staticIndex, live) {
+  if (!live || !Array.isArray(live.subnets)) return null;
+  const statusByNetuid = new Map(
+    live.subnets.map((entry) => [entry.netuid, entry.status]),
+  );
+  const subnets = (staticIndex?.subnets || []).map((entry) => ({
+    ...entry,
+    health: statusByNetuid.get(entry.netuid) ?? "unknown",
+  }));
+  return {
+    ...staticIndex,
+    subnets,
+    operational_observed_at: live.last_run_at || null,
+    health_source: live.health_source || "live-cron-prober",
+  };
+}
+
 export { OPERATIONAL_KINDS };

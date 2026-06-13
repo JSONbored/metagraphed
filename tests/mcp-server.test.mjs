@@ -1387,4 +1387,94 @@ describe("MCP goal-shaped tools — branch coverage", () => {
     assert.equal(res.body.result.structuredContent.count, 0);
   });
 
+  describe("live health overlay (warm KV overrides stale static)", () => {
+    const staticHealth = {
+      schema_version: 1,
+      netuid: 7,
+      summary: { status: "ok", surface_count: 1 },
+      surfaces: [{ surface_id: "7:subnet-api:x", netuid: 7, status: "ok" }],
+    };
+    const staticCatalog = {
+      netuid: 7,
+      services: [
+        {
+          surface_id: "7:subnet-api:x",
+          base_url: "https://x",
+          health: { status: "ok", stale: true },
+          eligibility: { callable: true, reasons: [] },
+        },
+      ],
+    };
+    const liveKv = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      surfaces: [
+        {
+          surface_id: "7:subnet-api:x",
+          netuid: 7,
+          status: "failed",
+          classification: "down",
+          latency_ms: null,
+          last_ok: "2026-06-12T00:00:00.000Z",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+      subnets: [{ netuid: 7, status: "failed", surface_count: 1, ok_count: 0 }],
+    };
+
+    test("get_subnet_health returns LIVE status, not the static artifact", async () => {
+      const deps = makeDeps(
+        { "/metagraph/health/subnets/7.json": staticHealth },
+        { "health:current": liveKv },
+      );
+      const res = await callTool("get_subnet_health", { netuid: 7 }, { deps });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.surfaces[0].status, "failed");
+      assert.equal(out.summary.status, "failed");
+      assert.equal(out.operational_observed_at, "2026-06-13T00:00:00.000Z");
+    });
+
+    test("list_subnet_apis overlays live health + recomputes callable", async () => {
+      const deps = makeDeps(
+        { "/metagraph/agent-catalog/7.json": staticCatalog },
+        { "health:current": liveKv },
+      );
+      const res = await callTool("list_subnet_apis", { netuid: 7 }, { deps });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.services[0].health.status, "failed");
+      assert.equal(out.services[0].health.stale, false);
+      assert.equal(out.services[0].eligibility.callable, false);
+      assert.equal(out.health_source, "live-cron-prober");
+    });
+
+    test("cold KV → tools still serve the static artifact (no regression)", async () => {
+      const deps = makeDeps({
+        "/metagraph/health/subnets/7.json": staticHealth,
+      });
+      const res = await callTool("get_subnet_health", { netuid: 7 }, { deps });
+      assert.equal(res.body.result.structuredContent.summary.status, "ok");
+    });
+
+    test("get_subnet_health with neither live nor static → unknown, never baked", async () => {
+      const res = await callTool(
+        "get_subnet_health",
+        { netuid: 7 },
+        { deps: makeDeps() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.summary.status, "unknown");
+      assert.equal(out.health_source, "unavailable");
+      assert.equal(out.operational_observed_at, null);
+    });
+
+    test("list_subnet_apis cold KV → static services + unavailable freshness", async () => {
+      const deps = makeDeps({
+        "/metagraph/agent-catalog/7.json": staticCatalog,
+      });
+      const res = await callTool("list_subnet_apis", { netuid: 7 }, { deps });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.service_count, 1);
+      assert.equal(out.health_source, "unavailable");
+      assert.equal(out.operational_observed_at, null);
+    });
+  });
 });

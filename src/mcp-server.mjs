@@ -13,7 +13,14 @@
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
-import { overlayRpcPoolEligibility } from "./health-serving.mjs";
+import {
+  overlayCatalogDetail,
+  overlayCatalogIndex,
+  overlayOverviewHealth,
+  overlayRpcPoolEligibility,
+  overlaySubnetHealth,
+  resolveLiveHealth,
+} from "./health-serving.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -89,6 +96,29 @@ async function loadArtifactData(ctx, artifactPath) {
     );
   }
   return result.data;
+}
+
+// Freshest live operational snapshot (KV health:current → D1 surface_status),
+// so MCP tools serve live health like the REST routes do — never a build-time
+// value. Returns null when no live source is available (caller renders
+// `unknown`). Mirrors workers/api.mjs liveHealthOverlay.
+function mcpLiveHealth(ctx) {
+  return resolveLiveHealth({
+    readHealthKv: ctx.readHealthKv,
+    env: ctx.env,
+    db: ctx.env?.METAGRAPH_HEALTH_DB,
+  });
+}
+
+// Best-effort static artifact read that yields null instead of throwing, so a
+// tool can fall through to a live-only / `unknown` payload once the static
+// health artifacts are removed (PR2).
+async function loadArtifactDataOrNull(ctx, artifactPath) {
+  try {
+    return await loadArtifactData(ctx, artifactPath);
+  } catch {
+    return null;
+  }
 }
 
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
@@ -324,10 +354,12 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const capability = requireString(args, "capability");
       const limit = clampLimit(args?.limit, 10, 50);
-      const catalog = await loadArtifactData(
+      const staticCatalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
       );
+      const live = await mcpLiveHealth(ctx);
+      const catalog = overlayCatalogIndex(staticCatalog, live) || staticCatalog;
       const terms = queryTerms(capability);
       const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
       const ranked = subnets
@@ -384,7 +416,12 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/overview/${netuid}.json`);
+      const overview = await loadArtifactData(
+        ctx,
+        `/metagraph/overview/${netuid}.json`,
+      );
+      const live = await mcpLiveHealth(ctx);
+      return overlayOverviewHealth(overview, live, netuid) || overview;
     },
   },
   {
@@ -403,7 +440,22 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/health/subnets/${netuid}.json`);
+      const live = await mcpLiveHealth(ctx);
+      const staticHealth = await loadArtifactDataOrNull(
+        ctx,
+        `/metagraph/health/subnets/${netuid}.json`,
+      );
+      const overlaid = overlaySubnetHealth(staticHealth, live, netuid);
+      if (overlaid) return overlaid;
+      if (staticHealth) return staticHealth;
+      return {
+        schema_version: 1,
+        netuid,
+        summary: { status: "unknown", surface_count: 0 },
+        operational_observed_at: null,
+        health_source: "unavailable",
+        surfaces: [],
+      };
     },
   },
   {
@@ -423,14 +475,19 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      const data = await loadArtifactData(
+      const staticDetail = await loadArtifactData(
         ctx,
         `/metagraph/agent-catalog/${netuid}.json`,
       );
+      const live = await mcpLiveHealth(ctx);
+      const data =
+        overlayCatalogDetail(staticDetail, live, netuid) || staticDetail;
       return {
         netuid: data.netuid ?? netuid,
         service_count: Array.isArray(data.services) ? data.services.length : 0,
         services: data.services || [],
+        operational_observed_at: data.operational_observed_at ?? null,
+        health_source: data.health_source ?? "unavailable",
       };
     },
   },
@@ -521,11 +578,20 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
+      const live = await mcpLiveHealth(ctx);
       if (args?.netuid === undefined || args?.netuid === null) {
-        return loadArtifactData(ctx, "/metagraph/agent-catalog.json");
+        const index = await loadArtifactData(
+          ctx,
+          "/metagraph/agent-catalog.json",
+        );
+        return overlayCatalogIndex(index, live) || index;
       }
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/agent-catalog/${netuid}.json`);
+      const detail = await loadArtifactData(
+        ctx,
+        `/metagraph/agent-catalog/${netuid}.json`,
+      );
+      return overlayCatalogDetail(detail, live, netuid) || detail;
     },
   },
   {
@@ -777,10 +843,13 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = await resolveNetuid(ctx, args);
-      const detail = await loadArtifactData(
+      const staticDetail = await loadArtifactData(
         ctx,
         `/metagraph/agent-catalog/${netuid}.json`,
       );
+      const live = await mcpLiveHealth(ctx);
+      const detail =
+        overlayCatalogDetail(staticDetail, live, netuid) || staticDetail;
       const services = Array.isArray(detail.services) ? detail.services : [];
       const callable = services.filter((s) => s.eligibility?.callable);
       const steps = (callable.length > 0 ? callable : services).map((s) => ({
@@ -806,7 +875,8 @@ export const MCP_TOOLS = [
           : { available: false, schema_url: s.schema_url || null },
         health: {
           status: s.health?.status ?? "unknown",
-          stale: s.health?.stale ?? true,
+          stale: s.health?.stale ?? false,
+          observed_by: s.health?.observed_by ?? null,
         },
       }));
       const isCallable = callable.length > 0;
@@ -816,6 +886,8 @@ export const MCP_TOOLS = [
         name: detail.name,
         slug: detail.slug,
         integration_readiness: detail.integration_readiness,
+        operational_observed_at: detail.operational_observed_at ?? null,
+        health_source: detail.health_source ?? "unavailable",
         callable: isCallable,
         callable_count: callable.length,
         guidance: isCallable
