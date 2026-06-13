@@ -1434,10 +1434,54 @@ for (const skillDirName of skillDirNames) {
 await fs.mkdir(path.join(repoRoot, "public/.well-known/agent-skills"), {
   recursive: true,
 });
+// Self-hosted JSON Schema for the discovery index. The official agentskills.io
+// spec defines only the SKILL.md format — there is no published discovery-index
+// schema, and the previously-referenced schemas.agentskills.io host does not
+// resolve. Rather than point `$schema` at a non-dereferenceable URL (which a
+// strict JSON Schema validator fails to fetch), we host our own schema here so
+// the index is self-describing and validatable. Served as a static ASSET at
+// /.well-known/agent-skills/schema.json on both api.metagraph.sh and the apex.
+const agentSkillsSchemaUrl = `${llmsApiBase}/.well-known/agent-skills/schema.json`;
+await writeJson(
+  path.join(repoRoot, "public/.well-known/agent-skills/schema.json"),
+  {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: agentSkillsSchemaUrl,
+    title: "Agent Skills Discovery Index",
+    description:
+      "Discovery index for Agent Skills (agentskills.io SKILL.md format): one entry per published skill, each with a sha256 content digest for integrity verification.",
+    type: "object",
+    required: ["skills"],
+    additionalProperties: true,
+    properties: {
+      $schema: { type: "string", format: "uri" },
+      skills: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["name", "type", "description", "url", "digest"],
+          additionalProperties: true,
+          properties: {
+            name: {
+              type: "string",
+              pattern: "^[a-z0-9-]+$",
+              minLength: 1,
+              maxLength: 64,
+            },
+            type: { const: "skill-md" },
+            description: { type: "string", minLength: 1 },
+            url: { type: "string", format: "uri" },
+            digest: { type: "string", pattern: "^sha256:[0-9a-f]{64}$" },
+          },
+        },
+      },
+    },
+  },
+);
 await writeJson(
   path.join(repoRoot, "public/.well-known/agent-skills/index.json"),
   {
-    $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+    $schema: agentSkillsSchemaUrl,
     skills: agentSkills,
   },
 );

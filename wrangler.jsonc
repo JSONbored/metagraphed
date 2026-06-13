@@ -26,6 +26,7 @@
     "run_worker_first": [
       "/",
       "/.well-known/api-catalog",
+      "/.well-known/mcp/server-card.json",
       "/api/*",
       "/rpc/*",
       "/metagraph/*",

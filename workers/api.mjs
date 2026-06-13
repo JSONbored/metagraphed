@@ -253,6 +253,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return apiCatalogResponse(request);
   }
 
+  if (url.pathname === "/.well-known/mcp/server-card.json") {
+    return mcpServerCardResponse(request, env);
+  }
+
   if (url.pathname === "/health") {
     return handleHealthRequest(request, env);
   }
@@ -968,19 +972,37 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
       parameter: transformed.error.parameter,
     });
   }
+  // Real publish time from the KV latest pointer (null until a publish has
+  // populated it). Unlike generated_at — a deterministic content marker that is
+  // intentionally the 1970 epoch in committed/local builds (issue #349) — this
+  // is the genuine "last updated" timestamp.
+  const pub = await publishedAt(env);
+  // Static-asset artifacts that DECLARE a `published_at` field (e.g.
+  // build-summary, agent-catalog) carry it as null in the committed
+  // deterministic build, so an agent reading the response BODY (not just the
+  // envelope meta) sees no freshness signal. Populate it at serve from the same
+  // pointer that feeds meta.published_at; generated_at stays the marker.
+  let responseData = transformed.data;
+  if (
+    pub &&
+    responseData &&
+    typeof responseData === "object" &&
+    !Array.isArray(responseData) &&
+    "published_at" in responseData &&
+    !responseData.published_at
+  ) {
+    responseData = { ...responseData, published_at: pub };
+  }
   return envelopeResponse(
     request,
     {
-      data: transformed.data,
+      data: responseData,
       meta: {
         artifact_path: artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
         generated_at: baseData?.generated_at || null,
-        // Real publish time from the KV latest pointer; null until a publish has
-        // populated it. Unlike generated_at (a deterministic content marker),
-        // this is safe to render as a human "last updated" timestamp.
-        published_at: await publishedAt(env),
+        published_at: pub,
         source: baseSource,
         ...(baseData?.operational_observed_at
           ? { operational_observed_at: baseData.operational_observed_at }
@@ -1003,18 +1025,21 @@ async function handleHealthTrends(request, env, netuid) {
     let rows = [];
     if (db?.prepare) {
       try {
-        const result = await db
-          .prepare(
-            `SELECT surface_id,
+        const result = await withTimeout(
+          db
+            .prepare(
+              `SELECT surface_id,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
                     AVG(latency_ms) AS avg_latency_ms
              FROM surface_checks
              WHERE netuid = ? AND checked_at >= ?
              GROUP BY surface_id`,
-          )
-          .bind(netuid, nowMs - days * DAY_MS)
-          .all();
+            )
+            .bind(netuid, nowMs - days * DAY_MS)
+            .all(),
+          d1TimeoutMs(env),
+        );
         rows = result?.results || [];
       } catch {
         rows = [];
@@ -1081,10 +1106,13 @@ async function d1All(env, sql, params) {
   const db = env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return [];
   try {
-    const result = await db
-      .prepare(sql)
-      .bind(...params)
-      .all();
+    const result = await withTimeout(
+      db
+        .prepare(sql)
+        .bind(...params)
+        .all(),
+      d1TimeoutMs(env),
+    );
     return result?.results || [];
   } catch {
     return [];
@@ -1985,6 +2013,17 @@ function logEvent(env, level, event, fields = {}) {
 function r2TimeoutMs(env) {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
+}
+
+const DEFAULT_D1_TIMEOUT_MS = 5000;
+
+// Health-analytics D1 reads (trends/percentiles/incidents/uptime) can scan large
+// time-series. Bound them so a slow/degraded query degrades to the route's normal
+// empty-result path instead of holding the isolate until the CPU limit kills it.
+// Tunable via METAGRAPH_D1_TIMEOUT_MS.
+function d1TimeoutMs(env) {
+  const raw = Number(env.METAGRAPH_D1_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_D1_TIMEOUT_MS;
 }
 
 // R2's get() takes no AbortSignal, so bound it with a race: a slow/degraded
@@ -3188,6 +3227,43 @@ function apiCatalogResponse(request) {
     return new Response(null, { headers });
   }
   return new Response(`${JSON.stringify(linkset, null, 2)}\n`, { headers });
+}
+
+// The MCP server card (SEP-1649) is build-generated and shipped as a static
+// asset with a deterministic `published_at: null` (committed builds can't carry
+// a real publish time). Serve it worker-first (see wrangler `run_worker_first`)
+// so we can overlay the real publish time from the KV latest pointer — the same
+// freshness the /api/v1 envelope exposes. `generated_at` stays the deterministic
+// content marker (issue #349); `content_hash` + the contract version remain the
+// integrity/version signals.
+async function mcpServerCardResponse(request, env) {
+  const assetUrl = new URL(
+    "/.well-known/mcp/server-card.json",
+    request.url,
+  ).toString();
+  const asset = env.ASSETS?.fetch
+    ? await env.ASSETS.fetch(new Request(assetUrl))
+    : null;
+  if (!asset || !asset.ok) {
+    return errorResponse("not_found", "MCP server card is unavailable.", 404, {
+      artifact_path: "/.well-known/mcp/server-card.json",
+    });
+  }
+  const card = await asset.json();
+  const pub = await publishedAt(env);
+  if (pub && !card.published_at) {
+    card.published_at = pub;
+  }
+  const body = `${JSON.stringify(card, null, 2)}\n`;
+  const headers = discoveryHeaders("application/json");
+  headers.set("etag", await weakEtag(body));
+  if (request.headers.get("if-none-match") === headers.get("etag")) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
 }
 
 function apiHeaders(cacheProfile) {

@@ -418,6 +418,31 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.equal(body.data.point_count, 0);
   });
+  test("a hung D1 query times out and degrades to empty (never blocks the isolate)", async () => {
+    // METAGRAPH_HEALTH_DB whose .all() never resolves + a 50ms D1 timeout: each
+    // route must still return its normal cold/empty envelope. Without the
+    // withTimeout wrap this test would hang until the test runner kills it.
+    const hangingDb = {
+      prepare: () => ({ bind: () => ({ all: () => new Promise(() => {}) }) }),
+    };
+    const hungEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: hangingDb,
+      METAGRAPH_D1_TIMEOUT_MS: "50",
+    };
+    // percentiles → d1All (shared helper); trends → handleHealthTrends (inline query)
+    const pct = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles",
+      hungEnv,
+    );
+    assert.equal(pct.status, 200);
+    assert.deepEqual(pct.body.data.surfaces, []);
+    const trends = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
+      hungEnv,
+    );
+    assert.equal(trends.status, 200);
+  });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
