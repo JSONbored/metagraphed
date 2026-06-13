@@ -168,6 +168,7 @@ const SITEMAP_STATIC_PATHS = [
 // else (the request falls through to the SSR app).
 async function handleDiscovery(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
+  if (url.pathname === "/robots.txt") return buildRobots();
   if (url.pathname === "/sitemap.xml") return buildSitemap();
   if (!DISCOVERY_PROXY_PATHS.has(url.pathname)) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -179,6 +180,28 @@ async function handleDiscovery(request: Request): Promise<Response | null> {
   const headers = new Headers(upstream.headers);
   headers.set("x-discovery-origin", "api.metagraph.sh");
   return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+// robots.txt for the apex. metagraphed is a public, agent-ready registry, so all
+// crawlers (including AI agents) are welcome — the machine API + discovery
+// surfaces live on api.metagraph.sh (which serves its own robots.txt). Served
+// here by the Worker because Cloudflare Managed robots.txt is disabled for the
+// zone; advertises the human-page sitemap so crawlers can find it.
+function buildRobots(): Response {
+  const body =
+    `# metagraph.sh — public Bittensor subnet integration registry.\n` +
+    `# AI agents welcome; the machine API + discovery live on api.metagraph.sh.\n` +
+    `User-agent: *\n` +
+    `Allow: /\n` +
+    `\n` +
+    `Sitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
 }
 
 // Build the apex sitemap: canonical static pages + one entry per live subnet (by netuid) and per
