@@ -1332,6 +1332,10 @@ await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
 });
 const serverCardContent = {
   schema_version: 1,
+  // SEP-1649 server card shape: a nested serverInfo { name, version } is the
+  // standardized identity block. Top-level name/title/version are kept for
+  // backward compatibility with the registries already reading this card.
+  serverInfo: { name: MCP_SERVER_INFO.name, version: MCP_SERVER_INFO.version },
   name: MCP_SERVER_INFO.name,
   title: MCP_SERVER_INFO.title,
   description: MCP_INSTRUCTIONS,
@@ -1364,6 +1368,67 @@ await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
     },
   ],
 });
+
+// Minimal YAML-frontmatter reader for SKILL.md: pulls `name` and `description`,
+// folding the multi-line (`>-`) description into one line. Not a general YAML
+// parser — just the two scalar fields these files use.
+function parseSkillFrontmatter(body) {
+  const match = /^---\n([\s\S]*?)\n---/.exec(body);
+  const meta = { name: null, description: null };
+  if (!match) return meta;
+  const buf = {};
+  let key = null;
+  for (const line of match[1].split("\n")) {
+    const top = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+    if (top && !/^\s/.test(line)) {
+      key = top[1];
+      const inline = top[2];
+      buf[key] = inline && !/^[>|][+-]?$/.test(inline) ? [inline] : [];
+    } else if (key && line.trim()) {
+      buf[key].push(line.trim());
+    }
+  }
+  if (buf.name) meta.name = buf.name.join(" ").trim();
+  if (buf.description) {
+    meta.description = buf.description.join(" ").replace(/\s+/g, " ").trim();
+  }
+  return meta;
+}
+
+// Agent Skills discovery index (Agent Skills Discovery RFC v0.2.0): one entry
+// per published SKILL.md with a sha256 digest so an agent can verify the skill
+// it fetches. Served as static ASSETS at /.well-known/agent-skills/index.json.
+// Generated from public/skills/* so it can never drift from what's shipped.
+const skillsDir = path.join(repoRoot, "public/skills");
+const skillDirNames = (await fs.readdir(skillsDir, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+const agentSkills = [];
+for (const skillDirName of skillDirNames) {
+  const skillBody = await fs.readFile(
+    path.join(skillsDir, skillDirName, "SKILL.md"),
+    "utf8",
+  );
+  const meta = parseSkillFrontmatter(skillBody);
+  agentSkills.push({
+    name: meta.name || skillDirName,
+    type: "skill-md",
+    description: meta.description || `The ${skillDirName} agent skill.`,
+    url: `${llmsApiBase}/skills/${skillDirName}/SKILL.md`,
+    digest: `sha256:${sha256Hex(skillBody)}`,
+  });
+}
+await fs.mkdir(path.join(repoRoot, "public/.well-known/agent-skills"), {
+  recursive: true,
+});
+await writeJson(
+  path.join(repoRoot, "public/.well-known/agent-skills/index.json"),
+  {
+    $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+    skills: agentSkills,
+  },
+);
 
 // One machine-readable index of every AI resource (the copyable agent, the MCP
 // server + its live tool list, the skill, llms.txt, OpenAPI, the agent-facing
@@ -1506,10 +1571,15 @@ await writeJson(
 // agent-catalog entries. Static ASSETS (not worker-first). No <lastmod> so it
 // stays deterministic alongside the epoch-pinned artifacts.
 const sitemapUrls = [
+  `${llmsApiBase}/`,
   `${llmsApiBase}/llms.txt`,
   `${llmsApiBase}/llms-full.txt`,
+  `${llmsApiBase}/agent.md`,
+  `${llmsApiBase}/auth.md`,
   `${llmsApiBase}/metagraph/openapi.json`,
+  `${llmsApiBase}/.well-known/api-catalog`,
   `${llmsApiBase}/.well-known/mcp/server-card.json`,
+  `${llmsApiBase}/.well-known/agent-skills/index.json`,
   `${llmsApiBase}/skills/bittensor/SKILL.md`,
   `${llmsApiBase}/datasets/index.json`,
   `${llmsApiBase}/api/v1/agent-catalog`,
@@ -1525,6 +1595,46 @@ await fs.writeFile(path.join(repoRoot, "public/sitemap.xml"), sitemapXml, "utf8"
 await fs.writeFile(
   path.join(repoRoot, "public/robots.txt"),
   `User-agent: *\nAllow: /\nSitemap: ${llmsApiBase}/sitemap.xml\n`,
+  "utf8",
+);
+
+// auth.md: agents probing for an auth scheme should get an unambiguous answer.
+// metagraphed's API is wholly public and read-only, so the honest answer is
+// "no auth" — stated explicitly rather than implied by silence. Mirrors the
+// server card's `authentication: "none"`. Static ASSETS at /auth.md.
+const authMarkdown = `# Authentication
+
+The metagraphed API at \`${PRIMARY_DOMAIN}\` is fully public and read-only.
+**No authentication, API key, token, or registration is required** for any
+endpoint.
+
+- Auth scheme: none
+- Registration: not required (there is nothing to register for)
+- Protected resources: none
+- OAuth / OIDC: not applicable (no protected resources to authorize)
+
+If a tool expects an \`Authorization\` header, omit it — requests with or
+without one are treated identically.
+
+## Rate limits
+
+Anonymous abuse-control limits apply per client IP (no key raises them):
+
+- REST + artifact reads: unmetered (cached at the edge)
+- RPC proxy (\`/rpc/v1/*\`): 100 requests / 60s
+- MCP endpoint (\`POST /mcp\`): 100 requests / 60s
+- AI routes (\`/api/v1/ask\`, \`/api/v1/search/semantic\`): 20 requests / 60s
+
+## Discovery
+
+- Machine index: ${llmsApiBase}/llms.txt
+- API catalog (RFC 9727): ${llmsApiBase}/.well-known/api-catalog
+- OpenAPI 3.1: ${llmsApiBase}/metagraph/openapi.json
+- MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
+`;
+await fs.writeFile(
+  path.join(repoRoot, "public/auth.md"),
+  authMarkdown,
   "utf8",
 );
 

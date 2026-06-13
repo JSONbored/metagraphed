@@ -1252,3 +1252,71 @@ describe("Worker runtime", () => {
     }
   });
 });
+
+describe("Agent discovery surfaces", () => {
+  test("homepage serves HTML with RFC 8288 Link headers (no env needed)", async () => {
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/"),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/html/);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    const link = response.headers.get("link");
+    assert.match(link, /rel="api-catalog"/);
+    assert.match(link, /rel="service-desc"/);
+    assert.match(link, /rel="service-doc"/);
+    assert.match(await response.text(), /metagraphed API/);
+  });
+
+  test("homepage HEAD returns the Link header with an empty body", async () => {
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/", { method: "HEAD" }),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("link"), /rel="api-catalog"/);
+    assert.equal(await response.text(), "");
+  });
+
+  test("/.well-known/api-catalog is a valid RFC 9727 linkset", async () => {
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/.well-known/api-catalog"),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers.get("content-type"),
+      "application/linkset+json",
+    );
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    const body = await response.json();
+    assert.equal(Array.isArray(body.linkset), true);
+    const context = body.linkset[0];
+    // Anchor + the relations the API-catalog spec requires (service-desc,
+    // service-doc); each target carries an absolute href on the request origin.
+    assert.equal(context.anchor, "https://api.metagraph.sh/api/v1");
+    assert.equal(
+      context["service-desc"][0].href,
+      "https://api.metagraph.sh/metagraph/openapi.json",
+    );
+    assert.equal(
+      context["service-doc"][0].href,
+      "https://api.metagraph.sh/llms.txt",
+    );
+    assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
+  });
+
+  test("api-catalog hrefs follow the request origin", async () => {
+    const response = await handleRequest(
+      new Request("https://preview.example.com/.well-known/api-catalog"),
+      {},
+      {},
+    );
+    const body = await response.json();
+    assert.equal(body.linkset[0].anchor, "https://preview.example.com/api/v1");
+  });
+});

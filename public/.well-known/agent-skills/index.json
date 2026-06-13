@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "description": "Use when a developer asks what a Bittensor subnet does, whether it's up right now, or how to call/integrate its API — e.g. \"which subnet does image generation\", \"is subnet 7 healthy\", \"how do I call the Chutes API\", \"build on a Bittensor subnet\". Backed by metagraphed (api.metagraph.sh), the live operational + integration registry for ~129 subnets.",
+      "digest": "sha256:040a28edb35e5ac381d8cb1b0a898fdd222350590b6f7da207555627b052c3b5",
+      "name": "bittensor",
+      "type": "skill-md",
+      "url": "https://api.metagraph.sh/skills/bittensor/SKILL.md"
+    }
+  ]
+}

@@ -23,7 +23,15 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/rpc/*", "/metagraph/*", "/mcp", "/health"],
+    "run_worker_first": [
+      "/",
+      "/.well-known/api-catalog",
+      "/api/*",
+      "/rpc/*",
+      "/metagraph/*",
+      "/mcp",
+      "/health",
+    ],
     "not_found_handling": "404-page",
   },
   "vars": {

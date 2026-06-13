@@ -224,6 +224,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Agent/AI discovery surfaces. The homepage advertises the machine resources
+  // via RFC 8288 Link headers; /.well-known/api-catalog is the RFC 9727 linkset.
+  // Both are worker-owned (see wrangler `run_worker_first`) so they carry the
+  // right headers/content-type instead of 404-ing through to the static assets.
+  if (url.pathname === "/" || url.pathname === "") {
+    return homepageResponse(request);
+  }
+
+  if (url.pathname === "/.well-known/api-catalog") {
+    return apiCatalogResponse(request, url);
+  }
+
   if (url.pathname === "/health") {
     return handleHealthRequest(request, env);
   }
@@ -2858,6 +2870,106 @@ function corsPreflight(request) {
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
+}
+
+// RFC 8288 Link header advertising the machine entrypoints, mirrored as
+// `<link>` elements in the homepage HTML below. Relative refs resolve against
+// the request URL, so the same value is correct on any deployment host.
+const DISCOVERY_LINK_HEADER = [
+  '</.well-known/api-catalog>; rel="api-catalog"',
+  '</metagraph/openapi.json>; rel="service-desc"; type="application/json"',
+  '</llms.txt>; rel="service-doc"; type="text/plain"',
+  '</llms.txt>; rel="describedby"; type="text/plain"',
+  '</.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"',
+].join(", ");
+
+const HOMEPAGE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>metagraphed API — Bittensor subnet operational registry</title>
+<meta name="description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
+<link rel="api-catalog" href="/.well-known/api-catalog">
+<link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
+<link rel="service-doc" href="/llms.txt" type="text/plain">
+<link rel="describedby" href="/.well-known/mcp/server-card.json" type="application/json">
+</head>
+<body>
+<main>
+<h1>metagraphed API</h1>
+<p>The operational + integration registry for Bittensor subnets — what each subnet exposes (APIs, docs, schemas), whether it's healthy, and how to call it. All endpoints are public, read-only JSON. No authentication.</p>
+<ul>
+<li><a href="/llms.txt">llms.txt</a> — LLM/agent discovery index</li>
+<li><a href="/agent.md">agent.md</a> — copyable agent system prompt</li>
+<li><a href="/metagraph/openapi.json">OpenAPI 3.1 contract</a></li>
+<li><a href="/.well-known/api-catalog">API catalog</a> (RFC 9727 linkset)</li>
+<li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
+<li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
+<li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
+<li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
+</ul>
+</main>
+</body>
+</html>
+`;
+
+// Shared headers for the worker-owned discovery surfaces: open CORS so agents
+// can fetch cross-origin, the discovery Link header, and a public cache.
+function discoveryHeaders(contentType) {
+  const headers = new Headers();
+  headers.set("access-control-allow-origin", "*");
+  headers.set("content-type", contentType);
+  headers.set("x-content-type-options", "nosniff");
+  headers.set(
+    "cache-control",
+    `public, max-age=${CACHE_SECONDS.static || 600}, stale-while-revalidate=300`,
+  );
+  headers.set("vary", "Accept-Encoding");
+  headers.set("link", DISCOVERY_LINK_HEADER);
+  return headers;
+}
+
+// api.metagraph.sh homepage: a small human/agent landing whose response carries
+// the RFC 8288 Link headers (an agent can bootstrap from a single HEAD of `/`).
+function homepageResponse(request) {
+  const headers = discoveryHeaders("text/html; charset=utf-8");
+  if (request.method === "HEAD") {
+    return new Response(null, { headers });
+  }
+  return new Response(HOMEPAGE_HTML, { headers });
+}
+
+// RFC 9727 API catalog as an RFC 9264 linkset+json document. Absolute hrefs are
+// built from the request origin so the catalog is correct on any deploy host.
+function apiCatalogResponse(request, url) {
+  const base = url.origin;
+  const linkset = {
+    linkset: [
+      {
+        anchor: `${base}/api/v1`,
+        "service-desc": [
+          { href: `${base}/metagraph/openapi.json`, type: "application/json" },
+        ],
+        "service-doc": [
+          { href: `${base}/llms.txt`, type: "text/plain" },
+          { href: `${base}/agent.md`, type: "text/markdown" },
+        ],
+        status: [{ href: `${base}/health`, type: "application/json" }],
+        describedby: [
+          {
+            href: `${base}/.well-known/mcp/server-card.json`,
+            type: "application/json",
+          },
+        ],
+      },
+    ],
+  };
+  const headers = discoveryHeaders("application/linkset+json");
+  if (request.method === "HEAD") {
+    return new Response(null, { headers });
+  }
+  return new Response(`${JSON.stringify(linkset, null, 2)}\n`, { headers });
 }
 
 function apiHeaders(cacheProfile) {

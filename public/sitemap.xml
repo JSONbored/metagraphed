@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://api.metagraph.sh/</loc></url>
   <url><loc>https://api.metagraph.sh/llms.txt</loc></url>
   <url><loc>https://api.metagraph.sh/llms-full.txt</loc></url>
+  <url><loc>https://api.metagraph.sh/agent.md</loc></url>
+  <url><loc>https://api.metagraph.sh/auth.md</loc></url>
   <url><loc>https://api.metagraph.sh/metagraph/openapi.json</loc></url>
+  <url><loc>https://api.metagraph.sh/.well-known/api-catalog</loc></url>
   <url><loc>https://api.metagraph.sh/.well-known/mcp/server-card.json</loc></url>
+  <url><loc>https://api.metagraph.sh/.well-known/agent-skills/index.json</loc></url>
   <url><loc>https://api.metagraph.sh/skills/bittensor/SKILL.md</loc></url>
   <url><loc>https://api.metagraph.sh/datasets/index.json</loc></url>
   <url><loc>https://api.metagraph.sh/api/v1/agent-catalog</loc></url>
