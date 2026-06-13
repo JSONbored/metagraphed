@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   publish:
+    # OIDC publishing must only run from the reviewed default branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -35,6 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
+          ref: refs/heads/main
           persist-credentials: false
 
       - name: Validate server.json
@@ -49,8 +52,20 @@ jobs:
             if (!s.version || typeof s.version !== "string") {
               throw new Error("server.json is missing a string version");
             }
-            const remote = (s.remotes ?? [])[0];
-            if (remote?.type !== "streamable-http" || !remote?.url?.startsWith("https://api.metagraph.sh/")) {
+            if (s.title !== "metagraphed — Bittensor subnet operational registry") {
+              throw new Error(`unexpected title: ${s.title}`);
+            }
+            if (s.websiteUrl !== "https://metagraph.sh") {
+              throw new Error(`unexpected websiteUrl: ${s.websiteUrl}`);
+            }
+            if (s.repository?.source !== "github" || s.repository?.url !== "https://github.com/JSONbored/metagraphed") {
+              throw new Error(`unexpected repository: ${JSON.stringify(s.repository)}`);
+            }
+            if (!Array.isArray(s.remotes) || s.remotes.length !== 1) {
+              throw new Error(`expected exactly one remote: ${JSON.stringify(s.remotes)}`);
+            }
+            const [remote] = s.remotes;
+            if (remote?.type !== "streamable-http" || remote?.url !== "https://api.metagraph.sh/mcp") {
               throw new Error(`unexpected remote: ${JSON.stringify(remote)}`);
             }
             console.log(`server.json ok — ${s.name} v${s.version} -> ${remote.url}`);
