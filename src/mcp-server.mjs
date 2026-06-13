@@ -110,17 +110,6 @@ function mcpLiveHealth(ctx) {
   });
 }
 
-// Best-effort static artifact read that yields null instead of throwing, so a
-// tool can fall through to a live-only / `unknown` payload once the static
-// health artifacts are removed (PR2).
-async function loadArtifactDataOrNull(ctx, artifactPath) {
-  try {
-    return await loadArtifactData(ctx, artifactPath);
-  } catch {
-    return null;
-  }
-}
-
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
 // the kill-switch on. In a cold/CI env they degrade to a graceful isError result
 // pointing at the keyword fallback, never a transport error.
@@ -214,7 +203,10 @@ async function rankSubnetsForTask(ctx, task, poolSize) {
   const docs = Array.isArray(index.documents) ? index.documents : [];
   const ranked = docs
     .filter((doc) => doc.type === "subnet")
-    .map((doc) => ({ netuid: doc.netuid, relevance: scoreDocument(doc, terms) }))
+    .map((doc) => ({
+      netuid: doc.netuid,
+      relevance: scoreDocument(doc, terms),
+    }))
     .filter((entry) => entry.relevance > 0)
     .sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid)
     .slice(0, poolSize);
@@ -441,13 +433,8 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const live = await mcpLiveHealth(ctx);
-      const staticHealth = await loadArtifactDataOrNull(
-        ctx,
-        `/metagraph/health/subnets/${netuid}.json`,
-      );
-      const overlaid = overlaySubnetHealth(staticHealth, live, netuid);
+      const overlaid = overlaySubnetHealth(null, live, netuid);
       if (overlaid) return overlaid;
-      if (staticHealth) return staticHealth;
       return {
         schema_version: 1,
         netuid,
@@ -760,8 +747,7 @@ export const MCP_TOOLS = [
       properties: {
         task: {
           type: "string",
-          description:
-            "What you want to accomplish, in plain language.",
+          description: "What you want to accomplish, in plain language.",
         },
         limit: {
           type: "integer",

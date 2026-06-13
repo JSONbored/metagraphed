@@ -435,16 +435,68 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     assert.equal(body.meta.source, "live-cron-prober");
   });
 
-  test("/api/v1/health with KV bound but cold serves the static artifact", async () => {
-    // health:current absent → liveHealthOverlay returns null at the `!current`
-    // guard, so the static health summary artifact is served.
+  test("/api/v1/health with KV bound but cold serves unknown, not static", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({}),
     });
     const res = await handleRequest(req("/api/v1/health"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.notEqual(body.meta.source, "live-cron-prober");
+    assert.equal(body.meta.source, "unavailable");
+    assert.equal(body.data.global.status_counts.unknown, 0);
+  });
+
+  test("retired raw current-health artifacts return 410 before stale R2 reads", async () => {
+    let reads = 0;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return {
+            async json() {
+              return { stale: true };
+            },
+          };
+        },
+      },
+    });
+    for (const path of [
+      "/metagraph/health/latest.json",
+      "/metagraph/health/summary.json",
+      "/metagraph/health/subnets/7.json",
+    ]) {
+      const res = await handleRequest(req(path), env, {});
+      assert.equal(res.status, 410);
+      assert.equal((await res.json()).error.code, "retired_artifact");
+    }
+    assert.equal(reads, 0);
+  });
+
+  test("/api/v1/subnets/:netuid/health ignores stale static R2 objects", async () => {
+    let reads = 0;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return {
+            async json() {
+              return {
+                netuid: 7,
+                summary: { status: "ok" },
+                surfaces: [{ surface_id: "stale", status: "ok" }],
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: makeKv({}),
+    });
+    const res = await handleRequest(req("/api/v1/subnets/7/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.summary.status, "unknown");
+    assert.deepEqual(body.data.surfaces, []);
+    assert.equal(reads, 0);
   });
 
   test("readHealthKv swallows a throwing KV get (serves static)", async () => {

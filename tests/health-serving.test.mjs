@@ -20,7 +20,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 describe("overlaySubnetHealth", () => {
-  test("replaces operational surfaces with live rows; keeps informational static", () => {
+  test("builds per-subnet health from live rows without stale static surfaces", () => {
     const staticArtifact = {
       schema_version: 1,
       netuid: 7,
@@ -59,12 +59,14 @@ describe("overlaySubnetHealth", () => {
     };
     const merged = overlaySubnetHealth(staticArtifact, liveCurrent, 7);
     const api = merged.surfaces.find((s) => s.surface_id === "sn7-api");
-    const docs = merged.surfaces.find((s) => s.surface_id === "sn7-docs");
     assert.equal(api.status, "ok"); // overlaid live
     assert.equal(api.observed_by, "live-cron-prober");
-    assert.equal(docs.status, "ok"); // static, untouched
-    assert.equal(merged.summary.status, "ok"); // recomputed over merged set
-    assert.equal(merged.summary.ok_count, 2);
+    assert.equal(
+      merged.surfaces.some((s) => s.surface_id === "sn7-docs"),
+      false,
+    );
+    assert.equal(merged.summary.status, "ok"); // recomputed over live set
+    assert.equal(merged.summary.ok_count, 1);
     assert.equal(merged.operational_observed_at, "2026-06-11T00:00:00.000Z");
   });
 
@@ -255,7 +257,10 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.avg_latency_ms, null);
   });
   test("all-unknown → unknown", () => {
-    assert.equal(summarizeRows([row("unknown"), row("unknown")]).status, "unknown");
+    assert.equal(
+      summarizeRows([row("unknown"), row("unknown")]).status,
+      "unknown",
+    );
   });
   test("all-ok → ok", () => {
     assert.equal(summarizeRows([row("ok"), row("ok")]).status, "ok");
@@ -264,7 +269,10 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(summarizeRows([row("ok"), row("failed")]).status, "degraded");
   });
   test("ok + degraded mix → degraded", () => {
-    assert.equal(summarizeRows([row("ok"), row("degraded")]).status, "degraded");
+    assert.equal(
+      summarizeRows([row("ok"), row("degraded")]).status,
+      "degraded",
+    );
   });
   test("degraded + failed (no ok) → degraded (right-hand OR operand)", () => {
     // ok=0 so the `(counts.ok||0)>0` left operand is false; degraded>0 carries it.
@@ -371,7 +379,12 @@ describe("overlaySubnetHealth (additional paths)", () => {
     const live = {
       last_run_at: null,
       surfaces: [
-        { surface_id: "sn7-rpc", netuid: 7, kind: "subtensor-rpc", status: "ok" },
+        {
+          surface_id: "sn7-rpc",
+          netuid: 7,
+          kind: "subtensor-rpc",
+          status: "ok",
+        },
       ],
     };
     const out = overlaySubnetHealth({ schema_version: 2 }, live, 7);
@@ -568,7 +581,9 @@ describe("overlayRpcPoolEligibility (additional paths)", () => {
   });
 
   test("sustained-down endpoint with explicit live latency drops eligibility", () => {
-    const pool = { endpoints: [{ id: "a", pool_eligible: true, latency_ms: 5 }] };
+    const pool = {
+      endpoints: [{ id: "a", pool_eligible: true, latency_ms: 5 }],
+    };
     const live = {
       endpoints: [
         { id: "a", status: "failed", consecutive_failures: 2, latency_ms: 70 },
@@ -616,9 +631,18 @@ describe("formatTrends (additional paths)", () => {
       w.surfaces.map((s) => s.surface_id),
       ["a", "m", "z"],
     );
-    assert.equal(w.surfaces.find((s) => s.surface_id === "z").avg_latency_ms, null);
-    assert.equal(w.surfaces.find((s) => s.surface_id === "a").avg_latency_ms, 13);
-    assert.equal(w.surfaces.find((s) => s.surface_id === "m").uptime_ratio, null);
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "z").avg_latency_ms,
+      null,
+    );
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "a").avg_latency_ms,
+      13,
+    );
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "m").uptime_ratio,
+      null,
+    );
     assert.equal(w.samples, 14);
     assert.equal(w.uptime_ratio, Number((6 / 14).toFixed(4)));
   });

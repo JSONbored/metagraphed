@@ -68,6 +68,8 @@ const HEALTH_PRUNE_CRON = "0 * * * *";
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends.
+const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
+  /^\/metagraph\/health\/(?:latest\.json|summary\.json|subnets\/\d+\.json)$/;
 const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
 const TRENDS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
 const PERCENTILES_PATH_PATTERN =
@@ -458,6 +460,17 @@ async function handleRawArtifactRequest(
   }
 
   const networkPath = artifactPathForNetwork(url.pathname, network);
+  if (
+    network.isDefault &&
+    RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN.test(networkPath)
+  ) {
+    return errorResponse(
+      "retired_artifact",
+      "Current-state health artifacts are retired; use the live API health endpoints instead.",
+      410,
+      { artifact_path: networkPath },
+    );
+  }
   const artifact = await readArtifact(env, networkPath);
   if (!artifact.ok) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
@@ -859,11 +872,9 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
   // read metagraph/{prefix}/… — see artifactPathForNetwork.
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
 
-  // Live operational-health overlay (Phase 3): overlay the fresh 2-minute cron
-  // snapshot (KV/D1) onto the static artifact, falling back to static when the
-  // snapshot is cold/unbound — zero regression. Perf: the global `health` summary
-  // is built purely from KV, so it skips the otherwise-wasted static R2 read when
-  // the snapshot is warm (the hot path on the most-hit health endpoint).
+  // Live operational-health overlay (Phase 3): current health is live-only.
+  // Static current-health artifacts are not read for mainnet health routes, so
+  // stale R2 objects left behind by earlier publishes cannot affect responses.
   let artifact;
   let live = null;
   if (!network.isDefault) {
@@ -886,6 +897,14 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
       : null;
     live = { data: liveData || unknownGlobalHealth(contractVersion(env)) };
     artifact = { ok: false };
+  } else if (matched.id === "subnet-health") {
+    artifact = { ok: false };
+    live = await liveHealthOverlay(env, matched, null);
+    // Per-subnet health is live-only too: never 404 on a cold store — serve an
+    // explicit `unknown` payload instead of the (now absent) static artifact.
+    if (!live) {
+      live = { data: unknownSubnetHealth(Number(matched.params.netuid)) };
+    }
   } else {
     artifact = await readArtifact(env, artifactPath);
     live = await liveHealthOverlay(
@@ -893,11 +912,6 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
       matched,
       artifact.ok ? artifact.data : null,
     );
-    // Per-subnet health is live-only too: never 404 on a cold store — serve an
-    // explicit `unknown` payload instead of the (now absent) static artifact.
-    if (!live && matched.id === "subnet-health") {
-      live = { data: unknownSubnetHealth(Number(matched.params.netuid)) };
-    }
   }
 
   if (!artifact.ok && !live) {
@@ -2714,7 +2728,8 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
       if (arrayFields) {
         return arrayFields.some(
           (field) =>
-            Array.isArray(row[field]) && row[field].map(String).includes(expected),
+            Array.isArray(row[field]) &&
+            row[field].map(String).includes(expected),
         );
       }
       const value = row[key];

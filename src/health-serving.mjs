@@ -64,39 +64,19 @@ export function summarizeRows(rows) {
   };
 }
 
-// Per-subnet overlay: replace the static artifact's operational surfaces with the
-// fresh live rows (matched by surface_id), keep informational surfaces static,
-// recompute the summary. Returns null when there is no live snapshot.
+// Per-subnet overlay: build the response from fresh live rows only. Static
+// metadata may supply non-operational identity fields, but stale static surface
+// rows are never preserved. Returns null when there is no live snapshot.
 export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
   if (!liveCurrent || !Array.isArray(liveCurrent.surfaces)) return null;
   const liveById = new Map();
   for (const row of liveCurrent.surfaces) {
     if (row.netuid === netuid) liveById.set(row.surface_id, row);
   }
-  if (liveById.size === 0 && !staticArtifact) return null;
+  if (liveById.size === 0) return null;
 
-  const staticSurfaces = Array.isArray(staticArtifact?.surfaces)
-    ? staticArtifact.surfaces
-    : [];
-  const seen = new Set();
-  const merged = staticSurfaces.map((surface) => {
-    const live = liveById.get(surface.surface_id);
-    if (!live) return surface;
-    seen.add(surface.surface_id);
-    return {
-      ...surface,
-      status: live.status,
-      classification: live.classification,
-      latency_ms: live.latency_ms,
-      status_code: live.status_code,
-      last_checked: live.last_checked,
-      last_ok: live.last_ok,
-      observed_by: "live-cron-prober",
-    };
-  });
-  // Live operational surfaces not (yet) in the static artifact.
+  const merged = [];
   for (const [id, live] of liveById) {
-    if (seen.has(id)) continue;
     merged.push({
       surface_id: id,
       netuid,
