@@ -52,4 +52,37 @@ describe("Discovery artifacts", () => {
     assert.match(authMd, /public and read-only/i);
     assert.match(authMd, /No authentication/i);
   });
+
+  test("security.txt follows RFC 9116 (contact, expires, canonical)", async () => {
+    const txt = await fs.readFile(
+      path.join(publicDir, ".well-known/security.txt"),
+      "utf8",
+    );
+    const field = (name) =>
+      txt.match(new RegExp(`^${name}:\\s*(.+)$`, "mi"))?.[1]?.trim();
+    // Contact is REQUIRED by RFC 9116; it must be the private advisory channel
+    // documented in SECURITY.md (never a public issue / personal address).
+    assert.equal(
+      field("Contact"),
+      "https://github.com/JSONbored/metagraphed/security/advisories/new",
+    );
+    // Expires is REQUIRED and must be a valid future ISO-8601 instant. Compared
+    // against a fixed baseline (not wall-clock) so the gate stays deterministic;
+    // renewing the date before it lapses is a calendar maintenance task.
+    const expires = field("Expires");
+    assert.ok(expires, "security.txt must declare Expires");
+    assert.ok(
+      !Number.isNaN(Date.parse(expires)),
+      "Expires must be ISO-8601 parseable",
+    );
+    assert.ok(
+      Date.parse(expires) > Date.parse("2026-06-13T00:00:00.000Z"),
+      "Expires must be in the future",
+    );
+    // Canonical must point at this backend's served copy.
+    assert.equal(
+      field("Canonical"),
+      "https://api.metagraph.sh/.well-known/security.txt",
+    );
+  });
 });
