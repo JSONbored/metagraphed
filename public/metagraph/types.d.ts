@@ -980,7 +980,9 @@ export interface components {
         AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
             /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
             extensions: {
-                [key: string]: Record<string, never>;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             };
             netuid: number;
             slug: string;
