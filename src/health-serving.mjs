@@ -763,6 +763,17 @@ export function overlayCatalogIndex(staticIndex, live) {
 // pool eligibility) are overwritten so a build-time value is never served as
 // fresh.
 function overlayEndpointHealth(endpoint, liveRow) {
+  // Not-monitored endpoints (docs, dashboards, …) carry a stable structural
+  // classification, not a freshness signal — they are never probed, so their
+  // `not-monitored` status is permanent and honest. Leave them untouched;
+  // overlaying would mislabel an intentionally-unmonitored surface as
+  // `unavailable`/stale.
+  if (
+    endpoint?.monitoring_status === "not_monitored" ||
+    endpoint?.health_source === "not-monitored"
+  ) {
+    return endpoint;
+  }
   if (!liveRow) {
     return {
       ...endpoint,

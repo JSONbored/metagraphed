@@ -1041,6 +1041,38 @@ describe("composed-artifact health overlays", () => {
     assert.equal(overlayArtifactEndpoints(null, live), null);
   });
 
+  test("overlayArtifactEndpoints leaves not-monitored endpoints untouched", () => {
+    const artifact = {
+      endpoints: [
+        {
+          surface_id: "docs-1",
+          monitoring_status: "not_monitored",
+          status: "unknown",
+          health_source: "not-monitored",
+          health_stale: false,
+          pool_eligible: false,
+          url: "https://docs",
+        },
+        {
+          surface_id: "mon-absent",
+          monitoring_status: "monitored",
+          status: "ok",
+          health_source: "probe-derived",
+          pool_eligible: true,
+          url: "https://mon",
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(artifact, live);
+    // not-monitored is a stable classification, never overlaid to unavailable.
+    assert.equal(out.endpoints[0].health_source, "not-monitored");
+    assert.equal(out.endpoints[0].health_stale, false);
+    assert.equal(out.endpoints[0].status, "unknown");
+    // a monitored surface absent from the live snapshot does read unavailable.
+    assert.equal(out.endpoints[1].health_source, "unavailable");
+    assert.equal(out.endpoints[1].status, "unknown");
+  });
+
   test("overlayArtifactEndpoints keeps a live-ok endpoint eligible and preserves a non-ok error", () => {
     const liveOk = {
       last_run_at: "2026-06-13T00:00:00.000Z",
