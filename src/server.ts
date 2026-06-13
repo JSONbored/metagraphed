@@ -342,14 +342,39 @@ function ogCardTitle(pathname: string): string {
   return OG_SECTION_TITLES[pathname] ?? "Metagraphed";
 }
 
-// Inject the deferred tracker, a canonical link, schema.org JSON-LD, and the
-// og:image/twitter:image (the edge-rendered /og card) into <head> of HTML
-// responses (streaming) and advertise the agent-discovery resources via an RFC
-// 8288 Link header. Canonical + JSON-LD + og:image are set HERE (not per-route)
-// so they are global, consistent, and regen-proof. Canonical is origin + path
-// with the query stripped, so filter/sort permutations (e.g.
-// /subnets?sort=health&health=down) consolidate to the one indexable URL instead
-// of reading as duplicate content.
+// Warm the TCP+TLS connection to the API origin before the first data fetch
+// (preconnect), with a dns-prefetch fallback for agents that ignore preconnect.
+const RESOURCE_HINTS =
+  `<link rel="preconnect" href="${API_ORIGIN}" crossorigin>` +
+  `<link rel="dns-prefetch" href="${API_ORIGIN}">`;
+
+// Dependency-free Web Vitals beacon → first-party Umami. LCP (last entry), CLS
+// (recent-input-excluded sum), and an INP proxy (worst slow-event duration) are
+// flushed once on page hide. Wrapped in try/catch so it can never break the page,
+// and no-ops if Umami hasn't loaded. Consistent with the first-party analytics
+// ethos (no third-party web-vitals CDN).
+const WEB_VITALS_SNIPPET =
+  `<script>(function(){` +
+  `function send(n,v){try{if(window.umami&&typeof window.umami.track==='function'){` +
+  `window.umami.track('web-vitals',{metric:n,value:Math.round(v)});}}catch(e){}}` +
+  `function obs(t,cb){try{new PerformanceObserver(cb).observe({type:t,buffered:true});}catch(e){}}` +
+  `var lcp=0,cls=0,inp=0;` +
+  `obs('largest-contentful-paint',function(l){var e=l.getEntries();var x=e[e.length-1];if(x)lcp=x.startTime;});` +
+  `obs('layout-shift',function(l){l.getEntries().forEach(function(e){if(!e.hadRecentInput)cls+=e.value;});});` +
+  `obs('event',function(l){l.getEntries().forEach(function(e){if(e.duration>inp)inp=e.duration;});});` +
+  `var done=false;function flush(){if(done)return;done=true;if(lcp)send('LCP',lcp);send('CLS',cls*1000);if(inp)send('INP',inp);}` +
+  `addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flush();});` +
+  `addEventListener('pagehide',flush);` +
+  `})();</script>`;
+
+// Inject resource hints, the deferred tracker, a canonical link, schema.org
+// JSON-LD, the og:image/twitter:image (edge-rendered /og card), and a Web Vitals
+// beacon into <head> of HTML responses (streaming) and advertise the agent-
+// discovery resources via an RFC 8288 Link header. Canonical + JSON-LD + og:image
+// are set HERE (not per-route) so they are global, consistent, and regen-proof.
+// Canonical is origin + path with the query stripped, so filter/sort permutations
+// (e.g. /subnets?sort=health&health=down) consolidate to the one indexable URL
+// instead of reading as duplicate content.
 function injectAnalytics(response: Response, request: Request): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
@@ -365,10 +390,12 @@ function injectAnalytics(response: Response, request: Request): Response {
   const transformed = new HTMLRewriter()
     .on("head", {
       element(element) {
+        element.append(RESOURCE_HINTS, { html: true });
         element.append(canonicalTag, { html: true });
         element.append(jsonLdTag, { html: true });
         element.append(ogImageTags, { html: true });
         element.append(UMAMI_SNIPPET, { html: true });
+        element.append(WEB_VITALS_SNIPPET, { html: true });
       },
     })
     .transform(response);
