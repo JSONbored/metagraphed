@@ -7,6 +7,7 @@ import {
   loadOperationalSurfaces,
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
+  rollupDailyUptime,
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
@@ -1222,5 +1223,85 @@ describe("pruneHealthHistory edge paths", () => {
     const result = await pruneHealthHistory({}, { now: () => 0, db });
     assert.equal(result.pruned, true);
     assert.equal(result.changes, null);
+  });
+});
+
+describe("rollupDailyUptime (durable daily history)", () => {
+  test("rolls up today + yesterday into surface_uptime_daily", async () => {
+    const db = makeDb();
+    const fixedNow = Date.UTC(2026, 5, 13, 10, 0, 0); // 2026-06-13T10:00Z
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => fixedNow },
+    );
+    assert.equal(result.rolled, true);
+    assert.deepEqual(result.days, ["2026-06-13", "2026-06-12"]);
+    assert.equal(db.calls.batches.length, 1);
+    const stmts = db.calls.batches[0];
+    assert.equal(stmts.length, 2);
+    assert.match(stmts[0].sql, /INSERT INTO surface_uptime_daily/);
+    assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\)/);
+    // binds: [day, updated_at, dayStart, dayEnd]
+    assert.deepEqual(stmts[0].binds, [
+      "2026-06-13",
+      fixedNow,
+      Date.UTC(2026, 5, 13),
+      Date.UTC(2026, 5, 14),
+    ]);
+    assert.equal(stmts[1].binds[0], "2026-06-12");
+    assert.equal(stmts[1].binds[2], Date.UTC(2026, 5, 12));
+  });
+
+  test("no-ops without a D1 binding", async () => {
+    assert.deepEqual(await rollupDailyUptime({}), { rolled: false });
+  });
+
+  test("degrades to { rolled: false } when the batch write throws", async () => {
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw new Error("d1 unavailable");
+      },
+    };
+    assert.deepEqual(await rollupDailyUptime({ METAGRAPH_HEALTH_DB: db }), {
+      rolled: false,
+    });
+  });
+
+  test("hourly cron rolls up BEFORE pruning the raw window", async () => {
+    const order = [];
+    const orderDb = {
+      prepare(sql) {
+        return {
+          sql,
+          bind: () => ({
+            sql,
+            async run() {
+              order.push(`run:${sql}`);
+              return { meta: { changes: 0 } };
+            },
+          }),
+        };
+      },
+      async batch(statements) {
+        order.push("batch:uptime-rollup");
+        return statements.map(() => ({ success: true }));
+      },
+    };
+    await handleScheduled(
+      { cron: "0 * * * *" },
+      { METAGRAPH_HEALTH_DB: orderDb },
+      {},
+    );
+    const rollupIdx = order.findIndex((o) => o === "batch:uptime-rollup");
+    const pruneIdx = order.findIndex((o) =>
+      o.includes("DELETE FROM surface_checks"),
+    );
+    assert.ok(rollupIdx >= 0, "rollup batch must run");
+    assert.ok(pruneIdx >= 0, "prune delete must run");
+    assert.ok(
+      rollupIdx < pruneIdx,
+      "daily rollup must run before the raw prune so history is never lost",
+    );
   });
 });

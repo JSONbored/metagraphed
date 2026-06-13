@@ -28,6 +28,7 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
+  rollupDailyUptime,
   runHealthProber,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
@@ -155,6 +156,10 @@ export default {
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
   if (cron === HEALTH_PRUNE_CRON) {
+    // Roll the day's raw checks into the durable daily uptime table BEFORE
+    // pruning, so long-term history is never lost when 30-day raw rows are
+    // deleted (PR3). Then prune + snapshot.
+    await rollupDailyUptime(env);
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
       writeSubnetSnapshot(env, { readArtifact }),

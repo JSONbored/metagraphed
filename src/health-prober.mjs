@@ -538,6 +538,69 @@ async function persistToKv(kv, probed, runAt) {
   ]);
 }
 
+// UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
+function utcDayBounds(ms) {
+  const d = new Date(ms);
+  const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return {
+    date: new Date(start).toISOString().slice(0, 10),
+    start,
+    end: start + 24 * 60 * 60 * 1000,
+  };
+}
+
+// Durable daily uptime rollup (PR3). Aggregates the raw 2-minute surface_checks
+// for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
+// retained indefinitely for long-term uptime analytics — so the 30-day raw
+// prune never loses history. MUST run before pruneHealthHistory. Rolls up today
+// + yesterday each hour (the post-midnight fire finalizes the prior day; upsert
+// keeps it idempotent). No-ops when D1 is unbound/cold.
+export async function rollupDailyUptime(env, overrides = {}) {
+  const now = overrides.now || (() => Date.now());
+  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return { rolled: false };
+  const runAt = now();
+  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  const stmt = db.prepare(
+    `INSERT INTO surface_uptime_daily
+       (surface_id, netuid, day, samples, ok_count, uptime_ratio,
+        avg_latency_ms, status, updated_at)
+     SELECT
+       surface_id,
+       netuid,
+       ? AS day,
+       COUNT(*) AS samples,
+       SUM(ok) AS ok_count,
+       ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
+       CAST(ROUND(AVG(latency_ms)) AS INTEGER) AS avg_latency_ms,
+       CASE
+         WHEN SUM(ok) = COUNT(*) THEN 'ok'
+         WHEN SUM(ok) = 0 THEN 'failed'
+         ELSE 'degraded'
+       END AS status,
+       ? AS updated_at
+     FROM surface_checks
+     WHERE checked_at >= ? AND checked_at < ?
+     GROUP BY surface_id, netuid
+     ON CONFLICT(surface_id, day) DO UPDATE SET
+       netuid = excluded.netuid,
+       samples = excluded.samples,
+       ok_count = excluded.ok_count,
+       uptime_ratio = excluded.uptime_ratio,
+       avg_latency_ms = excluded.avg_latency_ms,
+       status = excluded.status,
+       updated_at = excluded.updated_at`,
+  );
+  try {
+    await db.batch(
+      days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
+    );
+    return { rolled: true, days: days.map((d) => d.date) };
+  } catch {
+    return { rolled: false };
+  }
+}
+
 // Hourly maintenance cron: prune time-series rows older than the retention
 // window so the hot table stays lean.
 export async function pruneHealthHistory(env, overrides = {}) {
