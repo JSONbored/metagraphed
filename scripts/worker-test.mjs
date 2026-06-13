@@ -18,6 +18,28 @@ assert.equal(
   "API responses should set nosniff",
 );
 
+const apexCatalog = await handleRequest(
+  new Request("https://metagraph.sh/.well-known/api-catalog"),
+  env,
+  {},
+);
+assert.equal(apexCatalog.status, 200, "apex API catalog should be served");
+const apexCatalogLink = apexCatalog.headers.get("link") || "";
+assert.match(
+  apexCatalogLink,
+  /<https:\/\/api\.metagraph\.sh\/health>; rel="status"; type="application\/json"/,
+  "apex API catalog Link header should advertise canonical API health",
+);
+assert.ok(
+  !apexCatalogLink.includes("</health>"),
+  "apex API catalog Link header must not use a relative health target",
+);
+assert.equal(
+  (await apexCatalog.json()).linkset[0].status[0].href,
+  "https://api.metagraph.sh/health",
+  "apex API catalog body should continue to advertise canonical API health",
+);
+
 const apiOptions = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets", { method: "OPTIONS" }),
   env,

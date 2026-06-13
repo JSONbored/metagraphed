@@ -3121,19 +3121,22 @@ function corsPreflight(request) {
 }
 
 // RFC 8288 Link header advertising the machine entrypoints, mirrored as
-// `<link>` elements in the homepage HTML below. Relative refs resolve against
-// the request URL, so the same value is correct on any deployment host. The
-// relation set mirrors the authoritative RFC 9264 linkset served at
-// /.well-known/api-catalog (service-desc, both service-doc targets, status,
-// describedby) so an agent bootstrapping from the header alone sees the same
-// entrypoints as the catalog body.
+// `<link>` elements in the homepage HTML below. Use the canonical API origin in
+// the header because this worker also owns selected discovery paths on the apex
+// host; relative refs from an apex request can otherwise resolve to routes that
+// are intentionally served only by api.metagraph.sh. The relation set mirrors
+// the authoritative RFC 9264 linkset served at /.well-known/api-catalog
+// (service-desc, both service-doc targets, status, describedby) so an agent
+// bootstrapping from the header alone sees the same entrypoints as the catalog
+// body.
+const DISCOVERY_LINK_BASE = `https://${PRIMARY_DOMAIN}`;
 const DISCOVERY_LINK_HEADER = [
-  '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
-  '</metagraph/openapi.json>; rel="service-desc"; type="application/json"',
-  '</llms.txt>; rel="service-doc"; type="text/plain"',
-  '</agent.md>; rel="service-doc"; type="text/markdown"',
-  '</health>; rel="status"; type="application/json"',
-  '</.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"',
+  `<${DISCOVERY_LINK_BASE}/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
+  `<${DISCOVERY_LINK_BASE}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
+  `<${DISCOVERY_LINK_BASE}/llms.txt>; rel="service-doc"; type="text/plain"`,
+  `<${DISCOVERY_LINK_BASE}/agent.md>; rel="service-doc"; type="text/markdown"`,
+  `<${DISCOVERY_LINK_BASE}/health>; rel="status"; type="application/json"`,
+  `<${DISCOVERY_LINK_BASE}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
 ].join(", ");
 
 const HOMEPAGE_HTML = `<!doctype html>
