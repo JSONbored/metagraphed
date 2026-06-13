@@ -1,0 +1,104 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitScopeAll(deps)",
+    ":configMigration",
+    "helpers:pinGitHubActionDigests",
+    "security:minimumReleaseAgeNpm"
+  ],
+  "timezone": "America/Phoenix",
+  "schedule": ["before 8am on monday"],
+  "prConcurrentLimit": 2,
+  "prHourlyLimit": 1,
+  "branchConcurrentLimit": 3,
+  "labels": ["dependencies", "renovate"],
+  "rangeStrategy": "bump",
+  "rebaseWhen": "behind-base-branch",
+  "platformAutomerge": false,
+  "automerge": false,
+  "postUpdateOptions": ["npmDedupe"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 8am on monday"],
+    "commitMessageAction": "refresh",
+    "commitMessageTopic": "lockfiles",
+    "groupName": "lockfile maintenance",
+    "groupSlug": "lockfile-maintenance"
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "dependencies", "renovate"],
+    "schedule": ["at any time"]
+  },
+  "prBodyNotes": [
+    "This repo keeps **two** lockfiles in sync: `bun.lock` (canonical; used by Cloudflare Workers Builds) and `package-lock.json` (used by the `npm ci` CI job). Both must update together — if Workers Builds fails on a stale `bun.lock`, run `bun install` and commit it.",
+    "Keep `npm run typecheck`, `npm run lint`, and the production build green before merging.",
+    "GitHub Actions updates must remain SHA-pinned."
+  ],
+  "packageRules": [
+    {
+      "description": "Group non-major GitHub Actions changes into one reviewable CI PR.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest", "pinDigest", "patch", "minor"],
+      "groupName": "GitHub Actions non-major updates",
+      "groupSlug": "github-actions-non-major",
+      "addLabels": ["ci"],
+      "commitMessageTopic": "github actions"
+    },
+    {
+      "description": "Keep major GitHub Actions changes isolated and dashboard-approved.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["ci", "major"],
+      "commitMessageTopic": "github action"
+    },
+    {
+      "description": "Group non-major frontend runtime dependency updates.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "npm runtime dependency non-major updates",
+      "groupSlug": "npm-runtime-non-major",
+      "addLabels": ["frontend"],
+      "commitMessageTopic": "npm dependencies"
+    },
+    {
+      "description": "Group non-major frontend dev dependency updates.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "npm dev dependency non-major updates",
+      "groupSlug": "npm-dev-non-major",
+      "addLabels": ["frontend"],
+      "commitMessageTopic": "npm dev dependencies"
+    },
+    {
+      "description": "Keep npm major updates isolated and dashboard-approved.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["frontend", "major"],
+      "commitMessageTopic": "npm dependency"
+    },
+    {
+      "description": "Isolate Prettier/ESLint formatting tooling — a version bump reformats the whole repo (cf. closed dependabot PR #50), so require deliberate dashboard approval even for minor, never auto-grouped or auto-PR'd.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["prettier", "eslint", "eslint-config-prettier", "eslint-plugin-prettier", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser", "typescript-eslint"],
+      "matchUpdateTypes": ["minor", "major"],
+      "dependencyDashboardApproval": true,
+      "groupName": "formatting & lint tooling",
+      "groupSlug": "format-lint-tooling",
+      "addLabels": ["frontend", "tooling"]
+    },
+    {
+      "description": "Engines bumps are managed by the toolchain, not Renovate.",
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    }
+  ]
+}
