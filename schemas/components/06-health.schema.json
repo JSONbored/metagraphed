@@ -564,6 +564,52 @@
         },
         "additionalProperties": true
       },
+      "UptimeArtifact": {
+        "type": "object",
+        "required": ["schema_version", "netuid", "source", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "surface_id",
+                "day_count",
+                "samples",
+                "uptime_ratio",
+                "days"
+              ],
+              "properties": {
+                "surface_id": { "type": "string" },
+                "day_count": { "type": "integer", "minimum": 0 },
+                "samples": { "type": "integer", "minimum": 0 },
+                "uptime_ratio": { "type": ["number", "null"] },
+                "days": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["day", "samples", "uptime_ratio", "status"],
+                    "properties": {
+                      "day": { "type": "string" },
+                      "samples": { "type": "integer", "minimum": 0 },
+                      "uptime_ratio": { "type": ["number", "null"] },
+                      "avg_latency_ms": { "type": ["integer", "null"] },
+                      "status": { "type": "string" }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "RegistryLeaderboardsArtifact": {
         "type": "object",
         "required": ["schema_version", "source", "boards"],

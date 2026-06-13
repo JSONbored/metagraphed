@@ -39,6 +39,7 @@ import {
   formatPercentiles,
   formatTrajectory,
   formatTrends,
+  formatUptime,
   INCIDENT_GAP_MS,
   LEADERBOARD_BOARDS,
   mergeFreshness,
@@ -74,6 +75,9 @@ const PERCENTILES_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/percentiles$/;
 const INCIDENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
 const TRAJECTORY_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
+const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
+const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
+const MAX_UPTIME_ROWS = 10000;
 const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
 const ANALYTICS_WINDOW_PARAM = "window";
 const MAX_INCIDENT_ROWS = 1000;
@@ -304,6 +308,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (trajectoryMatch) {
       return handleTrajectory(request, env, Number(trajectoryMatch[1]));
     }
+    const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
+    if (uptimeMatch) {
+      return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+    }
     return handleApiRequest(request, env, resolved.url);
   }
 
@@ -342,7 +350,8 @@ function isMainnetOnlyApiPath(pathname) {
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
     INCIDENTS_PATH_PATTERN.test(pathname) ||
-    TRAJECTORY_PATH_PATTERN.test(pathname)
+    TRAJECTORY_PATH_PATTERN.test(pathname) ||
+    UPTIME_PATH_PATTERN.test(pathname)
   );
 }
 
@@ -1189,6 +1198,48 @@ async function handleTrajectory(request, env, netuid) {
       meta: analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/trajectory.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
+// Long-term daily uptime history for one subnet's operational surfaces, served
+// live from the surface_uptime_daily rollup (PR3). 90d/1y window. Returns a
+// schema-stable empty payload when D1 is unbound/cold or no history has accrued
+// yet (mirrors the other D1-backed analytics routes).
+async function handleUptime(request, env, netuid, url) {
+  const windowParam = url.searchParams.get("window") || "90d";
+  const days = UPTIME_WINDOWS[windowParam];
+  if (!days) {
+    return errorResponse(
+      "invalid_query",
+      "Query parameter `window` must be one of: 90d, 1y.",
+      400,
+      { parameter: "window" },
+    );
+  }
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    `SELECT surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status
+     FROM surface_uptime_daily
+     WHERE netuid = ? AND day >= ?
+     ORDER BY day DESC
+     LIMIT ?`,
+    [netuid, cutoff, MAX_UPTIME_ROWS],
+  );
+  const data = formatUptime({ netuid, window: windowParam, rows });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: analyticsMeta(
+        env,
+        `/metagraph/subnets/${netuid}/uptime.json`,
         null,
       ),
     },

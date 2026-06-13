@@ -549,6 +549,57 @@ function shiftDate(isoDate, days) {
   return new Date(base).toISOString().slice(0, 10);
 }
 
+// Long-term daily uptime series per surface, from surface_uptime_daily rows
+// {surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status}.
+// Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio
+// from the summed ok_count/samples (exact, not an average of ratios).
+export function formatUptime({ netuid, window, rows }) {
+  const bySurface = new Map();
+  for (const row of rows || []) {
+    const list = bySurface.get(row.surface_id) || [];
+    list.push({
+      day: row.day,
+      samples: Number(row.samples) || 0,
+      ok_count: Number(row.ok_count) || 0,
+      uptime_ratio: row.uptime_ratio == null ? null : Number(row.uptime_ratio),
+      avg_latency_ms:
+        row.avg_latency_ms == null
+          ? null
+          : Math.round(Number(row.avg_latency_ms)),
+      status: row.status || "unknown",
+    });
+    bySurface.set(row.surface_id, list);
+  }
+  const surfaces = [...bySurface.entries()]
+    .map(([surfaceId, days]) => {
+      days.sort((a, b) => String(a.day).localeCompare(String(b.day)));
+      const samples = days.reduce((sum, d) => sum + d.samples, 0);
+      const okCount = days.reduce((sum, d) => sum + d.ok_count, 0);
+      return {
+        surface_id: surfaceId,
+        day_count: days.length,
+        samples,
+        uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
+        // Per-day series without the internal ok_count (uptime_ratio covers it).
+        days: days.map((d) => ({
+          day: d.day,
+          samples: d.samples,
+          uptime_ratio: d.uptime_ratio,
+          avg_latency_ms: d.avg_latency_ms,
+          status: d.status,
+        })),
+      };
+    })
+    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+  return {
+    schema_version: 1,
+    netuid,
+    window: window || null,
+    source: "live-cron-prober",
+    surfaces,
+  };
+}
+
 // --- Live-everywhere health resolution + composed-artifact overlays ----------
 // Health must never be served from a build-time artifact. resolveLiveHealth
 // returns the freshest live snapshot — KV health:current first, then a

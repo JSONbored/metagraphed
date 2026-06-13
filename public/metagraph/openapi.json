@@ -8375,6 +8375,104 @@
           }
         ]
       },
+      "UptimeArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "day_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "day": {
+                        "type": "string"
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "uptime_ratio": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "day",
+                      "samples",
+                      "uptime_ratio",
+                      "status"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "samples": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "surface_id",
+                "day_count",
+                "samples",
+                "uptime_ratio",
+                "days"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "VerificationArtifact": {
         "allOf": [
           {
@@ -16761,6 +16859,118 @@
         },
         "summary": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
         "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/uptime": {
+      "get": {
+        "operationId": "subnetUptime",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "90d",
+                "1y"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UptimeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
+        "tags": [
+          "health",
           "subnets",
           "analytics"
         ]

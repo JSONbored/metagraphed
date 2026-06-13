@@ -11,6 +11,7 @@ import {
   overlayOverviewHealth,
   overlayRpcPoolEligibility,
   overlaySubnetHealth,
+  formatUptime,
   parseLive,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -1045,5 +1046,134 @@ describe("worker live health overlay on composed routes", () => {
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     const body = await res.json();
     assert.equal(body.data.health, null);
+  });
+});
+
+describe("formatUptime (daily uptime history)", () => {
+  test("groups by surface, sorts days, rolls window uptime from ok_count/samples", () => {
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "b",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 100,
+          uptime_ratio: 1,
+          avg_latency_ms: 50,
+          status: "ok",
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 90,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 70,
+          status: "degraded",
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          uptime_ratio: 0.8,
+          avg_latency_ms: 60,
+          status: "degraded",
+        },
+      ],
+    });
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "90d");
+    assert.equal(out.source, "live-cron-prober");
+    // sorted by surface_id (a before b)
+    assert.equal(out.surfaces[0].surface_id, "a");
+    assert.equal(out.surfaces[0].day_count, 2);
+    assert.equal(out.surfaces[0].samples, 200);
+    // window uptime = (80+90)/200 = 0.85, from summed counts (not avg of ratios)
+    assert.equal(out.surfaces[0].uptime_ratio, 0.85);
+    // days sorted ascending; internal ok_count dropped from the per-day series
+    assert.equal(out.surfaces[0].days[0].day, "2026-06-12");
+    assert.equal(out.surfaces[0].days[0].ok_count, undefined);
+    assert.equal(out.surfaces[0].days[0].uptime_ratio, 0.8);
+  });
+
+  test("returns an empty series for no rows", () => {
+    assert.deepEqual(
+      formatUptime({ netuid: 7, window: "1y", rows: [] }).surfaces,
+      [],
+    );
+  });
+
+  test("handles null ratios/latency, missing status, zero samples, and no window", () => {
+    const out = formatUptime({
+      netuid: 7,
+      rows: [
+        {
+          surface_id: "z",
+          day: "2026-06-13",
+          samples: 0,
+          ok_count: 0,
+          uptime_ratio: null,
+          avg_latency_ms: null,
+        },
+      ],
+    });
+    assert.equal(out.window, null); // window omitted → null
+    assert.equal(out.surfaces[0].uptime_ratio, null); // samples 0 → null ratio
+    assert.equal(out.surfaces[0].days[0].uptime_ratio, null);
+    assert.equal(out.surfaces[0].days[0].avg_latency_ms, null);
+    assert.equal(out.surfaces[0].days[0].status, "unknown"); // missing → unknown
+  });
+});
+
+describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
+  test("serves the live daily uptime rollup from D1", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: d1With([
+        {
+          surface_id: "7:subnet-api:x",
+          day: "2026-06-13",
+          samples: 700,
+          ok_count: 700,
+          uptime_ratio: 1,
+          avg_latency_ms: 40,
+          status: "ok",
+        },
+      ]),
+    });
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/uptime?window=1y"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "1y");
+    assert.equal(body.data.surfaces[0].surface_id, "7:subnet-api:x");
+    assert.equal(body.data.surfaces[0].uptime_ratio, 1);
+    assert.equal(body.meta.source, "live-cron-prober");
+  });
+
+  test("defaults to 90d and returns an empty series when D1 is cold", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/subnets/7/uptime"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.window, "90d");
+    assert.deepEqual(body.data.surfaces, []);
+  });
+
+  test("rejects an invalid window with 400", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/uptime?window=5y"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_query");
   });
 });

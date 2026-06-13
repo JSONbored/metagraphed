@@ -804,6 +804,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTrajectoryArtifact",
   ),
   artifact(
+    "subnet-uptime",
+    "/metagraph/subnets/{netuid}/uptime.json",
+    "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
+    "UptimeArtifact",
+  ),
+  artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
     "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
@@ -1336,6 +1342,17 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-uptime",
+    "GET",
+    "/api/v1/subnets/{netuid}/uptime",
+    "/metagraph/subnets/{netuid}/uptime.json",
+    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
+    "short",
+    ["health", "subnets", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["90d", "1y"] } }],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
