@@ -1378,8 +1378,10 @@ describe("Agent discovery surfaces", () => {
   });
 
   test("api-catalog hrefs are canonical (api.metagraph.sh), not the request host", async () => {
-    // The apex (metagraph.sh) routes /.well-known/* to this worker too, so the
-    // catalog must reference the real API host regardless of which host served it.
+    // The apex (metagraph.sh) routes /.well-known/* to this worker too, so both
+    // the linkset body AND the HTTP Link header must reference the real API host
+    // regardless of which host served the request — origin-relative refs would
+    // resolve to metagraph.sh (the wrong host).
     const response = await handleRequest(
       new Request("https://metagraph.sh/.well-known/api-catalog"),
       {},
@@ -1391,5 +1393,12 @@ describe("Agent discovery surfaces", () => {
       body.linkset[0]["service-desc"][0].href,
       "https://api.metagraph.sh/metagraph/openapi.json",
     );
+    const link = response.headers.get("link");
+    assert.match(
+      link,
+      /<https:\/\/api\.metagraph\.sh\/metagraph\/openapi\.json>; rel="service-desc"/,
+    );
+    // No origin-relative refs that would resolve to the apex host.
+    assert.doesNotMatch(link, /<\/[a-z.]/);
   });
 });
