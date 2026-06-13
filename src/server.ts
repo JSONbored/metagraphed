@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleOgImage } from "./lib/og-image";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -320,11 +321,31 @@ function buildJsonLd(pathname: string): string {
   }).replace(/</g, "\\u003c");
 }
 
-// Inject the deferred tracker, a canonical link, and schema.org JSON-LD into
-// <head> of HTML responses (streaming) and advertise the agent-discovery
-// resources via an RFC 8288 Link header. Canonical + JSON-LD are set HERE (not
-// per-route) so they are global, consistent, and regen-proof. Canonical is
-// origin + path with the query stripped, so filter/sort permutations (e.g.
+// A short, human-readable title for the rendered OG card, derived from the path.
+const OG_SECTION_TITLES: Record<string, string> = {
+  "/subnets": "Subnets",
+  "/providers": "Providers",
+  "/surfaces": "Interfaces",
+  "/endpoints": "Endpoints",
+  "/health": "Health",
+  "/schemas": "Schemas",
+  "/gaps": "Registry gaps",
+  "/about": "About",
+};
+function ogCardTitle(pathname: string): string {
+  const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
+  if (subnet) return `Subnet ${decodeURIComponent(subnet[1])}`;
+  const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
+  if (provider) return decodeURIComponent(provider[1]);
+  return OG_SECTION_TITLES[pathname] ?? "Metagraphed";
+}
+
+// Inject the deferred tracker, a canonical link, schema.org JSON-LD, and the
+// og:image/twitter:image (the edge-rendered /og card) into <head> of HTML
+// responses (streaming) and advertise the agent-discovery resources via an RFC
+// 8288 Link header. Canonical + JSON-LD + og:image are set HERE (not per-route)
+// so they are global, consistent, and regen-proof. Canonical is origin + path
+// with the query stripped, so filter/sort permutations (e.g.
 // /subnets?sort=health&health=down) consolidate to the one indexable URL instead
 // of reading as duplicate content.
 function injectAnalytics(response: Response, request: Request): Response {
@@ -333,11 +354,18 @@ function injectAnalytics(response: Response, request: Request): Response {
   const pathname = new URL(request.url).pathname;
   const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(`${SITE_ORIGIN}${pathname}`)}">`;
   const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
+  const ogImage = `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCardTitle(pathname))}`;
+  const ogImageTags =
+    `<meta property="og:image" content="${escapeHtmlAttr(ogImage)}">` +
+    `<meta property="og:image:width" content="1200">` +
+    `<meta property="og:image:height" content="630">` +
+    `<meta name="twitter:image" content="${escapeHtmlAttr(ogImage)}">`;
   const transformed = new HTMLRewriter()
     .on("head", {
       element(element) {
         element.append(canonicalTag, { html: true });
         element.append(jsonLdTag, { html: true });
+        element.append(ogImageTags, { html: true });
         element.append(UMAMI_SNIPPET, { html: true });
       },
     })
@@ -385,6 +413,8 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const statsResponse = await handleStatsProxy(request);
     if (statsResponse) return statsResponse;
+    const ogResponse = await handleOgImage(request);
+    if (ogResponse) return ogResponse;
     const discoveryResponse = await handleDiscovery(request);
     if (discoveryResponse) return discoveryResponse;
     try {

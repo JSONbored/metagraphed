@@ -67,6 +67,7 @@
     "tw-animate-css": "^1.3.4",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
+    "workers-og": "^0.0.27",
     "zod": "^4.4.3"
   },
   "devDependencies": {
