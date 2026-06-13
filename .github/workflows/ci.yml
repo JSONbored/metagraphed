@@ -46,3 +46,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Guard against client-bundle regressions. Budget is ~28% above the current
+      # ~233 KB gzipped; raise it deliberately (in the same PR) when a real
+      # feature legitimately grows the bundle.
+      - name: Bundle size budget (client JS, gzipped)
+        run: |
+          BUDGET_KB=300
+          BYTES=$(find dist/client/assets -name '*.js' | sort | xargs cat | gzip -c | wc -c)
+          KB=$(( (BYTES + 1023) / 1024 ))
+          echo "Client JS (gzipped, concatenated): ${KB} KB / budget ${BUDGET_KB} KB"
+          if [ "$KB" -gt "$BUDGET_KB" ]; then
+            echo "::error::Client JS bundle ${KB} KB exceeds the ${BUDGET_KB} KB budget — investigate the regression or raise the budget deliberately."
+            exit 1
+          fi
