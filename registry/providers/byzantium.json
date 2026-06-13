@@ -4,6 +4,7 @@
   "name": "Byzantium",
   "kind": "subnet-team",
   "website_url": "https://www.byzantiumai.net/",
+  "github_url": "https://github.com/safe-scan-ai",
   "authority": "official",
-  "notes": "Provider entry for Byzantium SN76 website. Public docs/API/common-path candidates are currently 404 and are not promoted."
+  "notes": "Provider entry for Byzantium SN76. The team operates under the Safe Scan brand (safe-scan.ai / @SAFESCAN_AI); its GitHub org is safe-scan-ai (verified via the SN76 source repo README + taostats/CoinGecko/subnetalpha)."
 }
