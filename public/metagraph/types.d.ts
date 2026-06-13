@@ -1405,7 +1405,7 @@ export interface components {
             classification?: components["schemas"]["Classification"];
             error?: string | null;
             /** @enum {unknown} */
-            health_source: "probe-derived" | "missing-probe" | "not-monitored";
+            health_source: "probe-derived" | "missing-probe" | "not-monitored" | "live-cron-prober" | "unavailable";
             health_stale: boolean;
             id: string;
             kind: components["schemas"]["SurfaceKind"];

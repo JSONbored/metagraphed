@@ -408,7 +408,13 @@
             "type": ["string", "null"]
           },
           "health_source": {
-            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored",
+              "live-cron-prober",
+              "unavailable"
+            ]
           },
           "health_stale": {
             "type": "boolean"

@@ -45,6 +45,7 @@ import {
   LEADERBOARD_BOARDS,
   mergeFreshness,
   mergeRpcEndpoints,
+  overlayArtifactEndpoints,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -487,12 +488,32 @@ async function handleRawArtifactRequest(
       artifact_path: networkPath,
     });
   }
+  // Live per-endpoint health overlay: raw artifacts that embed the shared
+  // EndpointResource list (endpoints.json, subnets/{n}.json, profiles/{n}.json,
+  // provider endpoints) must not serve build-time operational health as fresh.
+  // Overlay the 2-minute cron snapshot so direct /metagraph/*.json fetchers see
+  // the same live status the /api/v1 routes do; surfaces with no live reading
+  // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
+  // that actually carry probed endpoints.
+  let data = artifact.data;
+  if (
+    network.isDefault &&
+    Array.isArray(data?.endpoints) &&
+    data.endpoints.some((endpoint) => endpoint?.surface_id)
+  ) {
+    const liveSnapshot = await resolveLiveHealth({
+      readHealthKv,
+      env,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
+    data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
+  }
   // The raw artifact path has no envelope, so direct fetchers of
   // /metagraph/*.json have no freshness signal — the body's generated_at is the
   // deterministic epoch content marker by design. Expose the real publish time
-  // as a header; the body stays byte-identical to the committed artifact.
+  // as a header; the operational-health fields are overlaid live (above).
   const pub = await publishedAt(env);
-  const body = JSON.stringify(artifact.data);
+  const body = JSON.stringify(data);
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
   headers.set("x-metagraph-artifact-source", artifact.source);
@@ -2662,69 +2683,91 @@ function unknownSubnetHealth(netuid) {
 
 // Overlay the 2-minute cron snapshot onto a static health/rpc artifact. Returns
 // { data } when a live snapshot is available, else null (caller serves static).
+// Health-overlay routes whose live composition is keyed on surfaces/services
+// (not the shared EndpointResource list) — excluded from the generic per-endpoint
+// overlay below so it does not double-process them.
+const ENDPOINT_OVERLAY_EXCLUDED_IDS = new Set([
+  "subnet-health",
+  "rpc-endpoints",
+  "freshness",
+  "agent-catalog",
+  "agent-catalog-subnet",
+]);
+
 async function liveHealthOverlay(env, matched, staticData) {
+  let resolved;
+  const getLive = async () => {
+    if (resolved === undefined) {
+      resolved =
+        (await resolveLiveHealth({
+          readHealthKv,
+          env,
+          db: env.METAGRAPH_HEALTH_DB,
+        })) || null;
+    }
+    return resolved;
+  };
+
+  let data;
   switch (matched.id) {
     case "subnet-health": {
-      const liveSnapshot = await resolveLiveHealth({
-        readHealthKv,
-        env,
-        db: env.METAGRAPH_HEALTH_DB,
-      });
-      const data = overlaySubnetHealth(
+      data = overlaySubnetHealth(
         staticData,
-        liveSnapshot,
+        await getLive(),
         Number(matched.params.netuid),
       );
-      return data ? { data } : null;
+      break;
     }
     case "rpc-endpoints": {
       const pool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
-      const data = mergeRpcEndpoints(staticData, pool);
-      return data ? { data } : null;
+      data = mergeRpcEndpoints(staticData, pool);
+      break;
     }
     case "freshness": {
       const meta = await readHealthKv(env, KV_HEALTH_META);
-      const data = mergeFreshness(staticData, meta);
-      return data ? { data } : null;
+      data = mergeFreshness(staticData, meta);
+      break;
     }
     case "subnet-overview": {
-      const liveSnapshot = await resolveLiveHealth({
-        readHealthKv,
-        env,
-        db: env.METAGRAPH_HEALTH_DB,
-      });
-      const data = overlayOverviewHealth(
+      data = overlayOverviewHealth(
         staticData,
-        liveSnapshot,
+        await getLive(),
         Number(matched.params.netuid),
       );
-      return data ? { data } : null;
+      break;
     }
     case "agent-catalog-subnet": {
-      const liveSnapshot = await resolveLiveHealth({
-        readHealthKv,
-        env,
-        db: env.METAGRAPH_HEALTH_DB,
-      });
-      const data = overlayCatalogDetail(
+      data = overlayCatalogDetail(
         staticData,
-        liveSnapshot,
+        await getLive(),
         Number(matched.params.netuid),
       );
-      return data ? { data } : null;
+      break;
     }
     case "agent-catalog": {
-      const liveSnapshot = await resolveLiveHealth({
-        readHealthKv,
-        env,
-        db: env.METAGRAPH_HEALTH_DB,
-      });
-      const data = overlayCatalogIndex(staticData, liveSnapshot);
-      return data ? { data } : null;
+      data = overlayCatalogIndex(staticData, await getLive());
+      break;
     }
     default:
-      return null;
+      data = null;
   }
+
+  // Generic live overlay for any artifact embedding the shared EndpointResource
+  // list (subnet detail, profile, endpoints collection, provider endpoints, and
+  // the composed overview's endpoints[]). Each endpoint's operational health is
+  // replaced from the 2-minute cron snapshot; surfaces with no live reading
+  // become `unknown` — so per-endpoint health is never the baked build value.
+  const base = data ?? staticData;
+  if (
+    !ENDPOINT_OVERLAY_EXCLUDED_IDS.has(matched.id) &&
+    Array.isArray(base?.endpoints) &&
+    base.endpoints.some((endpoint) => endpoint?.surface_id)
+  ) {
+    const overlaid = overlayArtifactEndpoints(base, await getLive());
+    if (overlaid) data = overlaid;
+  }
+
+  return data ? { data } : null;
 }
 
 // Real publish timestamp for envelope meta, read from the KV latest pointer.

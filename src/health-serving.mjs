@@ -756,4 +756,84 @@ export function overlayCatalogIndex(staticIndex, live) {
   };
 }
 
+// Replace one EndpointResource's operational health with the live probe row,
+// or mark it `unknown` when the surface has no live reading. Structural and
+// capability fields are preserved; only the freshness-bearing fields (status,
+// classification, latency, the observed_* timestamps, health_source/stale, and
+// pool eligibility) are overwritten so a build-time value is never served as
+// fresh.
+function overlayEndpointHealth(endpoint, liveRow) {
+  if (!liveRow) {
+    return {
+      ...endpoint,
+      status: "unknown",
+      classification: "unknown",
+      latency_ms: null,
+      observed_at: null,
+      last_checked: null,
+      last_ok: null,
+      health_source: "unavailable",
+      health_stale: true,
+      pool_eligible: false,
+      error: null,
+    };
+  }
+  return {
+    ...endpoint,
+    status: liveRow.status,
+    classification:
+      liveRow.classification ?? endpoint.classification ?? "unknown",
+    latency_ms: Number.isFinite(liveRow.latency_ms) ? liveRow.latency_ms : null,
+    observed_at: liveRow.last_checked || null,
+    last_checked: liveRow.last_checked || null,
+    last_ok: liveRow.last_ok || null,
+    health_source: "live-cron-prober",
+    health_stale: false,
+    pool_eligible: liveRow.status === "ok",
+    error: liveRow.status === "ok" ? null : (endpoint.error ?? null),
+  };
+}
+
+function countEndpointStatuses(endpoints) {
+  const counts = {};
+  for (const endpoint of endpoints) {
+    counts[endpoint.status] = (counts[endpoint.status] || 0) + 1;
+  }
+  return counts;
+}
+
+// Overlay live per-endpoint operational health onto any artifact that embeds the
+// shared EndpointResource list (subnet detail, profile, the endpoints
+// collection, provider endpoints, the composed overview). Each endpoint is
+// joined to the live snapshot by surface_id; surfaces absent from the live store
+// become `unknown` (never the baked build-time value). The artifact's status
+// histogram is recomputed when present. Returns null only when the artifact
+// carries no endpoints array (the caller then serves it untouched).
+export function overlayArtifactEndpoints(staticData, live) {
+  if (!staticData || !Array.isArray(staticData.endpoints)) return null;
+  const liveById = new Map();
+  if (live && Array.isArray(live.surfaces)) {
+    for (const row of live.surfaces) liveById.set(row.surface_id, row);
+  }
+  const endpoints = staticData.endpoints.map((endpoint) =>
+    overlayEndpointHealth(endpoint, liveById.get(endpoint.surface_id) || null),
+  );
+  const result = {
+    ...staticData,
+    endpoints,
+    operational_observed_at: live?.last_run_at || null,
+    health_source: live?.health_source || "unavailable",
+  };
+  if (staticData.summary && typeof staticData.summary === "object") {
+    result.summary = {
+      ...staticData.summary,
+      by_status: countEndpointStatuses(endpoints),
+      pool_eligible_count: endpoints.filter(
+        (endpoint) => endpoint.pool_eligible,
+      ).length,
+    };
+  }
+  return result;
+}
+
 export { OPERATIONAL_KINDS };

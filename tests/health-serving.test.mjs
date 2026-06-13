@@ -6,6 +6,7 @@ import {
   formatTrends,
   mergeFreshness,
   mergeRpcEndpoints,
+  overlayArtifactEndpoints,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -959,6 +960,128 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.subnets[0].callable_count, 2); // structural count untouched
     assert.equal(out.operational_observed_at, live.last_run_at);
   });
+
+  test("overlayArtifactEndpoints replaces baked per-endpoint health with live", () => {
+    const artifact = {
+      netuid: 7,
+      summary: { by_status: { ok: 2 }, pool_eligible_count: 2 },
+      endpoints: [
+        {
+          surface_id: "7:subnet-api:x",
+          url: "https://x",
+          status: "ok",
+          classification: "live",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "BUILD",
+          last_ok: "BUILD",
+          latency_ms: 999,
+          pool_eligible: true,
+          error: null,
+        },
+        {
+          surface_id: "7:docs:absent",
+          url: "https://absent",
+          status: "ok",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "BUILD",
+          pool_eligible: true,
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(artifact, live);
+    // surface present in the live snapshot → live values, never the baked ones.
+    const a = out.endpoints[0];
+    assert.equal(a.status, "failed");
+    assert.equal(a.health_source, "live-cron-prober");
+    assert.equal(a.health_stale, false);
+    assert.equal(a.observed_at, live.last_run_at ? a.observed_at : null);
+    assert.equal(a.last_checked, "2026-06-13T00:00:00.000Z");
+    assert.equal(a.pool_eligible, false); // live status failed → not eligible
+    assert.equal(a.url, "https://x"); // structural kept
+    // surface absent from the live snapshot → unknown, never the baked value.
+    const b = out.endpoints[1];
+    assert.equal(b.status, "unknown");
+    assert.equal(b.health_source, "unavailable");
+    assert.equal(b.health_stale, true);
+    assert.equal(b.pool_eligible, false);
+    assert.equal(b.url, "https://absent"); // structural kept
+    // freshness + recomputed histogram surface at the top level.
+    assert.equal(out.operational_observed_at, live.last_run_at);
+    assert.equal(out.health_source, "live-cron-prober");
+    assert.deepEqual(out.summary.by_status, { failed: 1, unknown: 1 });
+    assert.equal(out.summary.pool_eligible_count, 0);
+  });
+
+  test("overlayArtifactEndpoints blanks endpoints to unknown when the store is cold", () => {
+    const artifact = {
+      endpoints: [
+        {
+          surface_id: "7:subnet-api:x",
+          status: "ok",
+          health_source: "probe-derived",
+          latency_ms: 10,
+          pool_eligible: true,
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(artifact, null);
+    assert.equal(out.endpoints[0].status, "unknown");
+    assert.equal(out.endpoints[0].health_source, "unavailable");
+    assert.equal(out.endpoints[0].health_stale, true);
+    assert.equal(out.endpoints[0].latency_ms, null);
+    assert.equal(out.endpoints[0].pool_eligible, false);
+    assert.equal(out.operational_observed_at, null);
+    assert.equal(out.health_source, "unavailable");
+  });
+
+  test("overlayArtifactEndpoints returns null when there is no endpoints array", () => {
+    assert.equal(overlayArtifactEndpoints({ netuid: 7 }, live), null);
+    assert.equal(overlayArtifactEndpoints(null, live), null);
+  });
+
+  test("overlayArtifactEndpoints keeps a live-ok endpoint eligible and preserves a non-ok error", () => {
+    const liveOk = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      health_source: "live-cron-prober",
+      surfaces: [
+        {
+          surface_id: "ok-one",
+          status: "ok",
+          classification: "live",
+          latency_ms: 42,
+          last_ok: "2026-06-13T00:00:00.000Z",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+        {
+          surface_id: "deg-one",
+          status: "degraded",
+          classification: "slow",
+          latency_ms: null,
+          last_ok: null,
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(
+      {
+        endpoints: [
+          { surface_id: "ok-one", status: "failed", pool_eligible: false },
+          { surface_id: "deg-one", status: "ok", error: "prev-error" },
+        ],
+      },
+      liveOk,
+    );
+    assert.equal(out.endpoints[0].status, "ok");
+    assert.equal(out.endpoints[0].pool_eligible, true);
+    assert.equal(out.endpoints[0].latency_ms, 42);
+    assert.equal(out.endpoints[0].error, null); // ok → error cleared
+    // non-ok live status keeps the static error and stays ineligible.
+    assert.equal(out.endpoints[1].status, "degraded");
+    assert.equal(out.endpoints[1].pool_eligible, false);
+    assert.equal(out.endpoints[1].error, "prev-error");
+  });
 });
 
 describe("worker live health overlay on composed routes", () => {
@@ -1019,6 +1142,155 @@ describe("worker live health overlay on composed routes", () => {
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     assert.equal(res.status, 200);
     assert.notEqual((await res.json()).meta.source, "live-cron-prober");
+  });
+
+  const seedDetailArchive = (detail) => ({
+    async get(key) {
+      if (!String(key).includes("subnets/7.json")) return null;
+      return {
+        async json() {
+          return detail;
+        },
+        async text() {
+          return JSON.stringify(detail);
+        },
+      };
+    },
+  });
+
+  test("/api/v1/subnets/7 overlays per-endpoint health live (no longer baked)", async () => {
+    const detail = {
+      schema_version: 1,
+      generated_at: "2026-06-12T21:00:00.000Z",
+      subnet: { netuid: 7 },
+      summary: { by_status: { ok: 1 }, pool_eligible_count: 1 },
+      endpoints: [
+        {
+          id: "endpoint-s1",
+          surface_id: "s1",
+          netuid: 7,
+          kind: "subnet-api",
+          url: "https://s1",
+          provider: "p",
+          status: "ok",
+          classification: "live",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "2026-06-12T21:00:00.000Z",
+          last_ok: "2026-06-12T21:00:00.000Z",
+          last_checked: "2026-06-12T21:00:00.000Z",
+          latency_ms: 900,
+          pool_eligible: true,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: kvWith({
+        "health:current": {
+          last_run_at: "2026-06-13T00:00:00.000Z",
+          health_source: "live-cron-prober",
+          surfaces: [
+            {
+              surface_id: "s1",
+              netuid: 7,
+              status: "failed",
+              classification: "down",
+              latency_ms: 5,
+              last_ok: "2026-06-12T23:00:00.000Z",
+              last_checked: "2026-06-13T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+      METAGRAPH_ARCHIVE: seedDetailArchive(detail),
+    });
+    const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+    assert.equal(res.status, 200);
+    const ep = (await res.clone().json()).data.endpoints[0];
+    assert.equal(ep.status, "failed"); // live status, not the baked "ok"
+    assert.equal(ep.health_source, "live-cron-prober");
+    assert.equal(ep.health_stale, false);
+    assert.equal(ep.pool_eligible, false); // live failed → ineligible
+    assert.equal(ep.observed_at, "2026-06-13T00:00:00.000Z");
+    assert.equal((await res.json()).meta.source, "live-cron-prober");
+  });
+
+  test("/api/v1/subnets/7 endpoints read `unknown` when the live store is cold", async () => {
+    const detail = {
+      subnet: { netuid: 7 },
+      endpoints: [
+        {
+          id: "endpoint-s1",
+          surface_id: "s1",
+          netuid: 7,
+          kind: "subnet-api",
+          url: "https://s1",
+          provider: "p",
+          status: "ok",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "2026-06-12T21:00:00.000Z",
+          pool_eligible: true,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: seedDetailArchive(detail),
+    });
+    const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+    assert.equal(res.status, 200);
+    const ep = (await res.json()).data.endpoints[0];
+    assert.equal(ep.status, "unknown"); // never the baked "ok"
+    assert.equal(ep.health_source, "unavailable");
+    assert.equal(ep.health_stale, true);
+  });
+
+  test("raw /metagraph/subnets/7.json overlays per-endpoint health live too", async () => {
+    const detail = {
+      subnet: { netuid: 7 },
+      endpoints: [
+        {
+          id: "endpoint-s1",
+          surface_id: "s1",
+          netuid: 7,
+          kind: "subnet-api",
+          url: "https://s1",
+          provider: "p",
+          status: "ok",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "2026-06-12T21:00:00.000Z",
+          pool_eligible: true,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: kvWith({
+        "health:current": {
+          last_run_at: "2026-06-13T00:00:00.000Z",
+          health_source: "live-cron-prober",
+          surfaces: [
+            {
+              surface_id: "s1",
+              netuid: 7,
+              status: "degraded",
+              classification: "slow",
+              latency_ms: 50,
+              last_ok: "2026-06-12T23:00:00.000Z",
+              last_checked: "2026-06-13T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+      METAGRAPH_ARCHIVE: seedDetailArchive(detail),
+    });
+    const res = await handleRequest(req("/metagraph/subnets/7.json"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    // Raw artifact path is no longer byte-identical: operational health is live.
+    assert.equal(body.endpoints[0].status, "degraded");
+    assert.equal(body.endpoints[0].health_source, "live-cron-prober");
+    assert.equal(body.endpoints[0].health_stale, false);
   });
 
   test("/api/v1/health serves `unknown` when the live store is cold (live-only)", async () => {
