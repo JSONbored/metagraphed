@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-13-data-artifact-huggingface-co",
+      "kind": "data-artifact",
+      "name": "Data Universe community data-artifact",
+      "netuid": 13,
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/macrocosm-os/data-universe",
+      "source_urls": ["https://github.com/macrocosm-os/data-universe"],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/datasets/tensorshield/reddit_dataset_157"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
