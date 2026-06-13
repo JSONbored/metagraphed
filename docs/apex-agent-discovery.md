@@ -20,33 +20,46 @@ routes (they win over the UI worker's apex domain; `/` and all UI pages stay on
 
 ```
 metagraph.sh/.well-known/*
-metagraph.sh/sitemap.xml
 metagraph.sh/llms.txt
 metagraph.sh/llms-full.txt
 metagraph.sh/auth.md
 metagraph.sh/agent.md
 ```
 
-So `metagraph.sh/.well-known/api-catalog`, `/sitemap.xml`, `/llms.txt`,
+So `metagraph.sh/.well-known/api-catalog`, `/llms.txt`, `/llms-full.txt`,
 `/auth.md`, `/agent.md`, `/.well-known/agent-skills/index.json`, and
 `/.well-known/mcp/server-card.json` are all served on the apex by the backend —
 **verified live**. The api-catalog references the canonical `api.metagraph.sh`
 host, so the apex advertises the real API rather than duplicating it.
 
-## The one remaining piece
+## Sitemap is host-scoped (NOT routed to the backend)
 
-The apex **homepage `/` `Link` header** can't live here — `/` must keep serving
-the UI (`metagraphed-ui`), so a request to `metagraph.sh/` is handled by that
-worker, not this one. To satisfy the "Link headers on homepage" check on the
-apex, add to the **`metagraphed-ui`** worker's `/` response:
+`metagraph.sh/sitemap.xml` is **not** routed here. A sitemap served at
+`metagraph.sh` must list `metagraph.sh` **human pages** (`/`, `/subnets`,
+`/providers`, per-subnet pages, …) — crawlers ignore cross-host `<loc>` entries.
+The **`metagraphed-ui`** worker builds that human-page sitemap on the apex
+(`src/server.ts` → `buildSitemap`). The backend serves its own API/agent sitemap
+on its own host at `api.metagraph.sh/sitemap.xml`. (An earlier revision routed
+the apex sitemap to the backend, which shadowed the human sitemap with 142
+cross-host `api.metagraph.sh` URLs — that route has been removed.)
+
+## Homepage `/` Link header — DONE (in `metagraphed-ui`)
+
+The apex **homepage `/` `Link` header** can't live in this repo — `/` must keep
+serving the UI, so `metagraph.sh/` is handled by the `metagraphed-ui` worker. It
+is **implemented there and verified live**: `metagraphed-ui/src/server.ts`
+(`injectAnalytics`) sets an RFC 8288 `Link` header on every HTML response,
+including `/`:
 
 ```
-Link: <https://api.metagraph.sh/.well-known/api-catalog>; rel="api-catalog", <https://api.metagraph.sh/llms.txt>; rel="service-doc", <https://api.metagraph.sh/metagraph/openapi.json>; rel="service-desc"
+Link: <https://api.metagraph.sh/.well-known/api-catalog>; rel="api-catalog", <https://api.metagraph.sh/metagraph/openapi.json>; rel="service-desc"; type="application/json", <https://api.metagraph.sh/llms.txt>; rel="service-doc"; type="text/plain", <https://api.metagraph.sh/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"
 ```
 
-(Equivalent alternative, no UI change: a Cloudflare **Response Header Transform
-Rule** on `metagraph.sh` matching `http.request.uri.path eq "/"` that sets that
-same `Link` header — needs a zone token with `Transform Rules: Edit`.)
+That worker also independently proxies the discovery resources + builds the
+sitemap as a self-contained fallback (so apex discovery survives even if these
+backend routes are ever removed); the backend routes above win for the paths
+they cover, so the backend is the live source for everything except `/` and
+`/sitemap.xml`.
 
 ## Optional: AI-bot crawl policy
 

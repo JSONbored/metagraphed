@@ -44,16 +44,24 @@
     "METAGRAPH_ENABLE_AI": "true",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
-  // surface). The apex metagraph.sh is the metagraphed-ui worker, but the
-  // machine/agent-discovery PATHS are routed here too so the SAME backend serves
-  // them on both hosts (single source of truth — no redirect/proxy/duplication).
-  // These specific routes win over the UI worker's apex domain; the UI keeps
-  // serving `/` and all human pages. (`/` is intentionally NOT routed here so the
-  // apex homepage stays the UI; its Link header belongs in the UI worker.)
+  // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
+  // human-facing apex too, so the machine-discovery PATHS the backend generates
+  // canonically are routed here as well — these specific routes win over the UI
+  // worker's apex catch-all, so the SAME backend serves them on both hosts (no
+  // duplicated content). The UI keeps serving `/` and every human page.
+  //
+  // Deliberately NOT routed here (owned by the metagraphed-ui worker on the apex):
+  //   - `/`            — stays the UI app; the UI worker adds the homepage RFC 8288
+  //                      `Link` header (see metagraphed-ui src/server.ts).
+  //   - `/sitemap.xml` — host-scoped. A sitemap on metagraph.sh must list
+  //                      metagraph.sh human pages; the UI worker serves that. The
+  //                      backend serves its own API/agent sitemap at
+  //                      api.metagraph.sh/sitemap.xml. Routing the apex sitemap
+  //                      here would shadow the human sitemap with cross-host
+  //                      api.metagraph.sh URLs (which crawlers ignore).
   "routes": [
     { "pattern": "api.metagraph.sh", "custom_domain": true },
     { "pattern": "metagraph.sh/.well-known/*", "zone_name": "metagraph.sh" },
-    { "pattern": "metagraph.sh/sitemap.xml", "zone_name": "metagraph.sh" },
     { "pattern": "metagraph.sh/llms.txt", "zone_name": "metagraph.sh" },
     { "pattern": "metagraph.sh/llms-full.txt", "zone_name": "metagraph.sh" },
     { "pattern": "metagraph.sh/auth.md", "zone_name": "metagraph.sh" },
