@@ -1003,18 +1003,21 @@ async function handleHealthTrends(request, env, netuid) {
     let rows = [];
     if (db?.prepare) {
       try {
-        const result = await db
-          .prepare(
-            `SELECT surface_id,
+        const result = await withTimeout(
+          db
+            .prepare(
+              `SELECT surface_id,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
                     AVG(latency_ms) AS avg_latency_ms
              FROM surface_checks
              WHERE netuid = ? AND checked_at >= ?
              GROUP BY surface_id`,
-          )
-          .bind(netuid, nowMs - days * DAY_MS)
-          .all();
+            )
+            .bind(netuid, nowMs - days * DAY_MS)
+            .all(),
+          d1TimeoutMs(env),
+        );
         rows = result?.results || [];
       } catch {
         rows = [];
@@ -1081,10 +1084,13 @@ async function d1All(env, sql, params) {
   const db = env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return [];
   try {
-    const result = await db
-      .prepare(sql)
-      .bind(...params)
-      .all();
+    const result = await withTimeout(
+      db
+        .prepare(sql)
+        .bind(...params)
+        .all(),
+      d1TimeoutMs(env),
+    );
     return result?.results || [];
   } catch {
     return [];
@@ -1985,6 +1991,17 @@ function logEvent(env, level, event, fields = {}) {
 function r2TimeoutMs(env) {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
+}
+
+const DEFAULT_D1_TIMEOUT_MS = 5000;
+
+// Health-analytics D1 reads (trends/percentiles/incidents/uptime) can scan large
+// time-series. Bound them so a slow/degraded query degrades to the route's normal
+// empty-result path instead of holding the isolate until the CPU limit kills it.
+// Tunable via METAGRAPH_D1_TIMEOUT_MS.
+function d1TimeoutMs(env) {
+  const raw = Number(env.METAGRAPH_D1_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_D1_TIMEOUT_MS;
 }
 
 // R2's get() takes no AbortSignal, so bound it with a race: a slow/degraded
