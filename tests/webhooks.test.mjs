@@ -361,6 +361,24 @@ describe("deliverChangeEvent", () => {
     assert.equal(res.attempts, 2);
   });
 
+  test("applies exponential backoff between retries, none after the last", async () => {
+    const delays = [];
+    const fetchFn = async () => new Response("", { status: 503 }); // always retryable
+    const res = await deliverChangeEvent({
+      subscription: sub(),
+      event,
+      fetchFn,
+      now,
+      sleepFn: async (ms) => {
+        delays.push(ms);
+      },
+    });
+    assert.equal(res.status, "failed");
+    assert.equal(res.attempts, 3);
+    // 2 backoffs for 3 attempts (500ms, 1s); no trailing wait after the last.
+    assert.deepEqual(delays, [500, 1000]);
+  });
+
   test("does NOT retry a 4xx rejection", async () => {
     let n = 0;
     const fetchFn = async () => {

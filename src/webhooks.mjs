@@ -377,6 +377,8 @@ export async function deliverChangeEvent({
   now,
   timeoutMs = 8000,
   maxAttempts = 3,
+  backoffBaseMs = 500,
+  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   resolveHostnames,
 }) {
   if (!subscription || typeof subscription.url !== "string") {
@@ -423,38 +425,46 @@ export async function deliverChangeEvent({
       });
     } catch (error) {
       lastReason = error?.name === "TimeoutError" ? "timeout" : "network-error";
-      continue; // transient — retry
+      response = null; // transient — fall through to backoff + retry
     }
-    const status = response.status;
-    if (status >= 200 && status < 300) {
-      return {
-        id: subscription.id,
-        status: "delivered",
-        status_code: status,
-        attempts: attempt,
-      };
+    if (response) {
+      const status = response.status;
+      if (status >= 200 && status < 300) {
+        return {
+          id: subscription.id,
+          status: "delivered",
+          status_code: status,
+          attempts: attempt,
+        };
+      }
+      lastReason = `http-${status}`;
+      if (status >= 300 && status < 400) {
+        return {
+          id: subscription.id,
+          status: "failed",
+          status_code: status,
+          reason: "redirect-not-followed",
+          attempts: attempt,
+        };
+      }
+      // 4xx (except 429) is a deterministic rejection — do not retry.
+      if (status >= 400 && status < 500 && status !== 429) {
+        return {
+          id: subscription.id,
+          status: "failed",
+          status_code: status,
+          reason: lastReason,
+          attempts: attempt,
+        };
+      }
+      // 5xx / 429 — fall through to backoff + retry.
     }
-    lastReason = `http-${status}`;
-    if (status >= 300 && status < 400) {
-      return {
-        id: subscription.id,
-        status: "failed",
-        status_code: status,
-        reason: "redirect-not-followed",
-        attempts: attempt,
-      };
+    // Transient failure (network/timeout/5xx/429): exponential backoff before
+    // the next attempt — 500ms, 1s, 2s… — skipped after the final attempt so a
+    // permanently-down endpoint doesn't add a trailing wait.
+    if (attempt < maxAttempts) {
+      await sleepFn(backoffBaseMs * 2 ** (attempt - 1));
     }
-    // 4xx (except 429) is a deterministic rejection — do not retry.
-    if (status >= 400 && status < 500 && status !== 429) {
-      return {
-        id: subscription.id,
-        status: "failed",
-        status_code: status,
-        reason: lastReason,
-        attempts: attempt,
-      };
-    }
-    // 5xx / 429 — retry.
   }
   return {
     id: subscription.id,
