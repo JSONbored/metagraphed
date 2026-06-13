@@ -1,4 +1,5 @@
 import {
+  clusterDomainFromUrl,
   flattenSurfaces,
   normalizePublicUrl,
   registrySurfaceKey,
@@ -873,6 +874,134 @@ function validateCandidateSchemaShape(candidate) {
   return errors;
 }
 
+// Ownership-sensitive kinds purport to be the subnet's OWN first-party surface, so the URL owner must
+// plausibly belong to the registered provider. Third-party/aggregator kinds (dashboard/docs/etc.)
+// legitimately have a different owner and are not owner-checked here.
+const OWNER_SENSITIVE_KINDS = new Set([
+  "source-repo",
+  "website",
+  "subnet-api",
+  "openapi",
+  "sse",
+]);
+const CODE_HOST_RE = /^(github\.com|gitlab\.com|bitbucket\.org)$/i;
+const normIdentToken = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+/** Owner token(s) a URL claims — a code host (github/gitlab/bitbucket) contributes its ORG; any other
+ *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars (a 1-3 char slug
+ *  matches anywhere). */
+export function urlOwnerTokens(value) {
+  if (typeof value !== "string" || !value) return [];
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return [];
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  const out = [];
+  if (CODE_HOST_RE.test(host)) {
+    const org = url.pathname.replace(/^\/+/, "").split("/")[0];
+    if (org) out.push(normIdentToken(org));
+  } else {
+    const domain = clusterDomainFromUrl(value);
+    if (domain) out.push(normIdentToken(domain.split(".")[0]));
+  }
+  return out.filter((token) => token.length >= 4);
+}
+
+/** Identity tokens for a candidate's declared provider — its name, id, and the owner tokens of its
+ *  official website/docs/github. Used to check an ownership-sensitive candidate's URL belongs to it. */
+export function providerIdentityTokens(provider) {
+  if (!provider || typeof provider !== "object") return [];
+  const out = new Set();
+  for (const field of ["name", "id"]) {
+    const token = normIdentToken(provider[field]);
+    if (token.length >= 4) out.add(token);
+  }
+  for (const field of ["website_url", "docs_url", "github_url"]) {
+    for (const token of urlOwnerTokens(provider[field])) out.add(token);
+  }
+  return [...out];
+}
+
+/** Two identity tokens are "related" — EXACTLY equal, or one contains the other with the shorter
+ *  (discriminating) token ≥8 chars, so a short generic/forgeable token (sn76, vision, data, network)
+ *  can only match by exact equality, never by being a substring of an attacker org. (adversarial) */
+export function ownerTokensRelated(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  return shorter.length >= 8 && longer.includes(shorter);
+}
+
+/** github org "luminarnetwork" matches provider name token "luminarnetwork" (exact); "safescanai" does
+ *  not match "byzantium". Empty token set → can't determine → don't block. */
+export function ownerTokensMatch(claimTokens, identityTokens) {
+  if (claimTokens.length === 0 || identityTokens.length === 0) return true;
+  return claimTokens.some((claim) =>
+    identityTokens.some((identity) => ownerTokensRelated(claim, identity)),
+  );
+}
+
+/** True when two URLs are the same resource ignoring scheme + www + trailing slash — so http↔https and
+ *  www↔apex variants of one url do not read as an "independent" proof source. (adversarial) */
+export function sameResourceUrl(a, b) {
+  const canon = (value) => {
+    try {
+      const url = new URL(value);
+      return `${url.hostname.replace(/^www\./, "")}${url.pathname.replace(/\/+$/, "")}${url.search}`.toLowerCase();
+    } catch {
+      return null;
+    }
+  };
+  const left = canon(a);
+  const right = canon(b);
+  return left != null && left === right;
+}
+
+/** Anchored placeholder/example-URL detection — avoids substring false-positives (notexample.com,
+ *  example.company.com, "/deprecated-endpoints"). Flags example.com/.org/.net as the registrable host,
+ *  the github username/repo stub, or "deprecated" as a whole host/path label. (adversarial) */
+export function isPlaceholderUrl(value) {
+  if (typeof value !== "string" || !value) return false;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (
+    ["com", "org", "net"].some(
+      (tld) => host === `example.${tld}` || host.endsWith(`.example.${tld}`),
+    )
+  ) {
+    return true;
+  }
+  const segments = url.pathname
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean);
+  if (
+    /^(github|gitlab)\.com$/.test(host) &&
+    segments[0] === "username" &&
+    (segments[1] || "").replace(/\.git$/i, "") === "repo"
+  ) {
+    return true;
+  }
+  if (
+    host === "deprecated" ||
+    segments.some((s) => s.toLowerCase() === "deprecated")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function validateCandidateForSubmission({
   candidate,
   document = {},
@@ -983,6 +1112,51 @@ export function validateCandidateForSubmission({
       category: "unsupported-shape",
       message: `candidate provider ${candidate.provider || "<missing>"} is not registered`,
     });
+  }
+  // Placeholder/example identity URLs (example.com, github.com/username/repo, "deprecated") are never
+  // a real surface — reject rather than feed the review gate a fake. (hardening preflight)
+  if (isPlaceholderUrl(candidate.url)) {
+    errors.push({
+      category: "private-or-unsafe-url",
+      message: "candidate url is a placeholder/example URL",
+    });
+  }
+  if (isPlaceholderUrl(candidate.source_url)) {
+    errors.push({
+      category: "private-or-unsafe-url",
+      message: "candidate source_url is a placeholder/example URL",
+    });
+  }
+  // Ownership-sensitive surfaces must be the subnet's OWN: the URL owner (code org / domain) must
+  // plausibly match the registered provider's identity, and — for non-repo kinds — the proof source
+  // must be INDEPENDENT of the url. Mismatches route to maintainer review: a deterministic pre-filter
+  // that reinforces the private review gate's owner-match in depth (identity facts, no scoring rubric).
+  if (OWNER_SENSITIVE_KINDS.has(candidate.kind)) {
+    const providerRecord = providers.find(
+      (provider) => provider.id === candidate.provider,
+    );
+    const identityTokens = providerIdentityTokens(providerRecord);
+    const claimTokens = [
+      ...new Set([
+        ...urlOwnerTokens(candidate.url),
+        ...urlOwnerTokens(candidate.source_url),
+      ]),
+    ];
+    if (!ownerTokensMatch(claimTokens, identityTokens)) {
+      manual_reasons.push(
+        "candidate url/source_url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
+      );
+    }
+    if (
+      candidate.kind !== "source-repo" &&
+      normalizedUrl &&
+      normalizedSourceUrl &&
+      sameResourceUrl(candidate.url, candidate.source_url)
+    ) {
+      manual_reasons.push(
+        "candidate source_url is identical to its url — an independent proof source is needed for this kind",
+      );
+    }
   }
   if (candidate.public_safe !== true) {
     errors.push({
