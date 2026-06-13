@@ -1314,7 +1314,12 @@ async function handleUptime(request, env, netuid, url) {
      LIMIT ?`,
     [netuid, cutoff, MAX_UPTIME_ROWS],
   );
-  const data = formatUptime({ netuid, window: windowParam, rows });
+  const data = formatUptime({
+    netuid,
+    window: windowParam,
+    rows,
+    now: new Date().toISOString(),
+  });
   return envelopeResponse(
     request,
     {

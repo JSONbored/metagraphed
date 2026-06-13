@@ -14,6 +14,7 @@ import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import {
+  loadSubnetReliability,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -457,15 +458,21 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      const live = await mcpLiveHealth(ctx);
+      const [live, reliability] = await Promise.all([
+        mcpLiveHealth(ctx),
+        loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+      ]);
       const overlaid = overlaySubnetHealth(null, live, netuid);
-      if (overlaid) return overlaid;
+      if (overlaid) {
+        return { ...overlaid, reliability };
+      }
       return {
         schema_version: 1,
         netuid,
         summary: { status: "unknown", surface_count: 0 },
         operational_observed_at: null,
         health_source: "unavailable",
+        reliability,
         surfaces: [],
       };
     },

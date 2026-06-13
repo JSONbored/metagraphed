@@ -7,6 +7,8 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
+import { computeReliability } from "./reliability.mjs";
+
 const D1_HEALTH_FALLBACK_MAX_AGE_MS = 10 * 60 * 1000;
 
 const OPERATIONAL_KINDS = new Set([
@@ -557,7 +559,8 @@ function shiftDate(isoDate, days) {
 // {surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status}.
 // Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio
 // from the summed ok_count/samples (exact, not an average of ratios).
-export function formatUptime({ netuid, window, rows }) {
+export function formatUptime({ netuid, window, rows, now = null }) {
+  const reliability = computeReliability(rows, { window: window || null, now });
   const bySurface = new Map();
   for (const row of rows || []) {
     const list = bySurface.get(row.surface_id) || [];
@@ -584,6 +587,7 @@ export function formatUptime({ netuid, window, rows }) {
         day_count: days.length,
         samples,
         uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
+        reliability: reliability.surfaces[surfaceId] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
           day: d.day,
@@ -600,8 +604,48 @@ export function formatUptime({ netuid, window, rows }) {
     netuid,
     window: window || null,
     source: "live-cron-prober",
+    reliability: reliability.subnet,
     surfaces,
   };
+}
+
+// Load + score a subnet's reliability from surface_uptime_daily over a window.
+// Mirrors resolveLiveHealth's I/O posture (the caller passes the D1 binding);
+// returns null when D1 is unbound/cold or no history has accrued.
+export async function loadSubnetReliability({
+  db,
+  netuid,
+  windowDays = 30,
+  now = null,
+  limit = 5000,
+}) {
+  if (!db?.prepare) {
+    return null;
+  }
+  const nowMs = now ? Date.parse(now) : Date.now();
+  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const computedAt = new Date(nowMs).toISOString();
+  try {
+    const result = await db
+      .prepare(
+        `SELECT surface_id, day, samples, ok_count, avg_latency_ms
+         FROM surface_uptime_daily
+         WHERE netuid = ? AND day >= ?
+         ORDER BY day DESC
+         LIMIT ?`,
+      )
+      .bind(netuid, cutoff, limit)
+      .all();
+    const rows = result?.results || [];
+    return computeReliability(rows, {
+      window: `${windowDays}d`,
+      now: computedAt,
+    }).subnet;
+  } catch {
+    return null;
+  }
 }
 
 // --- Live-everywhere health resolution + composed-artifact overlays ----------

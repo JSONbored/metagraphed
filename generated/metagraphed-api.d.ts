@@ -2014,6 +2014,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists. */
+        ReliabilityScore: {
+            avg_latency_ms?: number | null;
+            computed_at?: string | null;
+            day_count?: number;
+            /** @enum {string} */
+            grade: "A" | "B" | "C" | "D" | "F";
+            sample_count: number;
+            score: number;
+            surface_count?: number;
+            uptime_ratio: number | null;
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         ResponseEnvelopeContract: {
             /** @constant */
             error_schema_ref: "#/components/schemas/ErrorEnvelope";
@@ -3056,6 +3071,7 @@ export interface components {
         });
         UptimeArtifact: {
             netuid: number;
+            reliability?: components["schemas"]["ReliabilityScore"] | null;
             schema_version: number;
             source: string;
             surfaces: ({
@@ -3069,6 +3085,7 @@ export interface components {
                 } & {
                     [key: string]: unknown;
                 })[];
+                reliability?: components["schemas"]["ReliabilityScore"] | null;
                 samples: number;
                 surface_id: string;
                 uptime_ratio: number | null;

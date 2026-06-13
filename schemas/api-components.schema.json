@@ -4077,6 +4077,70 @@
           }
         ]
       },
+      "ReliabilityScore": {
+        "additionalProperties": true,
+        "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",
+        "properties": {
+          "avg_latency_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "computed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grade": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "type": "string"
+          },
+          "sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uptime_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "score",
+          "grade",
+          "uptime_ratio",
+          "sample_count"
+        ],
+        "type": "object"
+      },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
         "properties": {
@@ -8579,6 +8643,16 @@
             "minimum": 0,
             "type": "integer"
           },
+          "reliability": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReliabilityScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
             "type": "integer"
           },
@@ -8629,6 +8703,16 @@
                     "type": "object"
                   },
                   "type": "array"
+                },
+                "reliability": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ReliabilityScore"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "samples": {
                   "minimum": 0,
