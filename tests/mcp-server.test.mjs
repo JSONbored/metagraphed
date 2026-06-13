@@ -517,9 +517,12 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(res.body.result.content[0].text.includes("artifact_not_found"));
   });
 
-  test("get_subnet_health returns the health artifact", async () => {
+  test("get_subnet_health is live-only — ignores the static artifact, reports unknown when the live store is cold", async () => {
+    // `deps` carries a static /metagraph/health/subnets/7.json (summary.status
+    // "ok"), but current health is live-only: the retired static artifact must
+    // never be served, so a cold live store yields `unknown`, not stale "ok".
     const res = await callTool("get_subnet_health", { netuid: 7 }, { deps });
-    assert.equal(res.body.result.structuredContent.summary.status, "ok");
+    assert.equal(res.body.result.structuredContent.summary.status, "unknown");
   });
 
   test("list_subnet_apis returns the per-subnet services", async () => {
@@ -1473,12 +1476,12 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       assert.equal(out.health_source, "live-cron-prober");
     });
 
-    test("cold KV → tools still serve the static artifact (no regression)", async () => {
+    test("cold KV → static current-health is NOT served (live-only); reports unknown", async () => {
       const deps = makeDeps({
         "/metagraph/health/subnets/7.json": staticHealth,
       });
       const res = await callTool("get_subnet_health", { netuid: 7 }, { deps });
-      assert.equal(res.body.result.structuredContent.summary.status, "ok");
+      assert.equal(res.body.result.structuredContent.summary.status, "unknown");
     });
 
     test("get_subnet_health with neither live nor static → unknown, never baked", async () => {
