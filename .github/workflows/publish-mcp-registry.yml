@@ -1,0 +1,73 @@
+name: Publish MCP Registry
+
+# Publishes metagraphed's hosted MCP server to the canonical MCP Registry
+# (registry.modelcontextprotocol.io) from the repo-root `server.json`. Uses
+# GitHub OIDC for the `io.github.jsonbored/*` namespace — no token, no secret,
+# no DNS. Manual trigger; the registry rejects a re-publish of an existing
+# version, so bump `version` in server.json before re-running.
+#
+# This is a remote server (remotes[].url -> https://api.metagraph.sh/mcp), so
+# there is no package artifact to build/publish — only the metadata listing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-registry-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write # OIDC: proves the io.github.jsonbored namespace
+      contents: read
+    env:
+      # Pinned mcp-publisher release + the SHA256 of its linux/amd64 tarball
+      # (from registry_1.7.9_checksums.txt). Hardcoding the digest means we
+      # never trust a fetched checksums file at runtime.
+      MCP_PUBLISHER_VERSION: v1.7.9
+      MCP_PUBLISHER_SHA256: ab128162b0616090b47cf245afe0a23f3ef08936fdce19074f5ba0a4469281ac
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate server.json
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const s = JSON.parse(readFileSync("server.json", "utf8"));
+            if (s.name !== "io.github.jsonbored/metagraphed") {
+              throw new Error(`unexpected name: ${s.name}`);
+            }
+            if (!s.version || typeof s.version !== "string") {
+              throw new Error("server.json is missing a string version");
+            }
+            const remote = (s.remotes ?? [])[0];
+            if (remote?.type !== "streamable-http" || !remote?.url?.startsWith("https://api.metagraph.sh/")) {
+              throw new Error(`unexpected remote: ${JSON.stringify(remote)}`);
+            }
+            console.log(`server.json ok — ${s.name} v${s.version} -> ${remote.url}`);
+          '
+
+      - name: Install mcp-publisher (pinned + checksum-verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL "$url" -o mcp-publisher.tar.gz
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher --version || true
+
+      - name: Authenticate to MCP Registry (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish

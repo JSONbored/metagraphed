@@ -67,6 +67,15 @@ backend routes are ever removed); the backend routes above win for the paths
 they cover, so the backend is the live source for everything except `/` and
 `/sitemap.xml`.
 
+## Canonical MCP Registry listing
+
+Beyond the self-hosted surfaces, metagraphed's hosted MCP server is listed in the
+canonical [MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.jsonbored/metagraphed`, pointing at the live `streamable-http` remote
+`https://api.metagraph.sh/mcp`. Registry-aware clients can resolve the server by
+name; the published listing is `server.json` at the repo root, shipped via GitHub
+OIDC (no secret). See [docs/mcp-registry.md](mcp-registry.md).
+
 ## Optional: AI-bot crawl policy
 
 The apex `robots.txt` is Cloudflare **Managed robots.txt**: `User-agent: *` is
