@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-93-dashboard-stats-bitcast-network",
+      "kind": "dashboard",
+      "name": "Bitcast community dashboard",
+      "netuid": 93,
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://stats.bitcast.network/docs",
+      "source_urls": ["https://stats.bitcast.network/docs"],
+      "state": "schema-valid",
+      "url": "https://stats.bitcast.network/"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
