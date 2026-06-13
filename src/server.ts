@@ -143,9 +143,11 @@ const DISCOVERY_PROXY_PATHS = new Set([
 // RFC 8288 Link header advertising the API catalog + machine-readable descriptions, added to every
 // HTML response (mirrors the backend's homepage Link header, with absolute API-origin targets).
 const DISCOVERY_LINK_HEADER = [
-  `<${API_ORIGIN}/.well-known/api-catalog>; rel="api-catalog"`,
+  `<${API_ORIGIN}/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
   `<${API_ORIGIN}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
   `<${API_ORIGIN}/llms.txt>; rel="service-doc"; type="text/plain"`,
+  `<${API_ORIGIN}/agent.md>; rel="service-doc"; type="text/markdown"`,
+  `<${API_ORIGIN}/health>; rel="status"; type="application/json"`,
   `<${API_ORIGIN}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
 ].join(", ");
 
@@ -409,6 +411,36 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// TanStack's server entry answers any non-HTML request (e.g. an MCP JSON-RPC
+// POST, or any Accept: application/json request, that hit the apex by mistake)
+// with a 500 {"error":"Only HTML requests are supported here"}. A 5xx wrongly
+// signals that the server failed and can trigger agent retries/backoff against a
+// "failing" host. The API and MCP server live on the canonical host
+// (api.metagraph.sh) and discovery already points agents there, so re-map this
+// misdirected-request case to a 404 that points at the canonical URL.
+async function normalizeNonHtmlSsrResponse(
+  request: Request,
+  response: Response,
+): Promise<Response> {
+  if (response.status < 500) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return response;
+  const body = await response.clone().text();
+  if (!body.includes("Only HTML requests are supported here")) return response;
+  const url = new URL(request.url);
+  return new Response(
+    JSON.stringify({
+      error: "not_found",
+      message: `${url.pathname} is not served on the human site (${SITE_ORIGIN}); the API and MCP server are on the canonical host.`,
+      canonical: `${API_ORIGIN}${url.pathname}${url.search}`,
+    }),
+    {
+      status: 404,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    },
+  );
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const statsResponse = await handleStatsProxy(request);
@@ -420,7 +452,10 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      const normalized = await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeNonHtmlSsrResponse(
+        request,
+        await normalizeCatastrophicSsrResponse(response),
+      );
       return injectAnalytics(normalized, request);
     } catch (error) {
       console.error(error);
