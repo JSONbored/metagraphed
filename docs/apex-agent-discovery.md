@@ -52,8 +52,14 @@ is **implemented there and verified live**: `metagraphed-ui/src/server.ts`
 including `/`:
 
 ```
-Link: <https://api.metagraph.sh/.well-known/api-catalog>; rel="api-catalog", <https://api.metagraph.sh/metagraph/openapi.json>; rel="service-desc"; type="application/json", <https://api.metagraph.sh/llms.txt>; rel="service-doc"; type="text/plain", <https://api.metagraph.sh/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"
+Link: <https://api.metagraph.sh/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", <https://api.metagraph.sh/metagraph/openapi.json>; rel="service-desc"; type="application/json", <https://api.metagraph.sh/llms.txt>; rel="service-doc"; type="text/plain", <https://api.metagraph.sh/agent.md>; rel="service-doc"; type="text/markdown", <https://api.metagraph.sh/health>; rel="status"; type="application/json", <https://api.metagraph.sh/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"
 ```
+
+The relation set mirrors the authoritative RFC 9264 linkset body served at
+`/.well-known/api-catalog` (service-desc, both service-doc targets, status,
+describedby), so an agent bootstrapping from the header alone sees the same
+entrypoints as the catalog. The backend's `DISCOVERY_LINK_HEADER` (relative
+refs) and the apex's (absolute api-origin refs) are kept identical modulo host.
 
 That worker also independently proxies the discovery resources + builds the
 sitemap as a self-contained fallback (so apex discovery survives even if these
@@ -63,7 +69,41 @@ they cover, so the backend is the live source for everything except `/` and
 
 ## Optional: AI-bot crawl policy
 
-The apex `robots.txt` is Cloudflare **Managed robots.txt** and currently
-`Disallow: /` for `ClaudeBot`/`GPTBot`/etc. with `Content-Signal: ai-train=no`.
-Relax it in the Cloudflare AI-Audit / Managed-robots settings if you want agents
-to crawl the human app. (The API host stays open regardless — `Allow: /`.)
+The apex `robots.txt` is Cloudflare **Managed robots.txt**: `User-agent: *` is
+`Content-Signal: search=yes,ai-train=no` + `Allow: /` (real-time agent fetchers
+like `Claude-User`/`ChatGPT-User`/`OAI-SearchBot`/`PerplexityBot` fall through to
+`Allow: /`; bulk training crawlers such as `Amazonbot`/`Bytespider` are
+`Disallow: /`). This posture is intentional — relax it in the Cloudflare AI
+Crawl Control / Managed-robots settings if you want training crawlers in too.
+(The API host stays open regardless — `Allow: /`.)
+
+## Audit residuals (owner-only / accepted-cosmetic)
+
+A full live AI-readiness audit (both hosts, every spec) found the stack
+spec-conformant; the remaining items below are **not code-fixable from these
+repos** or are accepted cosmetic gaps. Recorded here so they are not re-flagged.
+
+- **Apex `robots.txt` has no `Sitemap:` directive.** The file is Cloudflare
+  Managed (edge-injected before any Worker runs; GET-only), so the directive
+  cannot be added from code. The API host's worker-served `robots.txt` does
+  carry its `Sitemap:` line. Per RFC 9309 the directive is optional (crawlers
+  still find `/sitemap.xml` by convention / Search Console). To add it: set
+  `Sitemap: https://metagraph.sh/sitemap.xml` via the Cloudflare dashboard
+  (Managed robots.txt appended content), or disable Managed robots.txt for the
+  zone and let the `metagraphed-ui` worker serve `robots.txt` (moves the fix
+  into that repo).
+- **DNS-AID (DNS-based agent-interface discovery) is unimplemented.** Optional,
+  against a non-ratified draft; HTTP discovery (`.well-known/*` + `Link` +
+  `llms.txt`) fully covers the requirement, so there is no readiness penalty. To
+  add it, create TXT records on the `metagraph.sh` DNS zone (Cloudflare
+  dashboard), e.g. `_agent` →
+  `v=agent1; catalog=https://api.metagraph.sh/.well-known/api-catalog` and
+  `_mcp` → `v=mcp1; endpoint=https://api.metagraph.sh/mcp`.
+- **MCP `server-card.json` `published_at` is `null`** on the committed static
+  asset (its `generated_at` is the deterministic 1970 epoch content marker by
+  design). The publish workflow stamps a real `published_at` only into R2/KV,
+  but Workers Builds ships the committed (unstamped) tree, so the field can
+  never be truthfully populated for code-deployed assets. Impact is low — agents
+  get freshness/integrity from `version` (the contract version), `content_hash`,
+  and the HTTP `etag`. Left as-is rather than churn the build to populate a field
+  that is structurally unpopulatable for static assets.

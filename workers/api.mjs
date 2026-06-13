@@ -3083,12 +3083,17 @@ function corsPreflight(request) {
 
 // RFC 8288 Link header advertising the machine entrypoints, mirrored as
 // `<link>` elements in the homepage HTML below. Relative refs resolve against
-// the request URL, so the same value is correct on any deployment host.
+// the request URL, so the same value is correct on any deployment host. The
+// relation set mirrors the authoritative RFC 9264 linkset served at
+// /.well-known/api-catalog (service-desc, both service-doc targets, status,
+// describedby) so an agent bootstrapping from the header alone sees the same
+// entrypoints as the catalog body.
 const DISCOVERY_LINK_HEADER = [
-  '</.well-known/api-catalog>; rel="api-catalog"',
+  '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
   '</metagraph/openapi.json>; rel="service-desc"; type="application/json"',
   '</llms.txt>; rel="service-doc"; type="text/plain"',
-  '</llms.txt>; rel="describedby"; type="text/plain"',
+  '</agent.md>; rel="service-doc"; type="text/markdown"',
+  '</health>; rel="status"; type="application/json"',
   '</.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"',
 ].join(", ");
 
@@ -3099,9 +3104,11 @@ const HOMEPAGE_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>metagraphed API — Bittensor subnet operational registry</title>
 <meta name="description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
-<link rel="api-catalog" href="/.well-known/api-catalog">
+<link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json">
 <link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
 <link rel="service-doc" href="/llms.txt" type="text/plain">
+<link rel="service-doc" href="/agent.md" type="text/markdown">
+<link rel="status" href="/health" type="application/json">
 <link rel="describedby" href="/.well-known/mcp/server-card.json" type="application/json">
 </head>
 <body>
