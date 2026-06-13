@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-2-sdk-github-com",
+      "kind": "sdk",
+      "name": "DSperse community sdk",
+      "netuid": 2,
+      "provider": "inference-labs",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://pypi.org/project/proof-of-weights",
+      "source_urls": ["https://pypi.org/project/proof-of-weights"],
+      "state": "schema-valid",
+      "url": "https://github.com/inference-labs-inc/proof-of-weights-sdk"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
