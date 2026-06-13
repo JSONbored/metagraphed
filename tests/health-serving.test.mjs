@@ -1014,6 +1014,109 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.summary.pool_eligible_count, 0);
   });
 
+  test("overlayArtifactEndpoints recomputes pool eligibility from live health and static constraints", () => {
+    const liveOk = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      health_source: "live-cron-prober",
+      surfaces: [
+        {
+          surface_id: "rpc-ok",
+          status: "ok",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+        {
+          surface_id: "api-ok",
+          status: "ok",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+        {
+          surface_id: "auth-ok",
+          status: "ok",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+        {
+          surface_id: "unsafe-ok",
+          status: "ok",
+          last_checked: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(
+      {
+        summary: { by_status: { failed: 4 }, pool_eligible_count: 0 },
+        endpoints: [
+          {
+            surface_id: "rpc-ok",
+            kind: "subtensor-rpc",
+            auth_required: false,
+            public_safe: true,
+            status: "failed",
+          },
+          {
+            surface_id: "api-ok",
+            kind: "subnet-api",
+            auth_required: false,
+            public_safe: true,
+            status: "failed",
+          },
+          {
+            surface_id: "auth-ok",
+            kind: "subtensor-rpc",
+            auth_required: true,
+            public_safe: true,
+            status: "failed",
+          },
+          {
+            surface_id: "unsafe-ok",
+            kind: "subtensor-wss",
+            auth_required: false,
+            public_safe: false,
+            status: "failed",
+          },
+        ],
+      },
+      liveOk,
+    );
+
+    assert.equal(
+      out.endpoints.find((e) => e.surface_id === "rpc-ok").pool_eligible,
+      true,
+    );
+    assert.deepEqual(
+      out.endpoints.find((e) => e.surface_id === "rpc-ok")
+        .pool_eligibility_reasons,
+      ["eligible"],
+    );
+    assert.equal(
+      out.endpoints.find((e) => e.surface_id === "api-ok").pool_eligible,
+      false,
+    );
+    assert.deepEqual(
+      out.endpoints.find((e) => e.surface_id === "api-ok")
+        .pool_eligibility_reasons,
+      ["not-bittensor-base-layer"],
+    );
+    assert.equal(
+      out.endpoints.find((e) => e.surface_id === "auth-ok").pool_eligible,
+      false,
+    );
+    assert.deepEqual(
+      out.endpoints.find((e) => e.surface_id === "auth-ok")
+        .pool_eligibility_reasons,
+      ["auth-required"],
+    );
+    assert.equal(
+      out.endpoints.find((e) => e.surface_id === "unsafe-ok").pool_eligible,
+      false,
+    );
+    assert.deepEqual(
+      out.endpoints.find((e) => e.surface_id === "unsafe-ok")
+        .pool_eligibility_reasons,
+      ["not-public-safe"],
+    );
+    assert.equal(out.summary.pool_eligible_count, 1);
+  });
+
   test("overlayArtifactEndpoints blanks endpoints to unknown when the store is cold", () => {
     const artifact = {
       endpoints: [
@@ -1099,7 +1202,14 @@ describe("composed-artifact health overlays", () => {
     const out = overlayArtifactEndpoints(
       {
         endpoints: [
-          { surface_id: "ok-one", status: "failed", pool_eligible: false },
+          {
+            surface_id: "ok-one",
+            status: "failed",
+            kind: "subtensor-rpc",
+            auth_required: false,
+            public_safe: true,
+            pool_eligible: false,
+          },
           { surface_id: "deg-one", status: "ok", error: "prev-error" },
         ],
       },

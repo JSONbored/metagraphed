@@ -18,6 +18,30 @@ const OPERATIONAL_KINDS = new Set([
   "data-artifact",
 ]);
 
+function isBaseLayerEndpoint(kind) {
+  return kind === "subtensor-rpc" || kind === "subtensor-wss";
+}
+
+function endpointPoolEligibility(endpoint) {
+  const reasons = [];
+  if (!isBaseLayerEndpoint(endpoint.kind)) {
+    reasons.push("not-bittensor-base-layer");
+  }
+  if (endpoint.status !== "ok") {
+    reasons.push(`status-${endpoint.status || "unknown"}`);
+  }
+  if (endpoint.auth_required !== false) {
+    reasons.push("auth-required");
+  }
+  if (endpoint.public_safe !== true) {
+    reasons.push("not-public-safe");
+  }
+  return {
+    eligible: reasons.length === 0,
+    reasons: reasons.length ? reasons : ["eligible"],
+  };
+}
+
 export function parseLive(raw) {
   if (!raw) return null;
   if (typeof raw === "object") return raw;
@@ -762,6 +786,15 @@ export function overlayCatalogIndex(staticIndex, live) {
 // classification, latency, the observed_* timestamps, health_source/stale, and
 // pool eligibility) are overwritten so a build-time value is never served as
 // fresh.
+function withPoolEligibility(endpoint) {
+  const eligibility = endpointPoolEligibility(endpoint);
+  return {
+    ...endpoint,
+    pool_eligible: eligibility.eligible,
+    pool_eligibility_reasons: eligibility.reasons,
+  };
+}
+
 function overlayEndpointHealth(endpoint, liveRow) {
   // Not-monitored endpoints (docs, dashboards, …) carry a stable structural
   // classification, not a freshness signal — they are never probed, so their
@@ -775,7 +808,7 @@ function overlayEndpointHealth(endpoint, liveRow) {
     return endpoint;
   }
   if (!liveRow) {
-    return {
+    return withPoolEligibility({
       ...endpoint,
       status: "unknown",
       classification: "unknown",
@@ -785,11 +818,10 @@ function overlayEndpointHealth(endpoint, liveRow) {
       last_ok: null,
       health_source: "unavailable",
       health_stale: true,
-      pool_eligible: false,
       error: null,
-    };
+    });
   }
-  return {
+  return withPoolEligibility({
     ...endpoint,
     status: liveRow.status,
     classification:
@@ -800,9 +832,8 @@ function overlayEndpointHealth(endpoint, liveRow) {
     last_ok: liveRow.last_ok || null,
     health_source: "live-cron-prober",
     health_stale: false,
-    pool_eligible: liveRow.status === "ok",
     error: liveRow.status === "ok" ? null : (endpoint.error ?? null),
-  };
+  });
 }
 
 function countEndpointStatuses(endpoints) {
