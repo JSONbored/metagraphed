@@ -133,6 +133,7 @@ const DISCOVERY_PROXY_PATHS = new Set([
   "/.well-known/api-catalog",
   "/.well-known/mcp/server-card.json",
   "/.well-known/agent-skills/index.json",
+  "/.well-known/security.txt",
   "/llms.txt",
   "/llms-full.txt",
   "/agent.md",
@@ -239,14 +240,31 @@ async function buildSitemap(): Promise<Response> {
   });
 }
 
-// Inject the deferred tracker into <head> of HTML responses (streaming) + advertise the agent-
-// discovery resources via an RFC 8288 Link header.
-function injectAnalytics(response: Response): Response {
+// Minimal HTML-attribute escaper for injected URLs. `url.pathname` is already
+// percent-encoded by URL parsing, so this only guards stray &/quotes/brackets.
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Inject the deferred tracker + a canonical link into <head> of HTML responses
+// (streaming) and advertise the agent-discovery resources via an RFC 8288 Link
+// header. Canonical is set HERE (not per-route) so it is global and authoritative:
+// origin + path with the query stripped, so filter/sort permutations (e.g.
+// /subnets?sort=health&health=down) consolidate to the one indexable URL instead
+// of reading as duplicate content.
+function injectAnalytics(response: Response, request: Request): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
+  const canonicalHref = `${SITE_ORIGIN}${new URL(request.url).pathname}`;
+  const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(canonicalHref)}">`;
   const transformed = new HTMLRewriter()
     .on("head", {
       element(element) {
+        element.append(canonicalTag, { html: true });
         element.append(UMAMI_SNIPPET, { html: true });
       },
     })
@@ -300,7 +318,7 @@ export default {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       const normalized = await normalizeCatastrophicSsrResponse(response);
-      return injectAnalytics(normalized);
+      return injectAnalytics(normalized, request);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
