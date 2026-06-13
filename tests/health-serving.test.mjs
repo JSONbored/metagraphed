@@ -255,7 +255,10 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.avg_latency_ms, null);
   });
   test("all-unknown → unknown", () => {
-    assert.equal(summarizeRows([row("unknown"), row("unknown")]).status, "unknown");
+    assert.equal(
+      summarizeRows([row("unknown"), row("unknown")]).status,
+      "unknown",
+    );
   });
   test("all-ok → ok", () => {
     assert.equal(summarizeRows([row("ok"), row("ok")]).status, "ok");
@@ -264,7 +267,10 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(summarizeRows([row("ok"), row("failed")]).status, "degraded");
   });
   test("ok + degraded mix → degraded", () => {
-    assert.equal(summarizeRows([row("ok"), row("degraded")]).status, "degraded");
+    assert.equal(
+      summarizeRows([row("ok"), row("degraded")]).status,
+      "degraded",
+    );
   });
   test("degraded + failed (no ok) → degraded (right-hand OR operand)", () => {
     // ok=0 so the `(counts.ok||0)>0` left operand is false; degraded>0 carries it.
@@ -371,7 +377,12 @@ describe("overlaySubnetHealth (additional paths)", () => {
     const live = {
       last_run_at: null,
       surfaces: [
-        { surface_id: "sn7-rpc", netuid: 7, kind: "subtensor-rpc", status: "ok" },
+        {
+          surface_id: "sn7-rpc",
+          netuid: 7,
+          kind: "subtensor-rpc",
+          status: "ok",
+        },
       ],
     };
     const out = overlaySubnetHealth({ schema_version: 2 }, live, 7);
@@ -568,7 +579,9 @@ describe("overlayRpcPoolEligibility (additional paths)", () => {
   });
 
   test("sustained-down endpoint with explicit live latency drops eligibility", () => {
-    const pool = { endpoints: [{ id: "a", pool_eligible: true, latency_ms: 5 }] };
+    const pool = {
+      endpoints: [{ id: "a", pool_eligible: true, latency_ms: 5 }],
+    };
     const live = {
       endpoints: [
         { id: "a", status: "failed", consecutive_failures: 2, latency_ms: 70 },
@@ -616,9 +629,18 @@ describe("formatTrends (additional paths)", () => {
       w.surfaces.map((s) => s.surface_id),
       ["a", "m", "z"],
     );
-    assert.equal(w.surfaces.find((s) => s.surface_id === "z").avg_latency_ms, null);
-    assert.equal(w.surfaces.find((s) => s.surface_id === "a").avg_latency_ms, 13);
-    assert.equal(w.surfaces.find((s) => s.surface_id === "m").uptime_ratio, null);
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "z").avg_latency_ms,
+      null,
+    );
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "a").avg_latency_ms,
+      13,
+    );
+    assert.equal(
+      w.surfaces.find((s) => s.surface_id === "m").uptime_ratio,
+      null,
+    );
     assert.equal(w.samples, 14);
     assert.equal(w.uptime_ratio, Number((6 / 14).toFixed(4)));
   });
@@ -719,25 +741,74 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.equal(live.surfaces[0].status, "ok");
   });
 
-  test("falls back to D1 surface_status when KV is cold", async () => {
+  test("falls back to fresh D1 surface_status rows when KV is cold", async () => {
+    const observedCutoffs = [];
+    const now = 1_700_000_600_000;
+    const db = {
+      prepare: (sql) => {
+        assert.match(sql, /WHERE last_checked >= \?/);
+        return {
+          bind: (cutoff) => {
+            observedCutoffs.push(cutoff);
+            return {
+              all: async () => ({
+                results: [
+                  {
+                    surface_id: "7:subnet-api:x",
+                    netuid: 7,
+                    kind: "subnet-api",
+                    provider: "x",
+                    url: "https://x",
+                    status: "failed",
+                    classification: "down",
+                    latency_ms: null,
+                    status_code: 503,
+                    last_checked: 1_700_000_000_000,
+                    last_ok: 1_699_000_000_000,
+                  },
+                ],
+              }),
+            };
+          },
+        };
+      },
+    };
+    const live = await resolveLiveHealth({
+      readHealthKv: async () => null,
+      env: {},
+      db,
+      now: () => now,
+    });
+    assert.equal(live.health_source, "live-d1-fallback");
+    assert.equal(live.surfaces[0].status, "failed");
+    assert.equal(live.subnets[0].netuid, 7);
+    assert.equal(live.subnets[0].status, "failed");
+    assert.deepEqual(observedCutoffs, [1_700_000_000_000]);
+    // ms → ISO conversion for D1 timestamps.
+    assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
+  });
+
+  test("does not return stale D1-only surface_status rows", async () => {
     const db = {
       prepare: () => ({
-        all: async () => ({
-          results: [
-            {
-              surface_id: "7:subnet-api:x",
-              netuid: 7,
-              kind: "subnet-api",
-              provider: "x",
-              url: "https://x",
-              status: "failed",
-              classification: "down",
-              latency_ms: null,
-              status_code: 503,
-              last_checked: 1_700_000_000_000,
-              last_ok: 1_699_000_000_000,
-            },
-          ],
+        bind: (cutoff) => ({
+          all: async () => ({
+            results: [
+              {
+                surface_id: "7:subnet-api:current",
+                netuid: 7,
+                kind: "subnet-api",
+                provider: "current",
+                url: "https://current.example/api",
+                status: "ok",
+                classification: "live",
+                latency_ms: 10,
+                status_code: 200,
+                last_checked: cutoff,
+                last_ok: cutoff,
+              },
+            ],
+          }),
         }),
       }),
     };
@@ -745,13 +816,12 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
       readHealthKv: async () => null,
       env: {},
       db,
+      now: () => 1_700_000_600_000,
     });
-    assert.equal(live.health_source, "live-d1-fallback");
-    assert.equal(live.surfaces[0].status, "failed");
-    assert.equal(live.subnets[0].netuid, 7);
-    assert.equal(live.subnets[0].status, "failed");
-    // ms → ISO conversion for D1 timestamps.
-    assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
+    assert.deepEqual(
+      live.surfaces.map((surface) => surface.surface_id),
+      ["7:subnet-api:current"],
+    );
   });
 
   test("returns null when neither KV nor D1 has data", async () => {
