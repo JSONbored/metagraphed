@@ -54,7 +54,12 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.mjs";
+import {
+  buildAgentToolsIndex,
+  buildAnthropicToolSpecs,
+  buildOpenAIToolSpecs,
+} from "../src/agent-tool-specs.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -255,6 +260,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   if (url.pathname === "/.well-known/mcp/server-card.json") {
     return mcpServerCardResponse(request, env);
+  }
+
+  // Agent tool specs for non-MCP runtimes (OpenAI function calling / Anthropic
+  // tool use), projected at request time from the same listToolDefinitions() the
+  // MCP server advertises — so they can't drift. Worker-owned (run_worker_first).
+  if (url.pathname === "/.well-known/agent-tools/index.json") {
+    return agentToolsResponse(request, env, "index");
+  }
+  if (url.pathname === "/.well-known/agent-tools/openai.json") {
+    return agentToolsResponse(request, env, "openai");
+  }
+  if (url.pathname === "/.well-known/agent-tools/anthropic.json") {
+    return agentToolsResponse(request, env, "anthropic");
   }
 
   if (url.pathname === "/health") {
@@ -3164,6 +3182,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <li><a href="/.well-known/api-catalog">API catalog</a> (RFC 9727 linkset)</li>
 <li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
 <li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
+<li><a href="/.well-known/agent-tools/index.json">Agent tool specs</a> — paste-ready OpenAI + Anthropic tools</li>
 <li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
 <li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
 </ul>
@@ -3221,6 +3240,10 @@ function apiCatalogResponse(request) {
             href: `${base}/.well-known/mcp/server-card.json`,
             type: "application/json",
           },
+          {
+            href: `${base}/.well-known/agent-tools/index.json`,
+            type: "application/json",
+          },
         ],
       },
     ],
@@ -3258,6 +3281,33 @@ async function mcpServerCardResponse(request, env) {
     card.published_at = pub;
   }
   const body = `${JSON.stringify(card, null, 2)}\n`;
+  const headers = discoveryHeaders("application/json");
+  headers.set("etag", await weakEtag(body));
+  if (request.headers.get("if-none-match") === headers.get("etag")) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
+}
+
+// Serve the OpenAI/Anthropic tool specs (and their index) computed live from
+// listToolDefinitions(). No static asset + no API_ROUTES entry: like the
+// api-catalog, these are worker-generated discovery documents whose body is
+// derived from the canonical MCP tool list, so there is nothing to bake or keep
+// in sync.
+async function agentToolsResponse(request, env, kind) {
+  const tools = listToolDefinitions();
+  const data =
+    kind === "openai"
+      ? buildOpenAIToolSpecs(tools)
+      : kind === "anthropic"
+        ? buildAnthropicToolSpecs(tools)
+        : buildAgentToolsIndex(tools, {
+            contractVersion: contractVersion(env),
+          });
+  const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
   if (request.headers.get("if-none-match") === headers.get("etag")) {

@@ -4,7 +4,7 @@
 
 - **`api.metagraph.sh`** — the `metagraphed` backend worker (this repo), a custom
   domain. The canonical agent surface: `/`, `/.well-known/*` (api-catalog,
-  agent-skills, mcp/server-card, mcp.json, llms.txt), `/sitemap.xml`,
+  agent-skills, agent-tools, mcp/server-card, mcp.json, llms.txt), `/sitemap.xml`,
   `/robots.txt`, `/llms.txt`, `/llms-full.txt`, `/auth.md`, `/agent.md`, RFC 8288
   `Link` headers, and `POST /mcp`. Live + verified.
 - **`metagraph.sh`** (apex) — the human web app, served by the separate
@@ -75,6 +75,14 @@ canonical [MCP Registry](https://registry.modelcontextprotocol.io) as
 `https://api.metagraph.sh/mcp`. Registry-aware clients can resolve the server by
 name; the published listing is `server.json` at the repo root, shipped via GitHub
 OIDC (no secret). See [docs/mcp-registry.md](mcp-registry.md).
+
+## Agent tool specs (non-MCP runtimes)
+
+For OpenAI function calling and Anthropic tool use (which consume static tool
+JSON, not MCP), the backend serves paste-ready specs at
+`/.well-known/agent-tools/{index,openai,anthropic}.json` — projected at request
+time from the same tool list the MCP server advertises, and advertised from the
+api-catalog linkset (`describedby`). See [docs/agent-tools.md](agent-tools.md).
 
 ## Optional: AI-bot crawl policy
 

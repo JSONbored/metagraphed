@@ -27,6 +27,7 @@
       "/",
       "/.well-known/api-catalog",
       "/.well-known/mcp/server-card.json",
+      "/.well-known/agent-tools/*",
       "/api/*",
       "/rpc/*",
       "/metagraph/*",
