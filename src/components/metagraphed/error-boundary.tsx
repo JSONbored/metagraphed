@@ -17,7 +17,6 @@ export class QueryErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown) {
-    // eslint-disable-next-line no-console
     console.error("[QueryErrorBoundary]", error);
   }
 

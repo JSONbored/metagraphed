@@ -672,10 +672,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main
-          key={network.id}
-          className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto"
-        >
+        <main key={network.id} className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto">
           {children}
         </main>
 

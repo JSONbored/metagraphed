@@ -18,11 +18,7 @@ import {
   StaleBanner,
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import {
-  schemasQuery,
-  contractsQuery,
-  metagraphedQueryKey,
-} from "@/lib/metagraphed/queries";
+import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
