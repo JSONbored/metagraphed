@@ -13,6 +13,7 @@ import {
   overlayRpcPoolEligibility,
   overlaySubnetHealth,
   formatUptime,
+  loadSubnetReliability,
   parseLive,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -1663,6 +1664,102 @@ describe("computeReliability (score from uptime history)", () => {
     // no samples -> null
     assert.equal(
       scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
+      null,
+    );
+  });
+
+  test("covers grade B, null latency, missing day, and nullish rows", () => {
+    // grade B (95-98)
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 97, avgLatencyMs: 200 }).grade,
+      "B",
+    );
+    // null latency -> no penalty, avg_latency_ms reported null
+    const noLatency = scoreFromStats({
+      samples: 100,
+      okCount: 90,
+      avgLatencyMs: null,
+    });
+    assert.equal(noLatency.avg_latency_ms, null);
+    assert.equal(noLatency.score, 90);
+    // nullish rows -> empty result (no throw)
+    assert.equal(computeReliability(undefined).subnet, null);
+    assert.equal(computeReliability(null).subnet, null);
+    // a row with no day + no latency still scores from uptime
+    const out = computeReliability([
+      { surface_id: "a", samples: 100, ok_count: 100 },
+    ]);
+    assert.equal(out.subnet.score, 100);
+    assert.equal(out.subnet.avg_latency_ms, null);
+    assert.equal(out.subnet.day_count, 0);
+  });
+});
+
+describe("loadSubnetReliability (D1-backed)", () => {
+  function uptimeDb(rows) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          async all() {
+            return { results: rows };
+          },
+        };
+      },
+    };
+  }
+
+  test("returns null when D1 is unbound", async () => {
+    assert.equal(
+      await loadSubnetReliability({ db: undefined, netuid: 7 }),
+      null,
+    );
+  });
+
+  test("scores from surface_uptime_daily rows", async () => {
+    const out = await loadSubnetReliability({
+      db: uptimeDb([
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 120,
+        },
+        {
+          surface_id: "b",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 360,
+          avg_latency_ms: 900,
+        },
+      ]),
+      netuid: 7,
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    assert.equal(out.window, "30d");
+    assert.equal(out.surface_count, 2);
+    assert.equal(out.uptime_ratio, 0.75); // (720+360)/1440
+    assert.equal(out.computed_at, "2026-06-13T00:00:00.000Z");
+  });
+
+  test("returns null (not throw) when the query fails", async () => {
+    const out = await loadSubnetReliability({
+      db: {
+        prepare() {
+          throw new Error("d1 down");
+        },
+      },
+      netuid: 7,
+    });
+    assert.equal(out, null);
+  });
+
+  test("returns null when there is no history yet", async () => {
+    assert.equal(
+      await loadSubnetReliability({ db: uptimeDb([]), netuid: 7 }),
       null,
     );
   });
