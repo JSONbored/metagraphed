@@ -1,0 +1,54 @@
+{
+  "$id": "https://api.metagraph.sh/.well-known/agent-skills/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "Discovery index for Agent Skills (agentskills.io SKILL.md format): one entry per published skill, each with a sha256 content digest for integrity verification.",
+  "properties": {
+    "$schema": {
+      "format": "uri",
+      "type": "string"
+    },
+    "skills": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$",
+            "type": "string"
+          },
+          "type": {
+            "const": "skill-md"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "description",
+          "url",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "skills"
+  ],
+  "title": "Agent Skills Discovery Index",
+  "type": "object"
+}

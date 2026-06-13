@@ -7,6 +7,8 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { describe, test } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { repoRoot } from "../scripts/lib.mjs";
 import { MCP_SERVER_INFO } from "../src/mcp-server.mjs";
 
@@ -26,11 +28,13 @@ describe("Discovery artifacts", () => {
     assert.ok(card.capabilities?.tools, "card must advertise tool capability");
   });
 
-  test("agent-skills index matches the Discovery RFC v0.2.0 shape", async () => {
+  test("agent-skills index matches the discovery shape", async () => {
     const index = await readJson(".well-known/agent-skills/index.json");
+    // Self-hosted, dereferenceable schema (the official agentskills.io spec has
+    // no discovery-index schema; the old schemas.agentskills.io host is dead).
     assert.equal(
       index.$schema,
-      "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      "https://api.metagraph.sh/.well-known/agent-skills/schema.json",
     );
     assert.ok(Array.isArray(index.skills) && index.skills.length > 0);
     for (const skill of index.skills) {
@@ -45,6 +49,25 @@ describe("Discovery artifacts", () => {
       const expected = createHash("sha256").update(body).digest("hex");
       assert.equal(skill.digest, `sha256:${expected}`, skill.name);
     }
+  });
+
+  test("agent-skills index validates against its self-hosted schema", async () => {
+    const schema = await readJson(".well-known/agent-skills/schema.json");
+    const index = await readJson(".well-known/agent-skills/index.json");
+    // The schema is served at the exact URL the index's $schema points to, so a
+    // validator that dereferences $schema fetches this file and succeeds.
+    assert.equal(schema.$id, index.$schema);
+    assert.equal(
+      schema.$schema,
+      "https://json-schema.org/draft/2020-12/schema",
+    );
+    const ajv = new Ajv2020({ strict: false });
+    addFormats(ajv);
+    const validate = ajv.compile(schema);
+    assert.ok(
+      validate(index),
+      `index must validate: ${JSON.stringify(validate.errors)}`,
+    );
   });
 
   test("auth.md states the API is unauthenticated", async () => {
