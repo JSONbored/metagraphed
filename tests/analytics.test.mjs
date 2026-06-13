@@ -337,9 +337,10 @@ function rowsForSql(sql) {
   if (sql.includes("SUM(ok) AS ok_count")) {
     return [{ surface_id: "s1", total: 100, ok_count: 98 }];
   }
-  if (sql.includes("WITH failures")) {
+  if (sql.includes("WITH failures") || sql.includes("failures AS")) {
     return [
       {
+        netuid: 7,
         surface_id: "s1",
         started_at: 1_000_000_000_000,
         ended_at: 1_000_000_120_000,
@@ -510,6 +511,38 @@ describe("analytics routes (fake D1 with data)", () => {
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
   });
+
+  test("global incidents SQL bounds source rows before window grouping", async () => {
+    const queries = [];
+    const envWithCapture = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              queries.push({ sql, params });
+              return {
+                all: () => Promise.resolve({ results: rowsForSql(sql) }),
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status } = await getJson(
+      "https://api.metagraph.sh/api/v1/incidents?window=30d",
+      envWithCapture,
+    );
+    assert.equal(status, 200);
+    const incidentQuery = queries.find((query) =>
+      query.sql.includes("WITH recent_failures"),
+    );
+    assert.ok(incidentQuery.sql.includes("ORDER BY checked_at DESC"));
+    assert.ok(incidentQuery.sql.includes("LIMIT ?"));
+    assert.equal(incidentQuery.params[1], 5000);
+    assert.equal(incidentQuery.params.at(-1), 1000);
+  });
+
   test("trajectory computes deltas from snapshots", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",

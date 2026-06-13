@@ -91,6 +91,7 @@ const MAX_UPTIME_ROWS = 10000;
 const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
 const ANALYTICS_WINDOW_PARAM = "window";
 const MAX_INCIDENT_ROWS = 1000;
+const MAX_GLOBAL_INCIDENT_SOURCE_ROWS = 5000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
@@ -1275,12 +1276,18 @@ async function handleGlobalIncidents(request, env, url) {
   const since = Date.now() - days * DAY_MS;
   const incidentRows = await d1All(
     env,
-    `WITH failures AS (
+    `WITH recent_failures AS (
+       SELECT netuid, surface_id, checked_at
+       FROM surface_checks
+       WHERE checked_at >= ? AND ok = 0
+       ORDER BY checked_at DESC
+       LIMIT ?
+     ),
+     failures AS (
        SELECT netuid, surface_id, checked_at,
               checked_at - LAG(checked_at)
                 OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS gap
-       FROM surface_checks
-       WHERE checked_at >= ? AND ok = 0
+       FROM recent_failures
      ),
      grouped AS (
        SELECT netuid, surface_id, checked_at,
@@ -1296,7 +1303,12 @@ async function handleGlobalIncidents(request, env, url) {
      GROUP BY netuid, surface_id, grp
      ORDER BY started_at DESC
      LIMIT ?`,
-    [since, INCIDENT_GAP_MS, MAX_INCIDENT_ROWS],
+    [
+      since,
+      MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+      INCIDENT_GAP_MS,
+      MAX_INCIDENT_ROWS,
+    ],
   );
   const meta = await readHealthKv(env, KV_HEALTH_META);
   const data = formatGlobalIncidents({
