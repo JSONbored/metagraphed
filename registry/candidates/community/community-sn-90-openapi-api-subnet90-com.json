@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-90-openapi-api-subnet90-com",
+      "kind": "openapi",
+      "name": "ogham community openapi",
+      "netuid": 90,
+      "provider": "degenbrain",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://subnet90.com/",
+      "source_urls": ["https://subnet90.com/"],
+      "state": "schema-valid",
+      "url": "https://api.subnet90.com/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
