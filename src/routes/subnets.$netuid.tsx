@@ -52,15 +52,37 @@ export const Route = createFileRoute("/subnets/$netuid")({
     return { netuid: n };
   },
   stringifyParams: ({ netuid }) => ({ netuid: String(netuid) }),
-  head: ({ params }) => ({
-    meta: [
-      { title: `Subnet ${params.netuid} — Metagraphed` },
-      {
-        name: "description",
-        content: `Public-interface registry for Bittensor subnet ${params.netuid}: surfaces, endpoints, schemas, health.`,
-      },
-    ],
-  }),
+  // Prime the same query the page uses (shared cache → no double fetch) so head()
+  // can build a richer OG/social card from the live subnet name + health. Non-
+  // fatal: any failure returns null, head() falls back to the netuid-only copy,
+  // and the page's own useSuspenseQuery still drives the error/notFound path.
+  loader: async ({ context, params }) => {
+    try {
+      const { data } = await context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid));
+      return { name: data.name ?? null, health: data.health ?? null };
+    } catch {
+      return null;
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const title = loaderData?.name
+      ? `${loaderData.name} (Subnet ${params.netuid}) — Metagraphed`
+      : `Subnet ${params.netuid} — Metagraphed`;
+    const health = loaderData?.health && loaderData.health !== "unknown" ? loaderData.health : null;
+    const description = loaderData?.name
+      ? `${loaderData.name}: Bittensor subnet ${params.netuid} — interfaces, endpoints, schemas${
+          health ? ` and live health (${health})` : ""
+        }, machine-readable on Metagraphed.`
+      : `Public-interface registry for Bittensor subnet ${params.netuid}: surfaces, endpoints, schemas, health.`;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+      ],
+    };
+  },
   component: SubnetDetailPage,
   notFoundComponent: () => (
     <AppShell>

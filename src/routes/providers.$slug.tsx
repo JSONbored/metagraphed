@@ -34,12 +34,30 @@ export const Route = createFileRoute("/providers/$slug")({
     if (!slug) throw notFound();
     return { slug };
   },
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug} — Provider — Metagraphed` },
-      { name: "description", content: `Public endpoints and resources from ${params.slug}.` },
-    ],
-  }),
+  // Prime the page's provider query (shared cache → no double fetch) so head()
+  // can use the real provider name in the OG/social card. Non-fatal: falls back
+  // to the slug on any failure.
+  loader: async ({ context, params }) => {
+    try {
+      const { data } = await context.queryClient.ensureQueryData(providerQuery(params.slug));
+      return { name: data.name ?? null };
+    } catch {
+      return null;
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const name = loaderData?.name ?? params.slug;
+    const title = `${name} — Provider — Metagraphed`;
+    const description = `${name}: Bittensor infrastructure provider — public endpoints, operational surfaces, and live health on Metagraphed.`;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+      ],
+    };
+  },
   component: ProviderDetail,
   notFoundComponent: () => (
     <AppShell>
