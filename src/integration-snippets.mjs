@@ -38,13 +38,23 @@ function isSnippetSafeUrl(url) {
   return typeof url === "string" && url.length > 0 && !/['"`\\\s]/.test(url);
 }
 
+function isCredentialSafeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "wss:";
+  } catch {
+    return false;
+  }
+}
+
 // Returns { curl, python, typescript } or null when there is no usable base_url.
 export function generateServiceSnippets(service) {
   const url = service?.base_url;
   if (!isSnippetSafeUrl(url)) return null;
-  const authHeader = service?.auth_required
-    ? authHeaderForSchemes(service?.auth_schemes)
-    : null;
+  const authHeader =
+    service?.auth_required && isCredentialSafeUrl(url)
+      ? authHeaderForSchemes(service?.auth_schemes)
+      : null;
 
   const curl = authHeader
     ? `curl -sS '${url}' \\\n  -H '${authHeader.name}: ${authHeader.value}'`

@@ -179,3 +179,6 @@ ops/private/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Claude Code session directory (local, per-developer)
+.claude/
