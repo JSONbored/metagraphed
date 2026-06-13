@@ -6,12 +6,23 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
-import { MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_TOOLS, listToolDefinitions } from "../src/mcp-server.mjs";
 import { createLocalArtifactEnv } from "./lib.mjs";
 
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";
+
+// Compile each tool's declared outputSchema once; callOk asserts every
+// successful tool result's structuredContent validates against it, so a tool's
+// output can never drift from its advertised outputSchema.
+const ajv = new Ajv2020({ strict: false });
+const OUTPUT_VALIDATORS = new Map(
+  listToolDefinitions()
+    .filter((def) => def.outputSchema)
+    .map((def) => [def.name, ajv.compile(def.outputSchema)]),
+);
 
 async function mcp(payload, { method = "POST" } = {}) {
   const request = new Request(MCP_URL, {
@@ -58,6 +69,13 @@ async function callOk(name, args) {
     "object",
     `${name}: successful results must include structuredContent`,
   );
+  const validate = OUTPUT_VALIDATORS.get(name);
+  if (validate) {
+    assert.ok(
+      validate(result.structuredContent),
+      `${name}: structuredContent must validate against its declared outputSchema: ${JSON.stringify(validate.errors)}`,
+    );
+  }
   return result.structuredContent;
 }
 
@@ -135,7 +153,11 @@ assert.ok(
   "find_subnet_for_task must return results[]",
 );
 const callGuide = await callOk("how_do_i_call", { netuid: 7 });
-assert.equal(callGuide.netuid, 7, "how_do_i_call must echo the resolved netuid");
+assert.equal(
+  callGuide.netuid,
+  7,
+  "how_do_i_call must echo the resolved netuid",
+);
 assert.ok(
   Array.isArray(callGuide.services),
   "how_do_i_call must return services[]",
@@ -166,18 +188,16 @@ if (schemaService) {
 // semantic_search + ask need VECTORIZE + AI, absent in this cold env. They must
 // return a clean isError result (pointing at the keyword fallback), never throw.
 
-const semanticCold = await call("semantic_search", { query: "image generation" });
+const semanticCold = await call("semantic_search", {
+  query: "image generation",
+});
 assert.equal(
   semanticCold.isError,
   true,
   "semantic_search must isError without the AI layer",
 );
 const askCold = await call("ask", { question: "Which subnet exposes an API?" });
-assert.equal(
-  askCold.isError,
-  true,
-  "ask must isError without the AI layer",
-);
+assert.equal(askCold.isError, true, "ask must isError without the AI layer");
 
 // --- Negative paths --------------------------------------------------------
 

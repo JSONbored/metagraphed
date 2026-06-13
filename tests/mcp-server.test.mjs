@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
 import {
   MCP_TOOLS,
   MCP_PROTOCOL_VERSIONS,
@@ -86,9 +87,10 @@ describe("MCP tool registry", () => {
     assert.equal(names.size, MCP_TOOLS.length);
   });
 
-  test("listToolDefinitions exposes name/title/description/inputSchema (+ annotations, optional outputSchema)", () => {
+  test("listToolDefinitions exposes name/title/description/inputSchema + annotations + outputSchema", () => {
     const defs = listToolDefinitions();
     assert.equal(defs.length, MCP_TOOLS.length);
+    const ajv = new Ajv2020({ strict: false });
     const allowed = new Set([
       "description",
       "inputSchema",
@@ -105,11 +107,21 @@ describe("MCP tool registry", () => {
       // Every tool is read-only with no side effects (clients may auto-run).
       assert.equal(def.annotations.readOnlyHint, true, `${def.name}`);
       assert.equal(def.annotations.destructiveHint, false, `${def.name}`);
-      // When a tool declares outputSchema it must be a JSON Schema object.
-      if (def.outputSchema) {
-        assert.equal(typeof def.outputSchema, "object", `${def.name}`);
-        assert.equal(def.outputSchema.type, "object", `${def.name}`);
-      }
+      // Every tool declares a compilable object outputSchema for its structuredContent.
+      assert.equal(
+        typeof def.outputSchema,
+        "object",
+        `${def.name}: outputSchema`,
+      );
+      assert.equal(
+        def.outputSchema.type,
+        "object",
+        `${def.name}: outputSchema.type`,
+      );
+      assert.doesNotThrow(
+        () => ajv.compile(def.outputSchema),
+        `${def.name}: outputSchema must be a valid JSON Schema`,
+      );
     }
   });
 

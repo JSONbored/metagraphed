@@ -918,18 +918,264 @@ export const MCP_TOOLS = [
 
 const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 
+// JSON Schema 2020-12 output schemas for each tool's `structuredContent`. They
+// are deliberately LENIENT: every object is `additionalProperties: true`, only
+// always-present top-level keys are `required`, and fields whose type varies per
+// subnet use `{}` (any). This documents the shape a client can rely on WITHOUT
+// risking a strict client rejecting a valid-but-varied response. validate-mcp
+// asserts each tool's actual output validates against its schema, so these can
+// never drift from reality. A schema only constrains successful results — a tool
+// that returns isError (e.g. the AI tools when the AI layer is off) carries no
+// structuredContent, so its schema is simply not applied on that path.
+const ANY = {};
+const NULLABLE_STRING = { type: ["string", "null"] };
+const NULLABLE_INT = { type: ["integer", "null"] };
+const objectItems = (properties = {}) => ({
+  type: "array",
+  items: { type: "object", additionalProperties: true, properties },
+});
+const TOOL_OUTPUT_SCHEMAS = {
+  search_subnets: {
+    type: "object",
+    additionalProperties: true,
+    required: ["query", "count", "results"],
+    properties: {
+      query: { type: "string" },
+      count: { type: "integer" },
+      results: objectItems({
+        netuid: { type: "integer" },
+        slug: { type: "string" },
+        title: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+      }),
+    },
+  },
+  find_subnets_by_capability: {
+    type: "object",
+    additionalProperties: true,
+    required: ["capability", "count", "results"],
+    properties: {
+      capability: { type: "string" },
+      count: { type: "integer" },
+      results: objectItems({
+        netuid: { type: "integer" },
+        slug: { type: "string" },
+        name: NULLABLE_STRING,
+        categories: { type: "array" },
+        service_kinds: { type: "array" },
+        callable_count: { type: "integer" },
+        integration_readiness: ANY,
+      }),
+    },
+  },
+  get_subnet: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid"],
+    properties: {
+      netuid: { type: "integer" },
+      name: NULLABLE_STRING,
+      slug: NULLABLE_STRING,
+      status: NULLABLE_STRING,
+      health: { type: ["object", "null"] },
+      profile: { type: ["object", "null"] },
+      counts: { type: "object" },
+      curation: { type: ["object", "null"] },
+      gaps: { type: ["object", "null"] },
+      gap_priorities: { type: "array" },
+      operational_observed_at: NULLABLE_STRING,
+      health_source: NULLABLE_STRING,
+    },
+  },
+  get_subnet_health: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "summary", "surfaces"],
+    properties: {
+      netuid: { type: "integer" },
+      summary: { type: "object" },
+      operational_observed_at: NULLABLE_STRING,
+      surfaces: objectItems({
+        surface_id: { type: "string" },
+        netuid: { type: "integer" },
+        kind: NULLABLE_STRING,
+        status: { type: "string" },
+        latency_ms: NULLABLE_INT,
+        last_checked: NULLABLE_STRING,
+        last_ok: NULLABLE_STRING,
+      }),
+    },
+  },
+  list_subnet_apis: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "service_count", "services"],
+    properties: {
+      netuid: { type: "integer" },
+      service_count: { type: "integer" },
+      services: { type: "array", items: { type: "object" } },
+      operational_observed_at: NULLABLE_STRING,
+      health_source: NULLABLE_STRING,
+    },
+  },
+  get_api_schema: {
+    type: "object",
+    additionalProperties: true,
+    required: ["surface_id"],
+    properties: {
+      surface_id: { type: "string" },
+      kind: NULLABLE_STRING,
+      base_url: NULLABLE_STRING,
+      auth_required: { type: ["boolean", "null"] },
+      auth_schemes: { type: "array" },
+      drift_status: NULLABLE_STRING,
+      document: { type: ["object", "null"] },
+    },
+  },
+  get_fixture: {
+    type: "object",
+    additionalProperties: true,
+    required: ["surface_id"],
+    properties: { surface_id: { type: "string" } },
+  },
+  get_agent_catalog: {
+    // Two shapes: the global index (no netuid) and a single-subnet catalog
+    // (with a netuid). They share few keys, so nothing is required; the
+    // properties below describe the global index when present.
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      subnet_count: { type: "integer" },
+      total_subnet_count: { type: "integer" },
+      callable_service_count: { type: "integer" },
+      content_hash: NULLABLE_STRING,
+      generated_at: NULLABLE_STRING,
+      published_at: NULLABLE_STRING,
+      subnets: { type: "array", items: { type: "object" } },
+      operational_observed_at: NULLABLE_STRING,
+      health_source: NULLABLE_STRING,
+    },
+  },
+  get_best_rpc_endpoint: {
+    type: "object",
+    additionalProperties: true,
+    required: ["eligible_count", "endpoints"],
+    properties: {
+      eligible_count: { type: "integer" },
+      live_health: ANY,
+      endpoints: objectItems({
+        id: { type: "string" },
+        url: { type: "string" },
+        provider: NULLABLE_STRING,
+        kind: NULLABLE_STRING,
+        score: ANY,
+        latency_ms: NULLABLE_INT,
+        status: NULLABLE_STRING,
+        health_source: NULLABLE_STRING,
+      }),
+    },
+  },
+  registry_summary: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "counts"],
+    properties: {
+      subnet_count: { type: "integer" },
+      counts: { type: "object" },
+      coverage: { type: "object" },
+      curation_level_counts: { type: "object" },
+      profile_level_counts: { type: "object" },
+      recent_changes: { type: "object" },
+      top_subnets: { type: "array", items: { type: "object" } },
+      generated_at: NULLABLE_STRING,
+    },
+  },
+  find_subnet_for_task: {
+    type: "object",
+    additionalProperties: true,
+    required: ["task", "count", "results"],
+    properties: {
+      task: { type: "string" },
+      count: { type: "integer" },
+      discovery: ANY,
+      note: NULLABLE_STRING,
+      results: { type: "array", items: { type: "object" } },
+    },
+  },
+  how_do_i_call: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "callable", "services"],
+    properties: {
+      netuid: { type: "integer" },
+      name: NULLABLE_STRING,
+      slug: NULLABLE_STRING,
+      integration_readiness: ANY,
+      callable: { type: "boolean" },
+      callable_count: { type: "integer" },
+      guidance: ANY,
+      services: { type: "array", items: { type: "object" } },
+      next_steps: { type: "array" },
+      operational_observed_at: NULLABLE_STRING,
+      health_source: NULLABLE_STRING,
+    },
+  },
+  semantic_search: {
+    type: "object",
+    additionalProperties: true,
+    required: ["query", "count", "results"],
+    properties: {
+      query: { type: "string" },
+      count: { type: "integer" },
+      model: NULLABLE_STRING,
+      results: objectItems({
+        score: ANY,
+        type: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        slug: NULLABLE_STRING,
+        title: NULLABLE_STRING,
+        subtitle: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+      }),
+    },
+  },
+  ask: {
+    type: "object",
+    additionalProperties: true,
+    required: ["question", "answer"],
+    properties: {
+      question: { type: "string" },
+      answer: { type: "string" },
+      model: NULLABLE_STRING,
+      context_count: NULLABLE_INT,
+      citations: objectItems({
+        ref: ANY,
+        title: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        slug: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+      }),
+    },
+  },
+};
+
 export function listToolDefinitions() {
-  return MCP_TOOLS.map((tool) => ({
-    name: tool.name,
-    title: tool.title,
-    description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
-    inputSchema: tool.inputSchema,
-    // outputSchema (optional) lets a client validate the structuredContent each
-    // tool returns; included only when the tool declares one.
-    ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
-    // Behaviour hints: all tools are read-only by default; a tool may override.
-    annotations: tool.annotations || READ_ONLY_TOOL_ANNOTATIONS,
-  }));
+  return MCP_TOOLS.map((tool) => {
+    const outputSchema = tool.outputSchema || TOOL_OUTPUT_SCHEMAS[tool.name];
+    return {
+      name: tool.name,
+      title: tool.title,
+      description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
+      inputSchema: tool.inputSchema,
+      // outputSchema (optional) lets a client validate the structuredContent the
+      // tool returns; included only when the tool declares one.
+      ...(outputSchema ? { outputSchema } : {}),
+      // Behaviour hints: all tools are read-only by default; a tool may override.
+      annotations: tool.annotations || READ_ONLY_TOOL_ANNOTATIONS,
+    };
+  });
 }
 
 function negotiateProtocol(requested) {
