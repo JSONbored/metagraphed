@@ -26,12 +26,34 @@ scanner that does not follow cross-host redirects still sees it):
 // Snippet: apex-discovery-proxy
 export default {
   async fetch(request) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { allow: "GET, HEAD" },
+      });
+    }
+
     const url = new URL(request.url);
-    const upstream = new URL(
-      url.pathname + url.search,
-      "https://api.metagraph.sh",
-    );
-    const resp = await fetch(upstream, request);
+    const upstream = new URL("https://api.metagraph.sh");
+    upstream.pathname = url.pathname;
+    upstream.search = url.search;
+
+    const upstreamHeaders = new Headers();
+    for (const name of [
+      "accept",
+      "accept-language",
+      "if-none-match",
+      "if-modified-since",
+    ]) {
+      const value = request.headers.get(name);
+      if (value !== null) upstreamHeaders.set(name, value);
+    }
+
+    const resp = await fetch(upstream, {
+      method: request.method,
+      headers: upstreamHeaders,
+      redirect: "manual",
+    });
     // Preserve the API's Link/Content-Type headers; surface the proxy origin.
     const headers = new Headers(resp.headers);
     headers.set("x-served-by", "api.metagraph.sh");
@@ -44,8 +66,9 @@ Bind it with a **Snippet Rule** that matches the discovery paths only (so the UI
 keeps serving everything else):
 
 ```
-(http.request.uri.path in {"/sitemap.xml" "/robots.txt" "/llms.txt" "/llms-full.txt" "/auth.md" "/agent.md"}
- or starts_with(http.request.uri.path, "/.well-known/"))
+(http.request.method in {"GET" "HEAD"}
+ and (http.request.uri.path in {"/sitemap.xml" "/robots.txt" "/llms.txt" "/llms-full.txt" "/auth.md" "/agent.md"}
+      or starts_with(http.request.uri.path, "/.well-known/")))
 ```
 
 **Simpler alternative — Redirect Rules** (no Snippet; dashboard-only): a dynamic
