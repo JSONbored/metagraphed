@@ -14,6 +14,12 @@ import {
   buildIssueIntakeReport,
   buildPrSubmissionReport,
   classifyPrScope,
+  isPlaceholderUrl,
+  ownerTokensMatch,
+  ownerTokensRelated,
+  providerIdentityTokens,
+  sameResourceUrl,
+  urlOwnerTokens,
 } from "../scripts/submission-policy.mjs";
 import {
   buildNotificationKey,
@@ -405,7 +411,7 @@ describe("Metagraphed submission gate policy", () => {
 
     const rpcDocument = structuredClone(validCandidateDocument);
     rpcDocument.candidates[0].kind = "subtensor-rpc";
-    rpcDocument.candidates[0].url = "https://rpc.example.com";
+    rpcDocument.candidates[0].url = "https://rpc.subtensor.io";
     const rpcReport = buildPrSubmissionReport({
       changedFiles: ["registry/candidates/community/rpc.json"],
       candidateDocument: rpcDocument,
@@ -415,6 +421,145 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(rpcReport.public_state, "manual_review");
+  });
+
+  test("routes an ownership-sensitive surface whose owner does not match its provider to manual review", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-source-repo-mismatch",
+      kind: "source-repo",
+      url: "https://github.com/random-stranger/some-repo",
+      source_url: "https://github.com/random-stranger/some-repo",
+      source_urls: ["https://github.com/random-stranger/some-repo"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/mismatch.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(
+      report.manual_reasons.some((reason) =>
+        reason.includes("does not match its registered provider"),
+      ),
+      true,
+    );
+  });
+
+  test("accepts an ownership-sensitive surface whose owner matches its provider", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-source-repo-allways",
+      kind: "source-repo",
+      url: "https://github.com/all-ways/subnet",
+      source_url: "https://github.com/all-ways/subnet",
+      source_urls: ["https://github.com/all-ways/subnet"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/allways-repo.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "submit_pr");
+  });
+
+  test("rejects placeholder/example identity URLs", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].url = "https://example.com/app";
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/placeholder.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(
+      report.errors.includes("candidate url is a placeholder/example URL"),
+      true,
+    );
+  });
+
+  test("routes a non-repo surface whose source_url equals its url (no independent proof) to manual review", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-website-selfproof",
+      kind: "website",
+      url: "https://status.all-ways.io/",
+      source_url: "https://status.all-ways.io/",
+      source_urls: ["https://status.all-ways.io/"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/selfproof.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(
+      report.manual_reasons.some((reason) =>
+        reason.includes("independent proof source"),
+      ),
+      true,
+    );
+  });
+
+  test("does not false-flag a legit host that merely contains 'example.com' as a substring", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-docs-notexample",
+      kind: "docs",
+      url: "https://notexample.com/docs",
+      source_url: "https://notexample.com/proof",
+      source_urls: ["https://notexample.com/proof"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/notexample.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(
+      report.errors.includes("candidate url is a placeholder/example URL"),
+      false,
+    );
+  });
+
+  test("independent-proof check sees through www/protocol variants of the same resource", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-website-wwwself",
+      kind: "website",
+      url: "https://status.all-ways.io/",
+      source_url: "https://www.status.all-ways.io/",
+      source_urls: ["https://www.status.all-ways.io/"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/wwwself.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(
+      report.manual_reasons.some((reason) =>
+        reason.includes("independent proof source"),
+      ),
+      true,
+    );
   });
 
   test("blocks duplicate curated surfaces", () => {
@@ -1054,5 +1199,92 @@ describe("Metagraphed submission gate policy", () => {
       ),
       "prefix Public evidence OK.",
     );
+  });
+});
+
+describe("submission-policy owner-identity + placeholder helpers", () => {
+  test("urlOwnerTokens extracts code-host org, domain label, and tolerates junk", () => {
+    assert.deepEqual(
+      urlOwnerTokens("https://github.com/safe-scan-ai/cancer-ai"),
+      ["safescanai"],
+    );
+    assert.deepEqual(urlOwnerTokens("https://status.all-ways.io/x"), [
+      "allways",
+    ]);
+    assert.deepEqual(urlOwnerTokens("not a url"), []);
+    assert.deepEqual(urlOwnerTokens(42), []);
+    // a sub-4-char org is filtered out
+    assert.deepEqual(urlOwnerTokens("https://github.com/ab/repo"), []);
+  });
+
+  test("providerIdentityTokens pulls name/id/url tokens, empty for missing provider", () => {
+    const tokens = providerIdentityTokens({
+      id: "luminar-network",
+      name: "Luminar Network",
+      website_url: "https://luminar.network/",
+    });
+    assert.equal(tokens.includes("luminarnetwork"), true);
+    assert.equal(tokens.includes("luminar"), true);
+    assert.deepEqual(providerIdentityTokens(null), []);
+    assert.deepEqual(providerIdentityTokens("nope"), []);
+  });
+
+  test("ownerTokensRelated: exact OR >=8-char containment, never short substrings", () => {
+    assert.equal(ownerTokensRelated("luminarnetwork", "luminarnetwork"), true); // exact
+    assert.equal(ownerTokensRelated("tensorplexlabs", "tensorplex"), true); // 10-char containment
+    assert.equal(ownerTokensRelated("sn76mirror", "sn76"), false); // short token, no substring match
+    assert.equal(ownerTokensRelated("visiontools", "vision"), false); // 6-char, no substring match
+    assert.equal(ownerTokensRelated("", "luminar"), false); // empty guard
+    assert.equal(ownerTokensRelated("luminar", ""), false);
+  });
+
+  test("ownerTokensMatch: empty set is non-blocking; otherwise any related pair matches", () => {
+    assert.equal(ownerTokensMatch([], ["byzantium"]), true);
+    assert.equal(ownerTokensMatch(["safescanai"], []), true);
+    assert.equal(
+      ownerTokensMatch(["luminarnetwork"], ["luminarnetwork", "luminar"]),
+      true,
+    );
+    assert.equal(
+      ownerTokensMatch(["safescanai"], ["byzantium", "byzantiumai"]),
+      false,
+    );
+  });
+
+  test("sameResourceUrl: same resource through www/protocol, false on differ or junk", () => {
+    assert.equal(
+      sameResourceUrl(
+        "https://status.all-ways.io/",
+        "https://www.status.all-ways.io/",
+      ),
+      true,
+    );
+    assert.equal(sameResourceUrl("https://x.io/a", "http://www.x.io/a/"), true);
+    assert.equal(sameResourceUrl("https://x.io/a", "https://x.io/b"), false);
+    assert.equal(sameResourceUrl("not a url", "https://x.io/a"), false);
+  });
+
+  test("isPlaceholderUrl: anchored example/github-stub/deprecated detection, no substring false-positives", () => {
+    assert.equal(isPlaceholderUrl("https://example.com/app"), true);
+    assert.equal(isPlaceholderUrl("https://docs.example.org/x"), true);
+    assert.equal(isPlaceholderUrl("https://github.com/username/repo"), true);
+    assert.equal(
+      isPlaceholderUrl("https://github.com/username/repo.git"),
+      true,
+    );
+    assert.equal(isPlaceholderUrl("https://api.realsite.io/deprecated"), true);
+    // NOT placeholders (the false-positive fixes)
+    assert.equal(isPlaceholderUrl("https://notexample.com/app"), false);
+    assert.equal(isPlaceholderUrl("https://example.company.com/app"), false);
+    assert.equal(
+      isPlaceholderUrl("https://github.com/realorg/realrepo"),
+      false,
+    );
+    assert.equal(
+      isPlaceholderUrl("https://site.io/deprecated-endpoints"),
+      false,
+    );
+    assert.equal(isPlaceholderUrl("not a url"), false);
+    assert.equal(isPlaceholderUrl(99), false);
   });
 });
