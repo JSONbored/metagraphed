@@ -28,15 +28,40 @@ import {
   withinRateLimit,
 } from "./ai-search.mjs";
 
-// Protocol versions we understand. We echo the client's requested version when
-// it is one of these, otherwise we answer with our latest.
-export const MCP_PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
+// Protocol versions we understand, newest first. We echo the client's requested
+// version when it is one of these, otherwise we answer with our latest. We meet
+// the 2025-11-25 requirements for a tools-only, stateless, no-auth Streamable
+// HTTP server: input-validation errors are returned as tool execution errors
+// (isError) not protocol errors (SEP-1303); there are no "invalid" Origins to
+// 403 (public, accept-all, read-only); schemas use JSON Schema 2020-12.
+export const MCP_PROTOCOL_VERSIONS = [
+  "2025-11-25",
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+];
 const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
   title: "metagraphed — Bittensor subnet operational registry",
+  // Implementation.description (added in MCP 2025-11-25): a short human-readable
+  // line surfaced during initialization.
+  description:
+    "Live operational + integration registry for Bittensor subnets — what each " +
+    "subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
   version: CONTRACT_VERSION,
+};
+
+// Behaviour hints (MCP ToolAnnotations) shared by every tool: all metagraphed
+// tools are read-only registry queries with no side effects, so a client may
+// safely auto-run them. openWorldHint is true — they reflect live, externally-
+// controlled subnet state.
+const READ_ONLY_TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
 };
 
 export const MCP_INSTRUCTIONS =
@@ -899,6 +924,11 @@ export function listToolDefinitions() {
     title: tool.title,
     description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
     inputSchema: tool.inputSchema,
+    // outputSchema (optional) lets a client validate the structuredContent each
+    // tool returns; included only when the tool declares one.
+    ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
+    // Behaviour hints: all tools are read-only by default; a tool may override.
+    annotations: tool.annotations || READ_ONLY_TOOL_ANNOTATIONS,
   }));
 }
 

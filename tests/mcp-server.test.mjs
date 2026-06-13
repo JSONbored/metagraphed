@@ -86,16 +86,30 @@ describe("MCP tool registry", () => {
     assert.equal(names.size, MCP_TOOLS.length);
   });
 
-  test("listToolDefinitions exposes name/title/description/inputSchema only", () => {
+  test("listToolDefinitions exposes name/title/description/inputSchema (+ annotations, optional outputSchema)", () => {
     const defs = listToolDefinitions();
     assert.equal(defs.length, MCP_TOOLS.length);
+    const allowed = new Set([
+      "description",
+      "inputSchema",
+      "name",
+      "title",
+      "annotations",
+      "outputSchema",
+    ]);
     for (const def of defs) {
-      assert.deepEqual(Object.keys(def).sort(), [
-        "description",
-        "inputSchema",
-        "name",
-        "title",
-      ]);
+      for (const key of Object.keys(def)) {
+        assert.ok(allowed.has(key), `${def.name}: unexpected key ${key}`);
+      }
+      assert.ok(def.name && def.title && def.description && def.inputSchema);
+      // Every tool is read-only with no side effects (clients may auto-run).
+      assert.equal(def.annotations.readOnlyHint, true, `${def.name}`);
+      assert.equal(def.annotations.destructiveHint, false, `${def.name}`);
+      // When a tool declares outputSchema it must be a JSON Schema object.
+      if (def.outputSchema) {
+        assert.equal(typeof def.outputSchema, "object", `${def.name}`);
+        assert.equal(def.outputSchema.type, "object", `${def.name}`);
+      }
     }
   });
 
@@ -133,6 +147,20 @@ describe("MCP JSON-RPC lifecycle", () => {
       params: { protocolVersion: "1999-01-01" },
     });
     assert.equal(res.body.result.protocolVersion, MCP_PROTOCOL_VERSIONS[0]);
+  });
+
+  test("initialize negotiates the current stable revision (2025-11-25) and carries serverInfo.description", async () => {
+    assert.equal(MCP_PROTOCOL_VERSIONS[0], "2025-11-25");
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: { protocolVersion: "2025-11-25" },
+    });
+    assert.equal(res.body.result.protocolVersion, "2025-11-25");
+    // Implementation.description added in 2025-11-25.
+    assert.equal(typeof res.body.result.serverInfo.description, "string");
+    assert.ok(res.body.result.serverInfo.description.length > 0);
   });
 
   test("ping returns an empty result", async () => {
@@ -1133,7 +1161,10 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
       { deps: makeDeps(callDetail) },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /netuid.*subnet|invalid_params/);
+    assert.match(
+      res.body.result.content[0].text,
+      /netuid.*subnet|invalid_params/,
+    );
   });
 });
 
@@ -1315,7 +1346,10 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       { deps: makeDeps(callDetail) },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /No subnet matches|not_found/);
+    assert.match(
+      res.body.result.content[0].text,
+      /No subnet matches|not_found/,
+    );
   });
 
   test("find_subnet_for_task uses keyword when semantic returns no subnet hits", async () => {
@@ -1366,7 +1400,16 @@ describe("MCP goal-shaped tools — branch coverage", () => {
     const res = await callTool(
       "how_do_i_call",
       { netuid: 5 },
-      { deps: makeDeps({ "/metagraph/agent-catalog/5.json": { netuid: 5, name: "X", slug: "sn-5", integration_readiness: 0 } }) },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog/5.json": {
+            netuid: 5,
+            name: "X",
+            slug: "sn-5",
+            integration_readiness: 0,
+          },
+        }),
+      },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.callable, false);
