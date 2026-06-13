@@ -118,17 +118,119 @@ async function handleStatsProxy(request: Request): Promise<Response | null> {
   return new Response(upstream.body, { status: upstream.status, headers });
 }
 
-// Inject the deferred tracker into <head> of HTML responses (streaming).
+// --- AI-agent discovery (RFC 8288 Link header, RFC 9727 api-catalog, sitemap, MCP card) ---
+//
+// The backend (api.metagraph.sh) canonically generates every agent-discovery resource; the apex
+// (metagraph.sh — this Worker) must expose them too, since agents hit the human-facing domain. We
+// PROXY the backend's resources (DRY + always current) and advertise them via a Link header on every
+// HTML page. Lives in the Worker entry (infra), never in Lovable's UI code, so it survives Lovable
+// regenerations.
+const API_ORIGIN = "https://api.metagraph.sh";
+const SITE_ORIGIN = "https://metagraph.sh";
+
+// Resources the backend serves canonically — proxied verbatim from the API origin to the apex.
+const DISCOVERY_PROXY_PATHS = new Set([
+  "/.well-known/api-catalog",
+  "/.well-known/mcp/server-card.json",
+  "/.well-known/agent-skills/index.json",
+  "/llms.txt",
+  "/llms-full.txt",
+  "/agent.md",
+]);
+
+// RFC 8288 Link header advertising the API catalog + machine-readable descriptions, added to every
+// HTML response (mirrors the backend's homepage Link header, with absolute API-origin targets).
+const DISCOVERY_LINK_HEADER = [
+  `<${API_ORIGIN}/.well-known/api-catalog>; rel="api-catalog"`,
+  `<${API_ORIGIN}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
+  `<${API_ORIGIN}/llms.txt>; rel="service-doc"; type="text/plain"`,
+  `<${API_ORIGIN}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
+].join(", ");
+
+// Canonical human-facing pages for the sitemap (per-subnet pages are appended from the live list).
+const SITEMAP_STATIC_PATHS = [
+  "/",
+  "/subnets",
+  "/providers",
+  "/surfaces",
+  "/endpoints",
+  "/health",
+  "/schemas",
+  "/gaps",
+  "/about",
+];
+
+// Proxy a backend discovery resource to the apex, or build the sitemap. Returns null for everything
+// else (the request falls through to the SSR app).
+async function handleDiscovery(request: Request): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (url.pathname === "/sitemap.xml") return buildSitemap();
+  if (!DISCOVERY_PROXY_PATHS.has(url.pathname)) return null;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Method Not Allowed", { status: 405, headers: { allow: "GET, HEAD" } });
+  }
+  const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
+    headers: { accept: request.headers.get("accept") ?? "*/*" },
+  });
+  const headers = new Headers(upstream.headers);
+  headers.set("x-discovery-origin", "api.metagraph.sh");
+  return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+// Build the apex sitemap: canonical static pages + one entry per live subnet (by netuid). Falls back
+// to the static pages alone if the subnet list can't be fetched, so it never 500s.
+async function buildSitemap(): Promise<Response> {
+  const locs = SITEMAP_STATIC_PATHS.map((path) => `${SITE_ORIGIN}${path}`);
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=500`, {
+      headers: { accept: "application/json" },
+    });
+    if (res.ok) {
+      const payload = (await res.json()) as {
+        data?: { subnets?: Array<{ netuid?: unknown }> };
+      };
+      for (const subnet of payload.data?.subnets ?? []) {
+        if (Number.isInteger(subnet?.netuid)) {
+          locs.push(`${SITE_ORIGIN}/subnets/${String(subnet.netuid)}`);
+        }
+      }
+    }
+  } catch {
+    // Network hiccup — fall back to the static pages so the sitemap is always valid XML.
+  }
+  const body =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    locs.map((loc) => `  <url><loc>${loc}</loc></url>`).join("\n") +
+    `\n</urlset>\n`;
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
+}
+
+// Inject the deferred tracker into <head> of HTML responses (streaming) + advertise the agent-
+// discovery resources via an RFC 8288 Link header.
 function injectAnalytics(response: Response): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
-  return new HTMLRewriter()
+  const transformed = new HTMLRewriter()
     .on("head", {
       element(element) {
         element.append(UMAMI_SNIPPET, { html: true });
       },
     })
     .transform(response);
+  const headers = new Headers(transformed.headers);
+  headers.set("link", DISCOVERY_LINK_HEADER);
+  return new Response(transformed.body, {
+    status: transformed.status,
+    statusText: transformed.statusText,
+    headers,
+  });
 }
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -165,6 +267,8 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const statsResponse = await handleStatsProxy(request);
     if (statsResponse) return statsResponse;
+    const discoveryResponse = await handleDiscovery(request);
+    if (discoveryResponse) return discoveryResponse;
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
