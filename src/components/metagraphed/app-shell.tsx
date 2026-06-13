@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Compass,
   FileCode,
+  Gauge,
   Home,
   Info,
   Layers,
@@ -66,6 +67,7 @@ const SECTIONS: NavSection[] = [
   {
     label: "Operations",
     items: [
+      { to: "/status", label: "Status", icon: Gauge },
       { to: "/health", label: "Health", icon: Activity },
       { to: "/schemas", label: "Schemas", icon: FileCode },
     ],

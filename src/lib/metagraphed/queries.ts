@@ -11,6 +11,7 @@ import type {
   EvidenceItem,
   Freshness,
   Gap,
+  GlobalIncidents,
   HealthState,
   HealthSummary,
   PrimaryAppSurface,
@@ -648,6 +649,19 @@ export const endpointIncidentsQuery = () =>
       );
       return { ...res, data: res.data.map(normalizeIncident) } as ApiResult<EndpointIncident[]>;
     },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Global, cross-subnet incident ledger (/api/v1/incidents) — recent downtime
+ * reconstructed from probe history, grouped by surface, over a 7d/30d window.
+ * Broader than endpoint-incidents (which is RPC-only); powers the /status page.
+ */
+export const globalIncidentsQuery = (window: string) =>
+  queryOptions({
+    queryKey: k("incidents", window),
+    queryFn: ({ signal }) =>
+      apiFetch<GlobalIncidents>("/api/v1/incidents", { params: { window }, signal }),
     staleTime: STALE_SHORT,
   });
 

@@ -183,6 +183,32 @@ export interface EndpointIncident {
   [key: string]: unknown;
 }
 
+/** One reconstructed downtime window from /api/v1/incidents (epoch-ms timestamps). */
+export interface GlobalIncident {
+  started_at: number;
+  ended_at: number;
+  duration_ms: number;
+  failed_samples?: number;
+}
+
+/** A surface with one or more incidents in the window (global incident ledger). */
+export interface GlobalIncidentSurface {
+  netuid: number;
+  surface_id: string;
+  incident_count: number;
+  downtime_ms: number;
+  incidents: GlobalIncident[];
+}
+
+/** /api/v1/incidents — recent cross-subnet downtime reconstructed from probe history. */
+export interface GlobalIncidents {
+  window?: string | null;
+  observed_at?: string | null;
+  source?: string;
+  summary?: { incident_count?: number; affected_surface_count?: number };
+  surfaces: GlobalIncidentSurface[];
+}
+
 export interface ProviderEndpointSummary {
   endpoint_count?: number;
   monitored_count?: number;

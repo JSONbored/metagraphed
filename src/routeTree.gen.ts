@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GapsRouteImport } from './routes/gaps'
@@ -24,6 +25,11 @@ import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 const SurfacesRoute = SurfacesRouteImport.update({
   id: '/surfaces',
   path: '/surfaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SchemasRoute = SchemasRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/status'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/status'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/status'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   GapsRoute: typeof GapsRoute
   HealthRoute: typeof HealthRoute
   SchemasRoute: typeof SchemasRoute
+  StatusRoute: typeof StatusRoute
   SurfacesRoute: typeof SurfacesRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/surfaces'
       fullPath: '/surfaces'
       preLoaderRoute: typeof SurfacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schemas': {
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   GapsRoute: GapsRoute,
   HealthRoute: HealthRoute,
   SchemasRoute: SchemasRoute,
+  StatusRoute: StatusRoute,
   SurfacesRoute: SurfacesRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
