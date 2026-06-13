@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { useApiBase } from "@/hooks/use-api-base";
+import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
@@ -604,6 +604,7 @@ function buildCrumbs(pathname: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { network } = useNetwork();
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
 
   return (
@@ -671,7 +672,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto">{children}</main>
+        <main
+          key={network.id}
+          className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto"
+        >
+          {children}
+        </main>
 
         <footer className="border-t border-border mt-12 px-4 md:px-8 py-6 max-w-[1400px] mx-auto text-[11px] text-ink-muted flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>

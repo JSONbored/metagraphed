@@ -1,5 +1,6 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, type ApiResult, type QueryParams } from "./client";
+import { getNetwork } from "./config";
 import type {
   AdapterSnapshot,
   Candidate,
@@ -26,7 +27,14 @@ const STALE_SHORT = 30_000;
 const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
 
-const k = (...parts: unknown[]) => ["metagraphed", ...parts];
+/** Include the selected chain network so SSR mainnet data cannot hydrate into a testnet view. */
+export const metagraphedQueryKey = (...parts: unknown[]) => [
+  "metagraphed",
+  { network: getNetwork().id },
+  ...parts,
+];
+
+const k = metagraphedQueryKey;
 
 /**
  * Normalize a list response. The API wraps lists as

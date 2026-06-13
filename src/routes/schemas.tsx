@@ -18,7 +18,11 @@ import {
   StaleBanner,
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { schemasQuery, contractsQuery } from "@/lib/metagraphed/queries";
+import {
+  schemasQuery,
+  contractsQuery,
+  metagraphedQueryKey,
+} from "@/lib/metagraphed/queries";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -251,7 +255,7 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
 
   // List of available snapshots (best effort — empty if endpoint absent).
   const snapshots = useQuery({
-    queryKey: ["metagraphed", "schema-snapshots", schema.id],
+    queryKey: metagraphedQueryKey("schema-snapshots", schema.id),
     queryFn: async ({ signal }) => {
       try {
         const res = await apiFetch<SnapshotMeta[]>(
@@ -269,7 +273,7 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
   const snapList = snapshots.data ?? [];
 
   const diff = useQuery({
-    queryKey: ["metagraphed", "schema-diff", schema.id, a, b],
+    queryKey: metagraphedQueryKey("schema-diff", schema.id, a, b),
     queryFn: async ({ signal }) => {
       const params: Record<string, string> = {};
       if (a) params.a = a;

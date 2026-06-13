@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
+import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { ExternalLink } from "./external-link";
 import { HoverPreview } from "./hover-preview";
 import { EmptyState, Skeleton } from "./states";
@@ -38,7 +39,10 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
 
   const query = useInfiniteQuery({
-    queryKey: ["metagraphed", "evidence", { netuid: netuid ?? null, pageSize }],
+    queryKey: metagraphedQueryKey("evidence", {
+      netuid: netuid ?? null,
+      pageSize,
+    }),
     initialPageParam: null as EvidenceCursor,
     queryFn: async ({ pageParam, signal }) => {
       const params: Record<string, string | number> = { limit: pageSize };
