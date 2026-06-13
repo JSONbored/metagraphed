@@ -252,7 +252,7 @@
               "extensions": {
                 "type": "object",
                 "description": "Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific.",
-                "additionalProperties": { "type": "object" }
+                "additionalProperties": { "type": "object", "additionalProperties": true }
               },
               "snapshot": {
                 "type": ["object", "null"],
