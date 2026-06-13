@@ -344,6 +344,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary. */
+        get: operations["incidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lineage": {
         parameters: {
             query?: never;
@@ -961,8 +978,9 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
             extensions: {
-                [key: string]: unknown;
+                [key: string]: Record<string, never>;
             };
             netuid: number;
             slug: string;
@@ -1067,7 +1085,11 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description Headline counts across the agent-facing registry. */
             summary?: {
+                callable_service_count?: number;
+                subnet_count?: number;
+            } & {
                 [key: string]: unknown;
             };
         } & {
@@ -1569,6 +1591,37 @@ export interface components {
             generated_at?: "1970-01-01T00:00:00.000Z";
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
+        /** @description Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window. */
+        GlobalIncidentsArtifact: {
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            summary: {
+                affected_surface_count: number;
+                incident_count: number;
+            } & {
+                [key: string]: unknown;
+            };
+            surfaces: ({
+                downtime_ms?: number;
+                incident_count: number;
+                incidents: ({
+                    duration_ms: number;
+                    ended_at: number;
+                    failed_samples?: number;
+                    started_at: number;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                netuid: number;
+                surface_id: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
             label: string;
@@ -1584,7 +1637,16 @@ export interface components {
             probe_finished_at?: string | null;
             probe_started_at?: string | null;
             source?: string;
+            /** @description Aggregate probe outcome counts for the day. */
             summary: {
+                classification_counts?: {
+                    [key: string]: number;
+                };
+                status_counts?: {
+                    [key: string]: number;
+                };
+                surface_count?: number;
+            } & {
                 [key: string]: unknown;
             };
             surfaces: components["schemas"]["HealthHistorySurface"][];
@@ -1919,7 +1981,13 @@ export interface components {
         });
         ProviderEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["EndpointResource"][];
+            /** @description Identity summary of the provider these endpoints belong to. */
             provider: {
+                authority?: string;
+                id?: string;
+                kind?: string;
+                name?: string;
+            } & {
                 [key: string]: unknown;
             };
             summary: components["schemas"]["EndpointSummary"];
@@ -1994,6 +2062,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists. */
+        ReliabilityScore: {
+            avg_latency_ms?: number | null;
+            computed_at?: string | null;
+            day_count?: number;
+            /** @enum {string} */
+            grade: "A" | "B" | "C" | "D" | "F";
+            sample_count: number;
+            score: number;
+            surface_count?: number;
+            uptime_ratio: number | null;
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         ResponseEnvelopeContract: {
             /** @constant */
             error_schema_ref: "#/components/schemas/ErrorEnvelope";
@@ -2383,7 +2466,20 @@ export interface components {
         };
         RpcEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["RpcEndpoint"][];
+            /** @description Roll-up counts across the base-layer RPC endpoint set. */
             summary: {
+                archive_supported_count?: number;
+                by_kind?: {
+                    [key: string]: number;
+                };
+                by_provider?: {
+                    [key: string]: number;
+                };
+                by_status?: {
+                    [key: string]: number;
+                };
+                endpoint_count?: number;
+            } & {
                 [key: string]: unknown;
             };
         } & {
@@ -2419,10 +2515,27 @@ export interface components {
             url: string;
         };
         RpcPoolsArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** @description The read-only RPC proxy contract (disabled by default behind a feature flag). */
             disabled_proxy_contract?: {
+                allowed_methods?: string[];
+                denied_method_patterns?: string[];
+                enabled?: boolean;
+                feature_flag?: string;
+                rate_limit_required?: boolean;
+                waf_required?: boolean;
+            } & {
                 [key: string]: unknown;
             };
+            /** @description How endpoints qualify for a pool — derived from monitored state only. */
             eligibility_policy?: {
+                eligible_layers?: string[];
+                notes?: string;
+                required_status?: string;
+                requires_no_auth?: boolean;
+                requires_public_safe?: boolean;
+                source?: string;
+                user_reports_can_change_health?: boolean;
+            } & {
                 [key: string]: unknown;
             };
             pools: components["schemas"]["RpcPool"][];
@@ -2698,10 +2811,24 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            curation?: Record<string, never> | null;
+            curation?: components["schemas"]["CurationMetadata"] | null;
             gap_priorities?: unknown[];
             gaps?: components["schemas"]["Gaps"] | null;
-            health: Record<string, never> | null;
+            health: ({
+                avg_latency_ms?: number | null;
+                degraded_count?: number;
+                failed_count?: number;
+                last_checked?: string | null;
+                last_ok?: string | null;
+                netuid?: number;
+                observed_by?: string;
+                ok_count?: number;
+                status?: string;
+                surface_count?: number;
+                unknown_count?: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             name?: string;
             netuid: number;
             profile: components["schemas"]["SubnetProfile"] | null;
@@ -2878,7 +3005,15 @@ export interface components {
         } | null;
         SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
             network: components["schemas"]["BittensorNetwork"];
+            /** @description Provenance of the native chain snapshot this index was built from. */
             source: {
+                identity_storage?: string;
+                kind?: string;
+                method?: string;
+                package?: string;
+                rpc_family?: string;
+                version?: string;
+            } & {
                 [key: string]: unknown;
             };
             subnets: components["schemas"]["SubnetIndexEntry"][];
@@ -2984,6 +3119,7 @@ export interface components {
         });
         UptimeArtifact: {
             netuid: number;
+            reliability?: components["schemas"]["ReliabilityScore"] | null;
             schema_version: number;
             source: string;
             surfaces: ({
@@ -2997,6 +3133,7 @@ export interface components {
                 } & {
                     [key: string]: unknown;
                 })[];
+                reliability?: components["schemas"]["ReliabilityScore"] | null;
                 samples: number;
                 surface_id: string;
                 uptime_ratio: number | null;
@@ -4474,6 +4611,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    incidents: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalIncidentsArtifact"];
                     };
                 };
             };

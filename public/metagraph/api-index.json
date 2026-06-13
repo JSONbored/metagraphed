@@ -331,6 +331,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "global-incidents",
+      "path": "/metagraph/incidents.json",
+      "schema_ref": "#/components/schemas/GlobalIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
@@ -4014,6 +4021,29 @@
               "asc",
               "desc"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/incidents.json",
+      "cache": "short",
+      "description": "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
+      "id": "incidents",
+      "method": "GET",
+      "path": "/api/v1/incidents",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
           }
         }
       ]

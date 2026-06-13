@@ -2,6 +2,9 @@
   "schema_version": 1,
   "servers": [
     {
+      "_meta": {
+        "io.github.JSONbored/registry-name": "io.github.JSONbored/metagraphed"
+      },
       "card": "/.well-known/mcp/server-card.json",
       "name": "metagraphed",
       "transport": "streamable-http",

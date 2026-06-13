@@ -35,6 +35,7 @@ import {
 } from "../src/health-prober.mjs";
 import {
   buildGlobalHealth,
+  formatGlobalIncidents,
   formatIncidents,
   formatLeaderboards,
   formatPercentiles,
@@ -54,7 +55,12 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.mjs";
+import {
+  buildAgentToolsIndex,
+  buildAnthropicToolSpecs,
+  buildOpenAIToolSpecs,
+} from "../src/agent-tool-specs.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -257,6 +263,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return mcpServerCardResponse(request, env);
   }
 
+  // Agent tool specs for non-MCP runtimes (OpenAI function calling / Anthropic
+  // tool use), projected at request time from the same listToolDefinitions() the
+  // MCP server advertises — so they can't drift. Worker-owned (run_worker_first).
+  if (url.pathname === "/.well-known/agent-tools/index.json") {
+    return agentToolsResponse(request, env, "index");
+  }
+  if (url.pathname === "/.well-known/agent-tools/openai.json") {
+    return agentToolsResponse(request, env, "openai");
+  }
+  if (url.pathname === "/.well-known/agent-tools/anthropic.json") {
+    return agentToolsResponse(request, env, "anthropic");
+  }
+
   if (url.pathname === "/health") {
     return handleHealthRequest(request, env);
   }
@@ -319,6 +338,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
       return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+    }
+    if (resolved.url.pathname === "/api/v1/incidents") {
+      return handleGlobalIncidents(request, env, resolved.url);
     }
     return handleApiRequest(request, env, resolved.url);
   }
@@ -1241,6 +1263,58 @@ async function handleHealthIncidents(request, env, netuid, url) {
   );
 }
 
+// Global, cross-subnet incident ledger — the same gap-island grouping as the
+// per-subnet route but with no netuid filter, grouped by (netuid, surface_id)
+// and capped. Powers a public status page's "recent incidents" feed. Returns a
+// schema-stable empty payload when D1 is unbound/cold.
+async function handleGlobalIncidents(request, env, url) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) {
+    return analyticsQueryError(error);
+  }
+  const since = Date.now() - days * DAY_MS;
+  const incidentRows = await d1All(
+    env,
+    `WITH failures AS (
+       SELECT netuid, surface_id, checked_at,
+              checked_at - LAG(checked_at)
+                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS gap
+       FROM surface_checks
+       WHERE checked_at >= ? AND ok = 0
+     ),
+     grouped AS (
+       SELECT netuid, surface_id, checked_at,
+              SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS grp
+       FROM failures
+     )
+     SELECT netuid, surface_id,
+            MIN(checked_at) AS started_at,
+            MAX(checked_at) AS ended_at,
+            COUNT(*) AS failed_samples
+     FROM grouped
+     GROUP BY netuid, surface_id, grp
+     ORDER BY started_at DESC
+     LIMIT ?`,
+    [since, INCIDENT_GAP_MS, MAX_INCIDENT_ROWS],
+  );
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatGlobalIncidents({
+    window: label,
+    observedAt: meta?.last_run_at || null,
+    incidentRows,
+    maxIncidents: MAX_INCIDENT_ROWS,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: analyticsMeta(env, "/metagraph/incidents.json", data.observed_at),
+    },
+    "short",
+  );
+}
+
 // Week-over-week structural trajectory from daily snapshots.
 async function handleTrajectory(request, env, netuid) {
   // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
@@ -1296,7 +1370,12 @@ async function handleUptime(request, env, netuid, url) {
      LIMIT ?`,
     [netuid, cutoff, MAX_UPTIME_ROWS],
   );
-  const data = formatUptime({ netuid, window: windowParam, rows });
+  const data = formatUptime({
+    netuid,
+    window: windowParam,
+    rows,
+    now: new Date().toISOString(),
+  });
   return envelopeResponse(
     request,
     {
@@ -3164,6 +3243,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <li><a href="/.well-known/api-catalog">API catalog</a> (RFC 9727 linkset)</li>
 <li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
 <li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
+<li><a href="/.well-known/agent-tools/index.json">Agent tool specs</a> — paste-ready OpenAI + Anthropic tools</li>
 <li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
 <li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
 </ul>
@@ -3221,6 +3301,10 @@ function apiCatalogResponse(request) {
             href: `${base}/.well-known/mcp/server-card.json`,
             type: "application/json",
           },
+          {
+            href: `${base}/.well-known/agent-tools/index.json`,
+            type: "application/json",
+          },
         ],
       },
     ],
@@ -3258,6 +3342,33 @@ async function mcpServerCardResponse(request, env) {
     card.published_at = pub;
   }
   const body = `${JSON.stringify(card, null, 2)}\n`;
+  const headers = discoveryHeaders("application/json");
+  headers.set("etag", await weakEtag(body));
+  if (request.headers.get("if-none-match") === headers.get("etag")) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
+}
+
+// Serve the OpenAI/Anthropic tool specs (and their index) computed live from
+// listToolDefinitions(). No static asset + no API_ROUTES entry: like the
+// api-catalog, these are worker-generated discovery documents whose body is
+// derived from the canonical MCP tool list, so there is nothing to bake or keep
+// in sync.
+async function agentToolsResponse(request, env, kind) {
+  const tools = listToolDefinitions();
+  const data =
+    kind === "openai"
+      ? buildOpenAIToolSpecs(tools)
+      : kind === "anthropic"
+        ? buildAnthropicToolSpecs(tools)
+        : buildAgentToolsIndex(tools, {
+            contractVersion: contractVersion(env),
+          });
+  const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
   if (request.headers.get("if-none-match") === headers.get("etag")) {

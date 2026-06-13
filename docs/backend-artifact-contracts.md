@@ -75,6 +75,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/incidents/{netuid}.json`: schema for per-surface SLA + reconstructed downtime incidents served live from D1 at `GET /api/v1/subnets/{netuid}/health/incidents` (no static file).
 - `/metagraph/subnets/{netuid}/trajectory.json`: schema for the week-over-week structural trajectory served live from D1 at `GET /api/v1/subnets/{netuid}/trajectory` (no static file).
 - `/metagraph/subnets/{netuid}/uptime.json`: schema for the long-term daily uptime history per operational surface (90d/1y window), served live from the `surface_uptime_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/uptime` (no static file).
+- `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
 - `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards served live from D1 + registry projections at `GET /api/v1/registry/leaderboards` (no static file).
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
@@ -143,6 +144,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/rpc/pools`: fetch endpoint pool scores.
 - `/api/v1/endpoint-pools`: fetch generalized endpoint pool scores.
 - `/api/v1/endpoint-incidents`: fetch probe-derived endpoint incidents.
+- `/api/v1/incidents`: fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d/30d window (live from D1).
 - `/api/v1/schemas`: fetch captured schema index.
 - `/api/v1/adapters/{slug}`: fetch adapter-backed public metrics.
 - `/api/v1/search`: fetch compact search index.

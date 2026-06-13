@@ -324,6 +324,13 @@ const checks = [
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],
   [
+    "/api/v1/incidents",
+    (body) => {
+      assert.equal(Array.isArray(body.data.surfaces), true);
+      assert.equal(typeof body.data.summary.incident_count, "number");
+    },
+  ],
+  [
     `/api/v1/health/history/${latestHealthHistoryDate}?limit=2`,
     (body) => {
       assert.equal(Array.isArray(body.data.surfaces), true);

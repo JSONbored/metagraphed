@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import {
   OPERATIONAL_KINDS,
   buildGlobalHealth,
+  formatGlobalIncidents,
   formatTrends,
   mergeFreshness,
   mergeRpcEndpoints,
@@ -13,11 +14,13 @@ import {
   overlayRpcPoolEligibility,
   overlaySubnetHealth,
   formatUptime,
+  loadSubnetReliability,
   parseLive,
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
 } from "../src/health-serving.mjs";
+import { computeReliability, scoreFromStats } from "../src/reliability.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -1513,13 +1516,18 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.surfaces[0].days[0].day, "2026-06-12");
     assert.equal(out.surfaces[0].days[0].ok_count, undefined);
     assert.equal(out.surfaces[0].days[0].uptime_ratio, 0.8);
+    // reliability is attached at the subnet level + per surface
+    assert.equal(typeof out.reliability.score, "number");
+    assert.equal(out.reliability.window, "90d");
+    assert.equal(out.reliability.surface_count, 2);
+    assert.equal(typeof out.surfaces[0].reliability.score, "number");
+    assert.match(out.surfaces[0].reliability.grade, /^[A-F]$/);
   });
 
-  test("returns an empty series for no rows", () => {
-    assert.deepEqual(
-      formatUptime({ netuid: 7, window: "1y", rows: [] }).surfaces,
-      [],
-    );
+  test("returns an empty series + null reliability for no rows", () => {
+    const out = formatUptime({ netuid: 7, window: "1y", rows: [] });
+    assert.deepEqual(out.surfaces, []);
+    assert.equal(out.reliability, null);
   });
 
   test("handles null ratios/latency, missing status, zero samples, and no window", () => {
@@ -1591,5 +1599,254 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error.code, "invalid_query");
+  });
+});
+
+describe("computeReliability (score from uptime history)", () => {
+  test("returns null subnet score when there is no probe data", () => {
+    assert.equal(computeReliability([]).subnet, null);
+    assert.deepEqual(computeReliability([]).surfaces, {});
+  });
+
+  test("scores sample-weighted uptime with a mild latency penalty", () => {
+    const out = computeReliability(
+      [
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 200,
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-13",
+          samples: 720,
+          ok_count: 700,
+          avg_latency_ms: 300,
+        },
+        {
+          surface_id: "b",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 360,
+          avg_latency_ms: 1500,
+        },
+      ],
+      { window: "30d", now: "2026-06-13T00:00:00.000Z" },
+    );
+    // subnet aggregate: (720+700+360)/2160 = 0.8241
+    assert.equal(out.subnet.uptime_ratio, 0.8241);
+    assert.equal(out.subnet.sample_count, 2160);
+    assert.equal(out.subnet.surface_count, 2);
+    assert.equal(out.subnet.window, "30d");
+    assert.equal(out.subnet.computed_at, "2026-06-13T00:00:00.000Z");
+    // healthy surface a -> high score; failing+slow surface b -> low
+    assert.ok(out.surfaces.a.score > out.surfaces.b.score);
+    assert.equal(out.surfaces.b.grade, "F");
+  });
+
+  test("latency penalty is bounded and only applies above 500ms", () => {
+    // perfect uptime, fast -> 100
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 100, avgLatencyMs: 200 }).score,
+      100,
+    );
+    // perfect uptime, 1500ms -> 100 - (1000/100) = 90
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 100, avgLatencyMs: 1500 }).score,
+      90,
+    );
+    // penalty caps at 15 even at extreme latency
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 100, avgLatencyMs: 99999 }).score,
+      85,
+    );
+    // no samples -> null
+    assert.equal(
+      scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
+      null,
+    );
+  });
+
+  test("covers grade B, null latency, missing day, and nullish rows", () => {
+    // grade B (95-98)
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 97, avgLatencyMs: 200 }).grade,
+      "B",
+    );
+    // null latency -> no penalty, avg_latency_ms reported null
+    const noLatency = scoreFromStats({
+      samples: 100,
+      okCount: 90,
+      avgLatencyMs: null,
+    });
+    assert.equal(noLatency.avg_latency_ms, null);
+    assert.equal(noLatency.score, 90);
+    // nullish rows -> empty result (no throw)
+    assert.equal(computeReliability(undefined).subnet, null);
+    assert.equal(computeReliability(null).subnet, null);
+    // a row with no day + no latency still scores from uptime
+    const out = computeReliability([
+      { surface_id: "a", samples: 100, ok_count: 100 },
+    ]);
+    assert.equal(out.subnet.score, 100);
+    assert.equal(out.subnet.avg_latency_ms, null);
+    assert.equal(out.subnet.day_count, 0);
+  });
+});
+
+describe("loadSubnetReliability (D1-backed)", () => {
+  function uptimeDb(rows) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          async all() {
+            return { results: rows };
+          },
+        };
+      },
+    };
+  }
+
+  test("returns null when D1 is unbound", async () => {
+    assert.equal(
+      await loadSubnetReliability({ db: undefined, netuid: 7 }),
+      null,
+    );
+  });
+
+  test("scores from surface_uptime_daily rows", async () => {
+    const out = await loadSubnetReliability({
+      db: uptimeDb([
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 120,
+        },
+        {
+          surface_id: "b",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 360,
+          avg_latency_ms: 900,
+        },
+      ]),
+      netuid: 7,
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    assert.equal(out.window, "30d");
+    assert.equal(out.surface_count, 2);
+    assert.equal(out.uptime_ratio, 0.75); // (720+360)/1440
+    assert.equal(out.computed_at, "2026-06-13T00:00:00.000Z");
+  });
+
+  test("returns null (not throw) when the query fails", async () => {
+    const out = await loadSubnetReliability({
+      db: {
+        prepare() {
+          throw new Error("d1 down");
+        },
+      },
+      netuid: 7,
+    });
+    assert.equal(out, null);
+  });
+
+  test("returns null when there is no history yet", async () => {
+    assert.equal(
+      await loadSubnetReliability({ db: uptimeDb([]), netuid: 7 }),
+      null,
+    );
+  });
+});
+
+describe("formatGlobalIncidents (cross-subnet ledger)", () => {
+  test("groups incidents by netuid+surface and summarizes", () => {
+    const out = formatGlobalIncidents({
+      window: "30d",
+      observedAt: "2026-06-13T00:00:00.000Z",
+      maxIncidents: 1000,
+      incidentRows: [
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 1000,
+          ended_at: 5000,
+          failed_samples: 3,
+        },
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 20000,
+          ended_at: 26000,
+          failed_samples: 2,
+        },
+        {
+          netuid: 23,
+          surface_id: "b",
+          started_at: 8000,
+          ended_at: 9000,
+          failed_samples: 1,
+        },
+      ],
+    });
+    assert.equal(out.summary.incident_count, 3);
+    assert.equal(out.summary.affected_surface_count, 2);
+    assert.equal(out.surfaces[0].netuid, 7); // sorted by netuid
+    const sn7 = out.surfaces.find((s) => s.netuid === 7);
+    assert.equal(sn7.incident_count, 2);
+    assert.equal(sn7.downtime_ms, 10000); // 4000 + 6000
+  });
+
+  test("empty rows -> empty ledger; caps at maxIncidents", () => {
+    assert.deepEqual(formatGlobalIncidents({ incidentRows: [] }).surfaces, []);
+    const capped = formatGlobalIncidents({
+      maxIncidents: 1,
+      incidentRows: [
+        {
+          netuid: 1,
+          surface_id: "x",
+          started_at: 1,
+          ended_at: 2,
+          failed_samples: 1,
+        },
+        {
+          netuid: 1,
+          surface_id: "x",
+          started_at: 3,
+          ended_at: 4,
+          failed_samples: 1,
+        },
+      ],
+    });
+    assert.equal(capped.summary.incident_count, 1);
+  });
+});
+
+describe("global incidents route", () => {
+  test("serves a schema-stable empty ledger when D1 is cold", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/incidents"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(Array.isArray(body.data.surfaces), true);
+    assert.equal(body.data.summary.incident_count, 0);
+    assert.equal(body.meta.source, "live-cron-prober");
+  });
+
+  test("rejects an unsupported window", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      req("/api/v1/incidents?window=5y"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
   });
 });

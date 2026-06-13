@@ -10,7 +10,7 @@ import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { repoRoot } from "../scripts/lib.mjs";
-import { MCP_SERVER_INFO } from "../src/mcp-server.mjs";
+import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
 
 const publicDir = path.join(repoRoot, "public");
 const readJson = async (rel) =>
@@ -26,6 +26,20 @@ describe("Discovery artifacts", () => {
     assert.equal(card.endpoint, "https://api.metagraph.sh/mcp");
     assert.equal(card.transport, "streamable-http");
     assert.ok(card.capabilities?.tools, "card must advertise tool capability");
+    // Bidirectional registry backlink, under our own domain namespace (not the
+    // registry-reserved io.modelcontextprotocol.registry/* namespace).
+    assert.equal(
+      card._meta?.["io.github.JSONbored/registry-name"],
+      MCP_REGISTRY_NAME,
+    );
+  });
+
+  test("mcp.json mirrors the registry backlink", async () => {
+    const doc = await readJson(".well-known/mcp.json");
+    assert.equal(
+      doc.servers?.[0]?._meta?.["io.github.JSONbored/registry-name"],
+      MCP_REGISTRY_NAME,
+    );
   });
 
   test("agent-skills index matches the discovery shape", async () => {

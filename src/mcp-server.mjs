@@ -14,6 +14,7 @@ import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import {
+  loadSubnetReliability,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -51,6 +52,20 @@ export const MCP_SERVER_INFO = {
     "Live operational + integration registry for Bittensor subnets — what each " +
     "subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
   version: CONTRACT_VERSION,
+};
+
+// Bidirectional registry backlink (server -> MCP Registry). Mirrors the
+// canonical name published in server.json so a registry/crawler can correlate
+// this live endpoint to its catalog entry (the registry already declares the
+// other direction). MCP's `_meta` extensibility + reverse-DNS key namespacing
+// are spec-defined (2025-11-25); the key itself is a project-defined courtesy
+// field under our OWN domain namespace (NOT the registry-reserved
+// `io.modelcontextprotocol.registry/*` namespace, which is registry-injected),
+// optional and ignorable by clients. Carried at the top level of the
+// initialize result + the server-card + mcp.json — never inside serverInfo.
+export const MCP_REGISTRY_NAME = "io.github.JSONbored/metagraphed";
+export const MCP_REGISTRY_META = {
+  "io.github.JSONbored/registry-name": MCP_REGISTRY_NAME,
 };
 
 // Behaviour hints (MCP ToolAnnotations) shared by every tool: all metagraphed
@@ -457,15 +472,21 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      const live = await mcpLiveHealth(ctx);
+      const [live, reliability] = await Promise.all([
+        mcpLiveHealth(ctx),
+        loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+      ]);
       const overlaid = overlaySubnetHealth(null, live, netuid);
-      if (overlaid) return overlaid;
+      if (overlaid) {
+        return { ...overlaid, reliability };
+      }
       return {
         schema_version: 1,
         netuid,
         summary: { status: "unknown", surface_count: 0 },
         operational_observed_at: null,
         health_source: "unavailable",
+        reliability,
         surfaces: [],
       };
     },
@@ -1241,6 +1262,8 @@ async function dispatchMessage(message, ctx) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: MCP_SERVER_INFO,
           instructions: MCP_INSTRUCTIONS,
+          // Registry backlink (sibling of serverInfo, never inside it).
+          _meta: MCP_REGISTRY_META,
         };
         return isNotification ? null : rpcResult(id, result);
       }

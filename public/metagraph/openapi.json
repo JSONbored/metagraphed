@@ -27,7 +27,10 @@
             "additionalProperties": true,
             "properties": {
               "extensions": {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object"
+                },
+                "description": "Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific.",
                 "type": "object"
               },
               "netuid": {
@@ -401,6 +404,17 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Headline counts across the agent-facing registry.",
+                "properties": {
+                  "callable_service_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               }
             },
@@ -2473,6 +2487,113 @@
           }
         ]
       },
+      "GlobalIncidentsArtifact": {
+        "additionalProperties": true,
+        "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "properties": {
+              "affected_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "incident_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "incident_count",
+              "affected_surface_count"
+            ],
+            "type": "object"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "downtime_ms": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incident_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incidents": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "duration_ms": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "ended_at": {
+                        "type": "integer"
+                      },
+                      "failed_samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "started_at": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "started_at",
+                      "ended_at",
+                      "duration_ms"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "surface_id",
+                "incident_count",
+                "incidents"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "summary",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "HealthBadgeArtifact": {
         "allOf": [
           {
@@ -2543,6 +2664,27 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Aggregate probe outcome counts for the day.",
+                "properties": {
+                  "classification_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "status_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               },
               "surfaces": {
@@ -3776,6 +3918,21 @@
               },
               "provider": {
                 "additionalProperties": true,
+                "description": "Identity summary of the provider these endpoints belong to.",
+                "properties": {
+                  "authority": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
                 "type": "object"
               },
               "summary": {
@@ -4048,6 +4205,70 @@
             "type": "object"
           }
         ]
+      },
+      "ReliabilityScore": {
+        "additionalProperties": true,
+        "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",
+        "properties": {
+          "avg_latency_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "computed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grade": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "type": "string"
+          },
+          "sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uptime_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "score",
+          "grade",
+          "uptime_ratio",
+          "sample_count"
+        ],
+        "type": "object"
       },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
@@ -5892,6 +6113,38 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Roll-up counts across the base-layer RPC endpoint set.",
+                "properties": {
+                  "archive_supported_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "by_kind": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "by_provider": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "by_status": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "endpoint_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               }
             },
@@ -6049,10 +6302,64 @@
             "properties": {
               "disabled_proxy_contract": {
                 "additionalProperties": true,
+                "description": "The read-only RPC proxy contract (disabled by default behind a feature flag).",
+                "properties": {
+                  "allowed_methods": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "denied_method_patterns": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "feature_flag": {
+                    "type": "string"
+                  },
+                  "rate_limit_required": {
+                    "type": "boolean"
+                  },
+                  "waf_required": {
+                    "type": "boolean"
+                  }
+                },
                 "type": "object"
               },
               "eligibility_policy": {
                 "additionalProperties": true,
+                "description": "How endpoints qualify for a pool — derived from monitored state only.",
+                "properties": {
+                  "eligible_layers": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "required_status": {
+                    "type": "string"
+                  },
+                  "requires_no_auth": {
+                    "type": "boolean"
+                  },
+                  "requires_public_safe": {
+                    "type": "boolean"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "user_reports_can_change_health": {
+                    "type": "boolean"
+                  }
+                },
                 "type": "object"
               },
               "pools": {
@@ -7184,9 +7491,13 @@
                 "type": "object"
               },
               "curation": {
-                "type": [
-                  "object",
-                  "null"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CurationMetadata"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "gap_priorities": {
@@ -7203,9 +7514,65 @@
                 ]
               },
               "health": {
-                "type": [
-                  "object",
-                  "null"
+                "oneOf": [
+                  {
+                    "additionalProperties": true,
+                    "description": "Live per-subnet health summary from the cron prober; null when no probe data exists.",
+                    "properties": {
+                      "avg_latency_ms": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "degraded_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "failed_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "last_checked": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "last_ok": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "netuid": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "observed_by": {
+                        "type": "string"
+                      },
+                      "ok_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "surface_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "unknown_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "name": {
@@ -8008,6 +8375,27 @@
               },
               "source": {
                 "additionalProperties": true,
+                "description": "Provenance of the native chain snapshot this index was built from.",
+                "properties": {
+                  "identity_storage": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "package": {
+                    "type": "string"
+                  },
+                  "rpc_family": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                },
                 "type": "object"
               },
               "subnets": {
@@ -8384,6 +8772,16 @@
             "minimum": 0,
             "type": "integer"
           },
+          "reliability": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReliabilityScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
             "type": "integer"
           },
@@ -8434,6 +8832,16 @@
                     "type": "object"
                   },
                   "type": "array"
+                },
+                "reliability": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ReliabilityScore"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "samples": {
                   "minimum": 0,
@@ -11345,6 +11753,108 @@
         "summary": "Fetch compact daily health history.",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "operationId": "incidents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/GlobalIncidentsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
+        "tags": [
+          "health",
+          "analytics"
         ]
       }
     },

@@ -9,6 +9,10 @@ import assert from "node:assert/strict";
 import Ajv2020 from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
 import { MCP_TOOLS, listToolDefinitions } from "../src/mcp-server.mjs";
+import {
+  buildAnthropicToolSpecs,
+  buildOpenAIToolSpecs,
+} from "../src/agent-tool-specs.mjs";
 import { createLocalArtifactEnv } from "./lib.mjs";
 
 const env = createLocalArtifactEnv();
@@ -29,6 +33,15 @@ async function mcp(payload, { method = "POST" } = {}) {
     method,
     headers: { "content-type": "application/json" },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
+  });
+  const response = await handleRequest(request, env, {});
+  const text = await response.text();
+  return { status: response.status, body: text ? JSON.parse(text) : null };
+}
+
+async function getJson(path) {
+  const request = new Request(`https://api.metagraph.sh${path}`, {
+    method: "GET",
   });
   const response = await handleRequest(request, env, {});
   const text = await response.text();
@@ -123,6 +136,80 @@ for (const tool of tools) {
     `${tool.name}: inputSchema must be an object schema`,
   );
 }
+
+// --- Agent tool specs (OpenAI + Anthropic) ---------------------------------
+// The /.well-known/agent-tools/* specs are projected at request time from the
+// same listToolDefinitions() the MCP server advertises, so they must cover
+// every tool and match the canonical projection byte-for-byte (no drift).
+
+const toolNames = new Set(MCP_TOOLS.map((tool) => tool.name));
+
+const openaiSpec = await getJson("/.well-known/agent-tools/openai.json");
+assert.equal(openaiSpec.status, 200, "openai.json must return HTTP 200");
+assert.deepEqual(
+  openaiSpec.body,
+  buildOpenAIToolSpecs(listToolDefinitions()),
+  "served openai.json must equal the canonical OpenAI projection",
+);
+assert.equal(
+  openaiSpec.body.length,
+  MCP_TOOLS.length,
+  "openai.json must expose every MCP tool",
+);
+for (const entry of openaiSpec.body) {
+  assert.equal(entry.type, "function", "openai entry must be a function tool");
+  assert.ok(
+    toolNames.has(entry.function?.name),
+    `openai entry references unknown tool ${entry.function?.name}`,
+  );
+  assert.equal(
+    entry.function?.parameters?.type,
+    "object",
+    `${entry.function?.name}: openai parameters must be an object schema`,
+  );
+  assert.equal(
+    typeof entry.function?.description,
+    "string",
+    `${entry.function?.name}: openai tool needs a description`,
+  );
+}
+
+const anthropicSpec = await getJson("/.well-known/agent-tools/anthropic.json");
+assert.equal(anthropicSpec.status, 200, "anthropic.json must return HTTP 200");
+assert.deepEqual(
+  anthropicSpec.body,
+  buildAnthropicToolSpecs(listToolDefinitions()),
+  "served anthropic.json must equal the canonical Anthropic projection",
+);
+for (const entry of anthropicSpec.body) {
+  assert.ok(
+    toolNames.has(entry.name),
+    `anthropic entry references unknown tool ${entry.name}`,
+  );
+  assert.equal(
+    entry.input_schema?.type,
+    "object",
+    `${entry.name}: anthropic input_schema must be an object schema`,
+  );
+}
+
+const toolsIndex = await getJson("/.well-known/agent-tools/index.json");
+assert.equal(toolsIndex.status, 200, "agent-tools index must return HTTP 200");
+assert.equal(
+  toolsIndex.body.executor?.endpoint,
+  "https://api.metagraph.sh/mcp",
+  "agent-tools index executor must point at the MCP endpoint",
+);
+assert.equal(
+  toolsIndex.body.executor?.jsonrpc_method,
+  "tools/call",
+  "agent-tools index executor must use tools/call",
+);
+assert.deepEqual(
+  [...toolsIndex.body.tools].sort(),
+  [...toolNames].sort(),
+  "agent-tools index must list every MCP tool",
+);
 
 // --- One tools/call per tool ----------------------------------------------
 

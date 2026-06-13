@@ -12,6 +12,9 @@ const R2_ONLY_PATTERNS = [
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
   /^endpoint-incidents\.json$/,
   /^endpoint-pools\.json$/,
+  // Global cross-subnet incident ledger, computed live from D1 at
+  // /api/v1/incidents — never written as a file.
+  /^incidents\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,
@@ -138,7 +141,9 @@ export function artifactStorageTierForRelativePath(relativePath = "") {
   // Non-default network artifacts (testnet/…, local/…) are R2-only regardless of
   // what the unprefixed equivalent would be — secondary-network data is large and
   // sparse, so it is never committed to git.
-  if (NETWORK_KEY_PREFIXES.some((prefix) => normalized.startsWith(`${prefix}/`))) {
+  if (
+    NETWORK_KEY_PREFIXES.some((prefix) => normalized.startsWith(`${prefix}/`))
+  ) {
     return ARTIFACT_STORAGE_TIERS.r2;
   }
   if (R2_ONLY_PATTERNS.some((pattern) => pattern.test(normalized))) {

@@ -1401,4 +1401,92 @@ describe("Agent discovery surfaces", () => {
     // No origin-relative refs that would resolve to the apex host.
     assert.doesNotMatch(link, /<\/[a-z.]/);
   });
+
+  test("serves OpenAI tool specs as a paste-ready function array", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/.well-known/agent-tools/openai.json",
+      ),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/json");
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    const tools = await response.json();
+    assert.equal(Array.isArray(tools), true);
+    assert.ok(tools.length >= 14);
+    for (const tool of tools) {
+      assert.equal(tool.type, "function");
+      assert.equal(typeof tool.function.name, "string");
+      assert.equal(typeof tool.function.description, "string");
+      assert.equal(tool.function.parameters.type, "object");
+    }
+  });
+
+  test("serves Anthropic tool specs with input_schema", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/.well-known/agent-tools/anthropic.json",
+      ),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    const tools = await response.json();
+    assert.equal(Array.isArray(tools), true);
+    for (const tool of tools) {
+      assert.equal(typeof tool.name, "string");
+      assert.equal(tool.input_schema.type, "object");
+      assert.equal("parameters" in tool, false);
+    }
+  });
+
+  test("agent-tools index points at the MCP executor and is discoverable", async () => {
+    const indexResponse = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/.well-known/agent-tools/index.json",
+      ),
+      {},
+      {},
+    );
+    assert.equal(indexResponse.status, 200);
+    const index = await indexResponse.json();
+    assert.equal(index.executor.endpoint, "https://api.metagraph.sh/mcp");
+    assert.equal(index.executor.jsonrpc_method, "tools/call");
+    assert.equal(
+      index.specs.openai,
+      "https://api.metagraph.sh/.well-known/agent-tools/openai.json",
+    );
+    assert.ok(Array.isArray(index.tools) && index.tools.length >= 14);
+
+    // The api-catalog linkset advertises the index under describedby.
+    const catalog = await (
+      await handleRequest(
+        new Request("https://api.metagraph.sh/.well-known/api-catalog"),
+        {},
+        {},
+      )
+    ).json();
+    const describedby = catalog.linkset[0].describedby.map(
+      (entry) => entry.href,
+    );
+    assert.ok(
+      describedby.includes(
+        "https://api.metagraph.sh/.well-known/agent-tools/index.json",
+      ),
+    );
+  });
+
+  test("agent-tools specs are served on the apex host too", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/.well-known/agent-tools/openai.json"),
+      {},
+      {},
+    );
+    assert.equal(response.status, 200);
+    const tools = await response.json();
+    assert.equal(Array.isArray(tools), true);
+    assert.ok(tools.length >= 14);
+  });
 });
