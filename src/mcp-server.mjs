@@ -54,6 +54,20 @@ export const MCP_SERVER_INFO = {
   version: CONTRACT_VERSION,
 };
 
+// Bidirectional registry backlink (server -> MCP Registry). Mirrors the
+// canonical name published in server.json so a registry/crawler can correlate
+// this live endpoint to its catalog entry (the registry already declares the
+// other direction). MCP's `_meta` extensibility + reverse-DNS key namespacing
+// are spec-defined (2025-11-25); the key itself is a project-defined courtesy
+// field under our OWN domain namespace (NOT the registry-reserved
+// `io.modelcontextprotocol.registry/*` namespace, which is registry-injected),
+// optional and ignorable by clients. Carried at the top level of the
+// initialize result + the server-card + mcp.json — never inside serverInfo.
+export const MCP_REGISTRY_NAME = "io.github.JSONbored/metagraphed";
+export const MCP_REGISTRY_META = {
+  "io.github.JSONbored/registry-name": MCP_REGISTRY_NAME,
+};
+
 // Behaviour hints (MCP ToolAnnotations) shared by every tool: all metagraphed
 // tools are read-only registry queries with no side effects, so a client may
 // safely auto-run them. openWorldHint is true — they reflect live, externally-
@@ -1248,6 +1262,8 @@ async function dispatchMessage(message, ctx) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: MCP_SERVER_INFO,
           instructions: MCP_INSTRUCTIONS,
+          // Registry backlink (sibling of serverInfo, never inside it).
+          _meta: MCP_REGISTRY_META,
         };
         return isNotification ? null : rpcResult(id, result);
       }
