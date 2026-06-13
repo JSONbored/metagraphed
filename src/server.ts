@@ -250,21 +250,94 @@ function escapeHtmlAttr(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-// Inject the deferred tracker + a canonical link into <head> of HTML responses
-// (streaming) and advertise the agent-discovery resources via an RFC 8288 Link
-// header. Canonical is set HERE (not per-route) so it is global and authoritative:
+// A schema.org BreadcrumbList for the two detail routes, derived purely from the
+// path (no data fetch). Returns null for every other route.
+function buildBreadcrumb(pathname: string): unknown | null {
+  const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
+  const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
+  let trail: Array<{ name: string; path: string }> | null = null;
+  if (subnet) {
+    trail = [
+      { name: "Home", path: "/" },
+      { name: "Subnets", path: "/subnets" },
+      { name: `Subnet ${decodeURIComponent(subnet[1])}`, path: `/subnets/${subnet[1]}` },
+    ];
+  } else if (provider) {
+    trail = [
+      { name: "Home", path: "/" },
+      { name: "Providers", path: "/providers" },
+      { name: decodeURIComponent(provider[1]), path: `/providers/${provider[1]}` },
+    ];
+  }
+  if (!trail) return null;
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: `${SITE_ORIGIN}${item.path}`,
+    })),
+  };
+}
+
+// schema.org JSON-LD: Organization + WebSite (with a sitelinks SearchAction over
+// /subnets?q=) on every page, plus a BreadcrumbList on the detail routes. The
+// serialized JSON escapes every "<" character so a crafted path segment can
+// never break out of the <script> element. ItemList on listings is intentionally
+// omitted (needs per-request data, rarely yields rich results).
+function buildJsonLd(pathname: string): string {
+  const graph: unknown[] = [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_ORIGIN}/#org`,
+      name: "Metagraphed",
+      url: SITE_ORIGIN,
+      description:
+        "The Bittensor subnet integration registry — what each subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_ORIGIN}/#website`,
+      url: SITE_ORIGIN,
+      name: "Metagraphed",
+      publisher: { "@id": `${SITE_ORIGIN}/#org` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE_ORIGIN}/subnets?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
+  const breadcrumb = buildBreadcrumb(pathname);
+  if (breadcrumb) graph.push(breadcrumb);
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": graph,
+  }).replace(/</g, "\\u003c");
+}
+
+// Inject the deferred tracker, a canonical link, and schema.org JSON-LD into
+// <head> of HTML responses (streaming) and advertise the agent-discovery
+// resources via an RFC 8288 Link header. Canonical + JSON-LD are set HERE (not
+// per-route) so they are global, consistent, and regen-proof. Canonical is
 // origin + path with the query stripped, so filter/sort permutations (e.g.
 // /subnets?sort=health&health=down) consolidate to the one indexable URL instead
 // of reading as duplicate content.
 function injectAnalytics(response: Response, request: Request): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
-  const canonicalHref = `${SITE_ORIGIN}${new URL(request.url).pathname}`;
-  const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(canonicalHref)}">`;
+  const pathname = new URL(request.url).pathname;
+  const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(`${SITE_ORIGIN}${pathname}`)}">`;
+  const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
   const transformed = new HTMLRewriter()
     .on("head", {
       element(element) {
         element.append(canonicalTag, { html: true });
+        element.append(jsonLdTag, { html: true });
         element.append(UMAMI_SNIPPET, { html: true });
       },
     })
