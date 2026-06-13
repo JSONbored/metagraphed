@@ -42,8 +42,12 @@ import {
   LEADERBOARD_BOARDS,
   mergeFreshness,
   mergeRpcEndpoints,
+  overlayCatalogDetail,
+  overlayCatalogIndex,
+  overlayOverviewHealth,
   overlayRpcPoolEligibility,
   overlaySubnetHealth,
+  resolveLiveHealth,
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
@@ -888,7 +892,9 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
   }
 
   const baseData = live ? live.data : artifact.data;
-  const baseSource = live ? "live-cron-prober" : artifact.source;
+  const baseSource = live
+    ? baseData?.health_source || "live-cron-prober"
+    : artifact.source;
 
   const transformed = applyQueryFilters(
     baseData,
@@ -2555,6 +2561,41 @@ async function liveHealthOverlay(env, matched, staticData) {
     case "freshness": {
       const meta = await readHealthKv(env, KV_HEALTH_META);
       const data = mergeFreshness(staticData, meta);
+      return data ? { data } : null;
+    }
+    case "subnet-overview": {
+      const liveSnapshot = await resolveLiveHealth({
+        readHealthKv,
+        env,
+        db: env.METAGRAPH_HEALTH_DB,
+      });
+      const data = overlayOverviewHealth(
+        staticData,
+        liveSnapshot,
+        Number(matched.params.netuid),
+      );
+      return data ? { data } : null;
+    }
+    case "agent-catalog-subnet": {
+      const liveSnapshot = await resolveLiveHealth({
+        readHealthKv,
+        env,
+        db: env.METAGRAPH_HEALTH_DB,
+      });
+      const data = overlayCatalogDetail(
+        staticData,
+        liveSnapshot,
+        Number(matched.params.netuid),
+      );
+      return data ? { data } : null;
+    }
+    case "agent-catalog": {
+      const liveSnapshot = await resolveLiveHealth({
+        readHealthKv,
+        env,
+        db: env.METAGRAPH_HEALTH_DB,
+      });
+      const data = overlayCatalogIndex(staticData, liveSnapshot);
       return data ? { data } : null;
     }
     default:
