@@ -75,6 +75,33 @@ describe("Worker runtime", () => {
     assert.notEqual(body.meta.generated_at, publishedAt);
   });
 
+  test("/api/v1/build populates the body's published_at from the KV pointer (generated_at stays the marker)", async () => {
+    const publishedAt = "2026-06-12T21:06:24.956Z";
+    const controlEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key, options) {
+          assert.equal(key, "metagraph:latest");
+          assert.equal(options?.type, "json");
+          return { latest_prefix: "latest/", published_at: publishedAt };
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/build"),
+      controlEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    // The committed build-summary body carries published_at:null; serve overlays
+    // the real publish pointer so a body-reading agent sees genuine freshness.
+    assert.equal(body.data.published_at, publishedAt);
+    assert.equal(body.meta.published_at, publishedAt);
+    // generated_at stays the deterministic content marker (issue #349).
+    assert.equal(body.data.generated_at, "1970-01-01T00:00:00.000Z");
+  });
+
   test("serves a health readiness probe", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/health"),

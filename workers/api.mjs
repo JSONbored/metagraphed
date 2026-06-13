@@ -968,19 +968,37 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
       parameter: transformed.error.parameter,
     });
   }
+  // Real publish time from the KV latest pointer (null until a publish has
+  // populated it). Unlike generated_at — a deterministic content marker that is
+  // intentionally the 1970 epoch in committed/local builds (issue #349) — this
+  // is the genuine "last updated" timestamp.
+  const pub = await publishedAt(env);
+  // Static-asset artifacts that DECLARE a `published_at` field (e.g.
+  // build-summary, agent-catalog) carry it as null in the committed
+  // deterministic build, so an agent reading the response BODY (not just the
+  // envelope meta) sees no freshness signal. Populate it at serve from the same
+  // pointer that feeds meta.published_at; generated_at stays the marker.
+  let responseData = transformed.data;
+  if (
+    pub &&
+    responseData &&
+    typeof responseData === "object" &&
+    !Array.isArray(responseData) &&
+    "published_at" in responseData &&
+    !responseData.published_at
+  ) {
+    responseData = { ...responseData, published_at: pub };
+  }
   return envelopeResponse(
     request,
     {
-      data: transformed.data,
+      data: responseData,
       meta: {
         artifact_path: artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
         generated_at: baseData?.generated_at || null,
-        // Real publish time from the KV latest pointer; null until a publish has
-        // populated it. Unlike generated_at (a deterministic content marker),
-        // this is safe to render as a human "last updated" timestamp.
-        published_at: await publishedAt(env),
+        published_at: pub,
         source: baseSource,
         ...(baseData?.operational_observed_at
           ? { operational_observed_at: baseData.operational_observed_at }
