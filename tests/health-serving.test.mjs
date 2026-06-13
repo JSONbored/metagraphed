@@ -947,4 +947,33 @@ describe("worker live health overlay on composed routes", () => {
     assert.equal(res.status, 200);
     assert.notEqual((await res.json()).meta.source, "live-cron-prober");
   });
+
+  test("/api/v1/health serves `unknown` when the live store is cold (live-only)", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.meta.source, "unavailable");
+    assert.equal(body.data.global.surface_count, 0);
+    assert.deepEqual(body.data.subnets, []);
+  });
+
+  test("/api/v1/subnets/7/health is `unknown` when cold — never 404, never baked", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/subnets/7/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.summary.status, "unknown");
+    assert.equal(body.data.health_source, "unavailable");
+    assert.equal(body.meta.source, "unavailable");
+  });
+
+  test("composed overview no longer embeds a baked health status", async () => {
+    // The built artifact carries health:null; cold reads must not surface a
+    // stale status (the overlay would set it live in prod).
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
+    const body = await res.json();
+    assert.equal(body.data.health, null);
+  });
 });

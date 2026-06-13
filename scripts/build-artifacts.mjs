@@ -980,8 +980,14 @@ await fs.rm(r2ArtifactDir("health/badges"), {
   recursive: true,
   force: true,
 });
-await writeJson(artifactFile("health/latest.json"), healthArtifacts.latest);
-await writeJson(artifactFile("health/summary.json"), healthArtifacts.summary);
+// Live-only health (no stored current-state artifacts): the 2-minute cron is the
+// single source of truth for operational status. We intentionally no longer
+// write health/latest.json, health/summary.json, or health/subnets/*.json — the
+// /api/v1/health and /api/v1/subnets/{netuid}/health routes serve live from
+// KV/D1 and report `unknown` when the live store is cold (never a baked,
+// possibly-stale value). `healthArtifacts` is still computed for build-internal
+// structural derivations (freshness demotion, endpoint classification) below.
+// health/history (daily snapshot) is retained as a historical record.
 const healthHistoryDate = (
   healthArtifacts.latest.probe_finished_at || generatedAt
 ).slice(0, 10);
@@ -1028,9 +1034,10 @@ for (const provider of providers) {
     endpoints: providerEndpoints,
   });
 }
-for (const [netuid, subnetHealth] of healthArtifacts.subnets) {
-  await writeJson(artifactFile(`health/subnets/${netuid}.json`), subnetHealth);
-}
+// Per-subnet current-health is live-only (served from KV/D1, not stored); see
+// the note above. Badges are kept: the badge route overlays live status and the
+// static badge is only an SVG-render fallback (it shows "unavailable" when cold,
+// not a stale status an agent would parse).
 for (const [netuid, badge] of healthArtifacts.badges) {
   await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
 }
@@ -1041,9 +1048,6 @@ coverage.completeness = buildCompletenessSummary(
 await writeJson(artifactFile("coverage.json"), coverage);
 // Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
 // curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
-const overviewHealthByNetuid = new Map(
-  (healthArtifacts.summary.subnets || []).map((entry) => [entry.netuid, entry]),
-);
 const overviewCurationByNetuid = new Map(
   curationIndex.map((entry) => [entry.netuid, entry]),
 );
@@ -1067,7 +1071,9 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     status: subnet.status,
     profile: profileArtifacts.byNetuid.get(subnet.netuid) || null,
-    health: overviewHealthByNetuid.get(subnet.netuid) || null,
+    // Live-only: health is overlaid from KV/D1 on read; `null` here means no
+    // stored status (served as `unknown` when the live store is cold).
+    health: null,
     curation: curationEntry ? curationEntry.curation : null,
     gaps: overviewGapsByNetuid.get(subnet.netuid)?.gaps || null,
     counts: {
@@ -1124,18 +1130,23 @@ function buildSubnetServices(netuid) {
         schema_url: surface.schema_url || null,
         schema_status: surface.schema_status || null,
         schema_artifact: schema?.path || null,
+        // Live-only: status/latency/last_ok are overlaid from KV/D1 on read.
+        // No build-time status is stored — cold reads report `unknown`.
+        // (`classification` stays a structural input to eligibility below, but
+        // is not baked into the served health object.)
         health: {
-          status: endpoint?.status || "unknown",
-          classification,
-          latency_ms: Number.isFinite(endpoint?.latency_ms)
-            ? endpoint.latency_ms
-            : null,
-          last_ok: endpoint?.last_ok || null,
-          last_checked: endpoint?.last_checked || null,
-          stale: endpoint?.health_stale ?? true,
-          monitoring_status: endpoint?.monitoring_status || null,
+          status: "unknown",
+          classification: null,
+          latency_ms: null,
+          last_ok: null,
+          last_checked: null,
+          stale: true,
+          monitoring_status: null,
         },
         eligibility: {
+          // Structural callability (public-safe + not curation-dead/unsafe);
+          // the live "callable right now" is recomputed by the overlay from
+          // live health on read.
           callable:
             Boolean(surface.public_safe) &&
             classification !== "dead" &&
@@ -1225,7 +1236,8 @@ for (const subnet of mergedSubnets) {
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
       base_url: primary?.base_url ?? null,
-      health: primary?.health?.status ?? "unknown",
+      // Live-only: overlaid from KV/D1 on read; `unknown` when the store is cold.
+      health: "unknown",
     });
   }
 }

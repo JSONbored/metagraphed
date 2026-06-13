@@ -846,8 +846,6 @@ async function validateGeneratedArtifacts(
     "source-snapshots.json",
   );
   const evidenceLedgerArtifact = await readArtifactJson("evidence-ledger.json");
-  const healthArtifact = await readArtifactJson("health/latest.json");
-  const healthSummaryArtifact = await readArtifactJson("health/summary.json");
   const rpcEndpointsArtifact = await readArtifactJson("rpc-endpoints.json");
   const endpointsArtifact = await readArtifactJson("endpoints.json");
   const endpointPoolsArtifact = await readArtifactJson("rpc/pools.json");
@@ -1220,32 +1218,8 @@ async function validateGeneratedArtifacts(
       evidenceLedgerArtifact.claims.length,
     "evidence ledger: claim count mismatch",
   );
-  assert(
-    healthArtifact.surfaces.length ===
-      surfacesArtifact.surfaces.filter(
-        (surface) => surface.probe?.enabled && surface.public_safe,
-      ).length,
-    "health artifact: probed surface count mismatch",
-  );
-  assert(
-    healthSummaryArtifact.subnets.length === nativeSnapshot.subnets.length,
-    "health summary: subnet count mismatch",
-  );
-  if (requiresProbeHealth()) {
-    assert(
-      healthArtifact.source === "live-smoke-probe",
-      "health artifact: publish requires probe-derived health",
-    );
-    assert(
-      healthSummaryArtifact.source === "live-smoke-probe",
-      "health summary: publish requires probe-derived health",
-    );
-    assert(
-      healthSummaryArtifact.global?.status_counts?.unknown !==
-        healthSummaryArtifact.global?.surface_count,
-      "health summary: publish cannot promote all-unknown health",
-    );
-  }
+  // Operational health is live-only (served from KV/D1, no static artifact), so
+  // there is no longer a committed health/latest|summary to validate here.
   assert(
     rpcEndpointsArtifact.endpoints.length ===
       surfacesArtifact.surfaces.filter((surface) =>
@@ -1335,15 +1309,12 @@ async function validateGeneratedArtifacts(
   );
 
   for (const netuid of nativeNetuids) {
-    for (const artifactPath of [
-      `health/subnets/${netuid}.json`,
-      `health/badges/${netuid}.json`,
-    ]) {
-      try {
-        await fs.access(artifactPathForRelative(artifactPath));
-      } catch {
-        assert(false, `${artifactPath}: missing health artifact`);
-      }
+    // Per-subnet health is live-only; only the badge fallback artifact is
+    // committed/published.
+    try {
+      await fs.access(artifactPathForRelative(`health/badges/${netuid}.json`));
+    } catch {
+      assert(false, `health/badges/${netuid}.json: missing badge artifact`);
     }
   }
 
@@ -1359,17 +1330,6 @@ async function validateGeneratedArtifacts(
       assert(false, `${schemaPath}: missing JSON schema contract`);
     }
   }
-}
-
-function requiresProbeHealth() {
-  if (process.env.METAGRAPH_REQUIRE_PROBE_HEALTH === "1") {
-    return true;
-  }
-  return (
-    process.env.GITHUB_ACTIONS === "true" &&
-    process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
-    process.env.GITHUB_REF === "refs/heads/main"
-  );
 }
 
 function requiresFreshness() {

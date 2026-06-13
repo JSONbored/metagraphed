@@ -133,11 +133,13 @@ export function buildGlobalHealth(liveCurrent, staticSummary) {
   if (!liveCurrent || !liveCurrent.summary) {
     return null;
   }
+  const source = liveCurrent.health_source || "live-cron-prober";
   return {
     schema_version: 1,
     contract_version: staticSummary?.contract_version,
     generated_at: liveCurrent.generated_at,
-    source: "live-cron-prober",
+    source,
+    health_source: source,
     scope: "operational",
     operational_observed_at: liveCurrent.last_run_at || null,
     global: liveCurrent.summary,
@@ -581,13 +583,17 @@ function liveFromD1Rows(rows) {
     .map(([netuid, group]) => ({ netuid, ...summarizeRows(group) }))
     .sort((a, b) => a.netuid - b.netuid);
   const lastRun = latestIso(surfaces.map((s) => s.last_checked));
+  const statusCounts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+  for (const row of surfaces) {
+    statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+  }
   return {
     schema_version: 1,
     generated_at: lastRun,
     last_run_at: lastRun,
     source: "live-d1-fallback",
     health_source: "live-d1-fallback",
-    summary: { surface_count: surfaces.length },
+    summary: { surface_count: surfaces.length, status_counts: statusCounts },
     subnets,
     surfaces,
   };
@@ -597,7 +603,12 @@ export async function resolveLiveHealth({ readHealthKv, env, db } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
       const current = await readHealthKv(env, "health:current");
-      if (current && Array.isArray(current.surfaces)) {
+      // The prober writes surfaces + subnets + summary; accept any live snapshot
+      // that carries the per-surface or per-subnet rows the overlays consume.
+      if (
+        current &&
+        (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
+      ) {
         return { ...current, health_source: "live-cron-prober" };
       }
     } catch {

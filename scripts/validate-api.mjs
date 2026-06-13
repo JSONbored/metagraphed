@@ -23,9 +23,12 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const env = createLocalArtifactEnv();
-const healthLatest = await readJson(artifactFilePath("health/latest.json"));
-const latestHealthHistoryDate = (
-  healthLatest.probe_finished_at || healthLatest.generated_at
+// health/latest.json is no longer generated (live-only health). The
+// health/history artifact is keyed by the build's generated_at date in the
+// deterministic (no-live-probe) build that validate/CI run, so derive the date
+// from a stable committed artifact's generated_at.
+const latestHealthHistoryDate = String(
+  (await readJson(artifactFilePath("subnets.json"))).generated_at,
 ).slice(0, 10);
 
 const checks = [

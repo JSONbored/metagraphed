@@ -32,8 +32,13 @@ export function assessProbeHealth(health) {
 
 function main() {
   if (!existsSync(HEALTH_PATH)) {
-    console.error(`::error::${HEALTH_PATH} missing from reviewed artifacts`);
-    return 1;
+    // Operational health is now live-only (served from KV/D1; no static
+    // health/latest.json is built or published), so there is nothing to guard
+    // against here — the 2-minute cron is the single source of truth.
+    console.log(
+      `${HEALTH_PATH} not present — operational health is live-only; publish-guard skipped.`,
+    );
+    return 0;
   }
   let health;
   try {

@@ -2871,43 +2871,57 @@
         ]
       },
       "HealthSubnetArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": true,
+        "description": "Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact.",
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "slug": {
-                "type": "string"
-              },
-              "summary": {
-                "$ref": "#/components/schemas/HealthSubnetSummary"
-              },
-              "surfaces": {
-                "items": {
-                  "$ref": "#/components/schemas/HealthSurface"
-                },
-                "type": "array"
-              }
+          "generated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_source": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/HealthSubnetSummary"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSurface"
             },
-            "required": [
-              "netuid",
-              "slug",
-              "name",
-              "summary",
-              "surfaces"
-            ],
-            "type": "object"
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "summary",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "HealthSubnetSummary": {
         "additionalProperties": false,
@@ -2966,9 +2980,6 @@
           }
         },
         "required": [
-          "netuid",
-          "slug",
-          "name",
           "status",
           "surface_count",
           "ok_count",
@@ -2979,31 +2990,53 @@
         "type": "object"
       },
       "HealthSummaryArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": true,
+        "description": "Live-computed global operational health (served from KV/D1; `unknown` when the live store is cold). No longer a static artifact.",
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
+          "generated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "global": {
             "additionalProperties": true,
-            "properties": {
-              "global": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "subnets": {
-                "items": {
-                  "$ref": "#/components/schemas/HealthSubnetSummary"
-                },
-                "type": "array"
-              }
-            },
-            "required": [
-              "global",
-              "subnets"
-            ],
             "type": "object"
+          },
+          "health_source": {
+            "type": "string"
+          },
+          "operational_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSubnetSummary"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "schema_version",
+          "global",
+          "subnets"
+        ],
+        "type": "object"
       },
       "HealthSurface": {
         "additionalProperties": false,

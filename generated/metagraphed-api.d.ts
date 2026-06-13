@@ -1651,37 +1651,51 @@ export interface components {
         };
         /** @enum {unknown} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
-        HealthSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
-            name: string;
+        /** @description Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact. */
+        HealthSubnetArtifact: {
+            contract_version?: string;
+            generated_at?: string | null;
+            health_source?: string;
+            name?: string;
             netuid: number;
-            slug: string;
+            operational_observed_at?: string | null;
+            schema_version: number;
+            slug?: string;
             summary: components["schemas"]["HealthSubnetSummary"];
             surfaces: components["schemas"]["HealthSurface"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         HealthSubnetSummary: {
             avg_latency_ms?: number | null;
             degraded_count: number;
             failed_count: number;
             last_checked?: string | null;
             last_ok?: string | null;
-            name: string;
-            netuid: number;
+            name?: string;
+            netuid?: number;
             ok_count: number;
-            slug: string;
+            slug?: string;
             status: components["schemas"]["HealthStatus"];
             surface_count: number;
             unknown_count: number;
         };
-        HealthSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
+        /** @description Live-computed global operational health (served from KV/D1; `unknown` when the live store is cold). No longer a static artifact. */
+        HealthSummaryArtifact: {
+            contract_version?: string;
+            generated_at?: string | null;
             global: {
                 [key: string]: unknown;
             };
+            health_source?: string;
+            operational_observed_at?: string | null;
+            schema_version: number;
+            scope?: string;
+            source?: string;
             subnets: components["schemas"]["HealthSubnetSummary"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         HealthSurface: {
             archive_support?: boolean | null;
             auth_required?: boolean;

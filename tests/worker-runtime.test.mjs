@@ -1034,12 +1034,13 @@ describe("Worker runtime", () => {
   });
 
   test("applies supported query filters across artifact families", async () => {
-    const healthLatestObject = await env.METAGRAPH_ARCHIVE.get(
-      "latest/health/latest.json",
+    // health/latest.json is no longer generated (live-only health); derive the
+    // history date from a stable committed artifact's generated_at instead.
+    const subnetsObject = await env.METAGRAPH_ARCHIVE.get(
+      "latest/subnets.json",
     );
-    const healthLatest = await healthLatestObject.json();
-    const latestHealthHistoryDate = (
-      healthLatest.probe_finished_at || healthLatest.generated_at
+    const latestHealthHistoryDate = String(
+      (await subnetsObject.json()).generated_at,
     ).slice(0, 10);
     const checks = [
       [

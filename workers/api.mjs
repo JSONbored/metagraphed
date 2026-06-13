@@ -866,16 +866,21 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
     // KV/D1 health overlay is mainnet-only.
     artifact = await readArtifact(env, artifactPath);
   } else if (matched.id === "health") {
-    const current = await readHealthKv(env, KV_HEALTH_CURRENT);
-    const liveData = current
-      ? buildGlobalHealth(current, { contract_version: contractVersion(env) })
+    // Live-only global operational health: KV health:current → D1
+    // surface_status, and an explicit `unknown` global when the live store is
+    // cold. There is no stored health summary to fall back to (live-only).
+    const liveSnapshot = await resolveLiveHealth({
+      readHealthKv,
+      env,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
+    const liveData = liveSnapshot
+      ? buildGlobalHealth(liveSnapshot, {
+          contract_version: contractVersion(env),
+        })
       : null;
-    if (liveData) {
-      live = { data: liveData };
-      artifact = { ok: false };
-    } else {
-      artifact = await readArtifact(env, artifactPath);
-    }
+    live = { data: liveData || unknownGlobalHealth(contractVersion(env)) };
+    artifact = { ok: false };
   } else {
     artifact = await readArtifact(env, artifactPath);
     live = await liveHealthOverlay(
@@ -883,6 +888,11 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
       matched,
       artifact.ok ? artifact.data : null,
     );
+    // Per-subnet health is live-only too: never 404 on a cold store — serve an
+    // explicit `unknown` payload instead of the (now absent) static artifact.
+    if (!live && matched.id === "subnet-health") {
+      live = { data: unknownSubnetHealth(Number(matched.params.netuid)) };
+    }
   }
 
   if (!artifact.ok && !live) {
@@ -2540,15 +2550,58 @@ async function readHealthKv(env, key) {
   }
 }
 
+// Explicit `unknown` health payloads for the live-only routes when the live
+// store (KV + D1) is cold — served instead of a stale baked value or a 404.
+function unknownGlobalHealth(contractVersionValue) {
+  return {
+    schema_version: 1,
+    contract_version: contractVersionValue,
+    source: "unavailable",
+    scope: "operational",
+    operational_observed_at: null,
+    health_source: "unavailable",
+    global: {
+      surface_count: 0,
+      status_counts: { ok: 0, degraded: 0, failed: 0, unknown: 0 },
+    },
+    subnets: [],
+  };
+}
+
+function unknownSubnetHealth(netuid) {
+  return {
+    schema_version: 1,
+    netuid,
+    summary: {
+      status: "unknown",
+      surface_count: 0,
+      ok_count: 0,
+      degraded_count: 0,
+      failed_count: 0,
+      unknown_count: 0,
+      last_checked: null,
+      last_ok: null,
+      avg_latency_ms: null,
+    },
+    operational_observed_at: null,
+    health_source: "unavailable",
+    surfaces: [],
+  };
+}
+
 // Overlay the 2-minute cron snapshot onto a static health/rpc artifact. Returns
 // { data } when a live snapshot is available, else null (caller serves static).
 async function liveHealthOverlay(env, matched, staticData) {
   switch (matched.id) {
     case "subnet-health": {
-      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
+      const liveSnapshot = await resolveLiveHealth({
+        readHealthKv,
+        env,
+        db: env.METAGRAPH_HEALTH_DB,
+      });
       const data = overlaySubnetHealth(
         staticData,
-        current,
+        liveSnapshot,
         Number(matched.params.netuid),
       );
       return data ? { data } : null;

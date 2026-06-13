@@ -26,6 +26,10 @@ const COMPUTED_ARTIFACTS = new Set([
   "health-incidents",
   "subnet-trajectory",
   "registry-leaderboards",
+  // Live-only operational health (served from KV/D1, no static file on disk).
+  "health-latest",
+  "health-summary",
+  "health-subnet",
 ]);
 
 const ajv = new Ajv2020({
