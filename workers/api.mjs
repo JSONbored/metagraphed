@@ -4,6 +4,7 @@ import {
   PUBLIC_ARTIFACTS,
   CACHE_SECONDS,
   CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.mjs";
@@ -246,7 +247,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
 
   if (url.pathname === "/.well-known/api-catalog") {
-    return apiCatalogResponse(request, url);
+    return apiCatalogResponse(request);
   }
 
   if (url.pathname === "/health") {
@@ -3090,10 +3091,12 @@ function homepageResponse(request) {
   return new Response(HOMEPAGE_HTML, { headers });
 }
 
-// RFC 9727 API catalog as an RFC 9264 linkset+json document. Absolute hrefs are
-// built from the request origin so the catalog is correct on any deploy host.
-function apiCatalogResponse(request, url) {
-  const base = url.origin;
+// RFC 9727 API catalog as an RFC 9264 linkset+json document. Hrefs point at the
+// canonical API host (api.metagraph.sh) regardless of which host served this —
+// the apex (metagraph.sh) routes /.well-known/* here too, and its catalog must
+// reference the real API, not the apex.
+function apiCatalogResponse(request) {
+  const base = `https://${PRIMARY_DOMAIN}`;
   const linkset = {
     linkset: [
       {

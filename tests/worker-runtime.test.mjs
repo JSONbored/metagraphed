@@ -1311,13 +1311,19 @@ describe("Agent discovery surfaces", () => {
     assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
   });
 
-  test("api-catalog hrefs follow the request origin", async () => {
+  test("api-catalog hrefs are canonical (api.metagraph.sh), not the request host", async () => {
+    // The apex (metagraph.sh) routes /.well-known/* to this worker too, so the
+    // catalog must reference the real API host regardless of which host served it.
     const response = await handleRequest(
-      new Request("https://preview.example.com/.well-known/api-catalog"),
+      new Request("https://metagraph.sh/.well-known/api-catalog"),
       {},
       {},
     );
     const body = await response.json();
-    assert.equal(body.linkset[0].anchor, "https://preview.example.com/api/v1");
+    assert.equal(body.linkset[0].anchor, "https://api.metagraph.sh/api/v1");
+    assert.equal(
+      body.linkset[0]["service-desc"][0].href,
+      "https://api.metagraph.sh/metagraph/openapi.json",
+    );
   });
 });

@@ -43,7 +43,22 @@
     // return 503 ai_unavailable. Flip to "false" to instantly disable.
     "METAGRAPH_ENABLE_AI": "true",
   },
-  "routes": [{ "pattern": "api.metagraph.sh", "custom_domain": true }],
+  // api.metagraph.sh is the backend worker's custom domain (the canonical agent
+  // surface). The apex metagraph.sh is the metagraphed-ui worker, but the
+  // machine/agent-discovery PATHS are routed here too so the SAME backend serves
+  // them on both hosts (single source of truth — no redirect/proxy/duplication).
+  // These specific routes win over the UI worker's apex domain; the UI keeps
+  // serving `/` and all human pages. (`/` is intentionally NOT routed here so the
+  // apex homepage stays the UI; its Link header belongs in the UI worker.)
+  "routes": [
+    { "pattern": "api.metagraph.sh", "custom_domain": true },
+    { "pattern": "metagraph.sh/.well-known/*", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/sitemap.xml", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/llms.txt", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/llms-full.txt", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/auth.md", "zone_name": "metagraph.sh" },
+    { "pattern": "metagraph.sh/agent.md", "zone_name": "metagraph.sh" },
+  ],
   "kv_namespaces": [
     {
       "binding": "METAGRAPH_CONTROL",
