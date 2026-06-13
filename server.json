@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jsonbored/metagraphed",
+  "name": "io.github.JSONbored/metagraphed",
   "title": "metagraphed — Bittensor subnet operational registry",
   "description": "Live operational + integration registry for Bittensor subnets: APIs, schemas, health.",
   "version": "0.1.0",

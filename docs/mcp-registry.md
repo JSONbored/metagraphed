@@ -14,7 +14,7 @@ door; the server-card remains the authoritative, always-current description.
 
 - **Manifest:** [`server.json`](../server.json) at the repo root, validated
   against `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`.
-- **Name (namespace):** `io.github.jsonbored/metagraphed`. The `io.github.*`
+- **Name (namespace):** `io.github.JSONbored/metagraphed`. The `io.github.*`
   namespace is proven by **GitHub OIDC** from this repo — no DNS record, no
   Ed25519 key, no stored secret. (The branded reverse-DNS alternative
   `sh.metagraph/*` would require a DNS `TXT` record + a signing key held as a CI
@@ -33,7 +33,7 @@ door; the server-card remains the authoritative, always-current description.
    → _Run workflow_. Mirrors the Python SDK release flow.
 2. **Auth:** `mcp-publisher login github-oidc` using the job's `id-token: write`
    OIDC token. The registry maps the token's repo owner (`JSONbored`) to the
-   `io.github.jsonbored/*` namespace. **No secret to configure.**
+   `io.github.JSONbored/*` namespace. **No secret to configure.**
 3. **Supply chain:** the `mcp-publisher` binary is pinned to a release tag and
    verified against a hardcoded SHA256 before it runs.
 4. **Publish:** `mcp-publisher publish` reads `server.json` and submits it.
@@ -49,7 +49,7 @@ publish step, by design.
 ## Verifying a published listing
 
 ```
-curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.jsonbored/metagraphed" | jq .
+curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.JSONbored/metagraphed" | jq .
 ```
 
 The returned record should show the `streamable-http` remote at
@@ -64,4 +64,4 @@ https://api.metagraph.sh/mcp
 ```
 
 Registry-aware clients can instead resolve it by name —
-`io.github.jsonbored/metagraphed` — and pick up the transport automatically.
+`io.github.JSONbored/metagraphed` — and pick up the transport automatically.

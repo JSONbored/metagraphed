@@ -2,7 +2,7 @@ name: Publish MCP Registry
 
 # Publishes metagraphed's hosted MCP server to the canonical MCP Registry
 # (registry.modelcontextprotocol.io) from the repo-root `server.json`. Uses
-# GitHub OIDC for the `io.github.jsonbored/*` namespace — no token, no secret,
+# GitHub OIDC for the `io.github.JSONbored/*` namespace — no token, no secret,
 # no DNS. Manual trigger; the registry rejects a re-publish of an existing
 # version, so bump `version` in server.json before re-running.
 #
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      id-token: write # OIDC: proves the io.github.jsonbored namespace
+      id-token: write # OIDC: proves the io.github.JSONbored namespace
       contents: read
     env:
       # Pinned mcp-publisher release + the SHA256 of its linux/amd64 tarball
@@ -43,7 +43,7 @@ jobs:
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const s = JSON.parse(readFileSync("server.json", "utf8"));
-            if (s.name !== "io.github.jsonbored/metagraphed") {
+            if (s.name !== "io.github.JSONbored/metagraphed") {
               throw new Error(`unexpected name: ${s.name}`);
             }
             if (!s.version || typeof s.version !== "string") {
