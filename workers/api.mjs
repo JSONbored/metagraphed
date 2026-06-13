@@ -253,6 +253,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return apiCatalogResponse(request);
   }
 
+  if (url.pathname === "/.well-known/mcp/server-card.json") {
+    return mcpServerCardResponse(request, env);
+  }
+
   if (url.pathname === "/health") {
     return handleHealthRequest(request, env);
   }
@@ -3223,6 +3227,43 @@ function apiCatalogResponse(request) {
     return new Response(null, { headers });
   }
   return new Response(`${JSON.stringify(linkset, null, 2)}\n`, { headers });
+}
+
+// The MCP server card (SEP-1649) is build-generated and shipped as a static
+// asset with a deterministic `published_at: null` (committed builds can't carry
+// a real publish time). Serve it worker-first (see wrangler `run_worker_first`)
+// so we can overlay the real publish time from the KV latest pointer — the same
+// freshness the /api/v1 envelope exposes. `generated_at` stays the deterministic
+// content marker (issue #349); `content_hash` + the contract version remain the
+// integrity/version signals.
+async function mcpServerCardResponse(request, env) {
+  const assetUrl = new URL(
+    "/.well-known/mcp/server-card.json",
+    request.url,
+  ).toString();
+  const asset = env.ASSETS?.fetch
+    ? await env.ASSETS.fetch(new Request(assetUrl))
+    : null;
+  if (!asset || !asset.ok) {
+    return errorResponse("not_found", "MCP server card is unavailable.", 404, {
+      artifact_path: "/.well-known/mcp/server-card.json",
+    });
+  }
+  const card = await asset.json();
+  const pub = await publishedAt(env);
+  if (pub && !card.published_at) {
+    card.published_at = pub;
+  }
+  const body = `${JSON.stringify(card, null, 2)}\n`;
+  const headers = discoveryHeaders("application/json");
+  headers.set("etag", await weakEtag(body));
+  if (request.headers.get("if-none-match") === headers.get("etag")) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
 }
 
 function apiHeaders(cacheProfile) {

@@ -102,6 +102,45 @@ describe("Worker runtime", () => {
     assert.equal(body.data.generated_at, "1970-01-01T00:00:00.000Z");
   });
 
+  test("/.well-known/mcp/server-card.json overlays published_at from the KV pointer", async () => {
+    const publishedAt = "2026-06-12T21:06:24.956Z";
+    const controlEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key, options) {
+          assert.equal(key, "metagraph:latest");
+          assert.equal(options?.type, "json");
+          return { latest_prefix: "latest/", published_at: publishedAt };
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
+      controlEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/json");
+    assert.ok(response.headers.get("etag"));
+    const card = await response.json();
+    // The committed card carries published_at:null; serve overlays the real
+    // publish pointer. generated_at stays the deterministic marker; the
+    // content_hash + serverInfo are preserved.
+    assert.equal(card.published_at, publishedAt);
+    assert.equal(card.generated_at, "1970-01-01T00:00:00.000Z");
+    assert.ok(card.content_hash, "card must keep its content_hash");
+    assert.ok(card.serverInfo?.name, "card must keep serverInfo");
+
+    // Cold (no KV pointer): published_at stays null, card still serves.
+    const cold = await handleRequest(
+      new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
+      env,
+      {},
+    );
+    assert.equal(cold.status, 200);
+    assert.equal((await cold.json()).published_at, null);
+  });
+
   test("serves a health readiness probe", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/health"),
