@@ -177,8 +177,10 @@ async function handleDiscovery(request: Request): Promise<Response | null> {
   return new Response(upstream.body, { status: upstream.status, headers });
 }
 
-// Build the apex sitemap: canonical static pages + one entry per live subnet (by netuid). Falls back
-// to the static pages alone if the subnet list can't be fetched, so it never 500s.
+// Build the apex sitemap: canonical static pages + one entry per live subnet (by netuid) and per
+// provider (by slug) — the two dynamic detail routes (/subnets/$netuid, /providers/$slug). Each
+// dynamic source is fetched independently and tolerant of failure, so a network hiccup just omits
+// that source and the sitemap is always valid XML (never 500s).
 async function buildSitemap(): Promise<Response> {
   const locs = SITEMAP_STATIC_PATHS.map((path) => `${SITE_ORIGIN}${path}`);
   try {
@@ -196,7 +198,32 @@ async function buildSitemap(): Promise<Response> {
       }
     }
   } catch {
-    // Network hiccup — fall back to the static pages so the sitemap is always valid XML.
+    // Network hiccup — subnets are omitted; the sitemap stays valid XML.
+  }
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/v1/providers?limit=500`, {
+      headers: { accept: "application/json" },
+    });
+    if (res.ok) {
+      const payload = (await res.json()) as {
+        data?: { providers?: Array<{ slug?: unknown; id?: unknown }> };
+      };
+      for (const provider of payload.data?.providers ?? []) {
+        // The list endpoint keys providers by `id`; the UI derives the route slug as
+        // `slug ?? id` (see normalizeProviderListItem in lib/metagraphed/queries.ts).
+        const slug =
+          typeof provider?.slug === "string" && provider.slug
+            ? provider.slug
+            : typeof provider?.id === "string" && provider.id
+              ? provider.id
+              : null;
+        if (slug) {
+          locs.push(`${SITE_ORIGIN}/providers/${encodeURIComponent(slug)}`);
+        }
+      }
+    }
+  } catch {
+    // Network hiccup — providers are omitted; the sitemap stays valid XML.
   }
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
