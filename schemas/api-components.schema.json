@@ -2465,6 +2465,113 @@
           }
         ]
       },
+      "GlobalIncidentsArtifact": {
+        "additionalProperties": true,
+        "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "properties": {
+              "affected_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "incident_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "incident_count",
+              "affected_surface_count"
+            ],
+            "type": "object"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "downtime_ms": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incident_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incidents": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "duration_ms": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "ended_at": {
+                        "type": "integer"
+                      },
+                      "failed_samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "started_at": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "started_at",
+                      "ended_at",
+                      "duration_ms"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "surface_id",
+                "incident_count",
+                "incidents"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "summary",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "HealthBadgeArtifact": {
         "allOf": [
           {

@@ -35,6 +35,7 @@ import {
 } from "../src/health-prober.mjs";
 import {
   buildGlobalHealth,
+  formatGlobalIncidents,
   formatIncidents,
   formatLeaderboards,
   formatPercentiles,
@@ -337,6 +338,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
       return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+    }
+    if (resolved.url.pathname === "/api/v1/incidents") {
+      return handleGlobalIncidents(request, env, resolved.url);
     }
     return handleApiRequest(request, env, resolved.url);
   }
@@ -1254,6 +1258,58 @@ async function handleHealthIncidents(request, env, netuid, url) {
         `/metagraph/health/incidents/${netuid}.json`,
         data.observed_at,
       ),
+    },
+    "short",
+  );
+}
+
+// Global, cross-subnet incident ledger — the same gap-island grouping as the
+// per-subnet route but with no netuid filter, grouped by (netuid, surface_id)
+// and capped. Powers a public status page's "recent incidents" feed. Returns a
+// schema-stable empty payload when D1 is unbound/cold.
+async function handleGlobalIncidents(request, env, url) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) {
+    return analyticsQueryError(error);
+  }
+  const since = Date.now() - days * DAY_MS;
+  const incidentRows = await d1All(
+    env,
+    `WITH failures AS (
+       SELECT netuid, surface_id, checked_at,
+              checked_at - LAG(checked_at)
+                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS gap
+       FROM surface_checks
+       WHERE checked_at >= ? AND ok = 0
+     ),
+     grouped AS (
+       SELECT netuid, surface_id, checked_at,
+              SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS grp
+       FROM failures
+     )
+     SELECT netuid, surface_id,
+            MIN(checked_at) AS started_at,
+            MAX(checked_at) AS ended_at,
+            COUNT(*) AS failed_samples
+     FROM grouped
+     GROUP BY netuid, surface_id, grp
+     ORDER BY started_at DESC
+     LIMIT ?`,
+    [since, INCIDENT_GAP_MS, MAX_INCIDENT_ROWS],
+  );
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatGlobalIncidents({
+    window: label,
+    observedAt: meta?.last_run_at || null,
+    incidentRows,
+    maxIncidents: MAX_INCIDENT_ROWS,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: analyticsMeta(env, "/metagraph/incidents.json", data.observed_at),
     },
     "short",
   );

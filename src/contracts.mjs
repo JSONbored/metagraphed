@@ -810,6 +810,12 @@ export const PUBLIC_ARTIFACTS = [
     "UptimeArtifact",
   ),
   artifact(
+    "global-incidents",
+    "/metagraph/incidents.json",
+    "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live from D1 at /api/v1/incidents (no static file).",
+    "GlobalIncidentsArtifact",
+  ),
+  artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
     "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
@@ -1476,6 +1482,16 @@ export const API_ROUTES = [
     "short",
     ["endpoints", "health"],
     listQuery("endpoint-incidents"),
+  ),
+  route(
+    "incidents",
+    "GET",
+    "/api/v1/incidents",
+    "/metagraph/incidents.json",
+    "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
+    "short",
+    ["health", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
   ),
   route(
     "schemas",

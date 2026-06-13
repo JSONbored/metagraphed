@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import {
   OPERATIONAL_KINDS,
   buildGlobalHealth,
+  formatGlobalIncidents,
   formatTrends,
   mergeFreshness,
   mergeRpcEndpoints,
@@ -1762,5 +1763,90 @@ describe("loadSubnetReliability (D1-backed)", () => {
       await loadSubnetReliability({ db: uptimeDb([]), netuid: 7 }),
       null,
     );
+  });
+});
+
+describe("formatGlobalIncidents (cross-subnet ledger)", () => {
+  test("groups incidents by netuid+surface and summarizes", () => {
+    const out = formatGlobalIncidents({
+      window: "30d",
+      observedAt: "2026-06-13T00:00:00.000Z",
+      maxIncidents: 1000,
+      incidentRows: [
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 1000,
+          ended_at: 5000,
+          failed_samples: 3,
+        },
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 20000,
+          ended_at: 26000,
+          failed_samples: 2,
+        },
+        {
+          netuid: 23,
+          surface_id: "b",
+          started_at: 8000,
+          ended_at: 9000,
+          failed_samples: 1,
+        },
+      ],
+    });
+    assert.equal(out.summary.incident_count, 3);
+    assert.equal(out.summary.affected_surface_count, 2);
+    assert.equal(out.surfaces[0].netuid, 7); // sorted by netuid
+    const sn7 = out.surfaces.find((s) => s.netuid === 7);
+    assert.equal(sn7.incident_count, 2);
+    assert.equal(sn7.downtime_ms, 10000); // 4000 + 6000
+  });
+
+  test("empty rows -> empty ledger; caps at maxIncidents", () => {
+    assert.deepEqual(formatGlobalIncidents({ incidentRows: [] }).surfaces, []);
+    const capped = formatGlobalIncidents({
+      maxIncidents: 1,
+      incidentRows: [
+        {
+          netuid: 1,
+          surface_id: "x",
+          started_at: 1,
+          ended_at: 2,
+          failed_samples: 1,
+        },
+        {
+          netuid: 1,
+          surface_id: "x",
+          started_at: 3,
+          ended_at: 4,
+          failed_samples: 1,
+        },
+      ],
+    });
+    assert.equal(capped.summary.incident_count, 1);
+  });
+});
+
+describe("global incidents route", () => {
+  test("serves a schema-stable empty ledger when D1 is cold", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(req("/api/v1/incidents"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(Array.isArray(body.data.surfaces), true);
+    assert.equal(body.data.summary.incident_count, 0);
+    assert.equal(body.meta.source, "live-cron-prober");
+  });
+
+  test("rejects an unsupported window", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      req("/api/v1/incidents?window=5y"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
   });
 });

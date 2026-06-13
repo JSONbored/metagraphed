@@ -2487,6 +2487,113 @@
           }
         ]
       },
+      "GlobalIncidentsArtifact": {
+        "additionalProperties": true,
+        "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "properties": {
+              "affected_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "incident_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "incident_count",
+              "affected_surface_count"
+            ],
+            "type": "object"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "downtime_ms": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incident_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "incidents": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "duration_ms": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "ended_at": {
+                        "type": "integer"
+                      },
+                      "failed_samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "started_at": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "started_at",
+                      "ended_at",
+                      "duration_ms"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "surface_id",
+                "incident_count",
+                "incidents"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "summary",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "HealthBadgeArtifact": {
         "allOf": [
           {
@@ -11646,6 +11753,108 @@
         "summary": "Fetch compact daily health history.",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "operationId": "incidents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/GlobalIncidentsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
+        "tags": [
+          "health",
+          "analytics"
         ]
       }
     },

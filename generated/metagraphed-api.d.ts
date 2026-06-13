@@ -344,6 +344,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary. */
+        get: operations["incidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lineage": {
         parameters: {
             query?: never;
@@ -1574,6 +1591,37 @@ export interface components {
             generated_at?: "1970-01-01T00:00:00.000Z";
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
+        /** @description Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window. */
+        GlobalIncidentsArtifact: {
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            summary: {
+                affected_surface_count: number;
+                incident_count: number;
+            } & {
+                [key: string]: unknown;
+            };
+            surfaces: ({
+                downtime_ms?: number;
+                incident_count: number;
+                incidents: ({
+                    duration_ms: number;
+                    ended_at: number;
+                    failed_samples?: number;
+                    started_at: number;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                netuid: number;
+                surface_id: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
             label: string;
@@ -4563,6 +4611,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    incidents: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalIncidentsArtifact"];
                     };
                 };
             };

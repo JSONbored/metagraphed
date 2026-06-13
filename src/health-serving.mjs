@@ -398,6 +398,70 @@ export function formatIncidents({
   };
 }
 
+// Global, cross-subnet incident ledger from the same gap-island grouping as
+// formatIncidents, but keyed by netuid + surface_id and listing ONLY surfaces
+// that had an incident in the window (a "what's been down lately" feed, not a
+// full SLA table). `incidentRows`: [{ netuid, surface_id, started_at, ended_at,
+// failed_samples }], already capped + ordered by the SQL.
+export function formatGlobalIncidents({
+  window,
+  observedAt,
+  incidentRows,
+  maxIncidents,
+}) {
+  const incidentLimit = Number.isInteger(maxIncidents)
+    ? Math.max(0, maxIncidents)
+    : Infinity;
+  const bySurface = new Map();
+  let acceptedIncidents = 0;
+  for (const row of incidentRows || []) {
+    if (acceptedIncidents >= incidentLimit) {
+      break;
+    }
+    const netuid = Number(row.netuid);
+    const key = `${netuid}/${row.surface_id}`;
+    const entry = bySurface.get(key) || {
+      netuid,
+      surface_id: row.surface_id,
+      incidents: [],
+    };
+    const startedAt = Number(row.started_at);
+    const endedAt = Number(row.ended_at);
+    entry.incidents.push({
+      started_at: startedAt,
+      ended_at: endedAt,
+      duration_ms: endedAt - startedAt,
+      failed_samples: Number(row.failed_samples) || 0,
+    });
+    bySurface.set(key, entry);
+    acceptedIncidents += 1;
+  }
+
+  const surfaces = [...bySurface.values()]
+    .map((entry) => ({
+      netuid: entry.netuid,
+      surface_id: entry.surface_id,
+      incident_count: entry.incidents.length,
+      downtime_ms: entry.incidents.reduce((sum, i) => sum + i.duration_ms, 0),
+      incidents: entry.incidents,
+    }))
+    .sort(
+      (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+    );
+
+  return {
+    schema_version: 1,
+    window: window || null,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    summary: {
+      incident_count: acceptedIncidents,
+      affected_surface_count: surfaces.length,
+    },
+    surfaces,
+  };
+}
+
 export const LEADERBOARD_BOARDS = [
   "healthiest",
   "fastest-rpc",

@@ -576,6 +576,60 @@
         },
         "additionalProperties": true
       },
+      "GlobalIncidentsArtifact": {
+        "type": "object",
+        "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
+        "required": ["schema_version", "source", "summary", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "summary": {
+            "type": "object",
+            "required": ["incident_count", "affected_surface_count"],
+            "properties": {
+              "incident_count": { "type": "integer", "minimum": 0 },
+              "affected_surface_count": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": true
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "surface_id",
+                "incident_count",
+                "incidents"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "surface_id": { "type": "string" },
+                "incident_count": { "type": "integer", "minimum": 0 },
+                "downtime_ms": { "type": "integer", "minimum": 0 },
+                "incidents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["started_at", "ended_at", "duration_ms"],
+                    "properties": {
+                      "started_at": { "type": "integer" },
+                      "ended_at": { "type": "integer" },
+                      "duration_ms": { "type": "integer", "minimum": 0 },
+                      "failed_samples": { "type": "integer", "minimum": 0 }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "ReliabilityScore": {
         "type": "object",
         "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",
