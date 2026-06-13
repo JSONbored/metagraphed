@@ -961,8 +961,9 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
             extensions: {
-                [key: string]: unknown;
+                [key: string]: Record<string, never>;
             };
             netuid: number;
             slug: string;
@@ -1067,7 +1068,11 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description Headline counts across the agent-facing registry. */
             summary?: {
+                callable_service_count?: number;
+                subnet_count?: number;
+            } & {
                 [key: string]: unknown;
             };
         } & {
@@ -1584,7 +1589,16 @@ export interface components {
             probe_finished_at?: string | null;
             probe_started_at?: string | null;
             source?: string;
+            /** @description Aggregate probe outcome counts for the day. */
             summary: {
+                classification_counts?: {
+                    [key: string]: number;
+                };
+                status_counts?: {
+                    [key: string]: number;
+                };
+                surface_count?: number;
+            } & {
                 [key: string]: unknown;
             };
             surfaces: components["schemas"]["HealthHistorySurface"][];
@@ -1919,7 +1933,13 @@ export interface components {
         });
         ProviderEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["EndpointResource"][];
+            /** @description Identity summary of the provider these endpoints belong to. */
             provider: {
+                authority?: string;
+                id?: string;
+                kind?: string;
+                name?: string;
+            } & {
                 [key: string]: unknown;
             };
             summary: components["schemas"]["EndpointSummary"];
@@ -2383,7 +2403,20 @@ export interface components {
         };
         RpcEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["RpcEndpoint"][];
+            /** @description Roll-up counts across the base-layer RPC endpoint set. */
             summary: {
+                archive_supported_count?: number;
+                by_kind?: {
+                    [key: string]: number;
+                };
+                by_provider?: {
+                    [key: string]: number;
+                };
+                by_status?: {
+                    [key: string]: number;
+                };
+                endpoint_count?: number;
+            } & {
                 [key: string]: unknown;
             };
         } & {
@@ -2419,10 +2452,27 @@ export interface components {
             url: string;
         };
         RpcPoolsArtifact: components["schemas"]["ArtifactBase"] & ({
+            /** @description The read-only RPC proxy contract (disabled by default behind a feature flag). */
             disabled_proxy_contract?: {
+                allowed_methods?: string[];
+                denied_method_patterns?: string[];
+                enabled?: boolean;
+                feature_flag?: string;
+                rate_limit_required?: boolean;
+                waf_required?: boolean;
+            } & {
                 [key: string]: unknown;
             };
+            /** @description How endpoints qualify for a pool — derived from monitored state only. */
             eligibility_policy?: {
+                eligible_layers?: string[];
+                notes?: string;
+                required_status?: string;
+                requires_no_auth?: boolean;
+                requires_public_safe?: boolean;
+                source?: string;
+                user_reports_can_change_health?: boolean;
+            } & {
                 [key: string]: unknown;
             };
             pools: components["schemas"]["RpcPool"][];
@@ -2698,10 +2748,24 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            curation?: Record<string, never> | null;
+            curation?: components["schemas"]["CurationMetadata"] | null;
             gap_priorities?: unknown[];
             gaps?: components["schemas"]["Gaps"] | null;
-            health: Record<string, never> | null;
+            health: ({
+                avg_latency_ms?: number | null;
+                degraded_count?: number;
+                failed_count?: number;
+                last_checked?: string | null;
+                last_ok?: string | null;
+                netuid?: number;
+                observed_by?: string;
+                ok_count?: number;
+                status?: string;
+                surface_count?: number;
+                unknown_count?: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             name?: string;
             netuid: number;
             profile: components["schemas"]["SubnetProfile"] | null;
@@ -2878,7 +2942,15 @@ export interface components {
         } | null;
         SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
             network: components["schemas"]["BittensorNetwork"];
+            /** @description Provenance of the native chain snapshot this index was built from. */
             source: {
+                identity_storage?: string;
+                kind?: string;
+                method?: string;
+                package?: string;
+                rpc_family?: string;
+                version?: string;
+            } & {
                 [key: string]: unknown;
             };
             subnets: components["schemas"]["SubnetIndexEntry"][];

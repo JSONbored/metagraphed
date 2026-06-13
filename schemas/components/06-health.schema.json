@@ -310,6 +310,18 @@
               },
               "summary": {
                 "type": "object",
+                "description": "Aggregate probe outcome counts for the day.",
+                "properties": {
+                  "surface_count": { "type": "integer", "minimum": 0 },
+                  "status_counts": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  },
+                  "classification_counts": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  }
+                },
                 "additionalProperties": true
               },
               "surfaces": {

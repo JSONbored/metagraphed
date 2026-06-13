@@ -1026,6 +1026,15 @@
               },
               "source": {
                 "type": "object",
+                "description": "Provenance of the native chain snapshot this index was built from.",
+                "properties": {
+                  "kind": { "type": "string" },
+                  "method": { "type": "string" },
+                  "package": { "type": "string" },
+                  "version": { "type": "string" },
+                  "rpc_family": { "type": "string" },
+                  "identity_storage": { "type": "string" }
+                },
                 "additionalProperties": true
               },
               "subnets": {
@@ -1406,8 +1415,35 @@
                   { "type": "null" }
                 ]
               },
-              "health": { "type": ["object", "null"] },
-              "curation": { "type": ["object", "null"] },
+              "health": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "description": "Live per-subnet health summary from the cron prober; null when no probe data exists.",
+                    "properties": {
+                      "netuid": { "type": "integer", "minimum": 0 },
+                      "status": { "type": "string" },
+                      "surface_count": { "type": "integer", "minimum": 0 },
+                      "ok_count": { "type": "integer", "minimum": 0 },
+                      "degraded_count": { "type": "integer", "minimum": 0 },
+                      "failed_count": { "type": "integer", "minimum": 0 },
+                      "unknown_count": { "type": "integer", "minimum": 0 },
+                      "last_checked": { "type": ["string", "null"] },
+                      "last_ok": { "type": ["string", "null"] },
+                      "avg_latency_ms": { "type": ["number", "null"] },
+                      "observed_by": { "type": "string" }
+                    },
+                    "additionalProperties": true
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "curation": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/CurationMetadata" },
+                  { "type": "null" }
+                ]
+              },
               "gaps": {
                 "oneOf": [
                   { "$ref": "#/components/schemas/Gaps" },
@@ -1543,7 +1579,15 @@
             "properties": {
               "published_at": { "type": ["string", "null"] },
               "content_hash": { "type": "string" },
-              "summary": { "type": "object", "additionalProperties": true },
+              "summary": {
+                "type": "object",
+                "description": "Headline counts across the agent-facing registry.",
+                "properties": {
+                  "subnet_count": { "type": "integer", "minimum": 0 },
+                  "callable_service_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": true
+              },
               "copyable_agent": {
                 "type": "object",
                 "required": ["url"],

@@ -13,7 +13,10 @@
             "additionalProperties": true,
             "properties": {
               "extensions": {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object"
+                },
+                "description": "Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific.",
                 "type": "object"
               },
               "netuid": {
@@ -387,6 +390,17 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Headline counts across the agent-facing registry.",
+                "properties": {
+                  "callable_service_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               }
             },
@@ -2521,6 +2535,27 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Aggregate probe outcome counts for the day.",
+                "properties": {
+                  "classification_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "status_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               },
               "surfaces": {
@@ -3754,6 +3789,21 @@
               },
               "provider": {
                 "additionalProperties": true,
+                "description": "Identity summary of the provider these endpoints belong to.",
+                "properties": {
+                  "authority": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
                 "type": "object"
               },
               "summary": {
@@ -5870,6 +5920,38 @@
               },
               "summary": {
                 "additionalProperties": true,
+                "description": "Roll-up counts across the base-layer RPC endpoint set.",
+                "properties": {
+                  "archive_supported_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "by_kind": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "by_provider": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "by_status": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "endpoint_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               }
             },
@@ -6027,10 +6109,64 @@
             "properties": {
               "disabled_proxy_contract": {
                 "additionalProperties": true,
+                "description": "The read-only RPC proxy contract (disabled by default behind a feature flag).",
+                "properties": {
+                  "allowed_methods": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "denied_method_patterns": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "feature_flag": {
+                    "type": "string"
+                  },
+                  "rate_limit_required": {
+                    "type": "boolean"
+                  },
+                  "waf_required": {
+                    "type": "boolean"
+                  }
+                },
                 "type": "object"
               },
               "eligibility_policy": {
                 "additionalProperties": true,
+                "description": "How endpoints qualify for a pool — derived from monitored state only.",
+                "properties": {
+                  "eligible_layers": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "required_status": {
+                    "type": "string"
+                  },
+                  "requires_no_auth": {
+                    "type": "boolean"
+                  },
+                  "requires_public_safe": {
+                    "type": "boolean"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "user_reports_can_change_health": {
+                    "type": "boolean"
+                  }
+                },
                 "type": "object"
               },
               "pools": {
@@ -7162,9 +7298,13 @@
                 "type": "object"
               },
               "curation": {
-                "type": [
-                  "object",
-                  "null"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CurationMetadata"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "gap_priorities": {
@@ -7181,9 +7321,65 @@
                 ]
               },
               "health": {
-                "type": [
-                  "object",
-                  "null"
+                "oneOf": [
+                  {
+                    "additionalProperties": true,
+                    "description": "Live per-subnet health summary from the cron prober; null when no probe data exists.",
+                    "properties": {
+                      "avg_latency_ms": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "degraded_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "failed_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "last_checked": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "last_ok": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "netuid": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "observed_by": {
+                        "type": "string"
+                      },
+                      "ok_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "surface_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "unknown_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "name": {
@@ -7986,6 +8182,27 @@
               },
               "source": {
                 "additionalProperties": true,
+                "description": "Provenance of the native chain snapshot this index was built from.",
+                "properties": {
+                  "identity_storage": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "package": {
+                    "type": "string"
+                  },
+                  "rpc_family": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                },
                 "type": "object"
               },
               "subnets": {

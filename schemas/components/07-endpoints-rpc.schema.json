@@ -696,6 +696,26 @@
             "properties": {
               "summary": {
                 "type": "object",
+                "description": "Roll-up counts across the base-layer RPC endpoint set.",
+                "properties": {
+                  "endpoint_count": { "type": "integer", "minimum": 0 },
+                  "archive_supported_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_kind": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  },
+                  "by_provider": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  },
+                  "by_status": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  }
+                },
                 "additionalProperties": true
               },
               "endpoints": {
@@ -720,10 +740,38 @@
             "properties": {
               "disabled_proxy_contract": {
                 "type": "object",
+                "description": "The read-only RPC proxy contract (disabled by default behind a feature flag).",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "feature_flag": { "type": "string" },
+                  "allowed_methods": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "denied_method_patterns": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "rate_limit_required": { "type": "boolean" },
+                  "waf_required": { "type": "boolean" }
+                },
                 "additionalProperties": true
               },
               "eligibility_policy": {
                 "type": "object",
+                "description": "How endpoints qualify for a pool — derived from monitored state only.",
+                "properties": {
+                  "source": { "type": "string" },
+                  "eligible_layers": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "required_status": { "type": "string" },
+                  "requires_no_auth": { "type": "boolean" },
+                  "requires_public_safe": { "type": "boolean" },
+                  "user_reports_can_change_health": { "type": "boolean" },
+                  "notes": { "type": "string" }
+                },
                 "additionalProperties": true
               },
               "provider_scores": {

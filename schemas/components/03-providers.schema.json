@@ -134,6 +134,13 @@
             "properties": {
               "provider": {
                 "type": "object",
+                "description": "Identity summary of the provider these endpoints belong to.",
+                "properties": {
+                  "id": { "type": "string" },
+                  "name": { "type": "string" },
+                  "kind": { "type": "string" },
+                  "authority": { "type": "string" }
+                },
                 "additionalProperties": true
               },
               "summary": {
