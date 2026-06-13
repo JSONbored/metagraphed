@@ -36,5 +36,14 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // shadcn/ui primitives co-export their `cva` variants, and our leaf
+    // components co-export tightly-coupled helpers/hooks (prefetchBrandIcon,
+    // safeExternalUrl, useActiveTab). That co-location is intentional here; this
+    // fast-refresh-only rule stays ON for routes, where a file should export just
+    // its route.
+    files: ["src/components/**/*.{ts,tsx}"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
   eslintPluginPrettier,
 );

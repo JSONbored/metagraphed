@@ -256,7 +256,7 @@ function GlobalSearch() {
   }, [q]);
 
   const { data, isFetching } = useQuery({ ...searchQuery(debounced, 16), retry: 0 });
-  const hits = (data?.data ?? []) as SearchHit[];
+  const hits = useMemo(() => (data?.data ?? []) as SearchHit[], [data]);
 
   // Group hits by kind. Order = Subnets, Surfaces, Endpoints, Providers, Other.
   const groups = useMemo(() => {

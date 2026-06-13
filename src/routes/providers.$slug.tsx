@@ -260,7 +260,7 @@ function EndpointsTableLoader({ slug }: { slug: string }) {
 function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean }) {
   const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
   const meta = data.meta;
-  const rows = (data.data ?? []) as Endpoint[];
+  const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
   const grouped = useMemo(() => {
     const m = new Map<number, Endpoint[]>();
     for (const r of rows) {

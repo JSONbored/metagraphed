@@ -364,7 +364,7 @@ type StateFilter = "all" | "down" | "warn" | "resolved";
 
 function Incidents({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
-  const rows = (data.data ?? []) as EndpointIncident[];
+  const rows = useMemo(() => (data.data ?? []) as EndpointIncident[], [data]);
   const [filter, setFilter] = useState<StateFilter>("all");
   const [showAll, setShowAll] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});

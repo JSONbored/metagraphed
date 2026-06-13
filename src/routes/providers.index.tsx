@@ -98,7 +98,7 @@ type SortKey = "name" | "surfaces" | "endpoints" | "subnets";
 function ProvidersGrid() {
   const { data: providersRes } = useSuspenseQuery(providersQuery());
   const { data: counts } = useSuspenseQuery(providerCountsQuery());
-  const rows = (providersRes.data ?? []) as Provider[];
+  const rows = useMemo(() => (providersRes.data ?? []) as Provider[], [providersRes]);
   const generatedAt = providersRes.meta?.generated_at;
   const stale = isStaleFreshness(generatedAt);
 
