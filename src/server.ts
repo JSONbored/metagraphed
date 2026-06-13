@@ -278,21 +278,31 @@ function escapeHtmlAttr(value: string): string {
 
 // A schema.org BreadcrumbList for the two detail routes, derived purely from the
 // path (no data fetch). Returns null for every other route.
+function safeDecodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 function buildBreadcrumb(pathname: string): unknown | null {
   const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
   let trail: Array<{ name: string; path: string }> | null = null;
   if (subnet) {
+    const name = safeDecodePathSegment(subnet[1]);
     trail = [
       { name: "Home", path: "/" },
       { name: "Subnets", path: "/subnets" },
-      { name: `Subnet ${decodeURIComponent(subnet[1])}`, path: `/subnets/${subnet[1]}` },
+      { name: `Subnet ${name}`, path: `/subnets/${subnet[1]}` },
     ];
   } else if (provider) {
+    const name = safeDecodePathSegment(provider[1]);
     trail = [
       { name: "Home", path: "/" },
       { name: "Providers", path: "/providers" },
-      { name: decodeURIComponent(provider[1]), path: `/providers/${provider[1]}` },
+      { name, path: `/providers/${provider[1]}` },
     ];
   }
   if (!trail) return null;
