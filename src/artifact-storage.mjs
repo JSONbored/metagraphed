@@ -29,6 +29,7 @@ const R2_ONLY_PATTERNS = [
   /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,
   /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   /^registry\/leaderboards\.json$/,
   // Per-subnet agent capability catalog (full service detail) — large, built.
   /^agent-catalog\/(?:\d+|\{netuid\})\.json$/,

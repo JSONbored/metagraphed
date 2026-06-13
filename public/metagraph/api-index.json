@@ -327,7 +327,7 @@
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",

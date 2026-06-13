@@ -597,6 +597,14 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
+      artifactStorageTierForPath("/metagraph/subnets/{netuid}/uptime.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForPath("/metagraph/subnets/7/uptime.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
       artifactStorageTierForRelativePath("schemas/index.json"),
       ARTIFACT_STORAGE_TIERS.dual,
     );

@@ -421,7 +421,7 @@
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
