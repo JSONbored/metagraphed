@@ -3234,6 +3234,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "artifact_contracts": [
+                     *           {
+                     *             "contract_version": "2026-06-06.1",
+                     *             "id": "example",
+                     *             "path": "/metagraph/example.json",
+                     *             "schema_ref": "#/components/schemas/Example",
+                     *             "storage_tier": "dual"
+                     *           }
+                     *         ],
+                     *         "base_path": "/api/v1",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "openapi_url": "/api/v1/openapi.json",
+                     *         "primary_domain": "api.metagraph.sh",
+                     *         "response_envelope": {
+                     *           "error_schema_ref": "#/components/schemas/ErrorEnvelope",
+                     *           "fields": [
+                     *             "ok"
+                     *           ],
+                     *           "notes": "Example description.",
+                     *           "schema_version": 1,
+                     *           "success_schema_ref": "#/components/schemas/SuccessEnvelope"
+                     *         },
+                     *         "routes": [
+                     *           {
+                     *             "artifact_path": "/metagraph/example.json",
+                     *             "cache": "short",
+                     *             "description": "Example description.",
+                     *             "id": "example",
+                     *             "method": "GET",
+                     *             "path": "/api/v1/example",
+                     *             "public": true,
+                     *             "query_parameters": [
+                     *               {
+                     *                 "name": "Example Subnet",
+                     *                 "schema": {}
+                     *               }
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "type_definitions_url": "/metagraph/types.d.ts"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ApiIndexArtifact"];
                     };
@@ -3304,6 +3373,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "extensions": {
+                     *           "example": {}
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet",
+                     *         "snapshot": {},
+                     *         "subnet": "example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AdapterArtifact"];
                     };
@@ -3372,6 +3478,45 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "callable_service_count": 1,
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "service_count": 1
+                     *           }
+                     *         ],
+                     *         "total_subnet_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AgentCatalogArtifact"];
                     };
@@ -3442,6 +3587,58 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "categories": [
+                     *           "example"
+                     *         ],
+                     *         "completeness_score": 100,
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "integration_readiness": 1,
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "readiness": {
+                     *           "components": {},
+                     *           "readiness_version": 1,
+                     *           "score": 100
+                     *         },
+                     *         "schema_version": 1,
+                     *         "service_count": 1,
+                     *         "services": [
+                     *           {
+                     *             "base_url": "https://api.metagraph.sh/example",
+                     *             "kind": "example",
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
+                     *         "slug": "example-subnet",
+                     *         "subnet_type": "example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AgentCatalogSubnetArtifact"];
                     };
@@ -3510,6 +3707,65 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "copyable_agent": {
+                     *           "description": "Example description.",
+                     *           "title": "Example Subnet",
+                     *           "url": "https://api.metagraph.sh/example"
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "mcp": {
+                     *           "endpoint": "https://api.metagraph.sh/example",
+                     *           "install": "example",
+                     *           "server_card": "https://api.metagraph.sh/example",
+                     *           "tools": [
+                     *             {
+                     *               "name": "Example Subnet"
+                     *             }
+                     *           ],
+                     *           "transport": "example"
+                     *         },
+                     *         "notes": "Example description.",
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "resources": [
+                     *           {
+                     *             "id": "example",
+                     *             "title": "Example Subnet",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "callable_service_count": 1,
+                     *           "subnet_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AgentResourcesArtifact"];
                     };
@@ -3578,6 +3834,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "artifact_budgets": [
+                     *           {
+                     *             "fail_bytes": 1,
+                     *             "path": "example",
+                     *             "size_bytes": 1,
+                     *             "status": "ok",
+                     *             "warn_bytes": 1
+                     *           }
+                     *         ],
+                     *         "artifact_count": 1,
+                     *         "artifact_size_bytes": 1,
+                     *         "candidate_count": 1,
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "provider_count": 1,
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "surface_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BuildSummaryArtifact"];
                     };
@@ -3655,6 +3957,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidates": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "schema_version": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "state": "schema-invalid",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CandidatesArtifact"];
                     };
@@ -3723,6 +4070,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "artifacts": {
+                     *           "added": [
+                     *             "example"
+                     *           ],
+                     *           "modified": [
+                     *             "example"
+                     *           ],
+                     *           "removed": [
+                     *             "example"
+                     *           ]
+                     *         },
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "source": "generated-artifact-diff",
+                     *         "subnets": {
+                     *           "added": [
+                     *             1
+                     *           ],
+                     *           "removed": [
+                     *             1
+                     *           ],
+                     *           "renamed": [
+                     *             {}
+                     *           ]
+                     *         },
+                     *         "summary": {
+                     *           "artifact_added_count": 1,
+                     *           "artifact_modified_count": 1,
+                     *           "artifact_removed_count": 1,
+                     *           "coverage_delta": {},
+                     *           "netuid_added_count": 7,
+                     *           "netuid_removed_count": 7,
+                     *           "netuid_renamed_count": 7
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChangelogArtifact"];
                     };
@@ -3791,6 +4200,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "artifacts": [
+                     *           {
+                     *             "contract_version": "2026-06-06.1",
+                     *             "id": "example",
+                     *             "path": "/metagraph/example.json",
+                     *             "schema_ref": "#/components/schemas/Example",
+                     *             "storage_tier": "dual"
+                     *           }
+                     *         ],
+                     *         "base_path": "/metagraph",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "notes": "Example description.",
+                     *         "openapi_url": "/metagraph/openapi.json",
+                     *         "primary_domain": "api.metagraph.sh",
+                     *         "schema_version": 1,
+                     *         "status_domain": null,
+                     *         "type_definitions_url": "/metagraph/types.d.ts"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ContractsArtifact"];
                     };
@@ -3859,6 +4313,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "application_subnet_count": 1,
+                     *         "candidate_count": 1,
+                     *         "candidate_subnet_count": 1,
+                     *         "chain_subnet_count": 1,
+                     *         "completeness": {
+                     *           "average_score": 100,
+                     *           "dimension_coverage": {},
+                     *           "fully_complete_count": 1,
+                     *           "fully_complete_pct": 1,
+                     *           "median_score": 100,
+                     *           "methodology": "GET",
+                     *           "score_distribution": {},
+                     *           "scored_subnet_count": 1
+                     *         },
+                     *         "contract_version": "2026-06-06.1",
+                     *         "curated_overlay_count": 1,
+                     *         "curation_level_counts": {
+                     *           "example": 1
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "manifested_count": 1,
+                     *         "native_only_count": 1,
+                     *         "native_only_with_candidates": 1,
+                     *         "native_only_without_candidates": 1,
+                     *         "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "network": "finney",
+                     *         "notes": "Example description.",
+                     *         "probed_count": 1,
+                     *         "probed_surface_count": 1,
+                     *         "root_subnet_count": 1,
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "candidates": "example",
+                     *           "native": "example",
+                     *           "overlays": "example"
+                     *         },
+                     *         "surface_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CoverageArtifact"];
                     };
@@ -3934,6 +4451,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "curation": [
+                     *           {
+                     *             "candidate_count": 1,
+                     *             "coverage_level": "native-only",
+                     *             "curation": {
+                     *               "level": "native",
+                     *               "review_state": "unreviewed"
+                     *             },
+                     *             "gaps": {
+                     *               "gap_notes": [
+                     *                 "example"
+                     *               ],
+                     *               "missing_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "supported_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "slug": "example-subnet",
+                     *             "surface_count": 1
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CurationArtifact"];
                     };
@@ -4013,6 +4585,71 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "incidents": [
+                     *           {
+                     *             "classification": "live",
+                     *             "detected_at": "2026-06-01T00:00:00.000Z",
+                     *             "endpoint_id": "https://api.metagraph.sh/example",
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_checked": "2026-06-01T00:00:00.000Z",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "reason": "example",
+                     *             "severity": "critical",
+                     *             "source": "probe-derived",
+                     *             "state": "active",
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "user_reported": false
+                     *           }
+                     *         ],
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "active_count": 1,
+                     *           "by_kind": {},
+                     *           "by_layer": {},
+                     *           "by_provider": {},
+                     *           "by_severity": {},
+                     *           "by_status": {},
+                     *           "incident_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["EndpointIncidentsArtifact"];
                     };
@@ -4088,6 +4725,94 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "disabled_proxy_contract": {
+                     *           "allowed_methods": [
+                     *             "GET"
+                     *           ],
+                     *           "denied_method_patterns": [
+                     *             "GET"
+                     *           ],
+                     *           "enabled": true,
+                     *           "feature_flag": "example",
+                     *           "rate_limit_required": true,
+                     *           "waf_required": true
+                     *         },
+                     *         "eligibility_policy": {
+                     *           "eligible_layers": [
+                     *             "example"
+                     *           ],
+                     *           "notes": "Example description.",
+                     *           "required_status": "ok",
+                     *           "requires_no_auth": false,
+                     *           "requires_public_safe": true,
+                     *           "source": "live-cron-prober",
+                     *           "user_reports_can_change_health": false
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "pools": [
+                     *           {
+                     *             "eligible_count": 1,
+                     *             "endpoint_count": 1,
+                     *             "endpoints": [
+                     *               {
+                     *                 "health_source": "probe-derived",
+                     *                 "health_stale": false,
+                     *                 "id": "example",
+                     *                 "last_ok": "2026-06-01T00:00:00.000Z",
+                     *                 "observed_at": "2026-06-01T00:00:00.000Z",
+                     *                 "pool_eligible": false,
+                     *                 "provider": "example-provider",
+                     *                 "score": 100,
+                     *                 "status": "ok",
+                     *                 "url": "https://api.metagraph.sh/example"
+                     *               }
+                     *             ],
+                     *             "id": "example",
+                     *             "kind": "example"
+                     *           }
+                     *         ],
+                     *         "provider_scores": [
+                     *           {
+                     *             "average_score": 100,
+                     *             "degraded_count": 1,
+                     *             "endpoint_count": 1,
+                     *             "failed_count": 1,
+                     *             "monitored_count": 1,
+                     *             "ok_count": 1,
+                     *             "operational_score": 100,
+                     *             "pool_eligible_count": 1,
+                     *             "provider": "example-provider"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["EndpointPoolsArtifact"];
                     };
@@ -4168,6 +4893,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "monitoring_policy": {
+                     *               "enabled": true,
+                     *               "expect": "example",
+                     *               "method": "GET",
+                     *               "source": "live-cron-prober"
+                     *             },
+                     *             "monitoring_status": "monitored",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "publication_state": "candidate",
+                     *             "score": 100,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "by_kind": {},
+                     *           "by_layer": {},
+                     *           "by_provider": {},
+                     *           "by_publication_state": {},
+                     *           "by_status": {},
+                     *           "endpoint_count": 1,
+                     *           "monitored_count": 1,
+                     *           "pool_eligible_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["EndpointsArtifact"];
                     };
@@ -4242,6 +5036,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "claims": [
+                     *           {
+                     *             "claim": "example",
+                     *             "confidence": "low",
+                     *             "limits": "example",
+                     *             "source_tier": "native-chain",
+                     *             "source_type": "example",
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "subject": "example",
+                     *             "support_summary": "Example description."
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["EvidenceLedgerArtifact"];
                     };
@@ -4310,6 +5146,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "fixture_count": 1,
+                     *         "fixtures": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["FixturesIndexArtifact"];
                     };
@@ -4378,6 +5252,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "sources": [
+                     *           {
+                     *             "as_of": "example",
+                     *             "id": "example",
+                     *             "lane": "adapter-snapshot",
+                     *             "path": "example",
+                     *             "required_for_publish": true,
+                     *             "stale_after_hours": 1,
+                     *             "stale_behavior": "block",
+                     *             "status": "captured",
+                     *             "timestamp": "example",
+                     *             "timestamp_field": "example"
+                     *           }
+                     *         ],
+                     *         "summary": {
+                     *           "adapter_count": 1,
+                     *           "adapter_snapshot_as_of": "example",
+                     *           "blocking_source_count": 5000000,
+                     *           "candidate_discovery_as_of": "example",
+                     *           "health_probe_as_of": "example",
+                     *           "health_surface_count": 1,
+                     *           "missing_blocking_source_count": 5000000,
+                     *           "native_data_as_of": "example",
+                     *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "openapi_surface_count": 1,
+                     *           "publish_ready_without_age_check": false,
+                     *           "schema_snapshot_as_of": "example",
+                     *           "stale_window_warnings": [
+                     *             "30d"
+                     *           ],
+                     *           "verification_as_of": "example",
+                     *           "verification_generated_at": "2026-06-01T00:00:00.000Z",
+                     *           "warning_source_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["FreshnessArtifact"];
                     };
@@ -4454,6 +5392,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "gaps": [
+                     *           {
+                     *             "coverage_level": "native-only",
+                     *             "curation_level": "native",
+                     *             "gaps": {
+                     *               "gap_notes": [
+                     *                 "example"
+                     *               ],
+                     *               "missing_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "supported_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "slug": "example-subnet"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["GapsArtifact"];
                     };
@@ -4529,6 +5517,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "global": {},
+                     *         "health_source": "probe-derived",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "scope": "example",
+                     *         "source": "live-cron-prober",
+                     *         "subnets": [
+                     *           {
+                     *             "degraded_count": 1,
+                     *             "failed_count": 1,
+                     *             "ok_count": 1,
+                     *             "status": "ok",
+                     *             "surface_count": 1,
+                     *             "unknown_count": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSummaryArtifact"];
                     };
@@ -4609,6 +5641,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "date": "2026-06-01",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "probe_finished_at": "2026-06-01T00:00:00.000Z",
+                     *         "probe_started_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "summary": {
+                     *           "classification_counts": {},
+                     *           "status_counts": {},
+                     *           "surface_count": 1
+                     *         },
+                     *         "surfaces": [
+                     *           {
+                     *             "classification": "live",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "status": "ok",
+                     *             "surface_id": "example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthHistoryArtifact"];
                     };
@@ -4679,6 +5760,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "summary": {
+                     *           "affected_surface_count": 1,
+                     *           "incident_count": 1
+                     *         },
+                     *         "surfaces": [
+                     *           {
+                     *             "incident_count": 1,
+                     *             "incidents": [
+                     *               {
+                     *                 "duration_ms": 1,
+                     *                 "ended_at": 1,
+                     *                 "started_at": 1
+                     *               }
+                     *             ],
+                     *             "netuid": 7,
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["GlobalIncidentsArtifact"];
                     };
@@ -4747,6 +5876,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "graduated_subnet_count": 1,
+                     *         "link_count": 1,
+                     *         "links": [
+                     *           {
+                     *             "mainnet_netuid": 7,
+                     *             "matched_by": "github_repo",
+                     *             "testnet_netuid": 7
+                     *           }
+                     *         ],
+                     *         "matched_by_counts": {
+                     *           "example": 1
+                     *         },
+                     *         "notes": "Example description.",
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source_network": "example",
+                     *         "target_network": "example",
+                     *         "testnet_only_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["LineageArtifact"];
                     };
@@ -4815,6 +5990,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "components": {},
+                     *         "info": {},
+                     *         "openapi": "3.1.0",
+                     *         "paths": {},
+                     *         "servers": [
+                     *           {}
+                     *         ],
+                     *         "x-metagraphed": {}
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["OpenApiArtifact"];
                     };
@@ -4895,6 +6104,176 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "profiles": [
+                     *           {
+                     *             "candidate_count": 1,
+                     *             "categories": [
+                     *               "example"
+                     *             ],
+                     *             "completeness": {
+                     *               "confidence": "low",
+                     *               "gap_reasons": [
+                     *                 "example"
+                     *               ],
+                     *               "identity_level": "none",
+                     *               "identity_surface_count": 1,
+                     *               "missing_critical_count": 1,
+                     *               "missing_identity": [
+                     *                 "archive"
+                     *               ],
+                     *               "missing_operational": [
+                     *                 "archive"
+                     *               ],
+                     *               "missing_required": [
+                     *                 "archive"
+                     *               ],
+                     *               "profile_level": "directory-only",
+                     *               "score": 100
+                     *             },
+                     *             "completeness_score": 100,
+                     *             "confidence": "low",
+                     *             "curation_level": "native",
+                     *             "derived_categories": [
+                     *               "example"
+                     *             ],
+                     *             "endpoint_count": 1,
+                     *             "gap_reasons": [
+                     *               "example"
+                     *             ],
+                     *             "identity_evidence": {
+                     *               "candidate_identity_count": 1,
+                     *               "curated_identity_count": 1,
+                     *               "curated_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "native_contact_present": false,
+                     *               "native_description_present": false,
+                     *               "native_identity_count": 1,
+                     *               "native_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "needs_promotion_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "stale_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "unverified_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "identity_level": "none",
+                     *             "identity_surface_count": 1,
+                     *             "missing_critical_count": 1,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_operational": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_required": [
+                     *               "archive"
+                     *             ],
+                     *             "monitored_endpoint_count": 1,
+                     *             "name": "Example Subnet",
+                     *             "native_identity": {
+                     *               "additional": "example",
+                     *               "contact_present": false,
+                     *               "description": "Example description.",
+                     *               "discord": "example",
+                     *               "discord_url": "https://api.metagraph.sh/example",
+                     *               "github_url": "https://api.metagraph.sh/example",
+                     *               "logo_url": "https://api.metagraph.sh/example",
+                     *               "source": "live-cron-prober",
+                     *               "subnet_name": "Example Subnet",
+                     *               "website_url": "https://api.metagraph.sh/example"
+                     *             },
+                     *             "netuid": 7,
+                     *             "operational_interface_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "primary_app_surface": {
+                     *               "id": "example",
+                     *               "kind": "archive",
+                     *               "name": "Example Subnet",
+                     *               "provider": "example-provider",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             },
+                     *             "primary_links": {
+                     *               "dashboard_url": "https://api.metagraph.sh/example",
+                     *               "docs_url": "https://api.metagraph.sh/example",
+                     *               "source_repo": "https://api.metagraph.sh/example",
+                     *               "website_url": "https://api.metagraph.sh/example"
+                     *             },
+                     *             "profile_level": "directory-only",
+                     *             "project_name": "example",
+                     *             "provenance": {
+                     *               "curation_level": "native",
+                     *               "identity_source": "live-cron-prober",
+                     *               "interface_source_count": 1,
+                     *               "review_state": "unreviewed",
+                     *               "reviewed_at": "2026-06-01T00:00:00.000Z",
+                     *               "source_urls": [
+                     *                 "https://api.metagraph.sh/example"
+                     *               ]
+                     *             },
+                     *             "review_state": "unreviewed",
+                     *             "slug": "example-subnet",
+                     *             "status": "active",
+                     *             "subnet_type": "root",
+                     *             "suggested_submission_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "supported_interface_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "surface_count": 1,
+                     *             "team": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "average_completeness_score": 100,
+                     *           "by_confidence": {},
+                     *           "by_identity_level": {},
+                     *           "by_profile_level": {},
+                     *           "identity_promotion_candidate_count": 1,
+                     *           "native_identity_count": 1,
+                     *           "native_identity_unpromoted_count": 1,
+                     *           "profile_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetProfilesArtifact"];
                     };
@@ -4971,6 +6350,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "providers": [
+                     *           {
+                     *             "authority": "official",
+                     *             "id": "example-subnet",
+                     *             "kind": "subnet-team",
+                     *             "name": "Example Subnet",
+                     *             "schema_version": 1,
+                     *             "website_url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ProvidersArtifact"];
                     };
@@ -5041,6 +6460,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "provider": {
+                     *           "authority": "official",
+                     *           "cluster_id": "example",
+                     *           "contact_url": "https://api.metagraph.sh/example",
+                     *           "docs_url": "https://api.metagraph.sh/example",
+                     *           "endpoint_count": 1,
+                     *           "github_url": "https://api.metagraph.sh/example",
+                     *           "id": "example-subnet",
+                     *           "kind": "subnet-team",
+                     *           "name": "Example Subnet",
+                     *           "netuids": [
+                     *             7
+                     *           ],
+                     *           "notes": "Example description.",
+                     *           "public_notes": "example",
+                     *           "schema_version": 1,
+                     *           "subnet_count": 1,
+                     *           "surface_count": 1,
+                     *           "team_url": "https://api.metagraph.sh/example",
+                     *           "website_url": "https://api.metagraph.sh/example"
+                     *         },
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ProviderArtifact"];
                     };
@@ -5122,6 +6592,81 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "monitoring_policy": {
+                     *               "enabled": true,
+                     *               "expect": "example",
+                     *               "method": "GET",
+                     *               "source": "live-cron-prober"
+                     *             },
+                     *             "monitoring_status": "monitored",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "publication_state": "candidate",
+                     *             "score": 100,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "provider": {
+                     *           "authority": "example",
+                     *           "id": "example",
+                     *           "kind": "example",
+                     *           "name": "Example Subnet"
+                     *         },
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "by_kind": {},
+                     *           "by_layer": {},
+                     *           "by_provider": {},
+                     *           "by_publication_state": {},
+                     *           "by_status": {},
+                     *           "endpoint_count": 1,
+                     *           "monitored_count": 1,
+                     *           "pool_eligible_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ProviderEndpointsArtifact"];
                     };
@@ -5193,6 +6738,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "board": "example",
+                     *         "boards": {
+                     *           "example": [
+                     *             {}
+                     *           ]
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RegistryLeaderboardsArtifact"];
                     };
@@ -5261,6 +6841,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "counts": {
+                     *           "candidates": 1,
+                     *           "endpoints": 1,
+                     *           "providers": 1,
+                     *           "surfaces": 1
+                     *         },
+                     *         "coverage": {},
+                     *         "curation_level_counts": {
+                     *           "example": 1
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "profile_level_counts": {
+                     *           "example": 1
+                     *         },
+                     *         "recent_changes": {},
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "top_subnets": [
+                     *           {
+                     *             "completeness_score": 100,
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RegistrySummaryArtifact"];
                     };
@@ -5340,6 +6971,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidates": [
+                     *           {
+                     *             "candidate_api_count": 1,
+                     *             "candidate_api_ids": [
+                     *               "example"
+                     *             ],
+                     *             "candidate_api_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "curation_level": "native",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "operational_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "operational_surface_count": 1,
+                     *             "operational_surface_ids": [
+                     *               "example"
+                     *             ],
+                     *             "priority_score": 100,
+                     *             "reason_codes": [
+                     *               "example"
+                     *             ],
+                     *             "recommended_adapter_kind": "custom-adapter",
+                     *             "slug": "example-subnet",
+                     *             "suggested_next_action": "example"
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "adapter_backed_count": 1,
+                     *           "by_curation_level": {},
+                     *           "by_recommended_adapter_kind": {},
+                     *           "candidate_api_kind_counts": {},
+                     *           "candidate_count": 1,
+                     *           "data_artifact_backed_count": 1,
+                     *           "openapi_backed_count": 1,
+                     *           "operational_kind_counts": {},
+                     *           "sse_backed_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewAdapterCandidatesArtifact"];
                     };
@@ -5419,6 +7119,79 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "entries": [
+                     *           {
+                     *             "candidate_evidence_by_kind": {},
+                     *             "candidate_evidence_summary": {
+                     *               "candidate_count": 1,
+                     *               "kinds_with_candidates": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_or_redirected_count": 1,
+                     *               "reviewable_count": 1,
+                     *               "stale_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "stale_or_failed_count": 1,
+                     *               "unverified_count": 1,
+                     *               "unverified_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "direct_submission_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "evidence_action": "submit-new-evidence",
+                     *             "lane": "direct-submission",
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "slug": "example-subnet"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "entry_count": 1,
+                     *           "evidence_action_counts": {},
+                     *           "stale_candidate_count": 1,
+                     *           "subnet_count": 1,
+                     *           "unverified_candidate_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewEnrichmentEvidenceArtifact"];
                     };
@@ -5504,6 +7277,122 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "queue": [
+                     *           {
+                     *             "adapter_score": 100,
+                     *             "candidate_count": 1,
+                     *             "candidate_evidence_summary": {
+                     *               "candidate_count": 1,
+                     *               "kinds_with_candidates": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_or_redirected_count": 1,
+                     *               "reviewable_count": 1,
+                     *               "stale_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "stale_or_failed_count": 1,
+                     *               "unverified_count": 1,
+                     *               "unverified_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "completeness_score": 100,
+                     *             "contribution_hint": "example",
+                     *             "curation_level": "native",
+                     *             "direct_submission_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "endpoint_count": 1,
+                     *             "evidence_action": "submit-new-evidence",
+                     *             "identity_level": "none",
+                     *             "identity_surface_count": 1,
+                     *             "lane": "direct-submission",
+                     *             "manual_review_required": true,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "operational_interface_count": 1,
+                     *             "priority_score": 100,
+                     *             "profile_level": "directory-only",
+                     *             "reason_codes": [
+                     *               "example"
+                     *             ],
+                     *             "recommended_action": "2026-06-01T00:00:00.000Z",
+                     *             "review_state": "unreviewed",
+                     *             "sample_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_live_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_stale_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_target_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "slug": "example-subnet",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
+                     *             "stale_candidate_count": 1,
+                     *             "surface_count": 1,
+                     *             "verified_candidate_count": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "adapter_candidate_count": 1,
+                     *           "baseline_monitoring_count": 1,
+                     *           "direct_submission_count": 1,
+                     *           "evidence_action_counts": {},
+                     *           "identity_level_counts": {},
+                     *           "lane_counts": {},
+                     *           "maintainer_review_count": 1,
+                     *           "manual_review_required_count": 1,
+                     *           "monitoring_followup_count": 1,
+                     *           "queue_count": 1,
+                     *           "subnet_count": 1,
+                     *           "top_direct_submission_kinds": {}
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewEnrichmentQueueArtifact"];
                     };
@@ -5591,6 +7480,133 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "groups": [
+                     *           {
+                     *             "auto_review_candidate_count": 1,
+                     *             "kind": "archive",
+                     *             "manual_review_required_count": 1,
+                     *             "target_count": 1,
+                     *             "target_ids": [
+                     *               "example"
+                     *             ],
+                     *             "target_type": "surface-candidate",
+                     *             "top_netuids": [
+                     *               7
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "auto_review_candidate_count": 1,
+                     *           "by_evidence_action": {},
+                     *           "by_kind": {},
+                     *           "by_lane": {},
+                     *           "by_target_type": {},
+                     *           "manual_review_required_count": 1,
+                     *           "new_evidence_count": 1,
+                     *           "stale_replacement_count": 1,
+                     *           "subnet_count": 1,
+                     *           "target_count": 1
+                     *         },
+                     *         "targets": [
+                     *           {
+                     *             "auto_review_candidate": false,
+                     *             "candidate_command": "example",
+                     *             "candidate_evidence": {
+                     *               "candidate_count": 1,
+                     *               "classifications": {},
+                     *               "live_or_redirected_count": 1,
+                     *               "reviewable_count": 1,
+                     *               "sample_candidate_ids": [
+                     *                 "example"
+                     *               ],
+                     *               "stale_or_failed_count": 1,
+                     *               "unverified_count": 1
+                     *             },
+                     *             "contribution_prompt": "example",
+                     *             "evidence_action": "submit-new-evidence",
+                     *             "identity_level": "none",
+                     *             "kind": "archive",
+                     *             "lane": "direct-submission",
+                     *             "manual_review_required": true,
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "profile_level": "directory-only",
+                     *             "queue_context": {
+                     *               "adapter_score": 100,
+                     *               "candidate_count": 1,
+                     *               "completeness_score": 100,
+                     *               "curation_level": "native",
+                     *               "direct_submission_kind_count": 1,
+                     *               "endpoint_count": 1,
+                     *               "identity_surface_count": 1,
+                     *               "operational_interface_count": 1,
+                     *               "profile_level": "directory-only",
+                     *               "review_state": "unreviewed",
+                     *               "source_url_count": 1,
+                     *               "stale_candidate_count": 1,
+                     *               "surface_count": 1,
+                     *               "verified_candidate_count": 1
+                     *             },
+                     *             "reason_codes": [
+                     *               "example"
+                     *             ],
+                     *             "recommended_action": "2026-06-01T00:00:00.000Z",
+                     *             "sample_live_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_stale_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_target_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "slug": "example-subnet",
+                     *             "source_requirements": [
+                     *               "example"
+                     *             ],
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
+                     *             "submission_route": "direct-candidate-pr",
+                     *             "target_action": "submit-new-candidate",
+                     *             "target_id": "example",
+                     *             "target_type": "surface-candidate"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewEnrichmentTargetsArtifact"];
                     };
@@ -5667,6 +7683,53 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "priorities": [
+                     *           {
+                     *             "candidate_count": 1,
+                     *             "curation_level": "native",
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "review_state": "unreviewed",
+                     *             "slug": "example-subnet",
+                     *             "suggested_next_action": "example",
+                     *             "surface_count": 1,
+                     *             "verified_candidate_count": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewGapPrioritiesArtifact"];
                     };
@@ -5746,6 +7809,117 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "profiles": [
+                     *           {
+                     *             "candidate_count": 1,
+                     *             "completeness_score": 100,
+                     *             "confidence": "low",
+                     *             "curation_level": "native",
+                     *             "gap_reasons": [
+                     *               "example"
+                     *             ],
+                     *             "identity_evidence": {
+                     *               "candidate_identity_count": 1,
+                     *               "curated_identity_count": 1,
+                     *               "curated_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "native_contact_present": false,
+                     *               "native_description_present": false,
+                     *               "native_identity_count": 1,
+                     *               "native_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "needs_promotion_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "stale_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "unverified_candidate_identity_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "identity_level": "none",
+                     *             "identity_promotion_kind_count": 1,
+                     *             "identity_promotion_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "identity_surface_count": 1,
+                     *             "live_identity_candidate_kind_count": 1,
+                     *             "missing_critical_count": 1,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_operational": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_required": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "native_identity_signal_count": 1,
+                     *             "native_name_quality": "chain",
+                     *             "netuid": 7,
+                     *             "operational_interface_count": 1,
+                     *             "priority_score": 100,
+                     *             "profile_level": "directory-only",
+                     *             "review_state": "unreviewed",
+                     *             "slug": "example-subnet",
+                     *             "source_count": 1,
+                     *             "stale_identity_candidate_kind_count": 1,
+                     *             "suggested_next_action": "example",
+                     *             "supported_interface_kinds": [
+                     *               "archive"
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "average_completeness_score": 100,
+                     *           "by_confidence": {},
+                     *           "by_identity_level": {},
+                     *           "by_profile_level": {},
+                     *           "critical_gap_counts": {},
+                     *           "identity_promotion_candidate_count": 1,
+                     *           "native_identity_count": 1,
+                     *           "native_identity_unpromoted_count": 1,
+                     *           "needs_identity_count": 1,
+                     *           "needs_operational_count": 1,
+                     *           "profile_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewProfileCompletenessArtifact"];
                     };
@@ -5826,6 +8000,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "chain": "bittensor",
+                     *             "classification": "live",
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "subtensor-rpc",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "network": "finney",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "provider": "example-provider",
+                     *             "status": "ok",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "archive_supported_count": 1,
+                     *           "by_kind": {},
+                     *           "by_provider": {},
+                     *           "by_status": {},
+                     *           "endpoint_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RpcEndpointsArtifact"];
                     };
@@ -5894,6 +8121,94 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "disabled_proxy_contract": {
+                     *           "allowed_methods": [
+                     *             "GET"
+                     *           ],
+                     *           "denied_method_patterns": [
+                     *             "GET"
+                     *           ],
+                     *           "enabled": true,
+                     *           "feature_flag": "example",
+                     *           "rate_limit_required": true,
+                     *           "waf_required": true
+                     *         },
+                     *         "eligibility_policy": {
+                     *           "eligible_layers": [
+                     *             "example"
+                     *           ],
+                     *           "notes": "Example description.",
+                     *           "required_status": "ok",
+                     *           "requires_no_auth": false,
+                     *           "requires_public_safe": true,
+                     *           "source": "live-cron-prober",
+                     *           "user_reports_can_change_health": false
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "pools": [
+                     *           {
+                     *             "eligible_count": 1,
+                     *             "endpoint_count": 1,
+                     *             "endpoints": [
+                     *               {
+                     *                 "health_source": "probe-derived",
+                     *                 "health_stale": false,
+                     *                 "id": "example",
+                     *                 "last_ok": "2026-06-01T00:00:00.000Z",
+                     *                 "observed_at": "2026-06-01T00:00:00.000Z",
+                     *                 "pool_eligible": false,
+                     *                 "provider": "example-provider",
+                     *                 "score": 100,
+                     *                 "status": "ok",
+                     *                 "url": "https://api.metagraph.sh/example"
+                     *               }
+                     *             ],
+                     *             "id": "example",
+                     *             "kind": "example"
+                     *           }
+                     *         ],
+                     *         "provider_scores": [
+                     *           {
+                     *             "average_score": 100,
+                     *             "degraded_count": 1,
+                     *             "endpoint_count": 1,
+                     *             "failed_count": 1,
+                     *             "monitored_count": 1,
+                     *             "ok_count": 1,
+                     *             "operational_score": 100,
+                     *             "pool_eligible_count": 1,
+                     *             "provider": "example-provider"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RpcPoolsArtifact"];
                     };
@@ -5962,6 +8277,45 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "schemas": [
+                     *           {
+                     *             "drift_status": "changed",
+                     *             "schema_url": "https://api.metagraph.sh/example",
+                     *             "status": "captured",
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SchemaIndexArtifact"];
                     };
@@ -6036,6 +8390,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "document_count": 1,
+                     *         "documents": [
+                     *           {
+                     *             "artifact_path": "example",
+                     *             "id": "example",
+                     *             "title": "Example Subnet",
+                     *             "tokens": [
+                     *               "example"
+                     *             ],
+                     *             "type": "subnet"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SearchArtifact"];
                     };
@@ -6104,6 +8500,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "providers": [
+                     *           {
+                     *             "authority": "official",
+                     *             "candidate_count": 1,
+                     *             "classifications": {},
+                     *             "endpoint_count": 1,
+                     *             "id": "example",
+                     *             "kind": "subnet-team",
+                     *             "name": "Example Subnet",
+                     *             "rpc_endpoint_count": 1,
+                     *             "status": "ok",
+                     *             "verification_result_count": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "source": "generated-provider-and-verification-summary",
+                     *         "summary": {
+                     *           "candidate_count": 1,
+                     *           "endpoint_count": 1,
+                     *           "provider_count": 1,
+                     *           "rpc_endpoint_count": 1,
+                     *           "status_counts": {},
+                     *           "verification_result_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SourceHealthArtifact"];
                     };
@@ -6178,6 +8627,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "sources": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "id": "example",
+                     *             "kind": "adapter-snapshot",
+                     *             "path": "example",
+                     *             "record_count": 1
+                     *           }
+                     *         ],
+                     *         "summary": {
+                     *           "adapter_snapshot_count": 1,
+                     *           "candidate_count": 1,
+                     *           "overlay_count": 1,
+                     *           "provider_count": 1,
+                     *           "source_count": 1,
+                     *           "verification_result_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SourceSnapshotsArtifact"];
                     };
@@ -6258,6 +8755,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "network": "finney",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "identity_storage": "example",
+                     *           "kind": "example",
+                     *           "method": "GET",
+                     *           "package": "example",
+                     *           "rpc_family": "example",
+                     *           "version": "2026-06-06.1"
+                     *         },
+                     *         "subnets": [
+                     *           {
+                     *             "coverage_level": "native-only",
+                     *             "curation_level": "native",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "slug": "example-subnet",
+                     *             "status": "active",
+                     *             "subnet_type": "root",
+                     *             "surface_count": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetsArtifact"];
                     };
@@ -6328,6 +8876,185 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidate_surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "schema_version": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "state": "schema-invalid",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "candidates": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "schema_version": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "state": "schema-invalid",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "monitoring_policy": {
+                     *               "enabled": true,
+                     *               "expect": "example",
+                     *               "method": "GET",
+                     *               "source": "live-cron-prober"
+                     *             },
+                     *             "monitoring_status": "monitored",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "publication_state": "candidate",
+                     *             "score": 100,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "gaps": {
+                     *           "gap_notes": [
+                     *             "example"
+                     *           ],
+                     *           "missing_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "supported_kinds": [
+                     *             "archive"
+                     *           ]
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "subnet": {
+                     *           "block": 5000000,
+                     *           "candidate_count": 1,
+                     *           "categories": [
+                     *             "example"
+                     *           ],
+                     *           "coverage_level": "native-only",
+                     *           "curation": {
+                     *             "level": "native",
+                     *             "review_state": "unreviewed"
+                     *           },
+                     *           "curation_level": "native",
+                     *           "dashboard_url": "https://api.metagraph.sh/example",
+                     *           "derived_categories": [
+                     *             "example"
+                     *           ],
+                     *           "description": "Example description.",
+                     *           "docs_url": "https://api.metagraph.sh/example",
+                     *           "gap_count": 1,
+                     *           "gaps": {
+                     *             "gap_notes": [
+                     *               "example"
+                     *             ],
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "supported_kinds": [
+                     *               "archive"
+                     *             ]
+                     *           },
+                     *           "lifecycle": "active",
+                     *           "links": [
+                     *             {}
+                     *           ],
+                     *           "logo_url": "https://api.metagraph.sh/example",
+                     *           "mechanism_count": 1,
+                     *           "name": "Example Subnet",
+                     *           "native_name": "example",
+                     *           "native_name_quality": "chain",
+                     *           "native_slug": "example-subnet",
+                     *           "netuid": 7,
+                     *           "notes": "Example description.",
+                     *           "participant_count": 1,
+                     *           "probed_surface_count": 1,
+                     *           "provenance": {},
+                     *           "registered_at_block": 5000000,
+                     *           "slug": "example-subnet",
+                     *           "source_repo": "https://api.metagraph.sh/example",
+                     *           "status": "active",
+                     *           "subnet_type": "root",
+                     *           "surface_count": 1,
+                     *           "symbol": "example",
+                     *           "tempo": 1,
+                     *           "website_url": "https://api.metagraph.sh/example"
+                     *         },
+                     *         "surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "authority": "official",
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "verified_surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "authority": "official",
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetDetailArtifact"];
                     };
@@ -6406,6 +9133,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidates": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "schema_version": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "state": "schema-invalid",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetCandidatesArtifact"];
                     };
@@ -6487,6 +9259,78 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "monitoring_policy": {
+                     *               "enabled": true,
+                     *               "expect": "example",
+                     *               "method": "GET",
+                     *               "source": "live-cron-prober"
+                     *             },
+                     *             "monitoring_status": "monitored",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "publication_state": "candidate",
+                     *             "score": 100,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet",
+                     *         "summary": {
+                     *           "by_kind": {},
+                     *           "by_layer": {},
+                     *           "by_provider": {},
+                     *           "by_publication_state": {},
+                     *           "by_status": {},
+                     *           "endpoint_count": 1,
+                     *           "monitored_count": 1,
+                     *           "pool_eligible_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetEndpointsArtifact"];
                     };
@@ -6563,6 +9407,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "claims": [
+                     *           {
+                     *             "claim": "example",
+                     *             "confidence": "low",
+                     *             "limits": "example",
+                     *             "source_tier": "native-chain",
+                     *             "source_type": "example",
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "subject": "example",
+                     *             "support_summary": "Example description."
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetEvidenceArtifact"];
                     };
@@ -6640,6 +9526,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "enrichment_queue": [
+                     *           {
+                     *             "adapter_score": 100,
+                     *             "candidate_count": 1,
+                     *             "candidate_evidence_summary": {
+                     *               "candidate_count": 1,
+                     *               "kinds_with_candidates": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "live_or_redirected_count": 1,
+                     *               "reviewable_count": 1,
+                     *               "stale_kinds": [
+                     *                 "archive"
+                     *               ],
+                     *               "stale_or_failed_count": 1,
+                     *               "unverified_count": 1,
+                     *               "unverified_kinds": [
+                     *                 "archive"
+                     *               ]
+                     *             },
+                     *             "completeness_score": 100,
+                     *             "contribution_hint": "example",
+                     *             "curation_level": "native",
+                     *             "direct_submission_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "endpoint_count": 1,
+                     *             "evidence_action": "submit-new-evidence",
+                     *             "identity_level": "none",
+                     *             "identity_surface_count": 1,
+                     *             "lane": "direct-submission",
+                     *             "manual_review_required": true,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "operational_interface_count": 1,
+                     *             "priority_score": 100,
+                     *             "profile_level": "directory-only",
+                     *             "reason_codes": [
+                     *               "example"
+                     *             ],
+                     *             "recommended_action": "2026-06-01T00:00:00.000Z",
+                     *             "review_state": "unreviewed",
+                     *             "sample_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_live_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_stale_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "sample_target_candidate_ids": [
+                     *               "example"
+                     *             ],
+                     *             "slug": "example-subnet",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
+                     *             "stale_candidate_count": 1,
+                     *             "surface_count": 1,
+                     *             "verified_candidate_count": 1
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "priorities": [
+                     *           {
+                     *             "candidate_count": 1,
+                     *             "curation_level": "native",
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "review_state": "unreviewed",
+                     *             "slug": "example-subnet",
+                     *             "suggested_next_action": "example",
+                     *             "surface_count": 1,
+                     *             "verified_candidate_count": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetGapsArtifact"];
                     };
@@ -6719,6 +9727,63 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet",
+                     *         "summary": {
+                     *           "avg_latency_ms": 120,
+                     *           "degraded_count": 1,
+                     *           "failed_count": 1,
+                     *           "last_checked": "2026-06-01T00:00:00.000Z",
+                     *           "last_ok": "2026-06-01T00:00:00.000Z",
+                     *           "name": "Example Subnet",
+                     *           "netuid": 7,
+                     *           "ok_count": 1,
+                     *           "slug": "example-subnet",
+                     *           "status": "ok",
+                     *           "surface_count": 1,
+                     *           "unknown_count": 1
+                     *         },
+                     *         "surfaces": [
+                     *           {
+                     *             "classification": "live",
+                     *             "netuid": 7,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSubnetArtifact"];
                     };
@@ -6791,6 +9856,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "surfaces": [
+                     *           {
+                     *             "downtime_ms": 1,
+                     *             "incident_count": 1,
+                     *             "incidents": [
+                     *               {
+                     *                 "duration_ms": 1,
+                     *                 "ended_at": 1,
+                     *                 "failed_samples": 1,
+                     *                 "started_at": 1
+                     *               }
+                     *             ],
+                     *             "samples": 1,
+                     *             "surface_id": "example",
+                     *             "uptime_ratio": 0.9966
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthIncidentsArtifact"];
                     };
@@ -6863,6 +9976,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "surfaces": [
+                     *           {
+                     *             "latency_ms": {},
+                     *             "samples": 1,
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthPercentilesArtifact"];
                     };
@@ -6933,6 +10084,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "windows": {
+                     *           "example": {
+                     *             "samples": 1,
+                     *             "surfaces": [
+                     *               {
+                     *                 "avg_latency_ms": 120,
+                     *                 "samples": 1,
+                     *                 "surface_id": "example",
+                     *                 "uptime_ratio": 0.9966
+                     *               }
+                     *             ],
+                     *             "uptime_ratio": 0.9966
+                     *           }
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthTrendsArtifact"];
                     };
@@ -7003,6 +10198,224 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "counts": {
+                     *           "candidates": 1,
+                     *           "endpoints": 1,
+                     *           "surfaces": 1
+                     *         },
+                     *         "curation": {
+                     *           "gap_notes": [
+                     *             "example"
+                     *           ],
+                     *           "level": "native",
+                     *           "review_state": "unreviewed",
+                     *           "reviewed_at": "2026-06-01T00:00:00.000Z",
+                     *           "source_count": 1,
+                     *           "verified_at": "2026-06-01T00:00:00.000Z"
+                     *         },
+                     *         "gap_priorities": [
+                     *           null
+                     *         ],
+                     *         "gaps": {
+                     *           "gap_notes": [
+                     *             "example"
+                     *           ],
+                     *           "missing_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "supported_kinds": [
+                     *             "archive"
+                     *           ]
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health": {
+                     *           "avg_latency_ms": 120,
+                     *           "degraded_count": 1,
+                     *           "failed_count": 1,
+                     *           "last_checked": "2026-06-01T00:00:00.000Z",
+                     *           "last_ok": "2026-06-01T00:00:00.000Z",
+                     *           "netuid": 7,
+                     *           "observed_by": "2026-06-01T00:00:00.000Z",
+                     *           "ok_count": 1,
+                     *           "status": "ok",
+                     *           "surface_count": 1,
+                     *           "unknown_count": 1
+                     *         },
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "profile": {
+                     *           "candidate_count": 1,
+                     *           "categories": [
+                     *             "example"
+                     *           ],
+                     *           "completeness": {
+                     *             "confidence": "low",
+                     *             "gap_reasons": [
+                     *               "example"
+                     *             ],
+                     *             "identity_level": "none",
+                     *             "identity_surface_count": 1,
+                     *             "missing_critical_count": 1,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_operational": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_required": [
+                     *               "archive"
+                     *             ],
+                     *             "profile_level": "directory-only",
+                     *             "score": 100
+                     *           },
+                     *           "completeness_score": 100,
+                     *           "confidence": "low",
+                     *           "curation_level": "native",
+                     *           "derived_categories": [
+                     *             "example"
+                     *           ],
+                     *           "derived_description": "Example description.",
+                     *           "endpoint_count": 1,
+                     *           "gap_reasons": [
+                     *             "example"
+                     *           ],
+                     *           "identity_evidence": {
+                     *             "candidate_identity_count": 1,
+                     *             "curated_identity_count": 1,
+                     *             "curated_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "live_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "native_contact_present": false,
+                     *             "native_description_present": false,
+                     *             "native_identity_count": 1,
+                     *             "native_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "needs_promotion_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "stale_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "unverified_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ]
+                     *           },
+                     *           "identity_level": "none",
+                     *           "identity_surface_count": 1,
+                     *           "injection_scrubbed": false,
+                     *           "integration_readiness": 1,
+                     *           "interface_count": 1,
+                     *           "lineage": {},
+                     *           "missing_critical_count": 1,
+                     *           "missing_identity": [
+                     *             "archive"
+                     *           ],
+                     *           "missing_operational": [
+                     *             "archive"
+                     *           ],
+                     *           "missing_required": [
+                     *             "archive"
+                     *           ],
+                     *           "monitored_endpoint_count": 1,
+                     *           "name": "Example Subnet",
+                     *           "native_identity": {
+                     *             "additional": "example",
+                     *             "contact_present": false,
+                     *             "description": "Example description.",
+                     *             "discord": "example",
+                     *             "discord_url": "https://api.metagraph.sh/example",
+                     *             "github_url": "https://api.metagraph.sh/example",
+                     *             "logo_url": "https://api.metagraph.sh/example",
+                     *             "source": "live-cron-prober",
+                     *             "subnet_name": "Example Subnet",
+                     *             "website_url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "native_name": "example",
+                     *           "native_name_quality": "chain",
+                     *           "netuid": 7,
+                     *           "operational_interface_count": 1,
+                     *           "operational_interface_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "primary_app_surface": {
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "provider": "example-provider",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "primary_links": {
+                     *             "dashboard_url": "https://api.metagraph.sh/example",
+                     *             "docs_url": "https://api.metagraph.sh/example",
+                     *             "source_repo": "https://api.metagraph.sh/example",
+                     *             "website_url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "profile_level": "directory-only",
+                     *           "project_name": "example",
+                     *           "provenance": {
+                     *             "curation_level": "native",
+                     *             "identity_source": "live-cron-prober",
+                     *             "interface_source_count": 1,
+                     *             "review_state": "unreviewed",
+                     *             "reviewed_at": "2026-06-01T00:00:00.000Z",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ]
+                     *           },
+                     *           "readiness": {
+                     *             "components": {},
+                     *             "readiness_version": 1,
+                     *             "score": 100
+                     *           },
+                     *           "review_state": "unreviewed",
+                     *           "slug": "example-subnet",
+                     *           "status": "active",
+                     *           "subnet_type": "root",
+                     *           "suggested_submission_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "supported_interface_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "surface_count": 1,
+                     *           "symbol": "example",
+                     *           "team": "example"
+                     *         },
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet",
+                     *         "status": "ok"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetOverviewArtifact"];
                     };
@@ -7073,6 +10486,300 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidate_surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "schema_version": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "state": "schema-invalid",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "contract_version": "2026-06-06.1",
+                     *         "endpoints": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "health_source": "probe-derived",
+                     *             "health_stale": false,
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "layer": "bittensor-base",
+                     *             "monitoring_policy": {
+                     *               "enabled": true,
+                     *               "expect": "example",
+                     *               "method": "GET",
+                     *               "source": "live-cron-prober"
+                     *             },
+                     *             "monitoring_status": "monitored",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "operator": "example-provider",
+                     *             "pool_eligible": false,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "publication_state": "candidate",
+                     *             "score": 100,
+                     *             "status": "ok",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "gaps": {
+                     *           "gap_notes": [
+                     *             "example"
+                     *           ],
+                     *           "missing_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "supported_kinds": [
+                     *             "archive"
+                     *           ]
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "profile": {
+                     *           "candidate_count": 1,
+                     *           "categories": [
+                     *             "example"
+                     *           ],
+                     *           "completeness": {
+                     *             "confidence": "low",
+                     *             "gap_reasons": [
+                     *               "example"
+                     *             ],
+                     *             "identity_level": "none",
+                     *             "identity_surface_count": 1,
+                     *             "missing_critical_count": 1,
+                     *             "missing_identity": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_operational": [
+                     *               "archive"
+                     *             ],
+                     *             "missing_required": [
+                     *               "archive"
+                     *             ],
+                     *             "profile_level": "directory-only",
+                     *             "score": 100
+                     *           },
+                     *           "completeness_score": 100,
+                     *           "confidence": "low",
+                     *           "curation_level": "native",
+                     *           "derived_categories": [
+                     *             "example"
+                     *           ],
+                     *           "derived_description": "Example description.",
+                     *           "endpoint_count": 1,
+                     *           "gap_reasons": [
+                     *             "example"
+                     *           ],
+                     *           "identity_evidence": {
+                     *             "candidate_identity_count": 1,
+                     *             "curated_identity_count": 1,
+                     *             "curated_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "live_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "native_contact_present": false,
+                     *             "native_description_present": false,
+                     *             "native_identity_count": 1,
+                     *             "native_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "needs_promotion_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "stale_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "unverified_candidate_identity_kinds": [
+                     *               "archive"
+                     *             ]
+                     *           },
+                     *           "identity_level": "none",
+                     *           "identity_surface_count": 1,
+                     *           "injection_scrubbed": false,
+                     *           "integration_readiness": 1,
+                     *           "interface_count": 1,
+                     *           "lineage": {},
+                     *           "missing_critical_count": 1,
+                     *           "missing_identity": [
+                     *             "archive"
+                     *           ],
+                     *           "missing_operational": [
+                     *             "archive"
+                     *           ],
+                     *           "missing_required": [
+                     *             "archive"
+                     *           ],
+                     *           "monitored_endpoint_count": 1,
+                     *           "name": "Example Subnet",
+                     *           "native_identity": {
+                     *             "additional": "example",
+                     *             "contact_present": false,
+                     *             "description": "Example description.",
+                     *             "discord": "example",
+                     *             "discord_url": "https://api.metagraph.sh/example",
+                     *             "github_url": "https://api.metagraph.sh/example",
+                     *             "logo_url": "https://api.metagraph.sh/example",
+                     *             "source": "live-cron-prober",
+                     *             "subnet_name": "Example Subnet",
+                     *             "website_url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "native_name": "example",
+                     *           "native_name_quality": "chain",
+                     *           "netuid": 7,
+                     *           "operational_interface_count": 1,
+                     *           "operational_interface_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "primary_app_surface": {
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "name": "Example Subnet",
+                     *             "provider": "example-provider",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "primary_links": {
+                     *             "dashboard_url": "https://api.metagraph.sh/example",
+                     *             "docs_url": "https://api.metagraph.sh/example",
+                     *             "source_repo": "https://api.metagraph.sh/example",
+                     *             "website_url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "profile_level": "directory-only",
+                     *           "project_name": "example",
+                     *           "provenance": {
+                     *             "curation_level": "native",
+                     *             "identity_source": "live-cron-prober",
+                     *             "interface_source_count": 1,
+                     *             "review_state": "unreviewed",
+                     *             "reviewed_at": "2026-06-01T00:00:00.000Z",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ]
+                     *           },
+                     *           "readiness": {
+                     *             "components": {},
+                     *             "readiness_version": 1,
+                     *             "score": 100
+                     *           },
+                     *           "review_state": "unreviewed",
+                     *           "slug": "example-subnet",
+                     *           "status": "active",
+                     *           "subnet_type": "root",
+                     *           "suggested_submission_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "supported_interface_kinds": [
+                     *             "archive"
+                     *           ],
+                     *           "surface_count": 1,
+                     *           "symbol": "example",
+                     *           "team": "example"
+                     *         },
+                     *         "schema_version": 1,
+                     *         "subnet": {
+                     *           "block": 5000000,
+                     *           "candidate_count": 1,
+                     *           "categories": [
+                     *             "example"
+                     *           ],
+                     *           "coverage_level": "native-only",
+                     *           "curation": {
+                     *             "level": "native",
+                     *             "review_state": "unreviewed"
+                     *           },
+                     *           "curation_level": "native",
+                     *           "dashboard_url": "https://api.metagraph.sh/example",
+                     *           "derived_categories": [
+                     *             "example"
+                     *           ],
+                     *           "description": "Example description.",
+                     *           "docs_url": "https://api.metagraph.sh/example",
+                     *           "gap_count": 1,
+                     *           "gaps": {
+                     *             "gap_notes": [
+                     *               "example"
+                     *             ],
+                     *             "missing_kinds": [
+                     *               "archive"
+                     *             ],
+                     *             "supported_kinds": [
+                     *               "archive"
+                     *             ]
+                     *           },
+                     *           "lifecycle": "active",
+                     *           "links": [
+                     *             {}
+                     *           ],
+                     *           "logo_url": "https://api.metagraph.sh/example",
+                     *           "mechanism_count": 1,
+                     *           "name": "Example Subnet",
+                     *           "native_name": "example",
+                     *           "native_name_quality": "chain",
+                     *           "native_slug": "example-subnet",
+                     *           "netuid": 7,
+                     *           "notes": "Example description.",
+                     *           "participant_count": 1,
+                     *           "probed_surface_count": 1,
+                     *           "provenance": {},
+                     *           "registered_at_block": 5000000,
+                     *           "slug": "example-subnet",
+                     *           "source_repo": "https://api.metagraph.sh/example",
+                     *           "status": "active",
+                     *           "subnet_type": "root",
+                     *           "surface_count": 1,
+                     *           "symbol": "example",
+                     *           "tempo": 1,
+                     *           "website_url": "https://api.metagraph.sh/example"
+                     *         },
+                     *         "surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "authority": "official",
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetProfileArtifact"];
                     };
@@ -7150,6 +10857,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "authority": "official",
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetSurfacesArtifact"];
                     };
@@ -7220,6 +10969,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "deltas": {
+                     *           "example": {}
+                     *         },
+                     *         "netuid": 7,
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "date": "2026-06-01"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
@@ -7292,6 +11078,63 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "reliability": {
+                     *           "avg_latency_ms": 120,
+                     *           "computed_at": "2026-06-01T00:00:00.000Z",
+                     *           "day_count": 1,
+                     *           "grade": "A",
+                     *           "sample_count": 1,
+                     *           "score": 100,
+                     *           "surface_count": 1,
+                     *           "uptime_ratio": 0.9966,
+                     *           "window": "30d"
+                     *         },
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "surfaces": [
+                     *           {
+                     *             "day_count": 1,
+                     *             "days": [
+                     *               {
+                     *                 "day": "2026-06-01",
+                     *                 "samples": 1,
+                     *                 "status": "ok",
+                     *                 "uptime_ratio": 0.9966
+                     *               }
+                     *             ],
+                     *             "samples": 1,
+                     *             "surface_id": "example",
+                     *             "uptime_ratio": 0.9966
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["UptimeArtifact"];
                     };
@@ -7368,6 +11211,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "surfaces": [
+                     *           {
+                     *             "auth_required": true,
+                     *             "authority": "official",
+                     *             "id": "example",
+                     *             "kind": "archive",
+                     *             "netuid": 7,
+                     *             "provider": "example-provider",
+                     *             "public_safe": true,
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SurfacesArtifact"];
                     };

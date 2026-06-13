@@ -1,5 +1,6 @@
 import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
+import { sampleFromSchema } from "./openapi-sample.mjs";
 
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
@@ -1632,6 +1633,19 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
   const paths = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path;
+    const responseSchema = {
+      allOf: [
+        { $ref: "#/components/schemas/SuccessEnvelope" },
+        {
+          type: "object",
+          properties: {
+            data: {
+              $ref: `#/components/schemas/${schemaRefForArtifactPath(entry.artifact_path)}`,
+            },
+          },
+        },
+      ],
+    };
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -1660,19 +1674,11 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
             headers: apiResponseHeaders(),
             content: {
               "application/json": {
-                schema: {
-                  allOf: [
-                    { $ref: "#/components/schemas/SuccessEnvelope" },
-                    {
-                      type: "object",
-                      properties: {
-                        data: {
-                          $ref: `#/components/schemas/${schemaRefForArtifactPath(entry.artifact_path)}`,
-                        },
-                      },
-                    },
-                  ],
-                },
+                schema: responseSchema,
+                // Deterministic worked example (schema-valid, no live data) so
+                // Swagger UI + agents see a concrete response shape. Generated
+                // from the schema; enforced by validate-openapi-examples.
+                example: sampleFromSchema(responseSchema, componentSchemas),
               },
             },
           },
