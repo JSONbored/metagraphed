@@ -3038,15 +3038,17 @@ function corsPreflight(request) {
   return new Response(null, { status: 204, headers });
 }
 
-// RFC 8288 Link header advertising the machine entrypoints, mirrored as
-// `<link>` elements in the homepage HTML below. Relative refs resolve against
-// the request URL, so the same value is correct on any deployment host.
+// RFC 8288 Link header advertising the canonical machine entrypoints, mirrored
+// as `<link>` elements in the homepage HTML below. Discovery routes may be
+// served from the apex too, so the HTTP Link header uses absolute canonical API
+// URLs instead of origin-relative refs.
+const DISCOVERY_LINK_BASE = `https://${PRIMARY_DOMAIN}`;
 const DISCOVERY_LINK_HEADER = [
-  '</.well-known/api-catalog>; rel="api-catalog"',
-  '</metagraph/openapi.json>; rel="service-desc"; type="application/json"',
-  '</llms.txt>; rel="service-doc"; type="text/plain"',
-  '</llms.txt>; rel="describedby"; type="text/plain"',
-  '</.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"',
+  `<${DISCOVERY_LINK_BASE}/.well-known/api-catalog>; rel="api-catalog"`,
+  `<${DISCOVERY_LINK_BASE}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
+  `<${DISCOVERY_LINK_BASE}/llms.txt>; rel="service-doc"; type="text/plain"`,
+  `<${DISCOVERY_LINK_BASE}/llms.txt>; rel="describedby"; type="text/plain"`,
+  `<${DISCOVERY_LINK_BASE}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
 ].join(", ");
 
 const HOMEPAGE_HTML = `<!doctype html>

@@ -1311,9 +1311,9 @@ describe("Agent discovery surfaces", () => {
     assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
   });
 
-  test("api-catalog hrefs are canonical (api.metagraph.sh), not the request host", async () => {
-    // The apex (metagraph.sh) routes /.well-known/* to this worker too, so the
-    // catalog must reference the real API host regardless of which host served it.
+  test("api-catalog discovery links are canonical (api.metagraph.sh), not the request host", async () => {
+    // The apex (metagraph.sh) routes /.well-known/* to this worker too, so both
+    // the linkset body and HTTP Link header must reference the real API host.
     const response = await handleRequest(
       new Request("https://metagraph.sh/.well-known/api-catalog"),
       {},
@@ -1325,5 +1325,11 @@ describe("Agent discovery surfaces", () => {
       body.linkset[0]["service-desc"][0].href,
       "https://api.metagraph.sh/metagraph/openapi.json",
     );
+    const link = response.headers.get("link");
+    assert.match(
+      link,
+      /<https:\/\/api\.metagraph\.sh\/metagraph\/openapi\.json>; rel="service-desc"/,
+    );
+    assert.doesNotMatch(link, /<\/metagraph\/openapi\.json>/);
   });
 });
