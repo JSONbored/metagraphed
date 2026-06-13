@@ -53,6 +53,38 @@ describe("generateServiceSnippets (#351)", () => {
     assert.match(out.curl, /Authorization: Bearer YOUR_API_KEY/);
   });
 
+  test("does not include credential placeholders for cleartext auth URLs", () => {
+    for (const base_url of [
+      "http://api.example.io/v1",
+      "ws://api.example.io/socket",
+    ]) {
+      const out = generateServiceSnippets({
+        base_url,
+        auth_required: true,
+        auth_schemes: ["apiKey"],
+      });
+
+      assert.equal(out.curl, `curl -sS '${base_url}'`);
+      assert.ok(!out.curl.includes("YOUR_API_KEY"));
+      assert.ok(!out.python.includes("YOUR_API_KEY"));
+      assert.ok(!out.typescript.includes("YOUR_API_KEY"));
+      assert.ok(!out.python.includes("headers="));
+      assert.ok(!out.typescript.includes("headers"));
+    }
+  });
+
+  test("allows credential placeholders for TLS-protected wss URLs", () => {
+    const out = generateServiceSnippets({
+      base_url: "wss://api.example.io/socket",
+      auth_required: true,
+      auth_schemes: ["bearer"],
+    });
+
+    assert.match(out.curl, /Authorization: Bearer YOUR_API_KEY/);
+    assert.match(out.python, /Authorization/);
+    assert.match(out.typescript, /Authorization/);
+  });
+
   test("returns null for missing or unsafe base_url", () => {
     assert.equal(generateServiceSnippets({ base_url: null }), null);
     assert.equal(generateServiceSnippets({}), null);

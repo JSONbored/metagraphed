@@ -449,6 +449,32 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
+  test("routes an ownership-sensitive surface with mismatched url even when source_url matches provider to manual review", () => {
+    const document = structuredClone(validCandidateDocument);
+    Object.assign(document.candidates[0], {
+      id: "community-sn-7-source-repo-masked-mismatch",
+      kind: "source-repo",
+      url: "https://github.com/random-stranger/some-repo",
+      source_url: "https://all-ways.io/",
+      source_urls: ["https://all-ways.io/"],
+    });
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/masked-mismatch.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(
+      report.manual_reasons.some((reason) =>
+        reason.includes("url owner does not match its registered provider"),
+      ),
+      true,
+    );
+  });
+
   test("accepts an ownership-sensitive surface whose owner matches its provider", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {

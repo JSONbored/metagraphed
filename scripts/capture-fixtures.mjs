@@ -33,6 +33,13 @@ const MAX_BYTES = 1_000_000; // hard cap before parsing
 const TIMEOUT_MS = 12_000;
 const CONCURRENCY = 6;
 
+class FixtureCaptureLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "FixtureCaptureLimitError";
+  }
+}
+
 async function mapLimit(items, limit, fn) {
   const results = [];
   let index = 0;
@@ -86,10 +93,14 @@ async function fetchSample(url, redirectCount = 0) {
         error: response.ok ? "non-json response" : `http ${response.status}`,
       };
     }
-    const raw = await response.text();
-    if (raw.length > MAX_BYTES) {
+    const contentLength = parseContentLength(
+      response.headers.get("content-length"),
+    );
+    if (contentLength !== null && contentLength > MAX_BYTES) {
+      await response.body?.cancel();
       return { ok: false, error: "response exceeds byte limit" };
     }
+    const raw = await readBoundedResponseText(response, MAX_BYTES);
     return {
       ok: true,
       status: response.status,
@@ -101,6 +112,50 @@ async function fetchSample(url, redirectCount = 0) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function parseContentLength(value) {
+  if (!value || !/^\d+$/.test(value)) {
+    return null;
+  }
+  return Number.parseInt(value, 10);
+}
+
+async function readBoundedResponseText(response, maxBytes) {
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      receivedBytes += value.byteLength;
+      if (receivedBytes > maxBytes) {
+        await reader.cancel();
+        throw new FixtureCaptureLimitError(
+          `JSON response exceeds ${maxBytes} byte limit`,
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(receivedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
 }
 
 const subnets = await loadSubnets();

@@ -1136,15 +1136,10 @@ export function validateCandidateForSubmission({
       (provider) => provider.id === candidate.provider,
     );
     const identityTokens = providerIdentityTokens(providerRecord);
-    const claimTokens = [
-      ...new Set([
-        ...urlOwnerTokens(candidate.url),
-        ...urlOwnerTokens(candidate.source_url),
-      ]),
-    ];
+    const claimTokens = urlOwnerTokens(candidate.url);
     if (!ownerTokensMatch(claimTokens, identityTokens)) {
       manual_reasons.push(
-        "candidate url/source_url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
+        "candidate url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
       );
     }
     if (

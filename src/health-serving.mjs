@@ -7,6 +7,8 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
+const D1_HEALTH_FALLBACK_MAX_AGE_MS = 10 * 60 * 1000;
+
 const OPERATIONAL_KINDS = new Set([
   "subtensor-rpc",
   "subtensor-wss",
@@ -579,7 +581,7 @@ function liveFromD1Rows(rows) {
   };
 }
 
-export async function resolveLiveHealth({ readHealthKv, env, db } = {}) {
+export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
       const current = await readHealthKv(env, "health:current");
@@ -598,12 +600,16 @@ export async function resolveLiveHealth({ readHealthKv, env, db } = {}) {
   const database = db || env?.METAGRAPH_HEALTH_DB;
   if (database?.prepare) {
     try {
+      const currentTime = typeof now === "function" ? now() : Date.now();
+      const freshnessCutoff = currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS;
       const { results } = await database
         .prepare(
           `SELECT surface_id, netuid, kind, provider, url, status, classification,
                   latency_ms, status_code, last_checked, last_ok
-           FROM surface_status`,
+           FROM surface_status
+           WHERE last_checked >= ?`,
         )
+        .bind(freshnessCutoff)
         .all();
       if (Array.isArray(results) && results.length) {
         return liveFromD1Rows(results);
