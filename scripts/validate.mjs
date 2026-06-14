@@ -1008,25 +1008,35 @@ async function validateGeneratedArtifacts(
   }
 
   assert(
-    coverageArtifact.chain_subnet_count === nativeSnapshot.subnets.length,
-    "coverage: chain_subnet_count mismatch",
-  );
-  assert(
-    coverageArtifact.curated_overlay_count === nativeSnapshot.subnets.length,
-    "coverage: curated_overlay_count mismatch",
-  );
-  assert(
     coverageArtifact.native_only_count === 0,
     "coverage: native_only_count must be 0",
   );
-  assert(
-    coverageArtifact.surface_count === surfacesArtifact.surfaces.length,
-    "coverage: surface_count mismatch",
-  );
-  assert(
-    coverageArtifact.candidate_count === candidates.length,
-    "coverage: candidate_count mismatch",
-  );
+  // The committed coverage.json is an inert cold-start seed (ADR 0006) that
+  // legitimately drifts from live source as candidate PRs merge — the 6h refresh
+  // advances R2/D1, not the committed copy. These committed-vs-fresh count-parity
+  // checks are a post-build freshness guarantee (CI builds before validating, and
+  // pipeline:refresh rebuilds), so they are meaningless against the stale seed in
+  // a no-build context. METAGRAPH_ALLOW_SEED_DRIFT lets the no-build test suite
+  // validate structure without them; CI/pipeline never set it, so freshness stays
+  // enforced where the artifacts are actually fresh.
+  if (process.env.METAGRAPH_ALLOW_SEED_DRIFT !== "1") {
+    assert(
+      coverageArtifact.chain_subnet_count === nativeSnapshot.subnets.length,
+      "coverage: chain_subnet_count mismatch",
+    );
+    assert(
+      coverageArtifact.curated_overlay_count === nativeSnapshot.subnets.length,
+      "coverage: curated_overlay_count mismatch",
+    );
+    assert(
+      coverageArtifact.surface_count === surfacesArtifact.surfaces.length,
+      "coverage: surface_count mismatch",
+    );
+    assert(
+      coverageArtifact.candidate_count === candidates.length,
+      "coverage: candidate_count mismatch",
+    );
+  }
   assert(
     candidatesArtifact.candidates.length === candidates.length,
     "candidates artifact: count mismatch",

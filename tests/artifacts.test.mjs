@@ -4,6 +4,7 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -12,7 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { test } from "vitest";
+import { afterAll, beforeAll, test } from "vitest";
 import {
   artifactDirectoryPath,
   artifactFilePath,
@@ -37,8 +38,62 @@ function runNode(script) {
     cwd: process.cwd(),
     encoding: "utf8",
     stdio: "pipe",
+    // The committed artifacts are an inert cold-start seed (ADR 0006) that drifts
+    // from live source between publishes. This no-build suite validates structure;
+    // committed-vs-fresh freshness parity is gated in CI (post-build) instead.
+    env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
   });
 }
+
+// Snapshot/restore the served public/ tree so the build-running tests below leave
+// the working tree exactly as they found it. build-artifacts.mjs regenerates from
+// current source (which drifts from the committed seed), so restoring exact bytes
+// keeps `npm test` idempotent — a contributor can't accidentally commit drift.
+const PUBLIC_TREE = path.join(process.cwd(), "public");
+
+function walkFilesRecursive(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...walkFilesRecursive(full));
+    } else if (entry.isFile()) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+function snapshotPublicTree() {
+  if (!existsSync(PUBLIC_TREE)) {
+    return new Map();
+  }
+  return new Map(
+    walkFilesRecursive(PUBLIC_TREE).map((file) => [file, readFileSync(file)]),
+  );
+}
+
+function restorePublicTree(snapshot) {
+  if (existsSync(PUBLIC_TREE)) {
+    for (const file of walkFilesRecursive(PUBLIC_TREE)) {
+      if (!snapshot.has(file)) {
+        rmSync(file);
+      }
+    }
+  }
+  for (const [file, bytes] of snapshot) {
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, bytes);
+  }
+}
+
+let publicTreeSnapshot;
+beforeAll(() => {
+  publicTreeSnapshot = snapshotPublicTree();
+});
+afterAll(() => {
+  restorePublicTree(publicTreeSnapshot);
+});
 
 test("registry validates", () => {
   runNode("scripts/validate.mjs");
