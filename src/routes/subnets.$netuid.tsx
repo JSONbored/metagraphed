@@ -564,14 +564,18 @@ type ApiSnippetLang = (typeof API_SNIPPET_LANGS)[number]["id"];
 
 // One-liner copy snippets for a GET against a registry URL. Kept single-line so
 // they render and copy cleanly through CopyableCode.
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 function apiSnippet(lang: ApiSnippetLang, url: string): string {
   switch (lang) {
     case "curl":
-      return `curl -sS '${url}'`;
+      return `curl -sS ${shellSingleQuote(url)}`;
     case "js":
-      return `fetch('${url}').then((r) => r.json())`;
+      return `fetch(${JSON.stringify(url)}).then((r) => r.json())`;
     case "python":
-      return `requests.get('${url}').json()`;
+      return `requests.get(${JSON.stringify(url)}).json()`;
     case "url":
     default:
       return url;
