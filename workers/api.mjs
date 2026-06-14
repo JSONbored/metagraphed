@@ -142,6 +142,13 @@ function isStaticEdgeCacheEligible(matched, network) {
   return !network.isDefault || !LIVE_OVERLAY_ROUTE_IDS.has(matched.id);
 }
 
+// Live-overlay COLLECTION routes worth caching keyed on the cron snapshot's
+// last_run_at (not the static edge cache, since their body carries live status).
+// Scoped to the large /api/v1/endpoints index (~1.43 MB / 1160 rows) whose
+// overlay output is fully determined by (contract_version, last_run_at) — the
+// per-subnet `subnet-endpoints` variant is small and intentionally excluded.
+const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
+
 export default {
   async fetch(request, env, ctx) {
     return handleRequest(request, env, ctx);
@@ -943,6 +950,42 @@ async function handleApiRequest(
         )}${url.pathname}${url.search}`,
       )
     : null;
+  // Live-overlay collection cache (the large /api/v1/endpoints index). Excluded
+  // from the static edge cache above, but its overlay only changes when the
+  // 2-min cron writes a new health snapshot, so cache it keyed on last_run_at —
+  // turning a per-request R2-GET + parse + 3-pass overlay + 1.43 MB re-stringify
+  // + SHA-256 into at-most-once-per-cron-tick, staleness bounded to one interval.
+  const overlayCache =
+    request.method === "GET" &&
+    network.isDefault &&
+    CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
+      ? globalThis.caches?.default
+      : null;
+  let overlayCacheKey = null;
+  if (overlayCache) {
+    // Cheap KV read of just the snapshot time; on a hit this + the cache match
+    // is the whole request (no R2 GET / overlay / re-stringify).
+    const opMeta = await readHealthKv(env, KV_HEALTH_META);
+    const lastRunAt = opMeta?.last_run_at || null;
+    if (lastRunAt) {
+      overlayCacheKey = new Request(
+        `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
+          contractVersion(env),
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${url.search}`,
+      );
+      const overlayHit = await overlayCache.match(overlayCacheKey);
+      if (overlayHit) {
+        const etag = overlayHit.headers.get("etag");
+        if (etag && request.headers.get("if-none-match") === etag) {
+          return new Response(null, {
+            status: 304,
+            headers: overlayHit.headers,
+          });
+        }
+        return overlayHit;
+      }
+    }
+  }
   if (edgeCache) {
     const hit = await edgeCache.match(edgeCacheKey);
     if (hit) {
@@ -1070,6 +1113,13 @@ async function handleApiRequest(
   // expires per the response's cache-control max-age.
   if (edgeCache && live === null && response.status === 200) {
     ctx?.waitUntil?.(edgeCache.put(edgeCacheKey, response.clone()));
+  }
+  // Cache the live-overlay collection only when the overlay actually applied
+  // (live !== null) and we keyed on a real last_run_at (overlayCacheKey set) —
+  // never cache a cold-KV fallback, which would pin build-time health under a
+  // stable key. The entry busts on the next cron snapshot (key) + max-age.
+  if (overlayCacheKey && live !== null && response.status === 200) {
+    ctx?.waitUntil?.(overlayCache.put(overlayCacheKey, response.clone()));
   }
   return response;
 }
