@@ -1390,6 +1390,37 @@ describe("Worker runtime", () => {
         "live-overlay routes (health) must never be edge-cached",
       );
 
+      // Live-overlay fallback routes must also avoid the edge cache when KV/D1
+      // live data is cold and the handler serves the static artifact.
+      const putsBeforeColdFallback = puts;
+      const hitsBeforeColdFallback = matchHits;
+      const coldOverlayEnv = {
+        ...env,
+        METAGRAPH_ARCHIVE: r2ArchiveFixture({
+          "rpc-endpoints.json": {
+            endpoints: [{ id: "archive-rpc", status: "unknown" }],
+            generated_at: "1970-01-01T00:00:00.000Z",
+          },
+        }),
+      };
+      const rpcEndpoints = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/rpc/endpoints"),
+        coldOverlayEnv,
+        ctx,
+      );
+      await Promise.resolve();
+      assert.equal(rpcEndpoints.status, 200);
+      assert.equal(
+        puts,
+        putsBeforeColdFallback,
+        "cold live-overlay fallbacks must not be edge-cached",
+      );
+      assert.equal(
+        matchHits,
+        hitsBeforeColdFallback,
+        "cold live-overlay fallbacks must bypass edge-cache lookup",
+      );
+
       // Non-GET requests are never cached.
       const putsBeforeHead = puts;
       await handleRequest(
