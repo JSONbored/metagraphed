@@ -1322,6 +1322,87 @@ describe("Worker runtime", () => {
       assert.equal((await response.json()).error.code, "invalid_query");
     }
   });
+
+  test("edge-caches pure static-artifact GETs but never live-overlay routes", async () => {
+    const store = new Map();
+    let puts = 0;
+    let matchHits = 0;
+    const originalCaches = globalThis.caches;
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          const cached = store.get(request.url);
+          if (cached) matchHits += 1;
+          return cached ? cached.clone() : undefined;
+        },
+        async put(request, response) {
+          puts += 1;
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+    try {
+      // Pure static-artifact route: cached on first GET, served on repeat.
+      const first = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/schemas"),
+        env,
+        ctx,
+      );
+      await Promise.resolve();
+      const firstBody = await first.text();
+      const etag = first.headers.get("etag");
+      assert.equal(first.status, 200);
+      assert.equal(puts, 1, "a pure-artifact 200 GET should be cached");
+      assert.equal(matchHits, 0, "first GET is a cache miss");
+
+      const second = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/schemas"),
+        env,
+        ctx,
+      );
+      assert.equal(matchHits, 1, "repeat GET is served from the edge cache");
+      assert.equal(await second.text(), firstBody);
+
+      // Conditional GET against the cached weak ETag → 304 (no body).
+      const conditional = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/schemas", {
+          headers: { "if-none-match": etag },
+        }),
+        env,
+        ctx,
+      );
+      assert.equal(conditional.status, 304);
+      assert.equal(await conditional.text(), "");
+
+      // Live-overlay route MUST NOT be cached — live status stays fresh.
+      const putsBeforeHealth = puts;
+      const health = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/health"),
+        env,
+        ctx,
+      );
+      await Promise.resolve();
+      assert.equal(health.status, 200);
+      assert.equal(
+        puts,
+        putsBeforeHealth,
+        "live-overlay routes (health) must never be edge-cached",
+      );
+
+      // Non-GET requests are never cached.
+      const putsBeforeHead = puts;
+      await handleRequest(
+        new Request("https://metagraph.sh/api/v1/schemas", { method: "HEAD" }),
+        env,
+        ctx,
+      );
+      await Promise.resolve();
+      assert.equal(puts, putsBeforeHead, "non-GET requests must not be cached");
+    } finally {
+      globalThis.caches = originalCaches;
+    }
+  });
 });
 
 describe("Agent discovery surfaces", () => {
