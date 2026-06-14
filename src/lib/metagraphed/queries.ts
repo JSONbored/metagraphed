@@ -11,7 +11,9 @@ import type {
   EvidenceItem,
   Freshness,
   Gap,
+  GlobalIncident,
   GlobalIncidents,
+  GlobalIncidentSurface,
   HealthState,
   HealthSummary,
   PrimaryAppSurface,
@@ -660,10 +662,80 @@ export const endpointIncidentsQuery = () =>
 export const globalIncidentsQuery = (window: string) =>
   queryOptions({
     queryKey: k("incidents", window),
-    queryFn: ({ signal }) =>
-      apiFetch<GlobalIncidents>("/api/v1/incidents", { params: { window }, signal }),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/incidents", { params: { window }, signal });
+      return { ...res, data: normalizeGlobalIncidents(res.data) } as ApiResult<GlobalIncidents>;
+    },
     staleTime: STALE_SHORT,
   });
+
+function finiteNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function finiteOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function finiteEpochMs(value: unknown): number | undefined {
+  const n = finiteNumber(value, Number.NaN);
+  if (!Number.isFinite(n)) return undefined;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? n : undefined;
+}
+
+function normalizeGlobalIncident(raw: unknown): GlobalIncident | undefined {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : undefined;
+  if (!r) return undefined;
+  const started_at = finiteEpochMs(r.started_at) ?? 0;
+  const ended_at = finiteEpochMs(r.ended_at) ?? 0;
+  return {
+    started_at,
+    ended_at,
+    duration_ms: finiteNumber(r.duration_ms),
+    failed_samples: finiteOptionalNumber(r.failed_samples),
+  };
+}
+
+function normalizeGlobalIncidentSurface(raw: unknown): GlobalIncidentSurface | undefined {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : undefined;
+  if (!r) return undefined;
+  const incidents = Array.isArray(r.incidents)
+    ? r.incidents.flatMap((incident) => {
+        const normalized = normalizeGlobalIncident(incident);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: finiteNumber(r.netuid),
+    surface_id: pickStr(r.surface_id) ?? "",
+    incident_count: finiteNumber(r.incident_count, incidents.length),
+    downtime_ms: finiteNumber(r.downtime_ms),
+    incidents,
+  };
+}
+
+function normalizeGlobalIncidents(raw: unknown): GlobalIncidents {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const summary =
+    r.summary && typeof r.summary === "object" ? (r.summary as Record<string, unknown>) : {};
+  const surfaces = Array.isArray(r.surfaces)
+    ? r.surfaces.flatMap((surface) => {
+        const normalized = normalizeGlobalIncidentSurface(surface);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    window: pickStr(r.window) ?? null,
+    observed_at: pickStr(r.observed_at) ?? null,
+    source: pickStr(r.source),
+    summary: {
+      incident_count: finiteNumber(summary.incident_count),
+      affected_surface_count: finiteNumber(summary.affected_surface_count, surfaces.length),
+    },
+    surfaces,
+  };
+}
 
 function normalizeProviderListItem(raw: unknown): Provider {
   const r = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
