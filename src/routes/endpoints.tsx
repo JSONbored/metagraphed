@@ -1,17 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo, useState } from "react";
-import { Search, X, Copy, ChevronDown, ChevronRight } from "lucide-react";
+import { Suspense, useMemo, useState, useEffect } from "react";
+import { Search, X, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { CopyButton } from "@/components/metagraphed/copy-button";
+import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { classNames } from "@/lib/metagraphed/format";
+import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
+import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { endpointsQuery, endpointIncidentsQuery, rpcPoolsQuery } from "@/lib/metagraphed/queries";
+import {
+  endpointCategory,
+  endpointEligibility,
+  ELIGIBILITY_LABEL,
+  ELIGIBILITY_TONE,
+  type EndpointCategory,
+  type PoolEligibility,
+} from "@/lib/metagraphed/endpoint-pool";
 
 import type { Endpoint, EndpointIncident, HealthState, RpcPool } from "@/lib/metagraphed/types";
 
@@ -32,11 +45,26 @@ export const Route = createFileRoute("/endpoints")({
 function EndpointsPage() {
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Infrastructure"
+        live
         title="Endpoints"
         description="Subtensor RPC/WSS pools and application-layer endpoints. Pool eligibility is metadata only — proxy routing is future-scoped."
       />
+      <QueryErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+          }
+        >
+          <EndpointsStatStrip />
+        </Suspense>
+      </QueryErrorBoundary>
       <div className="space-y-8">
         <section>
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
@@ -81,38 +109,96 @@ function EndpointsPage() {
   );
 }
 
+function EndpointsStatStrip() {
+  const rows = (useSuspenseQuery(endpointsQuery()).data.data ?? []) as Endpoint[];
+  const pools = (useSuspenseQuery(rpcPoolsQuery()).data.data ?? []) as RpcPool[];
+  const total = rows.length;
+  const archive = rows.filter((e) => e.archive).length;
+  const proxy = pools.filter((p) => p.proxy_enabled).length;
+  const ok = rows.filter((e) => e.health === "ok").length;
+  const okPct = total > 0 ? Math.round((ok / total) * 100) : null;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <StatTile icon={Radio} eyebrow="Endpoints" value={total} hint="tracked" />
+      <StatTile
+        icon={Server}
+        eyebrow="RPC pools"
+        value={pools.length}
+        hint={proxy ? `${proxy} proxy` : undefined}
+        tone="accent"
+      />
+      <StatTile icon={ShieldCheck} eyebrow="Archive-capable" value={archive} />
+      <StatTile
+        icon={Activity}
+        eyebrow="Healthy"
+        value={okPct != null ? `${okPct}%` : "—"}
+        hint={`${ok}/${total}`}
+        tone={okPct != null && okPct > 90 ? "ok" : okPct != null && okPct < 70 ? "warn" : "default"}
+      />
+    </div>
+  );
+}
+
 function PoolsTable() {
   const { data } = useSuspenseQuery(rpcPoolsQuery());
   const rows = (data.data ?? []) as RpcPool[];
-  if (rows.length === 0) return <EmptyState title="No pools" />;
+  const stale = isStaleFreshness(data.meta?.generated_at);
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title="No RPC pools tracked"
+        description="Pool routing is future-scoped — eligibility metadata appears here once it's registered."
+      />
+    );
   return (
-    <div className="rounded border border-border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-          <tr>
-            <th className="px-3 py-2 text-left">Pool</th>
-            <th className="px-3 py-2 text-left">Region</th>
-            <th className="px-3 py-2 text-right">Members</th>
-            <th className="px-3 py-2">Archive</th>
-            <th className="px-3 py-2">Proxy</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((p) => (
-            <tr key={p.id}>
-              <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
-              <td className="px-3 py-2 text-[12px]">{p.region ?? "—"}</td>
-              <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
-              <td className="px-3 py-2 text-[11px] text-ink-muted">
-                {p.archive_capable ? "yes" : "—"}
-              </td>
-              <td className="px-3 py-2 text-[11px] text-ink-muted">
-                {p.proxy_enabled ? "enabled" : "future"}
-              </td>
+    <div className="space-y-2">
+      {stale ? <StaleBanner generatedAt={data.meta?.generated_at} /> : null}
+      <div className="rounded border border-border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-3 py-2 text-left">Pool</th>
+              <th className="px-3 py-2 text-left">Region</th>
+              <th className="px-3 py-2 text-right">Members</th>
+              <th className="px-3 py-2">Archive</th>
+              <th className="px-3 py-2">Eligibility</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((p) => {
+              const eligibility: PoolEligibility = p.proxy_enabled
+                ? "proxy-enabled"
+                : p.archive_capable
+                  ? "archive-capable"
+                  : "pool-member";
+              return (
+                <tr key={p.id} className="mg-row-hover">
+                  <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
+                  <td className="px-3 py-2 text-[12px]">{p.region ?? "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
+                  <td className="px-3 py-2 text-[11px] text-ink-muted">
+                    {p.archive_capable ? "yes" : "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={classNames(
+                        "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+                        ELIGIBILITY_TONE[eligibility],
+                      )}
+                    >
+                      {ELIGIBILITY_LABEL[eligibility]}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-1 font-mono text-[10px] text-ink-muted">
+        Pool eligibility is metadata only — proxy routing is future-scoped and disabled unless the
+        backend explicitly opts in.
+      </p>
     </div>
   );
 }
@@ -143,21 +229,22 @@ function endpointValue(e: Endpoint, k: SortKey): string | number | null {
 
 function EndpointsTable() {
   const { data } = useSuspenseQuery(endpointsQuery());
+  const { data: poolsRes } = useSuspenseQuery(rpcPoolsQuery());
   const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
+  const pools = useMemo(() => (poolsRes.data ?? []) as RpcPool[], [poolsRes]);
 
   const [q, setQ] = useState("");
-  const [kind, setKind] = useState<string>("");
+  const [category, setCategory] = useState<EndpointCategory | "all">("all");
   const [provider, setProvider] = useState<string>("");
   const [health, setHealth] = useState<string>("");
+  const [netuid, setNetuid] = useState<string>("");
+  const [region, setRegion] = useState<string>("");
+  const [eligibility, setEligibility] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("netuid");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  const kinds = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.kind).filter(Boolean) as string[])).sort(),
-    [rows],
-  );
   const providers = useMemo(
     () =>
       Array.from(
@@ -165,19 +252,47 @@ function EndpointsTable() {
       ).sort(),
     [rows],
   );
+  const regions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.region).filter(Boolean) as string[])).sort(),
+    [rows],
+  );
+
+  // Pre-compute category + eligibility per endpoint once.
+  const enriched = useMemo(
+    () =>
+      rows.map((e) => ({
+        e,
+        cat: endpointCategory(e.kind),
+        eli: endpointEligibility(e, pools),
+      })),
+    [rows, pools],
+  );
+
+  const categoryCounts = useMemo(() => {
+    const counts: Partial<Record<EndpointCategory | "all", number>> = { all: rows.length };
+    for (const x of enriched) counts[x.cat] = (counts[x.cat] ?? 0) + 1;
+    return counts;
+  }, [enriched, rows.length]);
+
+  const netuidNum = netuid.trim() === "" ? null : Number(netuid);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((e) => {
-      if (kind && e.kind !== kind) return false;
-      if (provider && (e.provider ?? e.provider_slug) !== provider) return false;
-      if (health && (e.health ?? "unknown") !== health) return false;
-      if (!needle) return true;
-      return [e.url, e.provider, e.provider_slug, e.region, String(e.netuid ?? ""), e.kind, e.id]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(needle));
-    });
-  }, [rows, q, kind, provider, health]);
+    return enriched
+      .filter(({ e, cat, eli }) => {
+        if (category !== "all" && cat !== category) return false;
+        if (provider && (e.provider ?? e.provider_slug) !== provider) return false;
+        if (health && (e.health ?? "unknown") !== health) return false;
+        if (region && e.region !== region) return false;
+        if (eligibility && eli !== eligibility) return false;
+        if (netuidNum != null && Number.isFinite(netuidNum) && e.netuid !== netuidNum) return false;
+        if (!needle) return true;
+        return [e.url, e.provider, e.provider_slug, e.region, String(e.netuid ?? ""), e.kind, e.id]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(needle));
+      })
+      .map((x) => x.e);
+  }, [enriched, q, category, provider, health, region, eligibility, netuidNum]);
 
   const sorted = useMemo(() => {
     const mul = sortOrder === "asc" ? 1 : -1;
@@ -196,7 +311,13 @@ function EndpointsTable() {
   const safePage = Math.min(page, totalPages);
   const pageRows = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const hasFilters = q || kind || provider || health;
+  const hasFilters =
+    q || category !== "all" || provider || health || netuid || region || eligibility;
+
+  // Reset to page 1 whenever any filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [q, category, provider, health, netuid, region, eligibility]);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
@@ -209,58 +330,63 @@ function EndpointsTable() {
   if (rows.length === 0) return <EmptyState title="No endpoints" />;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Kind chip rail */}
+      <EndpointKindTabs value={category} counts={categoryCounts} onChange={setCategory} />
+
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
           <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
           <input
             value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Search URL, provider, netuid…"
             className="w-full rounded border border-border bg-card pl-7 pr-2 py-1.5 text-[12px] focus:outline-none focus:border-ink/30"
             aria-label="Search endpoints"
           />
         </div>
-        <FilterSelect
-          label="Kind"
-          value={kind}
-          onChange={(v) => {
-            setKind(v);
-            setPage(1);
-          }}
-          options={kinds}
-        />
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
+          <span className="font-mono uppercase tracking-widest text-[10px]">Netuid</span>
+          <input
+            value={netuid}
+            onChange={(e) => setNetuid(e.target.value.replace(/[^0-9]/g, ""))}
+            inputMode="numeric"
+            placeholder="any"
+            className="w-16 rounded border border-border bg-card px-1.5 py-1 text-[11px] focus:outline-none focus:border-ink/30"
+            aria-label="Filter by netuid"
+          />
+        </label>
         <FilterSelect
           label="Provider"
           value={provider}
-          onChange={(v) => {
-            setProvider(v);
-            setPage(1);
-          }}
+          onChange={setProvider}
           options={providers}
         />
+        <FilterSelect label="Region" value={region} onChange={setRegion} options={regions} />
         <FilterSelect
           label="Health"
           value={health}
-          onChange={(v) => {
-            setHealth(v);
-            setPage(1);
-          }}
+          onChange={setHealth}
           options={["ok", "warn", "down", "unknown"]}
+        />
+        <FilterSelect
+          label="Eligibility"
+          value={eligibility}
+          onChange={setEligibility}
+          options={["proxy-enabled", "pool-member", "archive-capable", "unassigned"]}
         />
         {hasFilters ? (
           <button
             type="button"
             onClick={() => {
               setQ("");
-              setKind("");
+              setCategory("all");
               setProvider("");
               setHealth("");
-              setPage(1);
+              setNetuid("");
+              setRegion("");
+              setEligibility("");
             }}
             className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] text-ink-muted hover:text-ink-strong"
           >
@@ -358,15 +484,7 @@ function EndpointsTable() {
                           <ExternalLink href={e.url} className="truncate text-[11px]">
                             {e.url}
                           </ExternalLink>
-                          <button
-                            type="button"
-                            onClick={() => navigator.clipboard?.writeText(e.url!)}
-                            className="shrink-0 rounded p-1 text-ink-muted hover:text-ink-strong"
-                            title="Copy URL"
-                            aria-label="Copy URL"
-                          >
-                            <Copy className="size-3" />
-                          </button>
+                          <CopyButton value={e.url} label="URL" />
                         </div>
                       ) : (
                         "—"
