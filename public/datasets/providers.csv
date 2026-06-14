@@ -33,6 +33,7 @@ flamewire,FlameWire,infrastructure-provider,provider-claimed,,https://flamewire.
 forevermoney,ForeverMoney,subnet-team,official,https://github.com/SN98-ForeverMoney/forever-money,https://forevermoney.ai/
 getblock,GetBlock,infrastructure-provider,provider-claimed,,https://getblock.io
 gittensor,Gittensor,subnet-team,provider-claimed,,https://gittensor.io
+gittensory,Gittensory,data-provider,provider-claimed,https://github.com/JSONbored/gittensory,https://gittensory.aethereal.dev
 gopher-ai,Gopher AI,subnet-team,official,https://github.com/gopher-lab/subnet-42,https://developers.gopher-ai.com/
 gradients,Gradients,subnet-team,provider-claimed,https://github.com/gradients-ai/G.O.D,https://www.gradients.io/
 graphite-ai,Graphite AI,subnet-team,official,https://github.com/GraphiteAI/Graphite-Subnet,https://graphite-ai.net/

@@ -32,7 +32,7 @@
       },
       "subnet-api": {
         "pct": 12,
-        "present": 15
+        "present": 16
       },
       "website": {
         "pct": 89,
@@ -83,7 +83,7 @@
   "network": "finney",
   "official_surface_count": 254,
   "probed_count": 129,
-  "probed_surface_count": 1150,
+  "probed_surface_count": 1152,
   "registry_observed_surface_count": 846,
   "root_subnet_count": 1,
   "schema_version": 1,
@@ -100,5 +100,5 @@
     "overlays": "registry/subnets"
   },
   "subnets_without_official_surface": 57,
-  "surface_count": 1157
+  "surface_count": 1160
 }

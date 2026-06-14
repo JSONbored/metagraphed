@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 59,
+  "surface_count": 60,
   "surfaces": [
     {
       "auth_required": false,
@@ -827,6 +827,23 @@
       "subnet_slug": "gittensor",
       "surface_id": "gittensor-master-repositories",
       "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "gittensory-contribution-interface",
+      "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
     },
     {
       "auth_required": false,

@@ -8184,73 +8184,6 @@
       ]
     },
     {
-      "candidate_count": 17,
-      "completeness_score": 83,
-      "confidence": "high",
-      "curation_level": "adapter-backed",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 7,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": false,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 2,
-      "missing_identity": [],
-      "missing_operational": [
-        "subnet-api",
-        "sse"
-      ],
-      "missing_required": [],
-      "name": "Gittensor",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 74,
-      "operational_interface_count": 2,
-      "priority_score": 44,
-      "profile_level": "adapter-backed",
-      "review_state": "maintainer-reviewed",
-      "slug": "gittensor",
-      "source_count": 13,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "data-artifact",
-        "docs",
-        "openapi",
-        "repo-registry",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
       "candidate_count": 19,
       "completeness_score": 85,
       "confidence": "high",
@@ -8713,6 +8646,72 @@
       ]
     },
     {
+      "candidate_count": 17,
+      "completeness_score": 98,
+      "confidence": "high",
+      "curation_level": "adapter-backed",
+      "gap_reasons": [
+        "missing-sse"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 1,
+      "missing_identity": [],
+      "missing_operational": [
+        "sse"
+      ],
+      "missing_required": [],
+      "name": "Gittensor",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 74,
+      "operational_interface_count": 3,
+      "priority_score": 24,
+      "profile_level": "adapter-backed",
+      "review_state": "maintainer-reviewed",
+      "slug": "gittensor",
+      "source_count": 15,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "openapi",
+        "repo-registry",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
+    },
+    {
       "candidate_count": 15,
       "completeness_score": 97,
       "confidence": "high",
@@ -8857,7 +8856,7 @@
       "missing-openapi": 115,
       "missing-source-repo": 17,
       "missing-sse": 127,
-      "missing-subnet-api": 113,
+      "missing-subnet-api": 112,
       "missing-website": 14
     },
     "identity_promotion_candidate_count": 1,
