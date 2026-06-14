@@ -98,8 +98,11 @@ describe("Worker runtime", () => {
     // the real publish pointer so a body-reading agent sees genuine freshness.
     assert.equal(body.data.published_at, publishedAt);
     assert.equal(body.meta.published_at, publishedAt);
-    // generated_at stays the deterministic content marker (issue #349).
-    assert.equal(body.data.generated_at, "1970-01-01T00:00:00.000Z");
+    // generated_at is the build marker and must NOT be clobbered by the
+    // published_at overlay. It is epoch-0 in deterministic/CI builds but the real
+    // build time in a production refresh, so assert the invariant (distinct from
+    // the overlaid published_at), not a fixed fixture value (#349).
+    assert.notEqual(body.data.generated_at, publishedAt);
   });
 
   test("/.well-known/mcp/server-card.json overlays published_at from the KV pointer", async () => {
@@ -124,10 +127,11 @@ describe("Worker runtime", () => {
     assert.ok(response.headers.get("etag"));
     const card = await response.json();
     // The committed card carries published_at:null; serve overlays the real
-    // publish pointer. generated_at stays the deterministic marker; the
-    // content_hash + serverInfo are preserved.
+    // publish pointer. generated_at (the build marker, epoch-0 in CI / real in a
+    // production refresh) must not be clobbered by the overlay; content_hash +
+    // serverInfo are preserved.
     assert.equal(card.published_at, publishedAt);
-    assert.equal(card.generated_at, "1970-01-01T00:00:00.000Z");
+    assert.notEqual(card.generated_at, publishedAt);
     assert.ok(card.content_hash, "card must keep its content_hash");
     assert.ok(card.serverInfo?.name, "card must keep serverInfo");
 
