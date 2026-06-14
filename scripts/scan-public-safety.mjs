@@ -53,15 +53,19 @@ const patterns = [
   },
 ];
 
-// Per-surface schema artifacts embed the full upstream OpenAPI/Swagger spec
-// (TS2). Those are public docs the subnet published; the soft wording
-// heuristics false-positive on their API terminology. Keep this exemption scoped
-// to generated public/R2 artifact directories so source schemas are still
-// covered by the terminology guard.
+// Per-surface schema artifacts AND captured fixtures embed the full upstream
+// OpenAPI/Swagger spec or GitHub README (TS2). Those are public docs the subnet
+// published; the soft wording heuristics false-positive on their API terminology
+// ("hotkey"/"wallet"/"coldkey" are core Bittensor vocabulary that nearly every
+// subnet API documents). Keep this exemption scoped to the generated public/R2
+// artifact directories so source schemas are still covered by the terminology
+// guard. The hard secret patterns above still apply to these files.
 function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
     /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
+    /^public\/metagraph\/fixtures\/[^/]+\.json$/,
+    /^dist\/metagraph-r2\/metagraph\/fixtures\/[^/]+\.json$/,
   ].some((pattern) => pattern.test(relativePath));
 }
 
