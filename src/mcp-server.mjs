@@ -139,10 +139,19 @@ function toolError(code, message) {
 async function loadArtifactData(ctx, artifactPath) {
   const result = await ctx.readArtifact(ctx.env, artifactPath);
   if (!result || !result.ok) {
-    throw toolError(
-      result?.code || "artifact_unavailable",
-      result?.message || `Artifact is not available: ${artifactPath}`,
-    );
+    const code = result?.code || "artifact_unavailable";
+    if (code === "artifact_not_found") {
+      // Map to a clean, agent-actionable domain error. Never echo result.message
+      // — it embeds the internal R2 key (e.g. "latest/overview/99999.json").
+      throw toolError(
+        "not_found",
+        "No resource at the requested identifier. Use search_subnets or " +
+          "list_subnet_apis to discover valid netuids / surface ids.",
+      );
+    }
+    // For other failures (timeout, missing binding) surface the public artifact
+    // path + code, not result.message (which also embeds the R2 key).
+    throw toolError(code, `Could not load ${artifactPath} (${code}).`);
   }
   return result.data;
 }
@@ -1236,6 +1245,12 @@ async function callTool(params, ctx) {
     if (error?.toolError) {
       return {
         content: [{ type: "text", text: `${error.code}: ${error.message}` }],
+        // Machine-readable error so an agent can branch on a stable code
+        // (rate_limited → back off, ai_unavailable → keyword fallback, etc.)
+        // instead of substring-parsing the prose.
+        structuredContent: {
+          error: { code: error.code, message: error.message },
+        },
         isError: true,
       };
     }

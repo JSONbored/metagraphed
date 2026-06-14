@@ -551,10 +551,16 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.isError, true);
   });
 
-  test("get_subnet surfaces an artifact-unavailable error", async () => {
+  test("get_subnet maps a missing artifact to a clean not_found (no R2 key leak)", async () => {
     const res = await callTool("get_subnet", { netuid: 999 }, { deps });
     assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("artifact_not_found"));
+    const text = res.body.result.content[0].text;
+    assert.ok(text.includes("not_found"));
+    // Must not echo the internal artifact path / R2 key.
+    assert.equal(text.includes("/metagraph/overview/999.json"), false);
+    assert.equal(text.includes("latest/"), false);
+    // Machine-readable error code for agents to branch on.
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
   });
 
   test("get_subnet_health is live-only — ignores the static artifact, reports unknown when the live store is cold", async () => {

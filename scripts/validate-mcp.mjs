@@ -6,6 +6,7 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
 import {
@@ -122,6 +123,16 @@ assert.equal(
   init.body.result.serverInfo.version,
   MCP_SERVER_VERSION,
   "serverInfo.version must match the MCP_SERVER_VERSION constant",
+);
+// The MCP Registry listing (server.json) must advertise the same version the
+// live server reports, so registry discovery and a direct connect agree.
+const serverManifestVersion = JSON.parse(
+  readFileSync("server.json", "utf8"),
+).version;
+assert.equal(
+  serverManifestVersion,
+  MCP_SERVER_VERSION,
+  "server.json version (MCP Registry listing) must match MCP_SERVER_VERSION",
 );
 assert.ok(
   init.body.result.capabilities.tools,
