@@ -188,5 +188,10 @@ export function resolveBrandOverride(
   if (subnetKey && SUBNET_ICONS_BY_SLUG[subnetKey]) {
     return pickIconSource(SUBNET_ICONS_BY_SLUG[subnetKey], theme);
   }
+  // A subnet slug can also match a provider-icon key (e.g. a team that runs the
+  // subnet); fall back to that before giving up.
+  if (subnetKey && PROVIDER_ICONS[subnetKey]) {
+    return pickIconSource(PROVIDER_ICONS[subnetKey], theme);
+  }
   return null;
 }

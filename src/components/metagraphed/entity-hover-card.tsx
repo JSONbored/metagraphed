@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { BrandIcon } from "./brand-icon";
@@ -23,11 +23,43 @@ type Props = SubnetHoverProps | ProviderHoverProps;
  * Linear-style hover profile card. Wraps any link/trigger and fetches its
  * detail payload on first open (cached via the shared query client).
  */
+/**
+ * Detect a touch-primary device. On those we don't render a hover card at all —
+ * the trigger renders as-is so the underlying <Link> stays the one-tap target.
+ * Avoids the "tap once to hover, tap again to navigate" trap of Radix HoverCard
+ * on mobile.
+ */
+function useCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const m = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => setCoarse(m.matches);
+    update();
+    m.addEventListener?.("change", update);
+    return () => m.removeEventListener?.("change", update);
+  }, []);
+  return coarse;
+}
+
 export function EntityHoverCard(props: Props) {
+  const coarse = useCoarsePointer();
+  if (coarse) return <>{props.children}</>;
+
+  const ariaLabel =
+    props.kind === "subnet" ? `Preview subnet ${props.netuid}` : `Preview provider ${props.slug}`;
+
   return (
     <HoverCard openDelay={250} closeDelay={120}>
       <HoverCardTrigger asChild>{props.children}</HoverCardTrigger>
-      <HoverCardContent side="top" align="start" className="w-80 p-3 bg-card border-border">
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={8}
+        aria-label={ariaLabel}
+        data-testid="entity-hover-card"
+        className="w-80 p-3 bg-card border-border shadow-lg z-50"
+      >
         {props.kind === "subnet" ? (
           <SubnetMiniProfile netuid={props.netuid} />
         ) : (
