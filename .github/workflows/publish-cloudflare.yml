@@ -105,6 +105,23 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # The scheduled refresh/publish is the only path that keeps R2/KV fresh; a
+      # silent failure leaves stale data live (issue: 2-day wedge went unnoticed).
+      # Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"content\":\"🔴 metagraphed production publish FAILED (refresh/staging) — R2/KV may go stale — ${RUN_URL}\"}" || true
+
   publish:
     runs-on: ubuntu-latest
     needs: refresh
@@ -293,6 +310,21 @@ jobs:
         env:
           METAGRAPH_LIVE_BASE_URL: https://api.metagraph.sh
 
-      # Publish-failure Discord alerts were removed: the metagraphed Discord channel is
-      # reviews-only (reviewbot gate decisions). Monitor publish failures via GitHub Actions
-      # notifications, or re-add an alert here pointing at a SEPARATE ops webhook if needed.
+      # Scheduled publish failures must page someone — a silent failure leaves stale
+      # R2/KV data live (a multi-day wedge previously went unnoticed). Reuses the
+      # opt-in METAGRAPH_ALERT_WEBHOOK_URL (no-ops if unset). The message is clearly
+      # tagged "production publish" to distinguish it from reviewbot gate messages;
+      # point it at a dedicated ops webhook secret if you want a separate channel.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"content\":\"🔴 metagraphed production publish FAILED (deploy job) — R2/KV may go stale — ${RUN_URL}\"}" || true
