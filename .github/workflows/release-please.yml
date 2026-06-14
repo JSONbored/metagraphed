@@ -16,6 +16,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # dispatch publish-client / publish-python after a release
 
 concurrency:
   group: release-please
@@ -31,8 +32,27 @@ jobs:
           persist-credentials: false
 
       - name: Run release-please
+        id: release
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # release-please creates the component tag + GitHub Release with GITHUB_TOKEN,
+      # which (by GitHub's recursion-prevention rule) does NOT fire push/tag-based
+      # workflows. workflow_dispatch IS exempt from that rule, so we explicitly
+      # dispatch the OIDC publish workflows here, telling them release-please
+      # already created the tag/release. Without this, merging a Release PR would
+      # silently never publish.
+      - name: Dispatch npm publish
+        if: ${{ steps.release.outputs['packages/client--release_created'] == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run publish-client.yml --ref main -f released_by_release_please=true
+
+      - name: Dispatch PyPI publish
+        if: ${{ steps.release.outputs['python--release_created'] == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run publish-python.yml --ref main -f released_by_release_please=true

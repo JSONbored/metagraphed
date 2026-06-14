@@ -21,8 +21,15 @@ fi
 
 release_tag="python-v$release_version"
 if git rev-parse "$release_tag" >/dev/null 2>&1; then
-  echo "::error::Release tag already exists: $release_tag"
-  exit 1
+  # release-please creates the tag BEFORE dispatching this publish, so a
+  # pre-existing tag is expected on that path. The PyPI-version check below is the
+  # real double-publish guard; only refuse on a stray tag in the manual flow.
+  if [ "${RELEASE_PLEASE_TRIGGERED:-}" = "true" ]; then
+    echo "Tag $release_tag already exists (created by release-please); continuing."
+  else
+    echo "::error::Release tag already exists: $release_tag"
+    exit 1
+  fi
 fi
 if curl -fsS "https://pypi.org/pypi/metagraphed/$release_version/json" >/dev/null 2>&1; then
   echo "::error::PyPI version already exists: metagraphed==$release_version"

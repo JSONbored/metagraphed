@@ -6,12 +6,18 @@ name: Publish Python SDK
 # trusted publisher pointing at this repo + workflow + the `pypi-production`
 # environment.
 on:
-  # Auto: release-please tags `python-v<semver>` when its Release PR merges
-  # (#394) → publish to PyPI. Manual: workflow_dispatch is kept as an override.
-  push:
-    tags:
-      - "python-v*"
+  # release-please dispatches this workflow after it merges a Release PR and
+  # creates the python-v<semver> tag + GitHub Release (#394), passing
+  # released_by_release_please=true so this run skips re-tagging. A bare manual
+  # dispatch is the override and self-tags. A push:tags trigger can't be used:
+  # GITHUB_TOKEN-created tags don't fire workflows, and the validate gate requires
+  # GITHUB_REF=refs/heads/main (a tag ref would fail it).
   workflow_dispatch:
+    inputs:
+      released_by_release_please:
+        description: "Internal: set by release-please's dispatch so this run skips the tag/release it already created."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,6 +41,8 @@ jobs:
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Validate release version
+        env:
+          RELEASE_PLEASE_TRIGGERED: ${{ inputs.released_by_release_please }}
         run: bash scripts/validate-python-release.sh
 
       # Build happens in THIS unprivileged job (no id-token). The privileged
@@ -77,6 +85,8 @@ jobs:
 
       - name: Validate release version
         id: release
+        env:
+          RELEASE_PLEASE_TRIGGERED: ${{ inputs.released_by_release_please }}
         run: bash scripts/validate-python-release.sh
 
       # Pull the dist built by the unprivileged build job — this job never builds,
@@ -92,10 +102,11 @@ jobs:
         with:
           packages-dir: ${{ runner.temp }}/dist
 
-      # Only on the manual override — release-please already created the tag +
-      # GitHub Release when triggered via the python-v* tag (#394).
+      # Only on the bare manual override. When release-please dispatched this run
+      # (released_by_release_please=true) it already created the tag + GitHub
+      # Release with the generated notes, so re-creating them here would conflict.
       - name: Tag + GitHub release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.released_by_release_please != true
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}

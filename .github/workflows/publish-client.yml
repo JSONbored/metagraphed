@@ -7,12 +7,18 @@ name: Publish client SDK
 # publish, and a Trusted Publisher pointing at this repo + workflow + the
 # `npm-production` environment.
 on:
-  # Auto: release-please tags `client-v<semver>` when its Release PR merges
-  # (#394) → publish to npm. Manual: workflow_dispatch is kept as an override.
-  push:
-    tags:
-      - "client-v*"
+  # release-please dispatches this workflow after it merges a Release PR and
+  # creates the client-v<semver> tag + GitHub Release (#394), passing
+  # released_by_release_please=true so this run skips re-tagging. A bare manual
+  # dispatch is the override and self-tags. A push:tags trigger can't be used:
+  # GITHUB_TOKEN-created tags don't fire workflows, and the validate gate requires
+  # GITHUB_REF=refs/heads/main (a tag ref would fail it).
   workflow_dispatch:
+    inputs:
+      released_by_release_please:
+        description: "Internal: set by release-please's dispatch so this run skips the tag/release it already created."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +45,8 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Validate release version
+        env:
+          RELEASE_PLEASE_TRIGGERED: ${{ inputs.released_by_release_please }}
         run: bash scripts/validate-client-release.sh
 
       # Build + pack happen in THIS unprivileged job (no id-token). The privileged
@@ -89,6 +97,8 @@ jobs:
 
       - name: Validate release version
         id: release
+        env:
+          RELEASE_PLEASE_TRIGGERED: ${{ inputs.released_by_release_please }}
         run: bash scripts/validate-client-release.sh
 
       # Pull the tarball built by the unprivileged validate job — this job never
@@ -114,11 +124,11 @@ jobs:
           tarball=$(find "$RUNNER_TEMP/client-package" -maxdepth 1 -type f -name "*.tgz" -print -quit)
           npm publish "$tarball" --access public --provenance --ignore-scripts
 
-      # Only on the manual override — when release-please triggers via the
-      # client-v* tag, it has already created the tag + GitHub Release with the
-      # generated notes, so re-creating them here would conflict (#394).
+      # Only on the bare manual override. When release-please dispatched this run
+      # (released_by_release_please=true) it already created the tag + GitHub
+      # Release with the generated notes, so re-creating them here would conflict.
       - name: Tag + GitHub release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.released_by_release_please != true
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}

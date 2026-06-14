@@ -21,8 +21,15 @@ fi
 
 release_tag="client-v$release_version"
 if git rev-parse "$release_tag" >/dev/null 2>&1; then
-  echo "::error::Release tag already exists: $release_tag"
-  exit 1
+  # release-please creates the tag BEFORE dispatching this publish, so a
+  # pre-existing tag is expected on that path. The npm-version check below is the
+  # real double-publish guard; only refuse on a stray tag in the manual flow.
+  if [ "${RELEASE_PLEASE_TRIGGERED:-}" = "true" ]; then
+    echo "Tag $release_tag already exists (created by release-please); continuing."
+  else
+    echo "::error::Release tag already exists: $release_tag"
+    exit 1
+  fi
 fi
 if npm view "@jsonbored/metagraphed@$release_version" version >/dev/null 2>&1; then
   echo "::error::npm version already exists: @jsonbored/metagraphed@$release_version"
