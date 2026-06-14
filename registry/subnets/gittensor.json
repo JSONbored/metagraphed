@@ -169,12 +169,17 @@
       "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "provider-claimed",
       "id": "gittensory-mcp",
       "kind": "subnet-api",
       "name": "Gittensory MCP (contribution interface)",
       "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "JSON-RPC"
+      },
       "provider": "gittensory",
       "public_safe": true,
       "source_urls": [
