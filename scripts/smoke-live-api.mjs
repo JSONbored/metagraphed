@@ -16,7 +16,9 @@ const rawArtifactChecks = [
   "/metagraph/openapi.json",
   "/metagraph/r2-manifest.json",
   "/metagraph/subnets/7.json",
-  "/metagraph/health/latest.json",
+  // Current-state health artifacts are retired (410); the durable daily
+  // history snapshot is the live raw health artifact still served from R2.
+  `/metagraph/health/history/${healthDate}.json`,
   "/metagraph/candidates.json",
   "/metagraph/review-queue.json",
 ];
@@ -307,22 +309,37 @@ console.log(
 );
 
 async function discoverHealthHistoryDate() {
-  const result = await fetchJson(`${baseUrl}/metagraph/health/latest.json`);
-  assert.equal(
-    result.status,
-    200,
-    "/metagraph/health/latest.json: expected HTTP 200",
-  );
-  const generatedAt =
-    result.body?.probe_finished_at ||
-    result.body?.probe_started_at ||
-    result.body?.generated_at;
+  // Current-state health is live-only — the static /metagraph/health/latest.json
+  // artifact is retired (410). Bootstrap the probe date from the live
+  // /api/v1/health endpoint, then walk backward to the most recent date that
+  // actually has a daily health-history snapshot. History is sparse (some days
+  // have no snapshot), so this keeps the downstream history check stable and
+  // robust across the midnight boundary.
+  const health = await fetchJson(`${baseUrl}/api/v1/health`);
+  assert.equal(health.status, 200, "/api/v1/health: expected HTTP 200");
+  const observedAt =
+    health.body?.data?.operational_observed_at ||
+    health.body?.data?.generated_at ||
+    health.body?.meta?.published_at;
   assert.match(
-    String(generatedAt || ""),
+    String(observedAt || ""),
     /^\d{4}-\d{2}-\d{2}T/,
-    "/metagraph/health/latest.json: probe timestamp must be an ISO timestamp",
+    "/api/v1/health: expected an ISO operational timestamp",
   );
-  return generatedAt.slice(0, 10);
+  const startMs = new Date(observedAt).getTime();
+  for (let back = 0; back < 14; back += 1) {
+    const date = new Date(startMs - back * 86400000).toISOString().slice(0, 10);
+    const snapshot = await fetchJson(
+      `${baseUrl}/api/v1/health/history/${date}`,
+    );
+    if (snapshot.status === 200 && snapshot.body?.ok) {
+      return date;
+    }
+  }
+  throw new assert.AssertionError({
+    message:
+      "no daily health-history snapshot found in the last 14 days via /api/v1/health/history/{date}",
+  });
 }
 
 function apiRouteUrl(routePath, date) {
