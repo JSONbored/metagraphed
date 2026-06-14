@@ -139,13 +139,16 @@ and **fails** (exit 1) when `METAGRAPH_PRODUCTION_BUILD=1` or
 `METAGRAPH_REQUIRE_ADAPTER_AUTH=1` — so the scheduled publish and `sync-subnets` runs
 refuse to ship degraded adapter data after a token break.
 
-## Enabling the RPC Proxy
+## RPC Proxy (enabled)
 
-The read-only Subtensor RPC proxy (`POST /rpc/v1/finney`, `/rpc/v1/finney/wss`) ships
-**disabled** (`METAGRAPH_ENABLE_RPC_PROXY: "false"`). The Worker-side abuse controls
-are in place; enable it only after the dashboard-side WAF step and a live smoke.
+The read-only Subtensor RPC proxy (`POST /rpc/v1/finney`, `/rpc/v1/finney/wss`) is
+**ENABLED** (`METAGRAPH_ENABLE_RPC_PROXY: "true"` in `wrangler.jsonc`) and live —
+verified in production: `system_health` / `chain_getHeader` return `200` with a
+valid JSON-RPC result, and a denied method (`author_submitExtrinsic`) returns
+`rpc_method_blocked`. To disable in an incident, set the flag to `"false"` and
+redeploy (or use an env override).
 
-Already enforced in the Worker:
+Enforced in the Worker:
 
 - **Method allowlist** — read-only `SAFE_RPC_METHODS` only; `DENIED_RPC_PREFIXES`
   (`author_`, `state_call`, `sudo_`, `payment_`, `contracts_`) and heavy reads
@@ -156,24 +159,19 @@ Already enforced in the Worker:
 - **Rate limit** — the `RPC_RATE_LIMITER` binding: 100 requests / 60 s per client IP
   (returns `429 rpc_rate_limited`). Enforced on Cloudflare; skipped locally.
 
-Before flipping the flag:
+Enablement prerequisites (satisfied — kept here for re-enable / audit):
 
-1. **Cloudflare WAF (dashboard — required).** Add zone rules scoped to
-   `http.request.uri.path contains "/rpc/"`:
-   - a **Rate Limiting rule** as a coarse pre-Worker cap (e.g. 120 req / min per IP,
-     action: managed challenge/block) to absorb distributed abuse;
-   - a **custom rule** to block non-`POST` methods and oversized bodies on `/rpc/*`;
-   - ensure the zone's Managed Ruleset / Bot Fight Mode is on.
-2. **Verify the pool.** `curl https://api.metagraph.sh/metagraph/rpc/pools.json` and confirm
-   at least one endpoint per pool has `"pool_eligible": true` (otherwise the proxy
-   returns `503 rpc_endpoint_unavailable`).
-3. **Flip the flag.** Set `METAGRAPH_ENABLE_RPC_PROXY` to `"true"` in `wrangler.jsonc`;
-   the push deploys via Cloudflare Workers Builds.
-4. **Smoke.** `POST /rpc/v1/finney` with `{"jsonrpc":"2.0","id":1,"method":"system_health"}`
-   expects `200`; a blocked method (e.g. `author_submitExtrinsic`) expects
-   `403 rpc_method_blocked`; a burst past the limit expects `429`.
-
-To disable in an incident, set the flag back to `"false"` (or via env override) and redeploy.
+1. **Cloudflare WAF (dashboard).** Zone rules scoped to
+   `http.request.uri.path contains "/rpc/"`: a Rate Limiting rule (coarse pre-Worker
+   cap to absorb distributed abuse), a custom rule blocking non-`POST` / oversized
+   bodies, and the zone's Managed Ruleset / Bot Fight Mode. The Worker's own
+   `RPC_RATE_LIMITER` (100 req/60s per IP) is defense-in-depth beneath the WAF.
+2. **Pool eligibility.** `curl https://api.metagraph.sh/api/v1/rpc/pools` — at least one
+   endpoint per pool must be `"pool_eligible": true` (else `503 rpc_endpoint_unavailable`).
+   Currently: finney-rpc 4/5, finney-wss 4/4, finney-archive 8/8 eligible.
+3. **Flag.** `METAGRAPH_ENABLE_RPC_PROXY: "true"` in `wrangler.jsonc` (deploys via Workers Builds).
+4. **Smoke** (re-run after any change): `POST /rpc/v1/finney` `system_health` → `200`;
+   `author_submitExtrinsic` → `403 rpc_method_blocked`; a burst past 100/60s → `429`.
 
 ## Rollback
 

@@ -115,20 +115,17 @@ subnets and demonstrate the product to the broader ecosystem.
 
 ### P1/P2 — RPC proxy (beta differentiator)
 
-7. **Enable the read-only Subtensor RPC proxy.** _Hardened; gated on WAF + flip._
-   The Worker logic (`handleRpcProxyRequest`) keeps the method allowlist, denied
-   prefixes, body cap, SSRF guards, and trusted upstream origins, and now adds
-   weighted-random **load balancing** across eligible+safe endpoints, an expanded
-   read-only `SAFE_RPC_METHODS` set, and an in-Worker **rate limiter**
-   (`RPC_RATE_LIMITER`, 100 req/60s per IP). The probe-derived
-   `/metagraph/rpc/pools.json` is now generated and published to R2. Remaining
-   before flipping `METAGRAPH_ENABLE_RPC_PROXY=true` (see the "Enabling the RPC
-   Proxy" runbook in `docs/operations.md`):
-   - **Cloudflare WAF** zone rules on `/rpc/*` (dashboard — the one manual step);
-   - confirm at least one `pool_eligible` endpoint per pool is live;
-   - flip the flag and run the live smoke.
-     This is the one hosted-infra feature that separates Metagraphed from a
-     pure-registry product.
+7. **Read-only Subtensor RPC proxy — SHIPPED + LIVE** (`METAGRAPH_ENABLE_RPC_PROXY:
+"true"`). `handleRpcProxyRequest` enforces the method allowlist, denied prefixes,
+   body cap, SSRF guards, trusted upstream origins, weighted-random **load balancing**
+   across eligible+safe endpoints, and an in-Worker **rate limiter** (`RPC_RATE_LIMITER`,
+   100 req/60s per IP); the probe-derived pool is published + health-overlaid
+   (hysteresis #594 + genesis chain-verification #596/#604). Verified in production:
+   `system_health`/`chain_getHeader` → `200` JSON-RPC result; `author_submitExtrinsic`
+   → `rpc_method_blocked`; pools finney-rpc 4/5, finney-wss 4/4, finney-archive 8/8
+   eligible. Cloudflare WAF on `/rpc/*` + the flag are in place (see the runbook in
+   `docs/operations.md`). This is the hosted-infra feature that separates Metagraphed
+   from a pure-registry product.
 
 ### P2 — Performance and scale
 
