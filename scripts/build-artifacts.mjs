@@ -27,6 +27,7 @@ import {
   loadProviders,
   loadSubnets,
   loadVerification,
+  MULTI_TENANT_HOST_SUFFIXES,
   nativeContactHandle,
   nativeContactUrl,
   nativeDisplayName,
@@ -712,25 +713,10 @@ const GENERIC_CLUSTER_HOSTS = new Set([
   "linktr.ee",
   "huggingface.co",
 ]);
-const GENERIC_CLUSTER_HOST_SUFFIXES = new Set([
-  "github.io",
-  "pages.dev",
-  "workers.dev",
-  "vercel.app",
-  "netlify.app",
-  "web.app",
-  "firebaseapp.com",
-  "herokuapp.com",
-  "fly.dev",
-  "glitch.me",
-  "repl.co",
-  "webflow.io",
-]);
-
 function isGenericClusterHost(host) {
   return (
     GENERIC_CLUSTER_HOSTS.has(host) ||
-    [...GENERIC_CLUSTER_HOST_SUFFIXES].some(
+    [...MULTI_TENANT_HOST_SUFFIXES].some(
       (suffix) => host === suffix || host.endsWith(`.${suffix}`),
     )
   );

@@ -1109,7 +1109,9 @@ export function buildSubnetLineageLinks(
 // Public Suffix List rules and private multi-tenant hosts used for documentation
 // or app/site hosting; matched hosts cluster on the tenant label, not the shared
 // suffix (for example team-a.co.uk, not co.uk).
-const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
+// Country-code multi-label public suffixes (eTLD+1 needs the extra label so
+// `team-a.co.uk` clusters as `team-a.co.uk`, not `co.uk`).
+const CLUSTER_CCTLD_SUFFIXES = [
   "ac.uk",
   "co.uk",
   "gov.uk",
@@ -1152,11 +1154,28 @@ const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
   "co.in",
   "co.kr",
   "co.za",
+];
+
+// Multi-tenant platform hosts: each subdomain is a distinct tenant, so the
+// cluster unit is the full `<tenant>.<suffix>` and the bare suffix is not a
+// cluster of its own. Single source of truth — `clusterDomainFromUrl` (here)
+// and `isGenericClusterHost` (build-artifacts.mjs) both consume this set so the
+// two cannot drift (issue #419).
+export const MULTI_TENANT_HOST_SUFFIXES = new Set([
   "github.io",
+  "gitlab.io",
   "pages.dev",
   "workers.dev",
   "vercel.app",
   "netlify.app",
+  "netlify.com",
+  "surge.sh",
+  "onrender.com",
+  "azurewebsites.net",
+  "r2.dev",
+  "notion.site",
+  "pythonanywhere.com",
+  "appspot.com",
   "web.app",
   "firebaseapp.com",
   "herokuapp.com",
@@ -1164,6 +1183,11 @@ const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
   "glitch.me",
   "repl.co",
   "webflow.io",
+]);
+
+const CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
+  ...CLUSTER_CCTLD_SUFFIXES,
+  ...MULTI_TENANT_HOST_SUFFIXES,
 ]);
 
 const CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([

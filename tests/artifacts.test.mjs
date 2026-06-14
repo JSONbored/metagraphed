@@ -17,6 +17,7 @@ import {
   artifactDirectoryPath,
   artifactFilePath,
   createLocalArtifactEnv,
+  MULTI_TENANT_HOST_SUFFIXES,
   nativeContactHandle,
   nativeContactUrl,
   deriveDomainTags,
@@ -588,13 +589,9 @@ test("public artifacts are internally consistent", () => {
     "x.com",
     "twitter.com",
   ]);
-  const GENERIC_CLUSTER_HOST_SUFFIXES = [
-    "github.io",
-    "pages.dev",
-    "workers.dev",
-    "vercel.app",
-    "netlify.app",
-  ];
+  // Authoritative multi-tenant host set — shared with lib.mjs / build-artifacts
+  // so the assertion can't drift from the cluster derivation (issue #419).
+  const GENERIC_CLUSTER_HOST_SUFFIXES = [...MULTI_TENANT_HOST_SUFFIXES];
   let providersWithNetuids = 0;
   for (const provider of providersArtifact.providers) {
     assert.ok(

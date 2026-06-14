@@ -728,6 +728,25 @@ describe("clusterDomainFromUrl", () => {
     assert.equal(clusterDomainFromUrl("https://co.uk"), null);
     assert.equal(clusterDomainFromUrl("https://github.io"), null);
   });
+
+  test("treats the extended multi-tenant platform hosts as per-tenant clusters (#419)", () => {
+    // Each subdomain is a distinct tenant → keep the tenant label.
+    assert.equal(clusterDomainFromUrl("https://team.gitlab.io"), "team.gitlab.io");
+    assert.equal(clusterDomainFromUrl("https://app.surge.sh"), "app.surge.sh");
+    assert.equal(clusterDomainFromUrl("https://svc.onrender.com"), "svc.onrender.com");
+    assert.equal(
+      clusterDomainFromUrl("https://api.azurewebsites.net"),
+      "api.azurewebsites.net",
+    );
+    assert.equal(clusterDomainFromUrl("https://bucket.r2.dev"), "bucket.r2.dev");
+    assert.equal(clusterDomainFromUrl("https://wiki.notion.site"), "wiki.notion.site");
+    assert.equal(clusterDomainFromUrl("https://user.pythonanywhere.com"), "user.pythonanywhere.com");
+    assert.equal(clusterDomainFromUrl("https://proj.appspot.com"), "proj.appspot.com");
+    assert.equal(clusterDomainFromUrl("https://site.netlify.com"), "site.netlify.com");
+    // The bare platform suffix is not a cluster of its own.
+    assert.equal(clusterDomainFromUrl("https://gitlab.io"), null);
+    assert.equal(clusterDomainFromUrl("https://surge.sh"), null);
+  });
   test("returns null for non-URL / non-string input", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);
     assert.equal(clusterDomainFromUrl(null), null);
