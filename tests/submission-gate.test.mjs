@@ -1237,6 +1237,9 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.deepEqual(urlOwnerTokens("https://status.all-ways.io/x"), [
       "allways",
     ]);
+    assert.deepEqual(urlOwnerTokens("https://attacker.uc.r.appspot.com/api"), [
+      "attacker",
+    ]);
     assert.deepEqual(urlOwnerTokens("not a url"), []);
     assert.deepEqual(urlOwnerTokens(42), []);
     // a sub-4-char org is filtered out

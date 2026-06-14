@@ -1206,6 +1206,12 @@ const CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([
 function clusterSuffixDomain(host) {
   const labels = host.split(".").filter(Boolean);
   if (labels.length < 2) return host || null;
+  if (labels.at(-1) === "com" && labels.at(-2) === "appspot") {
+    if (labels.at(-3) === "r") {
+      return labels.length >= 5 ? labels.slice(-5).join(".") : null;
+    }
+    return labels.length >= 3 ? labels.slice(-3).join(".") : null;
+  }
   for (
     let suffixLabelCount = labels.length;
     suffixLabelCount >= 2;
