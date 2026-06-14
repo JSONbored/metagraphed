@@ -71,8 +71,31 @@ function localSteps() {
 }
 
 function productionSteps() {
+  const refreshEnv = {
+    METAGRAPH_DISCOVERY_OBSERVED_AT: effectiveBuildTimestamp,
+    METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT: "1",
+    METAGRAPH_VERIFICATION_OBSERVED_AT: effectiveBuildTimestamp,
+  };
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    // Refresh publish-blocking native subnet, generated candidate discovery,
+    // and candidate verification inputs during the scheduled publish build.
+    // sync-subnets.yml remains manual-only for reviewed Git backfills, but the
+    // production data publish must be self-sufficient so the freshness gate does
+    // not depend on a recently merged sync PR.
+    nodeStep("sync-subnets", "scripts/sync-subnets.mjs", "--write"),
+    nodeStep(
+      "discover-candidates",
+      "scripts/discover-candidates.mjs",
+      "--write",
+      refreshEnv,
+    ),
+    nodeStep(
+      "verify-candidates",
+      "scripts/verify-candidates.mjs",
+      "--write",
+      refreshEnv,
+    ),
     // Capture live OpenAPI/Swagger specs (full document + auth) before
     // build-artifacts, so the per-surface schema files carry the real spec for
     // get_api_schema. build-artifacts grabs the document before its staging wipe
