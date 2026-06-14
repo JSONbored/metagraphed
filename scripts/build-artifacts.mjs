@@ -4801,7 +4801,9 @@ function buildFreshnessArtifact({
   const isOverWindow = (source) => {
     const age = sourceAgeHours(source);
     return (
-      age != null && source.stale_after_hours != null && age > source.stale_after_hours
+      age != null &&
+      source.stale_after_hours != null &&
+      age > source.stale_after_hours
     );
   };
   const blockingSources = sources.filter(

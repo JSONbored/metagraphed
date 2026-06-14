@@ -45,7 +45,7 @@ human authored; it is a machine reading of one.
 
 **Cadence was never the real problem; git-PR-ness was.** Subnet registration is
 rare (a new netuid every few days at most) and chain-identity edits rarer, so a
-6h cadence is already overkill — but once this data is an R2/D1 *overwrite*
+6h cadence is already overkill — but once this data is an R2/D1 _overwrite_
 instead of a git commit, the cadence stops mattering (overwrites have no history,
 no PR, no review cost). The fix is to move it off git, not to slow it down.
 
@@ -55,7 +55,7 @@ surface contributors ("farmers") work against. The live coverage map shows the
 opportunity precisely: all 129 subnets have identity/docs, but only ~15 expose a
 callable `subnet-api`, ~13 an `openapi`, ~17 a `data-artifact` — i.e. **~114
 subnets need an API surface registered**, thousands of discrete verifiable tasks.
-For that flywheel to work, the git history must read as a log of *human*
+For that flywheel to work, the git history must read as a log of _human_
 contributions, not be drowned 6h-at-a-time by a bot committing chain telemetry.
 Removing the scheduled bot PR is therefore not just churn-hygiene — it clears the
 contribution surface the launch depends on.
@@ -87,7 +87,7 @@ Concretely:
   `workflow_dispatch`-only for manual backfill. This removes 100% of the
   recurring git churn in one change. No hard publish gate depends on the
   committed native snapshot's freshness — the only hard gate
-  (`assert-published-probe-health.mjs`) checks *probe* freshness, and the publish
+  (`assert-published-probe-health.mjs`) checks _probe_ freshness, and the publish
   build re-snapshots adapters itself "so the freshness gate never depends on a
   recently-merged sync PR" (`build.mjs` productionSteps).
 - **New-subnet and chain-identity discovery moves into the publish refresh**
@@ -95,12 +95,12 @@ Concretely:
   candidates API — not a git diff. Cadence becomes a free knob (R2 overwrites
   cost nothing); daily is ample for chain registrations.
 - **Contributor submissions never bypass the probe trust model.** A submitted
-  surface lands as an *unverified candidate* and is only ever probed-as-
+  surface lands as an _unverified candidate_ and is only ever probed-as-
   operational after `verify → maintainer-review → promote`. So opening the git
   corpus to community PRs does not let bad/hostile endpoints reach the health
   prober — addressing the "we could ping the wrong endpoints" risk directly.
 - **Re-point the changelog baseline.** `changelog.json` is built by diffing the
-  new `subnets.json`/`coverage.json` against the *committed-HEAD* copies, which is
+  new `subnets.json`/`coverage.json` against the _committed-HEAD_ copies, which is
   the only reason those derived files are still committed. Diff against the last
   **published R2 snapshot** (or a small KV-stored digest) instead, so the derived
   indexes need not be committed at all.
@@ -126,19 +126,19 @@ human-authored subset of `registry/**`; machine-derived inputs join the R2 tier.
   mechanism is rewritten. These are the two non-trivial code changes; everything
   else is deletion.
 - **Provenance story improves.** "Trustworthy coverage" is verified by reviewable
-  committed *human* inputs + a deterministic reproducible build + versioned R2
+  committed _human_ inputs + a deterministic reproducible build + versioned R2
   evidence — machine readings no longer masquerade as committed source.
 - **Reversible.** Re-enabling the scheduled trigger restores the old behavior; the
   R2 move is the only piece that requires a forward migration.
 
 ## Migration
 
-| Step | Change | Effort | Risk |
-|---|---|---|---|
-| 1 | Delete the `schedule:` trigger from `sync-subnets.yml` (keep `workflow_dispatch`) | S | low — stops churn immediately; manual backfill still available |
-| 2 | Make the production build fetch/derive the 4 machine inputs to R2 instead of reading committed files; stop committing them | M | medium — touches build input resolution; publish already re-fetches most |
-| 3 | Re-point the changelog baseline to the last published R2 snapshot / KV digest; drop `subnets.json`/`coverage.json` from the committed (DUAL) tier | M | medium — changelog correctness; needs a one-time baseline seed |
-| 4 | Add the `captured_at` content-stability guard (defensive; covers any machine field that stays in git) | S | low |
+| Step | Change                                                                                                                                            | Effort | Risk                                                                     |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| 1    | Delete the `schedule:` trigger from `sync-subnets.yml` (keep `workflow_dispatch`)                                                                 | S      | low — stops churn immediately; manual backfill still available           |
+| 2    | Make the production build fetch/derive the 4 machine inputs to R2 instead of reading committed files; stop committing them                        | M      | medium — touches build input resolution; publish already re-fetches most |
+| 3    | Re-point the changelog baseline to the last published R2 snapshot / KV digest; drop `subnets.json`/`coverage.json` from the committed (DUAL) tier | M      | medium — changelog correctness; needs a one-time baseline seed           |
+| 4    | Add the `captured_at` content-stability guard (defensive; covers any machine field that stays in git)                                             | S      | low                                                                      |
 
 Each step is its own PR, sequenced 1→4 so nothing breaks: step 1 stops the bleed
 immediately and is independently shippable; steps 2–3 are the substantive

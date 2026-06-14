@@ -142,6 +142,25 @@ jobs:
         if: steps.route.outputs.mode == 'ugc'
         run: npm run validate:private-boundary
 
+      - name: Lint + format
+        if: steps.route.outputs.mode == 'full'
+        run: |
+          npm run lint
+          npm run format:check
+
+      # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
+      # bundle, generated types + client) against what the schemas regenerate, so
+      # they MUST run before the build step below overwrites those committed files.
+      # This is the gate CONTRIBUTING.md references — without it a stale or
+      # hand-edited committed contract could land on main undetected.
+      - name: Validate committed contract (drift)
+        if: steps.route.outputs.mode == 'full'
+        run: |
+          npm run validate:contract-drift
+          npm run validate:schema-enums
+          npm run validate:openapi-examples
+          npm run validate:generated-client
+
       - name: Build artifacts
         if: steps.route.outputs.mode == 'full'
         env:
