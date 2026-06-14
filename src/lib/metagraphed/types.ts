@@ -270,6 +270,23 @@ export interface HealthSummary {
   [key: string]: unknown;
 }
 
+export interface CoverageDimension {
+  pct?: number;
+  present?: number;
+}
+
+export interface CoverageCompleteness {
+  average_score?: number;
+  median_score?: number;
+  fully_complete_count?: number;
+  fully_complete_pct?: number;
+  scored_subnet_count?: number;
+  /** Per-dimension coverage (docs, openapi, subnet-api, sse, …). */
+  dimension_coverage?: Record<string, CoverageDimension>;
+  /** Score buckets → subnet count (0-24, 25-49, 50-74, 75-99, 100). */
+  score_distribution?: Record<string, number>;
+}
+
 export interface Coverage {
   netuids_total?: number;
   netuids_active?: number;
@@ -277,6 +294,7 @@ export interface Coverage {
   probed?: number;
   native_only?: number;
   adapter_backed?: number;
+  completeness?: CoverageCompleteness;
   [key: string]: unknown;
 }
 

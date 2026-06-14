@@ -6,6 +6,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   gapsQuery,
@@ -50,6 +51,16 @@ function GapsPage() {
         </Suspense>
       </QueryErrorBoundary>
       <div className="mt-6 space-y-8">
+        <section>
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+            Integrability scoreboard
+          </h2>
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+              <IntegrabilityBoard />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
         <section>
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
             Open gaps
