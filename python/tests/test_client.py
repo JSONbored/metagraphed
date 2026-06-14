@@ -185,6 +185,38 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(calls["n"], 2)
         self.assertTrue(out["data"]["healthy"])
 
+    def test_retry_after_is_capped_and_overflow_safe(self):
+        sleeps = []
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    503,
+                    "busy",
+                    {"Retry-After": "315360000"},
+                    None,
+                )
+            if calls["n"] == 2:
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    503,
+                    "busy",
+                    {"Retry-After": "9" * 400},
+                    None,
+                )
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen), mock.patch(
+            "time.sleep", lambda seconds: sleeps.append(seconds)
+        ):
+            out = metagraphed_fetch("/api/v1/health", retries=2, backoff=0)
+
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual(sleeps, [60.0, 0])
+
     def test_retries_exhausted_raises(self):
         def fake_urlopen(request, timeout=None):
             raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)

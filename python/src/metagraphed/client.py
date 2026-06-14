@@ -28,6 +28,9 @@ DEFAULT_BASE_URL = "https://api.metagraph.sh"
 # Transient HTTP statuses worth retrying for idempotent GETs (opt-in via the
 # ``retries`` argument). 429/503 may carry a Retry-After header we honor.
 _RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+# Cap server-supplied retry delays so a malicious Retry-After cannot tie up
+# callers that opt into retries for an unbounded amount of time.
+_MAX_RETRY_AFTER_SECONDS = 60.0
 # A descriptive User-Agent is required: api.metagraph.sh sits behind a Cloudflare
 # managed bot rule that returns HTTP 403 for stdlib urllib's default
 # "Python-urllib/<ver>" UA. Callers may override it via the ``headers`` argument.
@@ -76,7 +79,8 @@ def metagraphed_fetch(
 
     Set ``retries`` > 0 to retry idempotent GETs on transient errors (HTTP
     429/5xx and network failures) with exponential ``backoff`` seconds, honoring
-    a numeric ``Retry-After`` header. Retries are opt-in (default 0).
+    a numeric ``Retry-After`` header capped at 60 seconds. Retries are opt-in
+    (default 0).
     """
     url = base_url.rstrip("/") + _interpolate(path, path_params)
     if query:
@@ -133,8 +137,8 @@ def _retry_delay(
         retry_after = None
     if retry_after:
         try:
-            return max(0.0, float(int(retry_after)))
-        except (TypeError, ValueError):
+            return min(_MAX_RETRY_AFTER_SECONDS, max(0.0, float(int(retry_after))))
+        except (OverflowError, TypeError, ValueError):
             pass
     return backoff * (2**attempt)
 
