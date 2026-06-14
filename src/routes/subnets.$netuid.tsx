@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -554,7 +554,32 @@ function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: bo
   );
 }
 
+const API_SNIPPET_LANGS = [
+  { id: "url", label: "URL" },
+  { id: "curl", label: "curl" },
+  { id: "js", label: "JavaScript" },
+  { id: "python", label: "Python" },
+] as const;
+type ApiSnippetLang = (typeof API_SNIPPET_LANGS)[number]["id"];
+
+// One-liner copy snippets for a GET against a registry URL. Kept single-line so
+// they render and copy cleanly through CopyableCode.
+function apiSnippet(lang: ApiSnippetLang, url: string): string {
+  switch (lang) {
+    case "curl":
+      return `curl -sS '${url}'`;
+    case "js":
+      return `fetch('${url}').then((r) => r.json())`;
+    case "python":
+      return `requests.get('${url}').json()`;
+    case "url":
+    default:
+      return url;
+  }
+}
+
 function ApiPanel({ netuid }: { netuid: number }) {
+  const [lang, setLang] = useState<ApiSnippetLang>("url");
   const rows: Array<{ label: string; path: string }> = [
     { label: "profile", path: `/api/v1/subnets/${netuid}/profile` },
     { label: "surfaces", path: `/api/v1/subnets/${netuid}/surfaces` },
@@ -568,19 +593,45 @@ function ApiPanel({ netuid }: { netuid: number }) {
       id="api"
       title="API & artifacts"
       subtitle="Canonical URLs powering this profile."
-      info="Copy any of these URLs to fetch the raw JSON directly. /api/v1 endpoints return enveloped responses; /metagraph/*.json returns artifacts."
+      info="Pick a language and copy a ready-to-run snippet for any endpoint. /api/v1 endpoints return enveloped responses; /metagraph/*.json returns artifacts."
     >
+      <div
+        className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
+        role="tablist"
+        aria-label="Snippet language"
+      >
+        {API_SNIPPET_LANGS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            role="tab"
+            aria-selected={lang === l.id}
+            onClick={() => setLang(l.id)}
+            className={classNames(
+              "rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              lang === l.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
+            )}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
       <div className="space-y-2">
         {rows.map((r) => (
           <CopyableCode
             key={r.label}
             label={r.label}
-            value={`${API_BASE}${r.path}`}
+            value={apiSnippet(lang, `${API_BASE}${r.path}`)}
             truncate={false}
             className="w-full"
           />
         ))}
       </div>
+      {lang === "python" ? (
+        <p className="mt-2 font-mono text-[10px] text-ink-muted">
+          requires <code className="text-ink-strong">pip install requests</code>
+        </p>
+      ) : null}
     </SectionAnchor>
   );
 }
