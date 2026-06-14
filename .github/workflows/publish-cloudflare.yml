@@ -83,6 +83,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/publish-artifacts"
           cp -R public "$RUNNER_TEMP/publish-artifacts/public"
+          mkdir -p "$RUNNER_TEMP/publish-artifacts/registry/native"
+          cp registry/native/finney-subnets.json "$RUNNER_TEMP/publish-artifacts/registry/native/finney-subnets.json"
           mkdir -p "$RUNNER_TEMP/publish-artifacts/dist"
           if [ -d dist/metagraph-r2 ]; then
             cp -R dist/metagraph-r2 "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2"
@@ -134,6 +136,7 @@ jobs:
           }
           rm -rf public/metagraph dist/metagraph-r2
           cp -R "$RUNNER_TEMP/publish-artifacts/public/metagraph" public/metagraph
+          cp "$RUNNER_TEMP/publish-artifacts/registry/native/finney-subnets.json" registry/native/finney-subnets.json
           if [ -d "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" ]; then
             mkdir -p dist
             cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
@@ -183,6 +186,7 @@ jobs:
           set -euo pipefail
           rm -rf public/metagraph dist/metagraph-r2
           cp -R "$RUNNER_TEMP/publish-artifacts/public/metagraph" public/metagraph
+          cp "$RUNNER_TEMP/publish-artifacts/registry/native/finney-subnets.json" registry/native/finney-subnets.json
           if [ -d "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" ]; then
             mkdir -p dist
             cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
