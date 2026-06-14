@@ -2,7 +2,6 @@ import {
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   CACHE_SECONDS,
-  CONTRACT_VERSION,
   PRIMARY_DOMAIN,
   artifactPathFromTemplate,
   compileRoutePattern,
@@ -17,6 +16,12 @@ import {
   readHealthKv,
   withTimeout,
 } from "./storage.mjs";
+import {
+  contractVersion,
+  dataResponse,
+  envelopeResponse,
+  publishedAt,
+} from "./responses.mjs";
 import {
   buildChangeEvent,
   generateSecret,
@@ -2529,22 +2534,6 @@ async function handleAskRequest(request, env) {
   }
 }
 
-// Success envelope for non-cacheable (mutation / dynamic) JSON responses.
-function dataResponse(env, data, status = 200, extraMeta = {}) {
-  const headers = apiHeaders("short");
-  headers.set("cache-control", "no-store");
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      schema_version: 1,
-      data,
-      error: null,
-      meta: { contract_version: contractVersion(env), ...extraMeta },
-    }),
-    { status, headers },
-  );
-}
-
 // Explicit `unknown` health payloads for the live-only routes when the live
 // store (KV + D1) is cold — served instead of a stale baked value or a 404.
 function unknownGlobalHealth(contractVersionValue) {
@@ -2671,41 +2660,6 @@ async function liveHealthOverlay(env, matched, staticData) {
   }
 
   return data ? { data } : null;
-}
-
-// Real publish timestamp for envelope meta, read from the KV latest pointer.
-// API routes are edge-cached (cache-control max-age + stale-while-revalidate),
-// so this KV read only happens on origin misses. Returns null when KV is
-// unbound or the pointer predates published_at support.
-async function publishedAt(env) {
-  const pointer = await latestPointer(env);
-  return pointer?.published_at || null;
-}
-
-async function envelopeResponse(request, payload, cacheProfile) {
-  const body = JSON.stringify({
-    ok: true,
-    schema_version: 1,
-    data: payload.data,
-    meta: payload.meta,
-  });
-  const headers = apiHeaders(cacheProfile);
-  const etag = await weakEtag(body);
-  headers.set("etag", etag);
-  headers.set(
-    "x-metagraph-contract-version",
-    payload.meta.contract_version || CONTRACT_VERSION,
-  );
-  if (request.headers.get("if-none-match") === etag) {
-    return new Response(null, {
-      status: 304,
-      headers,
-    });
-  }
-  return new Response(request.method === "HEAD" ? null : body, {
-    status: 200,
-    headers,
-  });
 }
 
 function corsPreflight(request) {
@@ -2907,10 +2861,6 @@ async function agentToolsResponse(request, env, kind) {
     status: 200,
     headers,
   });
-}
-
-function contractVersion(env) {
-  return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
 // Build the FULL ordered candidate list of eligible, upstream-safe, HTTP(S)
