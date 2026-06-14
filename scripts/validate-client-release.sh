@@ -20,16 +20,25 @@ if ! printf '%s' "$release_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
 fi
 
 release_tag="client-v$release_version"
-if git rev-parse "$release_tag" >/dev/null 2>&1; then
-  # release-please creates the tag BEFORE dispatching this publish, so a
-  # pre-existing tag is expected on that path. The npm-version check below is the
-  # real double-publish guard; only refuse on a stray tag in the manual flow.
-  if [ "${RELEASE_PLEASE_TRIGGERED:-}" = "true" ]; then
-    echo "Tag $release_tag already exists (created by release-please); continuing."
-  else
+release_tag_commit=""
+if release_tag_commit="$(git rev-parse "$release_tag^{commit}" 2>/dev/null)"; then
+  if [ "${RELEASE_PLEASE_TRIGGERED:-}" != "true" ]; then
     echo "::error::Release tag already exists: $release_tag"
     exit 1
   fi
+
+  if [ -z "${GITHUB_SHA:-}" ]; then
+    echo "::error::GITHUB_SHA is required for release-please-triggered releases."
+    exit 1
+  fi
+  if [ "$release_tag_commit" != "$GITHUB_SHA" ]; then
+    echo "::error::Release tag $release_tag points to $release_tag_commit, not the workflow commit $GITHUB_SHA."
+    exit 1
+  fi
+  echo "Tag $release_tag exists and points to the workflow commit; continuing."
+elif [ "${RELEASE_PLEASE_TRIGGERED:-}" = "true" ]; then
+  echo "::error::Release tag is required for release-please-triggered releases: $release_tag"
+  exit 1
 fi
 if npm view "@jsonbored/metagraphed@$release_version" version >/dev/null 2>&1; then
   echo "::error::npm version already exists: @jsonbored/metagraphed@$release_version"
