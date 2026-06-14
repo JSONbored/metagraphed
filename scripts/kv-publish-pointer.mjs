@@ -63,11 +63,17 @@ const sourceFreshness = {
   freshness: freshness.summary,
   source_health: sourceHealth.summary,
 };
+// Order matters: metagraph:latest is the pointer the Worker reads to resolve the
+// live R2 run, so it is written LAST. The sidecar records (feature-flags,
+// endpoint-pools, source-freshness) go first, so a mid-sequence wrangler failure
+// (process.exit in putKv) can never leave the pointer advanced ahead of its
+// sidecars — the Worker keeps serving the previous, internally-consistent run
+// until the final pointer write succeeds.
 const kvEntries = [
-  ["metagraph:latest", pointer],
   ["metagraph:feature-flags", featureFlags],
   ["metagraph:endpoint-pools", endpointPoolStatus],
   ["metagraph:source-freshness", sourceFreshness],
+  ["metagraph:latest", pointer],
 ];
 
 if (!write) {
