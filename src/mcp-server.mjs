@@ -539,7 +539,7 @@ export const MCP_TOOLS = [
       properties: {
         surface_id: {
           type: "string",
-          description: "Surface id, e.g. '7:subnet-api:allways'.",
+          description: "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
         },
       },
       required: ["surface_id"],
@@ -573,7 +573,7 @@ export const MCP_TOOLS = [
       properties: {
         surface_id: {
           type: "string",
-          description: "Surface id, e.g. '7:subnet-api:allways'.",
+          description: "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
         },
       },
       required: ["surface_id"],
@@ -1088,7 +1088,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       live_health: ANY,
       endpoints: objectItems({
         id: { type: "string" },
-        url: { type: "string" },
+        url: NULLABLE_STRING,
         provider: NULLABLE_STRING,
         kind: NULLABLE_STRING,
         score: ANY,
