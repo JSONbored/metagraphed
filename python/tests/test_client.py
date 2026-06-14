@@ -5,7 +5,13 @@ import unittest
 import urllib.error
 from unittest import mock
 
-from metagraphed import MetagraphedClient, MetagraphedError, metagraphed_fetch
+from metagraphed import (
+    MetagraphedClient,
+    MetagraphedError,
+    metagraphed_fetch,
+    metagraphed_paginate,
+    metagraphed_rpc,
+)
 
 
 class _FakeResponse:
@@ -163,6 +169,85 @@ class ClientTest(unittest.TestCase):
         ):
             with self.assertRaises(MetagraphedError):
                 metagraphed_fetch("/api/v1/health")
+
+    def test_retries_transient_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+            return _FakeResponse({"ok": True, "data": {"healthy": True}})
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            out = metagraphed_fetch("/api/v1/health", retries=1, backoff=0)
+
+        self.assertEqual(calls["n"], 2)
+        self.assertTrue(out["data"]["healthy"])
+
+    def test_retries_exhausted_raises(self):
+        def fake_urlopen(request, timeout=None):
+            raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_fetch("/api/v1/health", retries=2, backoff=0)
+        self.assertEqual(ctx.exception.status, 503)
+
+    def test_paginate_follows_next_cursor(self):
+        pages = [
+            {"ok": True, "data": [1], "meta": {"pagination": {"next_cursor": "2"}}},
+            {"ok": True, "data": [2], "meta": {"pagination": {"next_cursor": None}}},
+        ]
+        captured_urls = []
+        state = {"i": 0}
+
+        def fake_urlopen(request, timeout=None):
+            captured_urls.append(request.full_url)
+            page = pages[state["i"]]
+            state["i"] += 1
+            return _FakeResponse(page)
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            seen = [
+                page["data"][0]
+                for page in metagraphed_paginate("/api/v1/subnets", query={"limit": 1})
+            ]
+
+        self.assertEqual(seen, [1, 2])
+        self.assertIn("cursor=2", captured_urls[1])
+
+    def test_rpc_posts_jsonrpc_and_returns_result(self):
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            captured["method"] = request.get_method()
+            captured["body"] = request.data
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": {"peers": 40}})
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            result = metagraphed_rpc("finney", "system_health")
+
+        self.assertEqual(result, {"peers": 40})
+        self.assertEqual(captured["url"], "https://api.metagraph.sh/rpc/v1/finney")
+        self.assertEqual(captured["method"], "POST")
+        self.assertEqual(json.loads(captured["body"])["method"], "system_health")
+
+    def test_rpc_jsonrpc_error_raises(self):
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "error": {"code": -32601, "message": "Method not found"},
+                }
+            )
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_rpc("finney", "nope")
+        self.assertIn("Method not found", str(ctx.exception))
 
 
 if __name__ == "__main__":

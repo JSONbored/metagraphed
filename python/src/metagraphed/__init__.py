@@ -7,6 +7,8 @@ from .client import (
     MetagraphedError,
     __version__,
     metagraphed_fetch,
+    metagraphed_paginate,
+    metagraphed_rpc,
 )
 
 __all__ = [
@@ -15,5 +17,7 @@ __all__ = [
     "MetagraphedClient",
     "MetagraphedError",
     "metagraphed_fetch",
+    "metagraphed_paginate",
+    "metagraphed_rpc",
     "__version__",
 ]

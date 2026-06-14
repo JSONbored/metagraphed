@@ -46,7 +46,29 @@ Every response is the standard envelope:
 ```
 
 On a network failure or non-2xx response, a `MetagraphedError` is raised (with
-`.status` for HTTP errors).
+`.status` for HTTP errors, and the API error code/message in the message).
+
+### Retries, pagination, and the RPC proxy
+
+```python
+from metagraphed import (
+    MetagraphedClient,
+    metagraphed_paginate,
+    metagraphed_rpc,
+)
+
+# Opt-in retry/backoff for idempotent GETs (retries 429/5xx + network errors,
+# honoring a numeric Retry-After). Disabled by default.
+client = MetagraphedClient(retries=3)
+
+# Iterate every page of a list endpoint (follows meta.pagination.next_cursor):
+for page in client.paginate("/api/v1/subnets", query={"limit": 100}):
+    for subnet in page["data"]["subnets"]:
+        print(subnet["netuid"])
+
+# Call the read-only Subtensor RPC proxy and get back the JSON-RPC result:
+info = metagraphed_rpc("finney", "system_health")
+```
 
 ## Versioning & stability
 
