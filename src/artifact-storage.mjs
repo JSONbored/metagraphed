@@ -48,8 +48,13 @@ const R2_ONLY_PATTERNS = [
   /^rpc-endpoints\.json$/,
   /^schemas\/(?!index\.json$).+\.json$/,
   // Per-surface captured live fixtures (issue #352) — R2-only like the schema
-  // detail; the committed fixtures.json index (below) lists what's available.
+  // detail. The fixtures.json INDEX is R2-only too: it's only ever populated by
+  // the production capture step, so a committed/dual copy is always the empty
+  // no-capture build — and dual artifacts serve ASSETS-first, so the populated R2
+  // index was never read (the index served fixture_count:0 while the R2 bodies
+  // served fine). R2-only makes the index serve from R2 like the bodies.
   /^fixtures\/.+\.json$/,
+  /^fixtures\.json$/,
   /^source-health\.json$/,
   /^source-snapshots\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\.json$/,
@@ -108,9 +113,6 @@ const DUAL_PATTERNS = [
   // churn (changes only with chain identities); committed + mirrored like the
   // other small contract digests.
   /^lineage\.json$/,
-  // Captured-fixtures index (issue #352): small, agent-facing list of which
-  // surfaces have a recorded live sample; the per-surface bodies stay R2-only.
-  /^fixtures\.json$/,
   // AI-resources index: the copyable agent + MCP + skill + APIs in one machine
   // index; small, agent-facing, committed + mirrored.
   /^agent-resources\.json$/,

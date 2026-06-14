@@ -232,7 +232,7 @@
       "id": "fixtures-index",
       "path": "/metagraph/fixtures.json",
       "schema_ref": "#/components/schemas/FixturesIndexArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",

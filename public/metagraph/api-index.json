@@ -180,7 +180,7 @@
       "id": "fixtures-index",
       "path": "/metagraph/fixtures.json",
       "schema_ref": "#/components/schemas/FixturesIndexArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
