@@ -1,0 +1,22 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "community-reviewbot-live-check",
+      "kind": "website",
+      "name": "Reviewbot Live Check (transient test)",
+      "netuid": 99999,
+      "provider": "reviewbot-test",
+      "public_safe": false,
+      "review_notes": "Transient deploy smoke-test candidate — intentionally public_safe:false so the gate declines. Safe to close.",
+      "schema_version": 1,
+      "source_type": "community-pr-intake",
+      "source_url": "https://example.invalid/reviewbot-test",
+      "source_urls": ["https://example.invalid/reviewbot-test"],
+      "state": "schema-valid",
+      "url": "https://example.invalid/reviewbot-test"
+    }
+  ],
+  "schema_version": 1
+}
