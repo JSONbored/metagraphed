@@ -53,6 +53,11 @@ npm run candidate:new -- \
   --provider community --submitted-by <github-login> --write
 ```
 
+Two helpers make this faster:
+
+- **Find a real provider slug** for `--provider` (instead of `community`, which routes to manual review and won't auto-merge): `npm run providers:list`.
+- **Check your candidate before pushing** — a fast local pre-check that catches schema mistakes and bad provider slugs without running the full build: `npm run validate:candidate -- registry/candidates/community/<your-file>.json` (no argument validates every community candidate).
+
 A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 
 **Routes to manual review** (still welcome, just won't auto-merge): provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes.
