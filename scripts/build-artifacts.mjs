@@ -4784,6 +4784,26 @@ function buildFreshnessArtifact({
       }),
     ),
   ].sort((a, b) => a.id.localeCompare(b.id));
+  // Age of a source at build time, in hours, or null when it can't be computed.
+  // `timestamp` is the build marker: a real time in a production refresh (so age
+  // is meaningful) and epoch-0 in deterministic/CI builds — nowMs > 0 excludes
+  // the epoch-0 marker so CI/local builds never compute an age and the output
+  // stays byte-identical there (freshness.json is R2-only; computed inline, not
+  // persisted on the source, to avoid a contract/schema change).
+  const nowMs = Date.parse(timestamp);
+  const sourceAgeHours = (source) => {
+    const asOfMs = source.as_of ? Date.parse(source.as_of) : NaN;
+    if (!(Number.isFinite(nowMs) && nowMs > 0 && Number.isFinite(asOfMs))) {
+      return null;
+    }
+    return Math.round(((nowMs - asOfMs) / 3_600_000) * 100) / 100;
+  };
+  const isOverWindow = (source) => {
+    const age = sourceAgeHours(source);
+    return (
+      age != null && source.stale_after_hours != null && age > source.stale_after_hours
+    );
+  };
   const blockingSources = sources.filter(
     (source) => source.stale_behavior === "block",
   );
@@ -4792,6 +4812,12 @@ function buildFreshnessArtifact({
   );
   const warningSources = sources.filter(
     (source) => source.stale_behavior === "warn",
+  );
+  // A source is stale if it has no timestamp at all OR its timestamp is past its
+  // freshness window. The previous logic only flagged the missing case, so a
+  // source could be far past its window and still report clean (audit finding).
+  const staleSources = sources.filter(
+    (source) => source.status === "missing" || isOverWindow(source),
   );
   return {
     schema_version: 1,
@@ -4813,12 +4839,15 @@ function buildFreshnessArtifact({
         0,
       publish_ready_without_age_check: missingBlockingSources.length === 0,
       schema_snapshot_as_of: schemaSnapshotAsOf,
-      stale_window_warnings: sources
-        .filter((source) => source.status === "missing")
-        .map(
-          (source) =>
-            `${source.id} has no observed timestamp; ${source.stale_behavior === "block" ? "production publish should block" : "review before relying on this lane"}.`,
-        ),
+      stale_window_warnings: staleSources.map((source) => {
+        const consequence =
+          source.stale_behavior === "block"
+            ? "production publish should block"
+            : "review before relying on this lane";
+        return source.status === "missing"
+          ? `${source.id} has no observed timestamp; ${consequence}.`
+          : `${source.id} is ${sourceAgeHours(source)}h old, past its ${source.stale_after_hours}h freshness window; ${consequence}.`;
+      }),
       verification_as_of: verificationAsOf,
       verification_generated_at: verificationArtifact.generated_at || null,
       warning_source_count: warningSources.length,
