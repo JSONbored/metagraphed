@@ -87,12 +87,15 @@ jobs:
           if [ -d dist/metagraph-r2 ]; then
             cp -R dist/metagraph-r2 "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2"
           fi
-          # Stage the refreshed native chain snapshot (ADR 0006 step 2): the
-          # build fetched it fresh, so the publish job must validate against the
-          # SAME snapshot, not the stale committed one — otherwise validate.mjs's
-          # native_data_as_of / native_snapshot_captured_at cross-check fails.
-          mkdir -p "$RUNNER_TEMP/publish-artifacts/registry"
-          cp -R registry/native "$RUNNER_TEMP/publish-artifacts/registry/native"
+          # Stage the whole registry (ADR 0006 step 2 + #599): the build refreshes
+          # several machine inputs in place — native snapshot (refresh-native-snapshot),
+          # candidate discovery + verification (refresh-candidates), adapter snapshots
+          # — so the publish job must validate against the SAME refreshed inputs, not
+          # the stale committed ones, or validate.mjs's committed-vs-staged cross-checks
+          # fail (native native_data_as_of; candidate/coverage counts). Human-authored
+          # registry files are identical to the checkout, so restoring the whole dir is
+          # a no-op for them.
+          cp -R registry "$RUNNER_TEMP/publish-artifacts/registry"
 
       - name: Upload reviewed publish artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -144,11 +147,12 @@ jobs:
             mkdir -p dist
             cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
           fi
-          # Restore the refreshed native snapshot so `npm run validate` reads the
-          # same snapshot the staged artifacts were built from (ADR 0006 step 2).
-          if [ -d "$RUNNER_TEMP/publish-artifacts/registry/native" ]; then
-            rm -rf registry/native
-            cp -R "$RUNNER_TEMP/publish-artifacts/registry/native" registry/native
+          # Restore the refreshed registry so `npm run validate` reads the same
+          # machine inputs the staged artifacts were built from (ADR 0006 step 2 +
+          # #599 — native snapshot, candidate discovery/verification, adapters).
+          if [ -d "$RUNNER_TEMP/publish-artifacts/registry" ]; then
+            rm -rf registry
+            cp -R "$RUNNER_TEMP/publish-artifacts/registry" registry
           fi
 
       - name: Validate registry

@@ -78,6 +78,12 @@ function productionSteps() {
     // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and
     // the publish proceeds — it never blocks on the chain being reachable.
     nodeStep("native-snapshot", "scripts/refresh-native-snapshot.mjs"),
+    // Refresh candidate discovery + verification fresh each publish (issue #599)
+    // so their >24h block-freshness gate doesn't hard-fail the scheduled publish
+    // now that the sync PR is retired (#571). Runs AFTER native-snapshot
+    // (discover-candidates reads it); tolerant like native-snapshot — a live
+    // network failure keeps the last committed data and the publish proceeds.
+    nodeStep("refresh-candidates", "scripts/refresh-candidates.mjs"),
     // Capture live OpenAPI/Swagger specs (full document + auth) before
     // build-artifacts, so the per-surface schema files carry the real spec for
     // get_api_schema. build-artifacts grabs the document before its staging wipe
