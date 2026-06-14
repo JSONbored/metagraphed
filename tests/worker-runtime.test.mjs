@@ -324,6 +324,71 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).endpoints[0].id, "local-fallback");
   });
 
+  test("serves coverage/subnets R2-first with a committed-asset fallback", async () => {
+    const committed = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      native_snapshot_captured_at: "2026-06-14T09:03:28.000Z",
+    };
+    const fresh = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      native_snapshot_captured_at: "2026-06-14T14:06:28.000Z",
+    };
+
+    // R2 warm → the fresh published copy wins over the stale committed asset.
+    const warm = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/coverage.json"),
+      {
+        ASSETS: {
+          async fetch() {
+            return Response.json(committed);
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            assert.equal(key, "latest/coverage.json");
+            return {
+              async json() {
+                return fresh;
+              },
+            };
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(warm.status, 200);
+    assert.equal(warm.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(
+      (await warm.json()).native_snapshot_captured_at,
+      "2026-06-14T14:06:28.000Z",
+    );
+
+    // R2 cold → fall back to the committed baseline (local/dev/CI).
+    const cold = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets.json"),
+      {
+        ASSETS: {
+          async fetch() {
+            return Response.json(committed);
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            return null;
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(cold.status, 200);
+    assert.equal(
+      cold.headers.get("x-metagraph-artifact-source"),
+      "static-assets",
+    );
+  });
+
   test("serves metagraph latest as an R2-backed raw artifact", async () => {
     const r2KeysRequested = [];
     const metagraphLatest = {

@@ -7,6 +7,7 @@
 import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
+  isR2PreferredDualArtifactPath,
 } from "../src/artifact-storage.mjs";
 import { METAGRAPH_LATEST_KEY } from "./config.mjs";
 
@@ -68,6 +69,22 @@ export async function readArtifact(env, artifactPath) {
       r2_code: r2.code,
     });
     return readAsset(env, artifactPath, storageTier);
+  }
+
+  // R2-preferred dual artifacts (coverage/subnets): serve the fresh published R2
+  // copy so per-publish fields (native_snapshot_captured_at, coverage counts)
+  // are current, falling back to the committed baseline when R2 is cold. They
+  // stay dual so the changelog/ci-verify still read the committed copy.
+  if (isR2PreferredDualArtifactPath(artifactPath)) {
+    const r2Preferred = await readR2(env, artifactPath, storageTier);
+    if (r2Preferred.ok) {
+      return r2Preferred;
+    }
+    const assetFallback = await readAsset(env, artifactPath, storageTier);
+    if (assetFallback.ok) {
+      return assetFallback;
+    }
+    return r2Preferred.status !== 404 ? r2Preferred : assetFallback;
   }
 
   const asset = await readAsset(env, artifactPath, storageTier);

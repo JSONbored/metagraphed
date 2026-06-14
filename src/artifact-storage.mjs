@@ -119,6 +119,27 @@ const DUAL_PATTERNS = [
   /^types\.d\.ts$/,
 ];
 
+// Dual-tier artifacts (committed + mirrored to R2) whose SERVING should prefer
+// the fresh R2 copy over the committed baseline. They carry per-publish data
+// (native_snapshot_captured_at, coverage counts) that the 6h refresh advances,
+// but the committed copy only changes on a code push — so the default
+// ASSETS-first dual resolution pins them to a stale snapshot, contradicting
+// /freshness on the same field. We keep them committed (the changelog diff +
+// ci-verify read the committed baseline) but serve R2-first, falling back to the
+// committed copy when R2 is cold (local/dev/CI).
+const R2_PREFERRED_DUAL_PATTERNS = [/^coverage\.json$/, /^subnets\.json$/];
+
+export function isR2PreferredDualArtifactPath(artifactPath = "") {
+  const normalized = artifactRelativePath(artifactPath);
+  if (
+    artifactStorageTierForRelativePath(normalized) !==
+    ARTIFACT_STORAGE_TIERS.dual
+  ) {
+    return false;
+  }
+  return R2_PREFERRED_DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export function artifactRelativePath(artifactPath = "") {
   const value = String(artifactPath);
   const normalized = value.replace(/^\/+/, "");

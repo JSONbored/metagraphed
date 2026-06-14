@@ -58,6 +58,7 @@ import {
   artifactStorageTierForPath,
   artifactStorageTierForRelativePath,
   isR2OnlyArtifactPath,
+  isR2PreferredDualArtifactPath,
   schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
@@ -629,6 +630,25 @@ describe("script utility contracts", () => {
       true,
     );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
+    // R2-preferred dual artifacts: committed (for changelog/ci-verify) but served
+    // R2-first so per-publish fields aren't pinned to the committed snapshot.
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
+      true,
+    );
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/subnets.json"),
+      true,
+    );
+    // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/contracts.json"),
+      false,
+    );
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/freshness.json"),
+      false,
+    );
     assert.equal(
       schemaDetailArtifactRelativePath(
         "/metagraph/schemas/sn-6-numinous-openapi-schema.json",
