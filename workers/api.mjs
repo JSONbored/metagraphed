@@ -121,6 +121,27 @@ const ROUTES = API_ROUTES.map((entry) => ({
   },
 }));
 
+// Routes that can include live operational-health overlays must never use the
+// edge Cache API. Cache eligibility is route-based instead of checking whether
+// live data was available for a particular request, so a cold KV/D1 overlay
+// cannot seed stale static fallbacks into the edge cache.
+const LIVE_OVERLAY_ROUTE_IDS = new Set([
+  "health",
+  "subnet-health",
+  "rpc-endpoints",
+  "freshness",
+  "subnet-overview",
+  "agent-catalog",
+  "agent-catalog-subnet",
+  "endpoints",
+  "subnet-endpoints",
+  "provider-endpoints",
+]);
+
+function isStaticEdgeCacheEligible(matched, network) {
+  return !network.isDefault || !LIVE_OVERLAY_ROUTE_IDS.has(matched.id);
+}
+
 export default {
   async fetch(request, env, ctx) {
     return handleRequest(request, env, ctx);
@@ -905,14 +926,16 @@ async function handleApiRequest(
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
-  // RPC-proxy Cache API pattern). Live-overlay routes (health, subnet-health,
-  // and anything liveHealthOverlay touches) are NEVER cached here — they leave
-  // `live` non-null below and so skip the cache.put, keeping live status fresh.
+  // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
+  // not by whether live data happened to be available for this request, so cold
+  // KV/D1 fallback responses cannot seed stale operational metadata.
   // The key namespaces by network + contract version so a deploy or a network
   // switch can never serve a cross-version body; the response's own
   // cache-control max-age bounds staleness.
   const edgeCache =
-    request.method === "GET" ? globalThis.caches?.default : null;
+    request.method === "GET" && isStaticEdgeCacheEligible(matched, network)
+      ? globalThis.caches?.default
+      : null;
   const edgeCacheKey = edgeCache
     ? new Request(
         `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
@@ -1041,9 +1064,10 @@ async function handleApiRequest(
     },
     matched.cache,
   );
-  // Cache only pure static-artifact 200s: `live` is non-null for every
-  // health-overlay route, so those always recompute. 304/HEAD/non-200 are
-  // skipped. The edge entry expires per the response's cache-control max-age.
+  // Cache only route-declared pure static-artifact 200s. Live-overlay routes
+  // are skipped even when their live store is cold and the response falls back
+  // to the static artifact. 304/HEAD/non-200 are skipped. The edge entry
+  // expires per the response's cache-control max-age.
   if (edgeCache && live === null && response.status === 200) {
     ctx?.waitUntil?.(edgeCache.put(edgeCacheKey, response.clone()));
   }
