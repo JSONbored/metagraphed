@@ -71,6 +71,24 @@ describe("metagraphedFetch", () => {
     );
   });
 
+  test("throws MetagraphedError when a 2xx response is not JSON", async () => {
+    stubFetch(
+      async () =>
+        new Response("<html>maintenance page</html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    );
+
+    await expect(
+      metagraphedFetch("/api/v1/health" as never),
+    ).rejects.toMatchObject({
+      name: "MetagraphedError",
+      status: 200,
+      message: "Response body was not valid JSON (status 200)",
+    });
+  });
+
   test("throws MetagraphedError surfacing the error envelope on non-2xx", async () => {
     stubFetch(async () =>
       jsonResponse(

@@ -100,7 +100,10 @@ async function readJsonBody(response: Response): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return text;
+    throw new MetagraphedError(
+      `Response body was not valid JSON (status ${response.status})`,
+      response.status,
+    );
   }
 }
 
