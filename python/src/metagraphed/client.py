@@ -113,7 +113,7 @@ def _error_detail(error: "urllib.error.HTTPError") -> str:
     envelope = parsed.get("error") if isinstance(parsed, dict) else None
     if isinstance(envelope, dict) and envelope.get("message"):
         code = envelope.get("code")
-        return f": {code + ' — ' if code else ''}{envelope['message']}"
+        return f": {str(code) + ' — ' if code else ''}{envelope['message']}"
     return f": {raw[:200]}"
 
 
