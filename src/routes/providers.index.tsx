@@ -23,6 +23,11 @@ export const Route = createFileRoute("/providers/")({
         name: "description",
         content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
       },
+      { property: "og:title", content: "Providers — Metagraphed" },
+      {
+        property: "og:description",
+        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
+      },
     ],
   }),
   component: ProvidersPage,

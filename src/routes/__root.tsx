@@ -92,7 +92,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { property: "og:site_name", content: "Metagraphed" },
-        { property: "og:url", content: "https://metagraph.sh" },
+        // og:url is injected per-route (canonical URL) in src/server.ts so deep
+        // pages unfurl to themselves, not the homepage.
         { name: "twitter:card", content: "summary_large_image" },
       ],
       links: [{ rel: "stylesheet", href: appCss }],

@@ -40,6 +40,12 @@ export const Route = createFileRoute("/health")({
         content:
           "Global health, freshness, source health, and recent incidents across the registry.",
       },
+      { property: "og:title", content: "Health — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Global health, freshness, source health, and recent incidents across the registry.",
+      },
     ],
   }),
   component: HealthPage,

@@ -35,6 +35,12 @@ export const Route = createFileRoute("/surfaces")({
         content:
           "Verified public interfaces across Bittensor subnets: APIs, docs, dashboards, repos, SDKs.",
       },
+      { property: "og:title", content: "Surfaces — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Verified public interfaces across Bittensor subnets: APIs, docs, dashboards, repos, SDKs.",
+      },
     ],
   }),
   component: SurfacesPage,

@@ -26,6 +26,12 @@ export const Route = createFileRoute("/gaps")({
         content:
           "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
       },
+      { property: "og:title", content: "Gaps — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
+      },
     ],
   }),
   component: GapsPage,

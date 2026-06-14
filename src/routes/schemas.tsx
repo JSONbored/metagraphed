@@ -44,6 +44,12 @@ export const Route = createFileRoute("/schemas")({
         content:
           "OpenAPI, contracts, schema index, and drift between current and previous snapshots.",
       },
+      { property: "og:title", content: "Schemas — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "OpenAPI, contracts, schema index, and drift between current and previous snapshots.",
+      },
     ],
   }),
   component: SchemasPage,
@@ -110,17 +116,17 @@ function ContractsList() {
         <div key={c.id} className="rounded border border-border bg-card p-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="font-display text-sm font-semibold text-ink-strong">
-                {c.name ?? c.id}
-              </div>
-              <div className="font-mono text-[10px] text-ink-muted">{c.version ?? "—"}</div>
+              <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
+              {c.description ? (
+                <div className="font-mono text-[10px] text-ink-muted">{c.description}</div>
+              ) : null}
             </div>
             <FileCode className="size-4 text-ink-muted" />
           </div>
-          {c.url ? (
+          {c.path ? (
             <div className="mt-2">
-              <ExternalLink href={c.url} className="text-[11px]">
-                {c.url}
+              <ExternalLink href={`${API_BASE}${c.path}`} className="text-[11px]">
+                {c.path}
               </ExternalLink>
             </div>
           ) : null}

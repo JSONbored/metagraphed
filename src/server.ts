@@ -159,6 +159,7 @@ const SITEMAP_STATIC_PATHS = [
   "/surfaces",
   "/endpoints",
   "/health",
+  "/status",
   "/schemas",
   "/gaps",
   "/about",
@@ -363,6 +364,7 @@ const OG_SECTION_TITLES: Record<string, string> = {
   "/surfaces": "Interfaces",
   "/endpoints": "Endpoints",
   "/health": "Health",
+  "/status": "Status",
   "/schemas": "Schemas",
   "/gaps": "Registry gaps",
   "/about": "About",
@@ -412,7 +414,12 @@ function injectAnalytics(response: Response, request: Request): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
   const pathname = new URL(request.url).pathname;
-  const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(`${SITE_ORIGIN}${pathname}`)}">`;
+  const canonicalUrl = `${SITE_ORIGIN}${pathname}`;
+  const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}">`;
+  // og:url must be the per-page canonical URL (not a hardcoded homepage), so deep
+  // shares unfurl to the entity page. Set here (regen-proof) since __root only had
+  // a static homepage value.
+  const ogUrlTag = `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}">`;
   const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
   const ogImage = `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCardTitle(pathname))}`;
   const ogImageTags =
@@ -425,6 +432,7 @@ function injectAnalytics(response: Response, request: Request): Response {
       element(element) {
         element.append(RESOURCE_HINTS, { html: true });
         element.append(canonicalTag, { html: true });
+        element.append(ogUrlTag, { html: true });
         element.append(jsonLdTag, { html: true });
         element.append(ogImageTags, { html: true });
         element.append(UMAMI_SNIPPET, { html: true });
@@ -434,6 +442,12 @@ function injectAnalytics(response: Response, request: Request): Response {
     .transform(response);
   const headers = new Headers(transformed.headers);
   headers.set("link", DISCOVERY_LINK_HEADER);
+  // Conservative security headers for the HTML site (no CSP — an SPA CSP is
+  // breakage-prone and the JSON API is the real attack surface). These guard
+  // clickjacking + referrer leakage + opt out of unused powerful features.
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set("x-frame-options", "DENY");
+  headers.set("permissions-policy", "geolocation=(), microphone=(), camera=()");
   return new Response(transformed.body, {
     status: transformed.status,
     statusText: transformed.statusText,

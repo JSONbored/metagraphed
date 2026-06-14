@@ -37,6 +37,12 @@ export const Route = createFileRoute("/subnets/")({
         content:
           "Browse every active Bittensor Finney subnet with curation level, surfaces, health, and freshness.",
       },
+      { property: "og:title", content: "Subnets — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Browse every active Bittensor Finney subnet with curation level, surfaces, health, and freshness.",
+      },
     ],
   }),
   component: SubnetsPage,

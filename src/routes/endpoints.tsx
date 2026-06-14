@@ -38,6 +38,12 @@ export const Route = createFileRoute("/endpoints")({
         content:
           "Root Subtensor RPC/WSS and application endpoints with status, latency, and pool eligibility.",
       },
+      { property: "og:title", content: "Endpoints — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Root Subtensor RPC/WSS and application endpoints with status, latency, and pool eligibility.",
+      },
     ],
   }),
   component: EndpointsPage,

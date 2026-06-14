@@ -986,12 +986,15 @@ export const contractsQuery = () =>
   queryOptions({
     queryKey: k("contracts"),
     queryFn: ({ signal }) =>
-      fetchList<{ id: string; name?: string; version?: string; url?: string }>(
-        "/api/v1/contracts",
-        "contracts",
-        undefined,
-        signal,
-      ),
+      // /api/v1/contracts nests the per-artifact contract metadata under
+      // `data.artifacts` (each: id, description, path, content_type, storage_tier).
+      fetchList<{
+        id: string;
+        description?: string;
+        path?: string;
+        content_type?: string;
+        storage_tier?: string;
+      }>("/api/v1/contracts", "artifacts", undefined, signal),
     staleTime: STALE_LONG,
   });
 

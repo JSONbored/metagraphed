@@ -27,6 +27,12 @@ export const Route = createFileRoute("/status")({
         content:
           "Live system status for the metagraphed registry: overall operational health and recent cross-subnet incidents.",
       },
+      { property: "og:title", content: "Status — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Live system status for the metagraphed registry: overall operational health and recent cross-subnet incidents.",
+      },
     ],
   }),
   component: StatusPage,
