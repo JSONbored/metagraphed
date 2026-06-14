@@ -356,4 +356,100 @@ try {
   globalThis.fetch = originalFetch;
 }
 
+// Edge-cache (Cloudflare Cache API): pure static-artifact GETs are cached and
+// served on repeat; live-overlay routes (e.g. /api/v1/health) are never cached
+// so live operational status can never go stale; conditional GETs still 304.
+{
+  const store = new Map();
+  let puts = 0;
+  let matchHits = 0;
+  const originalCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      async match(req) {
+        const r = store.get(req.url);
+        if (r) matchHits += 1;
+        return r ? r.clone() : undefined;
+      },
+      async put(req, res) {
+        puts += 1;
+        store.set(req.url, res.clone());
+      },
+    },
+  };
+  const cacheCtx = { waitUntil: (p) => p };
+  try {
+    // Pure static-artifact route: cached on first GET, served from cache after.
+    const first = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/schemas"),
+      env,
+      cacheCtx,
+    );
+    await Promise.resolve();
+    const firstBody = await first.text();
+    const etag = first.headers.get("etag");
+    assert.equal(first.status, 200, "schemas GET should be 200");
+    assert.equal(puts, 1, "a pure-artifact 200 GET should be cached");
+    assert.equal(matchHits, 0, "first GET is a cache miss");
+
+    const second = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/schemas"),
+      env,
+      cacheCtx,
+    );
+    assert.equal(
+      matchHits,
+      1,
+      "repeat GET should be served from the edge cache",
+    );
+    assert.equal(
+      await second.text(),
+      firstBody,
+      "cached response body must match the original",
+    );
+
+    // Conditional GET against the cached body's weak ETag → 304 (no body).
+    const conditional = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/schemas", {
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      cacheCtx,
+    );
+    assert.equal(conditional.status, 304, "if-none-match hit should 304");
+    assert.equal(await conditional.text(), "", "304 must have no body");
+
+    // Live-overlay route MUST NOT be cached — live operational health stays fresh.
+    const putsBeforeHealth = puts;
+    const health = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/health"),
+      env,
+      cacheCtx,
+    );
+    await Promise.resolve();
+    assert.equal(health.status, 200, "health GET should be 200");
+    assert.equal(
+      puts,
+      putsBeforeHealth,
+      "live-overlay routes (health) must never be edge-cached",
+    );
+
+    // Non-GET methods are never cached.
+    const putsBeforeHead = puts;
+    await handleRequest(
+      new Request("https://metagraph.sh/api/v1/schemas", { method: "HEAD" }),
+      env,
+      cacheCtx,
+    );
+    await Promise.resolve();
+    assert.equal(
+      puts,
+      putsBeforeHead,
+      "non-GET requests must not be edge-cached",
+    );
+  } finally {
+    globalThis.caches = originalCaches;
+  }
+}
+
 console.log("Worker runtime tests passed.");
