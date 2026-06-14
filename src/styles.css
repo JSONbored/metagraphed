@@ -314,3 +314,99 @@ html[data-density="compact"] .bg-card > table td {
     transform: translateX(300%);
   }
 }
+
+/* --- Ported from the Lovable upstream: hero + animation utilities --- */
+/* Hover-lift used by KPI cards, provider cards, and pilot cards. */
+.mg-hover-lift {
+  transition:
+    transform 150ms ease-out,
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out,
+    background-color 150ms ease-out;
+}
+@media (hover: hover) {
+  .mg-hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px -16px color-mix(in oklab, var(--ink-strong) 28%, transparent);
+  }
+}
+
+/* Fade-and-rise used by hero text and section reveals. */
+@keyframes mg-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mg-fade-in {
+  animation: mg-fade-in 480ms ease-out both;
+}
+.mg-fade-in-delay-1 {
+  animation-delay: 80ms;
+}
+.mg-fade-in-delay-2 {
+  animation-delay: 160ms;
+}
+.mg-fade-in-delay-3 {
+  animation-delay: 240ms;
+}
+
+/* Slow rotation for the home hero ornament. */
+@keyframes mg-orn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Home hero slab — soft gradient surface, light/dark aware via tokens. */
+.mg-hero-slab {
+  background:
+    radial-gradient(
+      80% 60% at 80% 0%,
+      color-mix(in oklab, var(--accent) 14%, transparent) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--surface) 60%, transparent) 0%,
+      transparent 100%
+    );
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+/* Live-dot — small pulsing accent pip. */
+.mg-live-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: var(--health-ok);
+}
+.mg-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: var(--health-ok);
+  opacity: 0.35;
+  animation: mg-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-fade-in,
+  .mg-live-dot::after {
+    animation: none;
+  }
+  [style*="mg-orn-spin"] {
+    animation: none !important;
+  }
+}
