@@ -508,7 +508,16 @@ export function nativeDisplayName(subnet, fallbackName = null) {
         ? subnet.raw_name
         : subnet?.name
       : fallbackName;
-  return candidate || `Subnet ${subnet?.netuid ?? "unknown"}`;
+  // Defang prompt-injection in the chain/overlay display name before it becomes
+  // subnet.name. That value flows verbatim into the search index title/tokens,
+  // the embeddings, the /ask RAG context, and llms.txt — the same sinks the
+  // description/additional fields are scrubbed for (lib.mjs threat model). The
+  // injection rules are no-ops for legitimate names, so a real name is unchanged.
+  const cleaned =
+    typeof candidate === "string"
+      ? sanitizeChainText(candidate).text
+      : candidate;
+  return cleaned || `Subnet ${subnet?.netuid ?? "unknown"}`;
 }
 
 export function classifyNativeName(value, netuid) {
