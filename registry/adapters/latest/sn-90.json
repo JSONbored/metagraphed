@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-14T09:09:41.302Z",
+      "captured_at": "2026-06-14T10:02:36.807Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-14T09:09:41.302Z",
+          "captured_at": "2026-06-14T10:02:36.807Z",
           "content_type": "application/json",
           "hash": "e853e74701c38834f0886a1e05703feff1cedc9d2ebe38702b01287bc0a9ac1d",
-          "latency_ms": 111,
+          "latency_ms": 44,
           "name": "ogham community openapi",
           "provider": "degenbrain",
           "schema_url": "https://api.subnet90.com/openapi.json",
@@ -55,13 +55,13 @@
       "total_path_count": 10
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-14T09:09:41.302Z",
+      "captured_at": "2026-06-14T10:02:36.807Z",
       "status": "captured",
       "surface_count": 0,
       "surfaces": []
     }
   },
-  "generated_at": "2026-06-14T09:03:05.163Z",
+  "generated_at": "2026-06-14T09:55:58.815Z",
   "netuid": 90,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

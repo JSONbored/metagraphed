@@ -1,6 +1,6 @@
 {
   "application_subnet_count": 128,
-  "candidate_count": 2050,
+  "candidate_count": 2047,
   "candidate_subnet_count": 129,
   "chain_subnet_count": 129,
   "completeness": {
@@ -79,12 +79,12 @@
   "native_only_count": 0,
   "native_only_with_candidates": 0,
   "native_only_without_candidates": 0,
-  "native_snapshot_captured_at": "2026-06-14T09:03:28Z",
+  "native_snapshot_captured_at": "2026-06-14T09:56:13Z",
   "network": "finney",
   "official_surface_count": 254,
   "probed_count": 129,
-  "probed_surface_count": 1150,
-  "registry_observed_surface_count": 846,
+  "probed_surface_count": 1147,
+  "registry_observed_surface_count": 843,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
@@ -100,5 +100,5 @@
     "overlays": "registry/subnets"
   },
   "subnets_without_official_surface": 57,
-  "surface_count": 1157
+  "surface_count": 1154
 }

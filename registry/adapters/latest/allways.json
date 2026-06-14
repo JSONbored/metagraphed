@@ -2,10 +2,10 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "crown": {
-      "captured_at": "2026-06-14T09:09:39.741Z",
+      "captured_at": "2026-06-14T10:02:35.859Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "784b53f2db128f2fb95448b1d3ef9c99d1b79c8c175c3bdbd290ca28af5731e4",
-      "latency_ms": 77,
+      "hash": "efb1949fc4fe6f5d727f6590cc891c9941c37530e5e1a15c64ce4e8a07499e00",
+      "latency_ms": 74,
       "shape": {
         "array_fields": [],
         "object_fields": [
@@ -31,10 +31,10 @@
       "url": "https://api.all-ways.io/crown"
     },
     "events_latest": {
-      "captured_at": "2026-06-14T09:09:39.735Z",
+      "captured_at": "2026-06-14T10:02:35.898Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "ca6782dc0da799f42372f113a2ae4194c04e99c9935495196b14743c17af7b09",
-      "latency_ms": 78,
+      "latency_ms": 136,
       "shape": {
         "first_item_keys": [
           "amountRaw",
@@ -66,10 +66,10 @@
       "url": "https://api.all-ways.io/events/latest"
     },
     "health": {
-      "captured_at": "2026-06-14T09:09:39.650Z",
+      "captured_at": "2026-06-14T10:02:35.750Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "61ac5857feb130a1dc475db36bbe21604fddf30024110bb2bea9d8b23e8b1b44",
-      "latency_ms": 247,
+      "latency_ms": 199,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -85,10 +85,10 @@
       "url": "https://api.all-ways.io/health"
     },
     "leaderboard": {
-      "captured_at": "2026-06-14T09:09:40.287Z",
+      "captured_at": "2026-06-14T10:02:36.355Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "0c72759bf44e489d687de32fb93f74189eaefa0e4c1fd9e8ae123abe5e26d344",
-      "latency_ms": 853,
+      "hash": "dc0006a3b6eafbdd1a3029a43fef565b7710f32adefac346dacae98d6fd6e3c1",
+      "latency_ms": 800,
       "shape": {
         "first_item_keys": [
           "collateralRao",
@@ -110,10 +110,10 @@
       "url": "https://api.all-ways.io/miners/leaderboard"
     },
     "miners": {
-      "captured_at": "2026-06-14T09:09:39.674Z",
+      "captured_at": "2026-06-14T10:02:35.781Z",
       "content_type": "application/json; charset=utf-8",
-      "hash": "01a02eb75a0bdb43351d27267abfd39144f8a724b741294962e907a76f784528",
-      "latency_ms": 241,
+      "hash": "f45ee501fed293db0e2600f4235b22cdac69d75ca07266ccf3947ca75b95008f",
+      "latency_ms": 227,
       "shape": {
         "first_item_keys": [
           "collateralRao",
@@ -138,10 +138,10 @@
       "url": "https://api.all-ways.io/miners"
     },
     "network_overview": {
-      "captured_at": "2026-06-14T09:09:39.710Z",
+      "captured_at": "2026-06-14T10:02:35.882Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "2bd7b7c6cde56e99ab557f65624f8eeecab207d74cfe4dc34e25fad97ca4106e",
-      "latency_ms": 278,
+      "latency_ms": 329,
       "shape": {
         "array_fields": [
           {
@@ -168,10 +168,10 @@
       "url": "https://api.all-ways.io/network/overview"
     },
     "protocol_chain_state": {
-      "captured_at": "2026-06-14T09:09:39.664Z",
+      "captured_at": "2026-06-14T10:02:35.841Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "4a2090c8ad1ecc17473bdee7af85f5ee18801b002df5271e35c46149fbca291d",
-      "latency_ms": 234,
+      "latency_ms": 289,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -187,10 +187,10 @@
       "url": "https://api.all-ways.io/protocol/chain-state"
     },
     "protocol_constants": {
-      "captured_at": "2026-06-14T09:09:39.656Z",
+      "captured_at": "2026-06-14T10:02:35.762Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "7a49de612a186c2614a967e6b4705402d512f0a3a1bed2159e91547032b00583",
-      "latency_ms": 227,
+      "latency_ms": 237,
       "shape": {
         "array_fields": [],
         "object_fields": [],
@@ -209,10 +209,10 @@
       "url": "https://api.all-ways.io/protocol/constants"
     },
     "reliability": {
-      "captured_at": "2026-06-14T09:09:39.738Z",
+      "captured_at": "2026-06-14T10:02:35.856Z",
       "content_type": "application/json; charset=utf-8",
       "hash": "a4741133dd127227465ed5d6f25719ab75748909154cb5d08d07412ee6f69a0f",
-      "latency_ms": 86,
+      "latency_ms": 105,
       "shape": {
         "first_item_keys": [
           "completed",
@@ -229,16 +229,16 @@
       "url": "https://api.all-ways.io/miners/reliability"
     },
     "sse": {
-      "captured_at": "2026-06-14T09:09:40.366Z",
+      "captured_at": "2026-06-14T10:02:36.422Z",
       "content_type": "text/event-stream",
       "first_chunk_bytes": 25,
-      "latency_ms": 76,
+      "latency_ms": 64,
       "status": "captured",
       "status_code": 200,
       "url": "https://api.all-ways.io/sse"
     }
   },
-  "generated_at": "2026-06-14T09:03:05.163Z",
+  "generated_at": "2026-06-14T09:55:58.815Z",
   "netuid": 7,
   "notes": [
     "Allways adapter publishes response-shape, count, hash, and freshness metadata only.",

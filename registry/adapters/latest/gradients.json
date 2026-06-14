@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-14T09:09:41.051Z",
+      "captured_at": "2026-06-14T10:02:36.720Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-14T09:09:41.051Z",
+          "captured_at": "2026-06-14T10:02:36.720Z",
           "content_type": "application/json",
           "hash": "30287869845f68df9af584bd6e9fec08e28ced735fd39a661cac27f9f8ad4e9a",
-          "latency_ms": 140,
+          "latency_ms": 109,
           "name": "Gradients OpenAPI",
           "provider": "gradients",
           "schema_url": "https://api.gradients.io/openapi.json",
@@ -67,7 +67,7 @@
       "total_path_count": 56
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-14T09:09:41.051Z",
+      "captured_at": "2026-06-14T10:02:36.720Z",
       "status": "captured",
       "surface_count": 4,
       "surfaces": [
@@ -114,7 +114,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-14T09:03:05.163Z",
+  "generated_at": "2026-06-14T09:55:58.815Z",
   "netuid": 56,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
