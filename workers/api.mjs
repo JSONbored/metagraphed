@@ -8,6 +8,7 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import { applyQueryFilters } from "./list-query.mjs";
+import { apiHeaders, errorResponse, weakEtag } from "./http.mjs";
 import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
@@ -2891,37 +2892,6 @@ async function envelopeResponse(request, payload, cacheProfile) {
   });
 }
 
-function errorResponse(
-  code,
-  message,
-  status = 500,
-  meta = {},
-  extraHeaders = {},
-) {
-  const headers = apiHeaders("short");
-  headers.set("x-metagraph-error-code", code);
-  for (const [key, value] of Object.entries(extraHeaders)) {
-    headers.set(key, value);
-  }
-
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      schema_version: 1,
-      data: null,
-      error: { code, message },
-      meta: {
-        contract_version: CONTRACT_VERSION,
-        ...meta,
-      },
-    }),
-    {
-      status,
-      headers,
-    },
-  );
-}
-
 function corsPreflight(request) {
   const url = new URL(request.url);
   const headers = apiHeaders("short");
@@ -3121,29 +3091,6 @@ async function agentToolsResponse(request, env, kind) {
     status: 200,
     headers,
   });
-}
-
-function apiHeaders(cacheProfile) {
-  const headers = new Headers();
-  headers.set("access-control-allow-origin", "*");
-  headers.set(
-    "cache-control",
-    `public, max-age=${CACHE_SECONDS[cacheProfile] || CACHE_SECONDS.standard}, stale-while-revalidate=300`,
-  );
-  headers.set("content-type", JSON_CONTENT_TYPE);
-  headers.set("x-content-type-options", "nosniff");
-  headers.set("x-metagraph-cache-profile", cacheProfile);
-  headers.set("vary", "Accept-Encoding");
-  return headers;
-}
-
-async function weakEtag(body) {
-  const encoded = new TextEncoder().encode(body);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  const hash = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-  return `W/"${hash.slice(0, 32)}"`;
 }
 
 function contractVersion(env) {
