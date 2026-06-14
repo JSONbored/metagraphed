@@ -68,6 +68,8 @@
     "submission:pr": "node scripts/submission-pr.mjs",
     "submission:comment": "node scripts/submission-comment.mjs",
     "candidate:new": "node scripts/candidate-new.mjs",
+    "enrich:issues": "node scripts/enrichment-issues.mjs --write",
+    "enrich:issues:dry-run": "node scripts/enrichment-issues.mjs --dry-run",
     "validate:candidate": "node scripts/validate-candidate.mjs",
     "provider:new": "node scripts/provider-new.mjs",
     "providers:list": "node scripts/list-providers.mjs",
