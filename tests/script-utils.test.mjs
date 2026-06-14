@@ -640,6 +640,16 @@ describe("script utility contracts", () => {
       isR2PreferredDualArtifactPath("/metagraph/subnets.json"),
       true,
     );
+    // The agent-catalog/agent-resources discovery indexes are R2-preferred too so
+    // MCP discovery reflects the refreshed callable set.
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/agent-catalog.json"),
+      true,
+    );
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/agent-resources.json"),
+      true,
+    );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
     assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/contracts.json"),

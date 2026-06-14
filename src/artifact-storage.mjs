@@ -121,13 +121,20 @@ const DUAL_PATTERNS = [
 
 // Dual-tier artifacts (committed + mirrored to R2) whose SERVING should prefer
 // the fresh R2 copy over the committed baseline. They carry per-publish data
-// (native_snapshot_captured_at, coverage counts) that the 6h refresh advances,
-// but the committed copy only changes on a code push — so the default
-// ASSETS-first dual resolution pins them to a stale snapshot, contradicting
-// /freshness on the same field. We keep them committed (the changelog diff +
-// ci-verify read the committed baseline) but serve R2-first, falling back to the
-// committed copy when R2 is cold (local/dev/CI).
-const R2_PREFERRED_DUAL_PATTERNS = [/^coverage\.json$/, /^subnets\.json$/];
+// (native_snapshot_captured_at, coverage counts, the callable-surface set) that
+// the 6h refresh advances, but the committed copy only changes on a code push —
+// so the default ASSETS-first dual resolution pins them to a stale snapshot. We
+// keep them committed (cold-start + the changelog diff / ci-verify read the
+// committed baseline) but serve R2-first, falling back to the committed copy
+// when R2 is cold (local/dev/CI). agent-catalog/agent-resources are included so
+// the MCP discovery tools (find_subnets_by_capability, find_subnet_for_task,
+// get_agent_catalog) reflect the refreshed callable set, not the frozen index.
+const R2_PREFERRED_DUAL_PATTERNS = [
+  /^coverage\.json$/,
+  /^subnets\.json$/,
+  /^agent-catalog\.json$/,
+  /^agent-resources\.json$/,
+];
 
 export function isR2PreferredDualArtifactPath(artifactPath = "") {
   const normalized = artifactRelativePath(artifactPath);
