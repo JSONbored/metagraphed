@@ -30,13 +30,62 @@ const overview = await metagraphedFetch("/api/v1/subnets/{netuid}/overview", {
   pathParams: { netuid: 7 },
 });
 
-// Point at a different origin (e.g. a preview deployment).
+// Point at a different origin, and tune/disable the request timeout.
 const health = await metagraphedFetch("/api/v1/health", {
   baseUrl: "https://metagraph.sh",
+  timeoutMs: 5000, // default 30000; pass 0 to disable; an explicit `signal` wins
 });
 ```
 
-Every response is the standard envelope `{ ok, schema_version, data, meta }`
+A resolved value is always a **success** envelope. On any non-2xx the client
+**throws** a `MetagraphedError` carrying the HTTP status, the API error code, and
+the parsed error envelope — so you branch with try/catch, not on `ok`:
+
+```ts
+import { metagraphedFetch, MetagraphedError } from "@jsonbored/metagraphed";
+
+try {
+  const subnet = await metagraphedFetch("/api/v1/subnets/{netuid}", {
+    pathParams: { netuid: 7 },
+  });
+  console.log(subnet.data);
+} catch (error) {
+  if (error instanceof MetagraphedError) {
+    // error.status (e.g. 404), error.code (e.g. "artifact_not_found"), error.envelope
+    if (error.code === "rate_limited") {
+      /* back off and retry */
+    }
+  }
+}
+```
+
+### Paginate a list endpoint
+
+`metagraphedPaginate` follows `meta.pagination.next_cursor` until it's exhausted:
+
+```ts
+import { metagraphedPaginate } from "@jsonbored/metagraphed";
+
+for await (const page of metagraphedPaginate("/api/v1/subnets", {
+  query: { limit: 100 },
+})) {
+  for (const subnet of page.data) console.log(subnet.netuid);
+}
+```
+
+### Call the read-only RPC proxy
+
+`metagraphedRpc` POSTs a JSON-RPC request to the Subtensor proxy
+(`/rpc/v1/<network>`) and returns the `result`, throwing `MetagraphedError` on an
+HTTP or JSON-RPC-level error:
+
+```ts
+import { metagraphedRpc } from "@jsonbored/metagraphed";
+
+const healthInfo = await metagraphedRpc("finney", { method: "system_health" });
+```
+
+Every REST response is the standard envelope `{ ok, schema_version, data, meta }`
 (`meta.pagination` on list routes, `meta.published_at` for freshness). See the
 [API stability guide](https://github.com/JSONbored/metagraphed/blob/main/docs/api-stability.md)
 for the envelope, pagination, caching, error codes, and `x-metagraph-*` headers.
