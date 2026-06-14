@@ -1,10 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Github, ArrowUpRight, FileCode2, Network as NetworkIcon, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { PageHeading } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
+import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
+import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -23,95 +27,215 @@ export const Route = createFileRoute("/about")({
 function AboutPage() {
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="About"
         title="Methodology & scope"
-        description="Metagraphed extends the native Bittensor metagraph with public interface and health metadata. Unofficial — not a block explorer."
+        description="Metagraphed extends the native Bittensor metagraph with public-interface and health metadata. Unofficial — not a block explorer."
+        actions={
+          <a
+            href={GITHUB_REPO}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-sm font-medium text-paper hover:opacity-90 transition-opacity"
+          >
+            <Github className="size-3.5" /> View on GitHub
+            <ArrowUpRight className="size-3.5" />
+          </a>
+        }
       />
-      <div className="prose prose-sm max-w-3xl text-ink space-y-6">
-        <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            What this is
-          </h2>
-          <p className="text-sm leading-relaxed">
-            A builder-facing public registry and explorer for Bittensor subnets: APIs, OpenAPI
-            schemas, docs, repos, dashboards, data artifacts, SSE streams, endpoint health, schema
-            drift, freshness, source evidence, providers, and curation gaps. Adapted for the
-            heterogeneous, app-layer shape of Bittensor subnets.
-          </p>
-        </section>
-        <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            What this is not
-          </h2>
-          <ul className="text-sm leading-relaxed list-disc pl-5 space-y-1">
-            <li>Not a block explorer, wallet app, validator dashboard, or operator console.</li>
-            <li>Not an OpenTensor/Bittensor product. Unofficial registry only.</li>
-            <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
-            <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
-          </ul>
-        </section>
-        <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            Curation levels
-          </h2>
-          <ul className="text-sm leading-relaxed list-disc pl-5 space-y-1">
-            <li>
-              <b>Native</b> — sourced directly from the Bittensor chain.
-            </li>
-            <li>
-              <b>Candidate-discovered</b> — leads from public sources, not verified.
-            </li>
-            <li>
-              <b>Machine-verified</b> — reachable and shape-checked by automated probes.
-            </li>
-            <li>
-              <b>Maintainer-reviewed</b> — a human reviewer accepted the overlay.
-            </li>
-            <li>
-              <b>Adapter-backed</b> — a typed adapter publishes live metrics (e.g. SN7, SN74).
-            </li>
-          </ul>
-        </section>
-        <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            Contributing
-          </h2>
-          <p className="text-sm leading-relaxed">
-            Corrections, new candidate leads, and maintainer review happen through the public repo.
-            There is no in-app submission flow.
-          </p>
-          <div className="mt-2 text-xs">
-            <ExternalLink href={GITHUB_REPO}>{GITHUB_REPO}</ExternalLink>
-          </div>
-        </section>
-        <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            API & artifacts
-          </h2>
-          <div className="space-y-2">
-            <CopyableCode
-              label="api"
-              value={`${API_BASE}/api/v1`}
-              truncate={false}
-              className="w-full"
-            />
-            <CopyableCode
-              label="openapi"
-              value={`${API_BASE}/api/v1/openapi.json`}
-              truncate={false}
-              className="w-full"
-            />
-            <CopyableCode
-              label="artifacts"
-              value={`${API_BASE}/metagraph/`}
-              truncate={false}
-              className="w-full"
-            />
-          </div>
-        </section>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-8 min-w-0">
+          <Section title="What this is">
+            <p>
+              A builder-facing public registry and explorer for Bittensor subnets: APIs, OpenAPI
+              schemas, docs, repos, dashboards, data artifacts, SSE streams, endpoint health, schema
+              drift, freshness, source evidence, providers, and curation gaps. Adapted for the
+              heterogeneous, app-layer shape of Bittensor subnets.
+            </p>
+          </Section>
+          <Section title="What this is not">
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>Not a block explorer, wallet app, validator dashboard, or operator console.</li>
+              <li>Not an OpenTensor/Bittensor product. Unofficial registry only.</li>
+              <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
+              <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
+            </ul>
+          </Section>
+          <Section title="Curation levels">
+            <dl className="grid gap-2.5">
+              <Term name="Native" desc="Sourced directly from the Bittensor chain." />
+              <Term
+                name="Candidate-discovered"
+                desc="Leads from public sources, not yet verified."
+              />
+              <Term
+                name="Machine-verified"
+                desc="Reachable and shape-checked by automated probes."
+              />
+              <Term name="Maintainer-reviewed" desc="A human reviewer accepted the overlay." />
+              <Term
+                name="Adapter-backed"
+                desc="A typed adapter publishes live metrics (e.g. SN7, SN74)."
+              />
+            </dl>
+          </Section>
+          <Section title="Coverage levels">
+            <dl className="grid gap-2.5">
+              <Term name="Native-only" desc="Chain identity present, no curated overlay yet." />
+              <Term name="Manifested" desc="Curated overlay with at least one public surface." />
+              <Term
+                name="Probed"
+                desc="Surfaces or endpoints actively probed for health and freshness."
+              />
+            </dl>
+          </Section>
+          <Section title="Contributing">
+            <p>
+              Corrections, new candidate leads, and maintainer review happen through the public
+              repository. There is no in-app submission flow — registry truth lives in version
+              control, reviewed in the open.
+            </p>
+            <div className="mt-3">
+              <ExternalLink href={GITHUB_REPO}>{GITHUB_REPO}</ExternalLink>
+            </div>
+          </Section>
+          <Section title="API & artifacts">
+            <p className="mb-3">
+              JSON Schema is canonical. OpenAPI and TypeScript clients are projections. Every public
+              list and detail view is reachable via the API or as a static artifact.
+            </p>
+            <div className="space-y-2">
+              <CopyableCode
+                label="API"
+                value={`${API_BASE}/api/v1`}
+                truncate={false}
+                className="w-full"
+              />
+              <CopyableCode
+                label="OpenAPI"
+                value={`${API_BASE}/api/v1/openapi.json`}
+                truncate={false}
+                className="w-full"
+              />
+              <CopyableCode
+                label="Artifacts"
+                value={`${API_BASE}/metagraph/`}
+                truncate={false}
+                className="w-full"
+              />
+            </div>
+          </Section>
+        </div>
+
+        <aside className="lg:sticky lg:top-24 h-fit">
+          <AtAGlance />
+        </aside>
       </div>
       <ApiSourceFooter paths={["/api/v1", "/api/v1/openapi.json", "/api/v1/build"]} />
     </AppShell>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+        {title}
+      </h2>
+      <div className="text-sm leading-relaxed text-ink space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function Term({ name, desc }: { name: string; desc: string }) {
+  return (
+    <div className="grid grid-cols-[auto_1fr] gap-3 items-baseline">
+      <dt className="font-mono text-[11px] uppercase tracking-widest text-ink-strong whitespace-nowrap">
+        {name}
+      </dt>
+      <dd className="text-sm text-ink-muted">{desc}</dd>
+    </div>
+  );
+}
+
+function AtAGlance() {
+  const coverage = (useQuery(coverageQuery()).data?.data ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const freshness = (useQuery(freshnessQuery()).data?.data ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const health = (useQuery(healthQuery()).data?.data ?? {}) as Record<string, number | undefined>;
+  const stats: Array<{ icon: React.ElementType; label: string; value: string; to: string }> = [
+    {
+      icon: NetworkIcon,
+      label: "Active subnets",
+      value: coverage.netuids_active != null ? formatNumber(coverage.netuids_active) : "—",
+      to: "/subnets",
+    },
+    {
+      icon: FileCode2,
+      label: "Adapter pilots",
+      value: coverage.adapter_backed != null ? formatNumber(coverage.adapter_backed) : "—",
+      to: "/providers",
+    },
+    {
+      icon: Activity,
+      label: "Healthy",
+      value: health.ok != null && health.total ? `${health.ok}/${health.total}` : "—",
+      to: "/health",
+    },
+    {
+      icon: FileCode2,
+      label: "Avg freshness",
+      value: freshness.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—",
+      to: "/health",
+    },
+  ];
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3 inline-flex items-center gap-2">
+        <span className="mg-live-dot" /> At a glance
+      </div>
+      <ul className="space-y-2.5">
+        {stats.map(({ icon: Icon, label, value, to }) => (
+          <li key={label}>
+            <Link
+              to={to}
+              className="group flex items-center gap-3 rounded-lg border border-transparent hover:border-border hover:bg-surface/40 px-2 py-1.5 -mx-2 transition-colors"
+            >
+              <span className="inline-flex size-7 items-center justify-center rounded-md bg-surface/70 text-ink shrink-0">
+                <Icon className="size-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  {label}
+                </div>
+                <div className="font-display text-base font-semibold text-ink-strong tabular-nums">
+                  {value}
+                </div>
+              </div>
+              <ArrowUpRight className="size-3.5 text-ink-muted group-hover:text-ink-strong group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 border-t border-border pt-3 grid gap-1.5">
+        <Link
+          to="/schemas"
+          className="font-mono text-[11px] text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+        >
+          → API & schemas
+        </Link>
+        <Link
+          to="/gaps"
+          className="font-mono text-[11px] text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+        >
+          → Registry gaps
+        </Link>
+      </div>
+    </div>
   );
 }

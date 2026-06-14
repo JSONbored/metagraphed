@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
+import { ArrowUpRight, Network, Activity, Server, FileCode2, Radio } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
-import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { RegistryPulse } from "@/components/metagraphed/charts/registry-pulse";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
+import { KpiCard } from "@/components/metagraphed/kpi-card";
+import { HeroOrnament } from "@/components/metagraphed/hero-ornament";
 import {
   coverageQuery,
   freshnessQuery,
@@ -38,19 +41,14 @@ export const Route = createFileRoute("/")({
 function OverviewPage() {
   return (
     <AppShell>
-      <PageHeading
-        eyebrow="Overview"
-        title="Bittensor public-interface registry"
-        description="A builder-facing index of subnet APIs, schemas, docs, endpoints, providers, freshness, and registry gaps. Unofficial — not a block explorer."
-        right={<CopyableCode label="API" value={`${API_BASE}/api/v1`} truncate={false} />}
-      />
-
-      <StatStrip />
+      <HomeHero />
+      <KpiStrip />
       <RegistryPulse />
 
-      <section className="mt-8">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-3">
-          Featured adapter-backed pilots
+      <section className="mt-10">
+        <SectionEyebrow>Featured pilots</SectionEyebrow>
+        <h2 className="font-display text-xl font-semibold tracking-tight text-ink-strong mt-1 mb-3">
+          Adapter-backed subnets
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
           <QueryErrorBoundary
@@ -70,16 +68,20 @@ function OverviewPage() {
         </div>
       </section>
 
-      <section className="mt-8">
+      <section className="mt-10">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-            Active subnets
-          </h2>
+          <div>
+            <SectionEyebrow live>Live registry</SectionEyebrow>
+            <h2 className="font-display text-xl font-semibold tracking-tight text-ink-strong mt-1">
+              Active subnets
+            </h2>
+          </div>
           <Link
             to="/subnets"
-            className="text-xs text-ink-muted hover:text-ink-strong underline underline-offset-2"
+            className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink-strong group"
           >
-            View full registry →
+            View full registry
+            <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>
         <QueryErrorBoundary>
@@ -88,29 +90,71 @@ function OverviewPage() {
           </Suspense>
         </QueryErrorBoundary>
       </section>
+
+      <PoweredByFooter />
     </AppShell>
   );
 }
 
-function StatCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/* ----------------------------- hero ----------------------------- */
+
+function HomeHero() {
   return (
-    <div className="bg-card p-4 mg-kpi">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-        {label}
+    <section className="mg-hero-slab relative overflow-hidden mb-8 px-6 py-10 md:px-10 md:py-14">
+      <div className="relative z-10 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="min-w-0 max-w-2xl">
+          <div className="mg-fade-in font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-2">
+            <span className="mg-live-dot" />
+            Unofficial · Public · Read-only
+          </div>
+          <h1 className="mg-fade-in mg-fade-in-delay-1 mt-3 font-display text-3xl sm:text-4xl md:text-5xl font-semibold leading-[1.05] tracking-tight text-ink-strong">
+            The public-interface registry for <span className="text-accent">Bittensor</span>.
+          </h1>
+          <p className="mg-fade-in mg-fade-in-delay-2 mt-4 max-w-xl text-sm md:text-base text-ink-muted leading-relaxed">
+            A builder-facing index of subnet APIs, schemas, docs, endpoints, providers, freshness,
+            and registry gaps. Not a block explorer.
+          </p>
+          <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-3">
+            <Link
+              to="/subnets"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-sm font-medium text-paper hover:opacity-90 transition-opacity"
+            >
+              Browse subnets
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+            <Link
+              to="/schemas"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:border-ink/30 transition-colors"
+            >
+              Open API reference
+            </Link>
+            <div className="hidden sm:block">
+              <CopyableCode label="API" value={`${API_BASE}/api/v1`} />
+            </div>
+          </div>
+        </div>
+        <div className="hidden md:block size-[320px] lg:size-[380px] shrink-0">
+          <HeroOrnament className="size-full" />
+        </div>
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className="mg-kpi-num font-display text-2xl font-semibold tracking-tight text-ink-strong tabular-nums">
-          {value}
-        </span>
-        {hint ? <span className="font-mono text-[10px] text-ink-muted">{hint}</span> : null}
-      </div>
+    </section>
+  );
+}
+
+function SectionEyebrow({ children, live }: { children: React.ReactNode; live?: boolean }) {
+  return (
+    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-2">
+      {live ? <span className="mg-live-dot" /> : null}
+      {children}
     </div>
   );
 }
 
-function StatStrip() {
-  // Stat strip is a small at-a-glance widget; partial loading is fine and
-  // useSuspenseQuery + try/catch would swallow the suspense Promise.
+/* ----------------------------- KPI strip ----------------------------- */
+
+function KpiStrip() {
+  // At-a-glance widget; partial loading is fine, so useQuery (not useSuspenseQuery)
+  // keeps a single failed stat from blocking the whole strip.
   const coverage = useQuery(coverageQuery()).data?.data;
   const freshness = useQuery(freshnessQuery()).data?.data;
   const health = useQuery(healthQuery()).data?.data;
@@ -124,24 +168,35 @@ function StatStrip() {
   const uptime = health?.uptime_24h;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border rounded overflow-hidden">
-      <StatCell
-        label="Active subnets"
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <KpiCard
+        icon={Network}
+        eyebrow="Active subnets"
         value={active != null ? formatNumber(active) : "—"}
         hint={total != null ? `of ${formatNumber(total)}` : undefined}
+        to="/subnets"
+        cta="Browse"
       />
-      <StatCell
-        label="Adapter-backed"
+      <KpiCard
+        icon={Radio}
+        eyebrow="Adapter-backed"
         value={adapter != null ? formatNumber(adapter) : "—"}
         hint="pilots"
+        to="/providers"
+        cta="Providers"
+        tone="accent"
       />
-      <StatCell
-        label="Avg freshness"
+      <KpiCard
+        icon={Server}
+        eyebrow="Avg freshness"
         value={avgAge != null ? humaniseSeconds(avgAge) : "—"}
         hint="poll lag"
+        to="/health"
+        cta="Health"
       />
-      <StatCell
-        label="Health"
+      <KpiCard
+        icon={Activity}
+        eyebrow="Health"
         value={
           uptime != null
             ? `${(uptime * 100).toFixed(uptime < 0.999 ? 1 : 2)}%`
@@ -150,10 +205,14 @@ function StatStrip() {
               : "—"
         }
         hint="24h"
+        to="/health"
+        cta="Incidents"
       />
     </div>
   );
 }
+
+/* ----------------------------- pilot ----------------------------- */
 
 type PilotProps = {
   slug: string;
@@ -169,7 +228,7 @@ function PilotCardFallback({ netuid, title, subtitle }: Omit<PilotProps, "slug">
     <Link
       to="/subnets/$netuid"
       params={{ netuid }}
-      className="block rounded border border-border bg-card p-4 hover:border-ink/30 transition-colors"
+      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -200,8 +259,8 @@ function PilotCard({ slug, netuid, title, subtitle }: PilotProps) {
   return (
     <Link
       to="/subnets/$netuid"
-      params={{ netuid: netuid }}
-      className="block rounded border border-border bg-card p-4 hover:border-ink/30 transition-colors"
+      params={{ netuid }}
+      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-center justify-between mb-3">
         <div>
@@ -239,7 +298,7 @@ function PilotCard({ slug, netuid, title, subtitle }: PilotProps) {
 
 function TableSkeleton() {
   return (
-    <div className="rounded border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="border-b border-border last:border-b-0 px-4 py-3">
           <Skeleton className="h-4 w-full" />
@@ -251,6 +310,8 @@ function TableSkeleton() {
 
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
+  // Non-blocking: a /api/v1/health failure must not error the whole table —
+  // useQuery (not useSuspenseQuery) so the per-subnet overlay degrades gracefully.
   const health = useQuery(healthQuery()).data?.data;
   const coverage = useQuery(coverageQuery()).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
@@ -278,7 +339,7 @@ function SubnetPreviewTable() {
   const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
-    <div className="rounded border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
@@ -295,7 +356,7 @@ function SubnetPreviewTable() {
           </thead>
           <tbody className="divide-y divide-border">
             {subnets.slice(0, 12).map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/40 transition-colors">
+              <tr key={s.netuid} className="mg-row-hover">
                 <td className="px-4 py-2.5 font-mono text-[12px] text-ink-muted">
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
@@ -360,6 +421,18 @@ function SubnetPreviewTable() {
           refresh
         </button>
       </div>
+    </div>
+  );
+}
+
+function PoweredByFooter() {
+  return (
+    <div className="mt-12 border-t border-border pt-4 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+      <span className="inline-flex items-center gap-2">
+        <FileCode2 className="size-3" />
+        Powered by Cloudflare Workers · Static Assets · R2
+      </span>
+      <span>JSON-Schema canonical · OpenAPI projected</span>
     </div>
   );
 }
