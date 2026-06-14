@@ -87,6 +87,10 @@ contract. No new authority, no new pipeline.
   (lifecycle + one `tools/call` per tool against a cold local env), kept out of
   the `validate-api` `checks.length === API_ROUTES.length` invariant because
   `/mcp` is not artifact-backed.
+- The MCP tool surface is versioned by its own SemVer (`MCP_SERVER_VERSION`,
+  `serverInfo.version`), separate from the date-based `CONTRACT_VERSION` (#393):
+  add a tool/additive field → minor; change/remove a tool's I/O → major;
+  behavioral-only fix → patch. `validate:mcp` asserts it is SemVer.
 - `tests/mcp-server.test.mjs` unit-tests every tool and the JSON-RPC envelope
   (notifications, batch, parse/transport errors, isError degradation) under the
   ≥98%-line coverage gate.

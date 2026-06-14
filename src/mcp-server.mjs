@@ -10,7 +10,7 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
-import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import {
@@ -43,6 +43,15 @@ export const MCP_PROTOCOL_VERSIONS = [
 ];
 const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 
+// The MCP server's own SemVer — the tool surface is a public contract agents
+// depend on, so it needs a version signal distinct from CONTRACT_VERSION (the
+// date-based REST/data-contract version). Bump policy (#393):
+//   - add a tool / additive field        → MINOR
+//   - change or remove a tool's I/O       → MAJOR
+//   - behavioral-only fix (no I/O change) → PATCH
+// Reported in serverInfo.version (initialize) + the generated server-card.json.
+export const MCP_SERVER_VERSION = "1.0.0";
+
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
   title: "metagraphed — Bittensor subnet operational registry",
@@ -51,7 +60,7 @@ export const MCP_SERVER_INFO = {
   description:
     "Live operational + integration registry for Bittensor subnets — what each " +
     "subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
-  version: CONTRACT_VERSION,
+  version: MCP_SERVER_VERSION,
 };
 
 // Bidirectional registry backlink (server -> MCP Registry). Mirrors the
@@ -539,7 +548,8 @@ export const MCP_TOOLS = [
       properties: {
         surface_id: {
           type: "string",
-          description: "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
+          description:
+            "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
         },
       },
       required: ["surface_id"],
@@ -573,7 +583,8 @@ export const MCP_TOOLS = [
       properties: {
         surface_id: {
           type: "string",
-          description: "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
+          description:
+            "Surface id (slug-style), e.g. 'allways-docs' or 'sn-64-chutes-openapi'.",
         },
       },
       required: ["surface_id"],

@@ -8,7 +8,11 @@
 import assert from "node:assert/strict";
 import Ajv2020 from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
-import { MCP_TOOLS, listToolDefinitions } from "../src/mcp-server.mjs";
+import {
+  MCP_SERVER_VERSION,
+  MCP_TOOLS,
+  listToolDefinitions,
+} from "../src/mcp-server.mjs";
 import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
@@ -107,6 +111,18 @@ assert.equal(
   "initialize must negotiate the requested protocol version",
 );
 assert.equal(init.body.result.serverInfo.name, "metagraphed");
+// The MCP server version is its own SemVer (#393), distinct from the date-based
+// CONTRACT_VERSION, and must match the source constant.
+assert.match(
+  init.body.result.serverInfo.version,
+  /^\d+\.\d+\.\d+$/,
+  "serverInfo.version must be SemVer (MCP_SERVER_VERSION), not the date-based CONTRACT_VERSION",
+);
+assert.equal(
+  init.body.result.serverInfo.version,
+  MCP_SERVER_VERSION,
+  "serverInfo.version must match the MCP_SERVER_VERSION constant",
+);
 assert.ok(
   init.body.result.capabilities.tools,
   "must advertise tools capability",
