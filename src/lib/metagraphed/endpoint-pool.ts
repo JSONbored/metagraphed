@@ -3,6 +3,7 @@ import type { Endpoint, RpcPool } from "./types";
 export type PoolEligibility = "proxy-enabled" | "pool-member" | "archive-capable" | "unassigned";
 
 const ARCHIVE_KINDS = new Set(["archive", "wss-archive", "rpc-archive"]);
+const EMPTY_POOLS_BY_ID = new Map<string, RpcPool>();
 
 /**
  * Derive a single pool-eligibility label for an endpoint by joining its
@@ -14,9 +15,16 @@ const ARCHIVE_KINDS = new Set(["archive", "wss-archive", "rpc-archive"]);
  *   archive-capable — endpoint kind/flag signals archive support
  *   unassigned      — none of the above
  */
-export function endpointEligibility(e: Endpoint, pools: RpcPool[] = []): PoolEligibility {
+export function indexPoolsById(pools: RpcPool[] = []): ReadonlyMap<string, RpcPool> {
+  return new Map(pools.map((p) => [p.id, p]));
+}
+
+export function endpointEligibility(
+  e: Endpoint,
+  poolsById: ReadonlyMap<string, RpcPool> = EMPTY_POOLS_BY_ID,
+): PoolEligibility {
   const poolId = (e.pool ?? null) as string | null;
-  const pool = poolId ? pools.find((p) => p.id === poolId) : null;
+  const pool = poolId ? poolsById.get(poolId) : null;
   if (pool?.proxy_enabled) return "proxy-enabled";
   if (poolId || e.pool_eligible) return "pool-member";
   const kind = String(e.kind ?? "").toLowerCase();

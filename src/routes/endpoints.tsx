@@ -20,6 +20,7 @@ import { endpointsQuery, endpointIncidentsQuery, rpcPoolsQuery } from "@/lib/met
 import {
   endpointCategory,
   endpointEligibility,
+  indexPoolsById,
   ELIGIBILITY_LABEL,
   ELIGIBILITY_TONE,
   type EndpointCategory,
@@ -232,6 +233,7 @@ function EndpointsTable() {
   const { data: poolsRes } = useSuspenseQuery(rpcPoolsQuery());
   const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
   const pools = useMemo(() => (poolsRes.data ?? []) as RpcPool[], [poolsRes]);
+  const poolsById = useMemo(() => indexPoolsById(pools), [pools]);
 
   const [q, setQ] = useState("");
   const [category, setCategory] = useState<EndpointCategory | "all">("all");
@@ -263,9 +265,9 @@ function EndpointsTable() {
       rows.map((e) => ({
         e,
         cat: endpointCategory(e.kind),
-        eli: endpointEligibility(e, pools),
+        eli: endpointEligibility(e, poolsById),
       })),
-    [rows, pools],
+    [rows, poolsById],
   );
 
   const categoryCounts = useMemo(() => {
