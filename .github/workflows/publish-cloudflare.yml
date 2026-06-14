@@ -142,9 +142,12 @@ jobs:
       - name: Validate registry
         run: npm run validate
 
-      - name: Test
-        run: npm test
-
+      # NOTE: the hermetic unit suite (`npm test`) is intentionally NOT run here.
+      # The validate step above rebuilds artifacts in-place with a real publish
+      # time, which violates the committed/deterministic-state assumptions of some
+      # unit tests (e.g. build-summary published_at:null / generated_at epoch-0).
+      # Code is already gated by `npm test` on every PR's CI; this job's purpose
+      # is to validate + publish the DATA, which the guards below cover.
       - name: Validate backend contracts
         run: |
           npm run validate:schemas
