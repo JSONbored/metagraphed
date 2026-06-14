@@ -989,6 +989,11 @@ describe("script utility contracts", () => {
       isCredentialedUrl("https://example.com/download?file=1"),
       false,
     );
+    assert.equal(isCredentialedUrl("https://example.com/x?api_key=1"), true);
+    assert.equal(
+      redactCredentialedUrl("https://example.com/x?access_token=1"),
+      "https://example.com/x",
+    );
   });
 
   test("scopes evidence claims with authoritative source netuids before subject slugs", () => {
