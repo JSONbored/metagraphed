@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -108,15 +108,10 @@ function SurfacesTable() {
   const all = pages.flatMap((p) => (p.data ?? []) as Surface[]);
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
-  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
-  useEffect(() => {
-    if (lastPageParam !== search.cursor) {
-      navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, cursor: lastPageParam }) as never,
-        replace: true,
-      });
-    }
-  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The URL cursor is the immutable starting point for this infinite query —
+  // surfacesInfiniteQuery keys on `initialCursor`, so mirroring the advancing
+  // cursor back into the URL would change the query key on every "load more"
+  // and drop the already-accumulated pages. Deliberately not done.
 
   const kindOptions = useMemo(() => {
     const set = new Set<string>();
