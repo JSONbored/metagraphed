@@ -154,6 +154,22 @@ describe("overlayRpcPoolEligibility", () => {
     assert.equal(out.endpoints.find((e) => e.id === "a").pool_eligible, true);
     assert.equal(out.endpoints.find((e) => e.id === "b").pool_eligible, false);
   });
+  test("immediately drops wrong-chain endpoints from the proxy pool", () => {
+    const live = {
+      endpoints: [
+        {
+          id: "a",
+          status: "failed",
+          classification: "wrong-chain",
+          consecutive_failures: 1,
+        },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(pool, live);
+    assert.equal(out.endpoints.find((e) => e.id === "a").pool_eligible, false);
+    assert.equal(out.endpoints.find((e) => e.id === "b").pool_eligible, true);
+  });
+
   test("returns the static pool unchanged when live is cold", () => {
     assert.equal(overlayRpcPoolEligibility(pool, null), pool);
   });

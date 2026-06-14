@@ -222,6 +222,7 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
     endpoints: (pool.endpoints || []).map((endpoint) => {
       const live = liveById.get(endpoint.id);
       if (!live) return endpoint;
+      const wrongChain = live.classification === "wrong-chain";
       const sustainedDown =
         live.status !== "ok" &&
         (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES;
@@ -230,7 +231,8 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
         status: live.status,
         latency_ms: live.latency_ms ?? endpoint.latency_ms,
         health_source: "live-cron-prober",
-        pool_eligible: Boolean(endpoint.pool_eligible) && !sustainedDown,
+        pool_eligible:
+          Boolean(endpoint.pool_eligible) && !wrongChain && !sustainedDown,
       };
     }),
   };

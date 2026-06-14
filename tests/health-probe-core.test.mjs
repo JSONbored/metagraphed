@@ -649,9 +649,26 @@ describe("probeSubtensorWss", () => {
         ]),
     });
     assert.equal(classifyRpcProbe(probe), "live");
+    assert.equal(probe.chain_verified, null);
     assert.equal(probe.latest_block, 0x20);
     assert.equal(probe.archive_support, true);
     assert.equal(probe.rpc_method_count, 2);
+  });
+
+  test("flags a mismatched WSS genesis as wrong-chain", async () => {
+    const probe = await probeSubtensorWss("wss://wrong.dev", 5000, {
+      isUnsafeUrl: async () => false,
+      connect: async () =>
+        new Map([
+          ["chain_getHeader", { ok: true, result: { number: "0x1" } }],
+          ["system_health", { ok: true, result: { peers: 1 } }],
+          ["rpc_methods", { ok: true, result: { methods: [] } }],
+          ["archive_probe", { ok: true, result: "0xabc" }],
+          ["genesis", { ok: true, result: "0xother_network_genesis" }],
+        ]),
+    });
+    assert.equal(probe.chain_verified, false);
+    assert.equal(classifyRpcProbe(probe), "wrong-chain");
   });
 
   test("connector resolving a partial Map fills missing keys", async () => {

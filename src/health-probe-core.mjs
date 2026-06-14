@@ -463,7 +463,11 @@ async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
 // `fetch(url, { headers: { Upgrade: "websocket" } })` → `response.webSocket`.
 // `connect(url, calls, timeoutMs)` resolves a Map<callKey, {ok, result, rpc_error}>.
 export async function probeSubtensorWss(url, timeoutMs, options = {}) {
-  const { isUnsafeUrl = isUnsafePublicUrl, connect } = options;
+  const {
+    isUnsafeUrl = isUnsafePublicUrl,
+    connect,
+    expectedGenesis = FINNEY_GENESIS_HASH,
+  } = options;
   if (await isUnsafeUrl(url)) {
     return {
       unsafe_url: true,
@@ -486,14 +490,22 @@ export async function probeSubtensorWss(url, timeoutMs, options = {}) {
   const methodResults = {};
   try {
     const rawResults = await connect(url, SUBTENSOR_PROBE_CALLS, timeoutMs);
+    let genesisHash = null;
     for (const call of SUBTENSOR_PROBE_CALLS) {
-      methodResults[call.key] = normalizeJsonRpcResult(
-        rawResults.get(call.key) || { error: "missing response" },
-      );
+      const response = rawResults.get(call.key) || { error: "missing response" };
+      if (call.key === "genesis" && typeof response.result === "string") {
+        genesisHash = response.result;
+      }
+      methodResults[call.key] = normalizeJsonRpcResult(response);
     }
+    const expected = normalizeHash(expectedGenesis);
+    const chainVerified = genesisHash
+      ? normalizeHash(genesisHash) === expected
+      : null;
     return summarizeRpcProbe({
       latency_ms: Math.round(performance.now() - started),
       method_results: methodResults,
+      chain_verified: chainVerified,
       verified_at: new Date().toISOString(),
     });
   } catch (error) {
