@@ -87,6 +87,15 @@ function productionSteps() {
     // the caller (publish-cloudflare.yml); without a token this carries
     // forward committed adapter data rather than failing.
     nodeStep("adapters-snapshot", "scripts/snapshot-adapters.mjs", "--write"),
+    // Capture one sanitized live request/response sample per no-auth GET
+    // surface (issue #352) before build-artifacts, mirroring schemas-snapshot:
+    // build-artifacts grabs the fixtures/{surface_id}.json files before its
+    // staging wipe, re-attaches them, and builds the fixtures.json index that
+    // powers the get_fixture MCP tool. Degrades gracefully — every unreachable
+    // surface is skipped (the step always exits 0), so a flaky surface never
+    // blocks the publish. Without this step the index is empty and get_fixture
+    // returns nothing.
+    nodeStep("capture-fixtures", "scripts/capture-fixtures.mjs", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
     nodeStep("probes-smoke", "scripts/probes-smoke.mjs", {
       METAGRAPH_WRITE_PROBE_RESULTS: "1",
