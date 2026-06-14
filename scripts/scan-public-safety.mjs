@@ -53,20 +53,30 @@ const patterns = [
   },
 ];
 
-// Per-surface schema artifacts AND captured fixtures embed the full upstream
-// OpenAPI/Swagger spec or GitHub README (TS2). Those are public docs the subnet
+// Per-surface schema artifacts, and some captured fixtures, embed upstream
+// OpenAPI/Swagger specs or GitHub READMEs. Those are public docs the subnet
 // published; the soft wording heuristics false-positive on their API terminology
 // ("hotkey"/"wallet"/"coldkey" are core Bittensor vocabulary that nearly every
 // subnet API documents). Keep this exemption scoped to the generated public/R2
 // artifact directories so source schemas are still covered by the terminology
-// guard. The hard secret patterns above still apply to these files.
+// guard. The hard secret patterns above still apply to these files, and captured
+// fixture response bodies get a separate soft-wording scan below so live response
+// data cannot hide wallet/key/hotkey wording under generic JSON keys.
 function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
     /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
-    /^public\/metagraph\/fixtures\/[^/]+\.json$/,
-    /^dist\/metagraph-r2\/metagraph\/fixtures\/[^/]+\.json$/,
+    ...mirroredFixturePatterns,
   ].some((pattern) => pattern.test(relativePath));
+}
+
+const mirroredFixturePatterns = [
+  /^public\/metagraph\/fixtures\/[^/]+\.json$/,
+  /^dist\/metagraph-r2\/metagraph\/fixtures\/[^/]+\.json$/,
+];
+
+function isMirroredExternalFixture(relativePath) {
+  return mirroredFixturePatterns.some((pattern) => pattern.test(relativePath));
 }
 
 const findings = [];
@@ -109,6 +119,10 @@ for (const root of targetRoots) {
     const lines = content.split(/\r?\n/);
     const skipSoft = isMirroredExternalSpec(relative);
 
+    if (isMirroredExternalFixture(relative)) {
+      scanCapturedFixtureBody(relative, content);
+    }
+
     for (const [index, line] of lines.entries()) {
       for (const pattern of patterns) {
         if (pattern.soft && skipSoft) {
@@ -131,6 +145,51 @@ if (findings.length > 0) {
 }
 
 console.log("Public-safety scan passed.");
+
+function scanCapturedFixtureBody(relativePath, content) {
+  let fixture;
+  try {
+    fixture = JSON.parse(content);
+  } catch {
+    return;
+  }
+
+  const body = fixture?.response?.body;
+  if (body === undefined) {
+    return;
+  }
+
+  for (const { valuePath, value } of walkJsonStrings(body)) {
+    for (const pattern of patterns) {
+      if (!pattern.soft) {
+        continue;
+      }
+      if (pattern.regex.test(value)) {
+        findings.push(
+          `${relativePath}:response.body${valuePath}: ${pattern.name}`,
+        );
+      }
+    }
+  }
+}
+
+function* walkJsonStrings(node, valuePath = "") {
+  if (typeof node === "string") {
+    yield { valuePath, value: node };
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const [index, item] of node.entries()) {
+      yield* walkJsonStrings(item, `${valuePath}[${index}]`);
+    }
+    return;
+  }
+  if (node && typeof node === "object") {
+    for (const [key, value] of Object.entries(node)) {
+      yield* walkJsonStrings(value, `${valuePath}.${key}`);
+    }
+  }
+}
 
 function isBinaryOrIgnored(relativePath) {
   return (
