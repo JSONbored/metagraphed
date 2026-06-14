@@ -28,7 +28,10 @@ export function dataResponse(env, data, status = 200, extraMeta = {}) {
       ok: true,
       schema_version: 1,
       data,
-      error: null,
+      // No `error` key on success: the SuccessEnvelope schema is
+      // additionalProperties:false, and envelopeResponse omits it too — keep the
+      // two success builders structurally identical (the error envelope is a
+      // separate shape produced by errorResponse).
       meta: { contract_version: contractVersion(env), ...extraMeta },
     }),
     { status, headers },

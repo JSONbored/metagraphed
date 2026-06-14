@@ -1179,12 +1179,15 @@ async function d1All(env, sql, params) {
   }
 }
 
-function analyticsMeta(env, artifactPath, observedAt) {
+async function analyticsMeta(env, artifactPath, observedAt) {
   return {
     artifact_path: artifactPath,
     cache: "short",
     contract_version: contractVersion(env),
     generated_at: observedAt,
+    // Canonical human-facing freshness, consistent with the artifact routes and
+    // handleHealthTrends (generated_at is a deterministic build marker per #349).
+    published_at: await publishedAt(env),
     source: "live-cron-prober",
   };
 }
@@ -1225,7 +1228,7 @@ async function handleHealthPercentiles(request, env, netuid, url) {
     request,
     {
       data,
-      meta: analyticsMeta(
+      meta: await analyticsMeta(
         env,
         `/metagraph/health/percentiles/${netuid}.json`,
         data.observed_at,
@@ -1291,7 +1294,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
     request,
     {
       data,
-      meta: analyticsMeta(
+      meta: await analyticsMeta(
         env,
         `/metagraph/health/incidents/${netuid}.json`,
         data.observed_at,
@@ -1358,7 +1361,11 @@ async function handleGlobalIncidents(request, env, url) {
     request,
     {
       data,
-      meta: analyticsMeta(env, "/metagraph/incidents.json", data.observed_at),
+      meta: await analyticsMeta(
+        env,
+        "/metagraph/incidents.json",
+        data.observed_at,
+      ),
     },
     "short",
   );
@@ -1382,7 +1389,7 @@ async function handleTrajectory(request, env, netuid) {
     request,
     {
       data,
-      meta: analyticsMeta(
+      meta: await analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/trajectory.json`,
         null,
@@ -1429,7 +1436,7 @@ async function handleUptime(request, env, netuid, url) {
     request,
     {
       data,
-      meta: analyticsMeta(
+      meta: await analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/uptime.json`,
         null,
@@ -1484,6 +1491,18 @@ async function handleLeaderboards(request, env, url) {
     );
   }
   const limit = url.searchParams.get("limit");
+  if (
+    limit !== null &&
+    (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100)
+  ) {
+    // Reject invalid limits with a 400 like the list routes, instead of the
+    // silent clamp formatLeaderboards would otherwise apply.
+    return errorResponse(
+      "invalid_query",
+      "limit must be an integer between 1 and 100.",
+      400,
+    );
+  }
 
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
 
@@ -2524,6 +2543,14 @@ async function readBoundedRequestText(request, maxBytes) {
 async function handleSemanticSearchRequest(request, env, url) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
+  }
+  if (request.method === "HEAD") {
+    // A HEAD probe must not run AI inference or consume the per-client rate
+    // limiter (the body is stripped for HEAD regardless). Mirror availability
+    // with a headers-only 200.
+    const headers = apiHeaders("short");
+    headers.set("cache-control", "no-store");
+    return new Response(null, { status: 200, headers });
   }
   if (!(await withinRateLimit(env, aiClientKey(request, "semantic")))) {
     return aiRateLimitedResponse();
