@@ -143,11 +143,11 @@ describe("overlayRpcPoolEligibility", () => {
       { id: "b", url: "https://b", pool_eligible: true },
     ],
   };
-  test("drops endpoints only after 2+ consecutive failures", () => {
+  test("drops endpoints only after sustained (>=4) consecutive failures", () => {
     const live = {
       endpoints: [
-        { id: "a", status: "failed", consecutive_failures: 1 }, // transient → stays
-        { id: "b", status: "failed", consecutive_failures: 3 }, // sustained → drop
+        { id: "a", status: "failed", consecutive_failures: 3 }, // transient blip → stays (hysteresis)
+        { id: "b", status: "failed", consecutive_failures: 4 }, // sustained → drop
       ],
     };
     const out = overlayRpcPoolEligibility(pool, live);
@@ -591,7 +591,7 @@ describe("overlayRpcPoolEligibility (additional paths)", () => {
     };
     const live = {
       endpoints: [
-        { id: "a", status: "failed", consecutive_failures: 2, latency_ms: 70 },
+        { id: "a", status: "failed", consecutive_failures: 4, latency_ms: 70 },
       ],
     };
     const out = overlayRpcPoolEligibility(pool, live);

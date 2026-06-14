@@ -11,6 +11,17 @@ import { computeReliability } from "./reliability.mjs";
 
 const D1_HEALTH_FALLBACK_MAX_AGE_MS = 10 * 60 * 1000;
 
+// Pool-eligibility hysteresis (cosmos.directory-style "don't flap"): an RPC
+// endpoint is only dropped from the proxy pool after this many CONSECUTIVE
+// failed 2-min probes, so a single transient blip (~2-4 min) doesn't evict an
+// otherwise-healthy node. cosmos.directory tolerates ~10 errors before removal;
+// at a 2-min cadence, 4 (~8 min) is a conservative middle that still removes
+// genuinely-down nodes promptly. Env-overridable.
+const POOL_SUSTAINED_DOWN_FAILURES = Math.max(
+  1,
+  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 4,
+);
+
 const OPERATIONAL_KINDS = new Set([
   "subtensor-rpc",
   "subtensor-wss",
@@ -212,7 +223,8 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
       const live = liveById.get(endpoint.id);
       if (!live) return endpoint;
       const sustainedDown =
-        live.status !== "ok" && (live.consecutive_failures || 0) >= 2;
+        live.status !== "ok" &&
+        (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES;
       return {
         ...endpoint,
         status: live.status,
