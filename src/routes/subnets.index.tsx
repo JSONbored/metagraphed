@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
+import { Network, Radio, Layers, Activity } from "lucide-react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
@@ -19,7 +22,7 @@ import {
   SortHeader,
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
-import { subnetsInfiniteQuery } from "@/lib/metagraphed/queries";
+import { subnetsInfiniteQuery, coverageQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import type { Subnet } from "@/lib/metagraphed/types";
@@ -51,11 +54,12 @@ function SubnetsPage() {
     });
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Registry"
+        live
         title="Subnets"
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
-        right={
+        actions={
           <>
             <ResetFiltersButton active={filtersActive} onReset={onReset} />
             <ShareButton />
@@ -63,12 +67,68 @@ function SubnetsPage() {
         }
       />
       <QueryErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+          }
+        >
+          <SubnetsStatStrip />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <SubnetsTable />
         </Suspense>
       </QueryErrorBoundary>
       <ApiSourceFooter paths={["/api/v1/subnets"]} artifacts={["/metagraph/subnets.json"]} />
     </AppShell>
+  );
+}
+
+function SubnetsStatStrip() {
+  const coverage = (useSuspenseQuery(coverageQuery()).data.data ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const health = (useSuspenseQuery(healthQuery()).data.data ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const active = coverage.netuids_active;
+  const total = coverage.netuids_total;
+  const adapter = coverage.adapter_backed;
+  const manifested = coverage.manifested ?? coverage.surfaces_total;
+  const ok = health.ok;
+  const totalH = health.total;
+  const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <StatTile
+        icon={Network}
+        eyebrow="Active subnets"
+        value={active ?? "—"}
+        hint={total ? `of ${total}` : undefined}
+      />
+      <StatTile
+        icon={Radio}
+        eyebrow="Adapter-backed"
+        value={adapter ?? "—"}
+        hint="pilots"
+        tone="accent"
+      />
+      <StatTile icon={Layers} eyebrow="Manifested surfaces" value={manifested ?? "—"} />
+      <StatTile
+        icon={Activity}
+        eyebrow="Healthy"
+        value={ok != null && totalH ? `${ok}/${totalH}` : "—"}
+        tone={healthyOk ? "ok" : "default"}
+      />
+    </div>
   );
 }
 

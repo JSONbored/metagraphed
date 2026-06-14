@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   gapsQuery,
@@ -32,11 +33,12 @@ export const Route = createFileRoute("/gaps")({
 function GapsPage() {
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Operations"
+        live
         title="Registry gaps"
         description="Public read-only view of missing resources and enrichment priorities. Submit corrections through the GitHub repo."
-        right={
+        actions={
           <ExternalLink href={GITHUB_REPO} className="text-xs">
             github
           </ExternalLink>

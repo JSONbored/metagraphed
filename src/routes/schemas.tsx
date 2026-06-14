@@ -4,19 +4,23 @@ import { Suspense, useState } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { fallback } from "@tanstack/zod-adapter";
-import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FileCode,
+  FileCode2,
+  GitBranch,
+  CheckCircle2,
+  Network as NetworkIcon,
+} from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import {
-  EmptyState,
-  ErrorState,
-  PageHeading,
-  Skeleton,
-  StaleBanner,
-} from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { apiFetch } from "@/lib/metagraphed/client";
@@ -48,11 +52,12 @@ export const Route = createFileRoute("/schemas")({
 function SchemasPage() {
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Operations"
+        live
         title="Schemas & contracts"
         description="JSON Schema is canonical truth. Drift compares the current snapshot to the previous published version."
-        right={
+        actions={
           <CopyableCode
             label="openapi"
             value={`${API_BASE}/api/v1/openapi.json`}
@@ -469,26 +474,12 @@ function SchemasKpiStrip() {
   const drift = rows.filter((s) => s.drift).length;
   const stable = rows.length - drift;
   const subnets = new Set(rows.map((s) => s.netuid).filter((n) => n != null)).size;
-  const stats: Array<{ label: string; value: string; tone?: string }> = [
-    { label: "Schemas", value: String(rows.length) },
-    { label: "Stable", value: String(stable), tone: "text-health-ok" },
-    { label: "Drift", value: String(drift), tone: drift ? "text-health-warn" : undefined },
-    { label: "Subnets covered", value: String(subnets) },
-  ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border rounded overflow-hidden">
-      {stats.map((s) => (
-        <div key={s.label} className="bg-card p-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {s.label}
-          </div>
-          <div
-            className={`font-display text-xl font-semibold tabular-nums ${s.tone ?? "text-ink-strong"}`}
-          >
-            {s.value}
-          </div>
-        </div>
-      ))}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <StatTile icon={FileCode2} eyebrow="Schemas" value={rows.length} />
+      <StatTile icon={CheckCircle2} eyebrow="Stable" value={stable} tone="ok" />
+      <StatTile icon={GitBranch} eyebrow="Drift" value={drift} tone={drift ? "warn" : "default"} />
+      <StatTile icon={NetworkIcon} eyebrow="Subnets covered" value={subnets} />
     </div>
   );
 }
