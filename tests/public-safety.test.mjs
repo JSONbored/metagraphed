@@ -1,6 +1,37 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
-import { isUnsafeResolvedUrl, isUnsafeUrl } from "../scripts/lib.mjs";
+import { execFileSync } from "node:child_process";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { afterEach, describe, test } from "vitest";
+import { isUnsafeResolvedUrl, isUnsafeUrl, repoRoot } from "../scripts/lib.mjs";
+
+const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
+const TEST_FIXTURE = "__public_safety_test__.json";
+const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
+
+async function writeTestFixture(body) {
+  await fs.mkdir(FIXTURE_DIR, { recursive: true });
+  await fs.writeFile(
+    TEST_FIXTURE_PATH,
+    JSON.stringify({ response: { body } }),
+    "utf8",
+  );
+}
+
+// Run the real scanner and return its combined output. The scanner walks the
+// whole repo, so its exit code depends on unrelated tree state — assertions key
+// off the test fixture's path in the output, which is independent of that.
+function runScanOutput() {
+  try {
+    execFileSync("node", ["scripts/scan-public-safety.mjs"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+    return "";
+  } catch (err) {
+    return `${err.stdout ?? ""}${err.stderr ?? ""}`;
+  }
+}
 
 describe("public URL safety checks", () => {
   test("blocks private, loopback, and link-local literal targets", () => {
@@ -41,6 +72,38 @@ describe("public URL safety checks", () => {
     assert.equal(
       await isUnsafeResolvedUrl("https://metagraphed.invalid/"),
       true,
+    );
+  });
+});
+
+describe("captured-fixture body scan", () => {
+  afterEach(async () => {
+    await fs.rm(TEST_FIXTURE_PATH, { force: true });
+  });
+
+  test("does not flag soft Bittensor terminology in a mirrored fixture body", async () => {
+    // Regression for the publish-wedging false positive: upstream API docs
+    // legitimately say "miner hotkey" / "validator hotkey path".
+    await writeTestFixture({
+      summary: "The miner hotkey to look up",
+      detail: "Provide the validator hotkey path and coldkey wording.",
+    });
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_FIXTURE),
+      false,
+      `soft terminology should be exempt in mirrored fixture bodies; got:\n${output}`,
+    );
+  });
+
+  test("still flags a hard secret hidden in a fixture body value", async () => {
+    await writeTestFixture({
+      note: "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+    });
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_FIXTURE}:response.body`),
+      `hard secret patterns must still fire on fixture body values; got:\n${output}`,
     );
   });
 });

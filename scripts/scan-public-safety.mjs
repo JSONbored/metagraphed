@@ -59,9 +59,12 @@ const patterns = [
 // ("hotkey"/"wallet"/"coldkey" are core Bittensor vocabulary that nearly every
 // subnet API documents). Keep this exemption scoped to the generated public/R2
 // artifact directories so source schemas are still covered by the terminology
-// guard. The hard secret patterns above still apply to these files, and captured
-// fixture response bodies get a separate soft-wording scan below so live response
-// data cannot hide wallet/key/hotkey wording under generic JSON keys.
+// guard. The hard secret patterns above still apply to these files. Captured
+// fixture response bodies additionally get a structural HARD-secret scan below
+// (parsed JSON string values, so a real key/token can't hide under a generic
+// JSON key); soft terminology stays exempt there too, since it is the same
+// public API vocabulary the subnet documents — soft-scanning mirrored bodies
+// guarantees false positives ("The miner hotkey to look up") and wedges publish.
 function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
@@ -161,7 +164,10 @@ function scanCapturedFixtureBody(relativePath, content) {
 
   for (const { valuePath, value } of walkJsonStrings(body)) {
     for (const pattern of patterns) {
-      if (!pattern.soft) {
+      // Only HARD secret patterns apply to mirrored fixture bodies. Soft
+      // terminology (hotkey/wallet/coldkey wording) is legitimate upstream API
+      // documentation here, exactly as it is exempted for the line scan.
+      if (pattern.soft) {
         continue;
       }
       if (pattern.regex.test(value)) {
