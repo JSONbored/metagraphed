@@ -59,6 +59,39 @@ const KIND_LABEL = {
   sdk: "SDK",
 };
 
+function formatMarkdownValue(value) {
+  const markdownCharacters = new Set("\\&<>{}[]()#*_`|.!+-");
+  let safeValue = "";
+
+  for (const char of String(value ?? "")) {
+    const codePoint = char.codePointAt(0);
+    if (char === "\r") {
+      safeValue += "\\r";
+    } else if (char === "\n") {
+      safeValue += "\\n";
+    } else if (char === "\t") {
+      safeValue += "\\t";
+    } else if (char === "@") {
+      safeValue += "@\u200b";
+    } else if (codePoint < 0x20 || codePoint === 0x7f) {
+      safeValue += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+    } else if (markdownCharacters.has(char)) {
+      safeValue += `\\${char}`;
+    } else {
+      safeValue += char;
+    }
+  }
+
+  return safeValue;
+}
+
+function formatTitleValue(value, { maxLength = 120 } = {}) {
+  return formatMarkdownValue(value)
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
 async function fetchJson(path) {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
@@ -104,7 +137,7 @@ function issueBody(netuid, name, kinds) {
   const primary = kinds[0];
   return `Part of #${TRACKER}.
 
-**Subnet ${netuid} — ${name}** is missing from the registry: **${kindList}**. Research whether the subnet exposes ${kinds.length > 1 ? "these" : "this"}, find the real public link(s), and submit them.
+**Subnet ${netuid} — ${formatMarkdownValue(name)}** is missing from the registry: **${kindList}**. Research whether the subnet exposes ${kinds.length > 1 ? "these" : "this"}, find the real public link(s), and submit them.
 
 ### Find it
 Search for the subnet's official ${kindList} (project site / GitHub / docs / Bittensor). Confirm each link is real, public, no-auth, and genuinely SN${netuid}'s — cross-reference the subnet name + Bittensor. ⚠️ Many subnets simply don't expose a public API yet, and on-chain identity links are often **stale/dead** — verify each link actually resolves before submitting. If the subnet genuinely exposes no such public surface, comment here so a maintainer can close it.
@@ -145,7 +178,7 @@ for (const entry of queue) {
     name: entry.name || `Subnet ${netuid}`,
     kinds,
     title:
-      `Enrich SN${netuid} ${entry.name || ""}`.trim() +
+      `Enrich SN${netuid} ${formatTitleValue(entry.name)}`.trim() +
       ` — add ${kinds.map((k) => KIND_LABEL[k] || k).join(" + ")}`,
   });
 }
