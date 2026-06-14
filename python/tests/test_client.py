@@ -84,6 +84,66 @@ class ClientTest(unittest.TestCase):
                 metagraphed_fetch("/api/v1/subnets/{netuid}", path_params={"netuid": 9999})
         self.assertEqual(ctx.exception.status, 404)
 
+    def test_sets_descriptive_user_agent(self):
+        # Regression: the Cloudflare WAF on api.metagraph.sh 403s the default
+        # "Python-urllib/<ver>" UA, so a descriptive UA must be sent by default.
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["ua"] = request.get_header("User-agent")
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            metagraphed_fetch("/api/v1/health")
+
+        self.assertIsNotNone(captured["ua"])
+        self.assertTrue(captured["ua"].startswith("metagraphed-python/"))
+
+    def test_caller_can_override_user_agent(self):
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["ua"] = request.get_header("User-agent")
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            metagraphed_fetch("/api/v1/health", headers={"User-Agent": "my-app/1.0"})
+
+        self.assertEqual(captured["ua"], "my-app/1.0")
+
+    def test_http_error_surfaces_api_error_envelope(self):
+        import io
+
+        def fake_urlopen(request, timeout=None):
+            body = io.BytesIO(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": {"code": "not_found", "message": "no such subnet"},
+                    }
+                ).encode("utf-8")
+            )
+            raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, body)
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_fetch(
+                    "/api/v1/subnets/{netuid}", path_params={"netuid": 9999}
+                )
+        self.assertEqual(ctx.exception.status, 404)
+        self.assertIn("no such subnet", str(ctx.exception))
+
+    def test_non_json_response_raises_metagraphed_error(self):
+        class _BadResponse(_FakeResponse):
+            def __init__(self):
+                self._body = b"<html>not json</html>"
+
+        with mock.patch(
+            "urllib.request.urlopen", lambda request, timeout=None: _BadResponse()
+        ):
+            with self.assertRaises(MetagraphedError):
+                metagraphed_fetch("/api/v1/health")
+
 
 if __name__ == "__main__":
     unittest.main()

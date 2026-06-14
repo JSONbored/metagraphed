@@ -21,12 +21,13 @@ from metagraphed import MetagraphedClient, metagraphed_fetch
 
 client = MetagraphedClient()  # base_url defaults to https://api.metagraph.sh
 
-# List subnets (query params; None values are dropped)
+# List subnets (query params; None values are dropped). The /subnets collection
+# nests its rows under data.subnets:
 subnets = client.fetch(
     "/api/v1/subnets",
     query={"limit": 10, "sort": "completeness_score", "order": "desc"},
 )
-print(subnets["data"][0]["name"])
+print(subnets["data"]["subnets"][0]["name"])
 
 # One subnet by netuid (path params)
 detail = client.fetch("/api/v1/subnets/{netuid}", path_params={"netuid": 7})
@@ -34,8 +35,8 @@ detail = client.fetch("/api/v1/subnets/{netuid}", path_params={"netuid": 7})
 # Which subnets are buildable? (integration readiness lives in the agent catalog)
 catalog = client.fetch("/api/v1/agent-catalog")
 
-# Point at the frontend origin instead, ad hoc:
-metagraphed_fetch("/api/v1/health", base_url="https://metagraph.sh")
+# Health of the registry itself:
+health = metagraphed_fetch("/api/v1/health")
 ```
 
 Every response is the standard envelope:

@@ -2,14 +2,16 @@
 
 from .client import (
     DEFAULT_BASE_URL,
+    DEFAULT_USER_AGENT,
     MetagraphedClient,
     MetagraphedError,
+    __version__,
     metagraphed_fetch,
 )
 
-__version__ = "0.1.0"
 __all__ = [
     "DEFAULT_BASE_URL",
+    "DEFAULT_USER_AGENT",
     "MetagraphedClient",
     "MetagraphedError",
     "metagraphed_fetch",

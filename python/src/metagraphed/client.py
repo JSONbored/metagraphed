@@ -14,7 +14,14 @@ import urllib.parse
 import urllib.request
 from typing import Any, Mapping, Optional
 
+__version__ = "0.1.1"
 DEFAULT_BASE_URL = "https://api.metagraph.sh"
+# A descriptive User-Agent is required: api.metagraph.sh sits behind a Cloudflare
+# managed bot rule that returns HTTP 403 for stdlib urllib's default
+# "Python-urllib/<ver>" UA. Callers may override it via the ``headers`` argument.
+DEFAULT_USER_AGENT = (
+    f"metagraphed-python/{__version__} (+https://github.com/JSONbored/metagraphed)"
+)
 _PATH_PARAM = re.compile(r"\{([^{}]+)\}")
 
 
@@ -59,9 +66,12 @@ def metagraphed_fetch(
         if pairs:
             url += "?" + urllib.parse.urlencode(pairs, doseq=True)
 
+    # Defaults first so a caller-supplied header (e.g. a custom User-Agent) wins.
+    merged_headers = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
+    merged_headers.update(headers or {})
+
     request = urllib.request.Request(url, method="GET")
-    request.add_header("Accept", "application/json")
-    for key, value in (headers or {}).items():
+    for key, value in merged_headers.items():
         request.add_header(key, value)
 
     try:
@@ -69,12 +79,42 @@ def metagraphed_fetch(
             body = response.read().decode("utf-8")
     except urllib.error.HTTPError as error:
         raise MetagraphedError(
-            f"GET {url} failed: HTTP {error.code}", status=error.code
+            f"GET {url} failed: HTTP {error.code}{_error_detail(error)}",
+            status=error.code,
         ) from error
     except urllib.error.URLError as error:
         raise MetagraphedError(f"GET {url} failed: {error.reason}") from error
 
-    return json.loads(body)
+    try:
+        return json.loads(body)
+    except ValueError as error:
+        raise MetagraphedError(
+            f"GET {url} returned a non-JSON response"
+        ) from error
+
+
+def _error_detail(error: "urllib.error.HTTPError") -> str:
+    """Best-effort extraction of the API's error envelope from a failed response.
+
+    api.metagraph.sh returns ``{ error: { code, message } }`` on errors; surface
+    that (or a truncated raw body) so callers can see *why* a request failed
+    instead of a bare status code. Never raises.
+    """
+    try:
+        raw = error.read().decode("utf-8", "replace").strip()
+    except Exception:
+        return ""
+    if not raw:
+        return ""
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return f": {raw[:200]}"
+    envelope = parsed.get("error") if isinstance(parsed, dict) else None
+    if isinstance(envelope, dict) and envelope.get("message"):
+        code = envelope.get("code")
+        return f": {code + ' — ' if code else ''}{envelope['message']}"
+    return f": {raw[:200]}"
 
 
 class MetagraphedClient:
