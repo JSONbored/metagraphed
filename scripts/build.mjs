@@ -73,6 +73,11 @@ function localSteps() {
 function productionSteps() {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    // Refresh the finney native chain snapshot fresh each publish (ADR 0006
+    // step 2) so the registry stays current without the retired scheduled
+    // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and
+    // the publish proceeds — it never blocks on the chain being reachable.
+    nodeStep("native-snapshot", "scripts/refresh-native-snapshot.mjs"),
     // Capture live OpenAPI/Swagger specs (full document + auth) before
     // build-artifacts, so the per-surface schema files carry the real spec for
     // get_api_schema. build-artifacts grabs the document before its staging wipe
