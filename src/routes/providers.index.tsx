@@ -5,7 +5,8 @@ import { Globe, Github, BookOpen, Radio, Layers, Search, X } from "lucide-react"
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { providersQuery, providerCountsQuery } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -30,8 +31,9 @@ export const Route = createFileRoute("/providers/")({
 function ProvidersPage() {
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Infrastructure"
+        live
         title="Providers"
         description="Teams, infra operators, docs registries, and community sources behind public interfaces."
       />

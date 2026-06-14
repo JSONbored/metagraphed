@@ -5,7 +5,8 @@ import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react"
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
@@ -65,11 +66,12 @@ function HealthPage() {
 
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Operations"
+        live
         title="Health & freshness"
         description="Probe-derived health. User submissions cannot set uptime, latency, or incident state."
-        right={
+        actions={
           <AutoRefreshControl
             enabled={enabled}
             visible={visible}

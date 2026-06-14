@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
@@ -51,11 +52,12 @@ function SurfacesPage() {
     });
   return (
     <AppShell>
-      <PageHeading
+      <PageHero
         eyebrow="Registry"
+        live
         title="Surfaces"
         description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
-        right={
+        actions={
           <>
             <ResetFiltersButton active={filtersActive} onReset={onReset} />
             <ShareButton />
@@ -105,6 +107,16 @@ function SurfacesTable() {
   const cursorInvalid = !!pages[pages.length - 1]?.cursorInvalid;
   const all = pages.flatMap((p) => (p.data ?? []) as Surface[]);
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
+
+  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
+  useEffect(() => {
+    if (lastPageParam !== search.cursor) {
+      navigate({
+        search: (prev: Record<string, unknown>) => ({ ...prev, cursor: lastPageParam }) as never,
+        replace: true,
+      });
+    }
+  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kindOptions = useMemo(() => {
     const set = new Set<string>();
