@@ -23,10 +23,16 @@ const currentOpenApi = await readJson(
 const expectedOpenApi = await buildCanonicalOpenApiArtifact(
   currentOpenApi["x-metagraphed"]?.generated_at,
 );
+const openApiMatches =
+  stableStringify(currentOpenApi) === stableStringify(expectedOpenApi);
 check(
-  stableStringify(currentOpenApi) === stableStringify(expectedOpenApi),
+  openApiMatches,
   "public/metagraph/openapi.json is stale. Run npm run build.",
 );
+
+if (!openApiMatches) {
+  failWithErrors();
+}
 
 const typegen = spawnSync(
   "npx",
@@ -80,6 +86,12 @@ for (const [routePath, methods] of Object.entries(currentOpenApi.paths || {})) {
 }
 
 if (errors.length > 0) {
+  failWithErrors();
+}
+
+console.log("Contract drift validation passed.");
+
+function failWithErrors() {
   console.error(
     `Contract drift validation failed with ${errors.length} issue(s):`,
   );
@@ -88,8 +100,6 @@ if (errors.length > 0) {
   }
   process.exit(1);
 }
-
-console.log("Contract drift validation passed.");
 
 function check(condition, message) {
   if (!condition) {
