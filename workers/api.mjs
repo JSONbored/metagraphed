@@ -68,33 +68,34 @@ import {
   semanticSearch,
   withinRateLimit,
 } from "../src/ai-search.mjs";
-
-// Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
-// trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
-const HEALTH_PRUNE_CRON = "0 * * * *";
-// Daily embedding-sync trigger (Worker-runtime, since CI has no AI bindings).
-// Distinct minute (odd) so it never collides with the 2-minute probe or the
-// top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
-const EMBEDDING_SYNC_CRON = "37 3 * * *";
-// Trend windows for /api/v1/subnets/{netuid}/health/trends.
-const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
-  /^\/metagraph\/health\/(?:latest\.json|summary\.json|subnets\/\d+\.json)$/;
-const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
-const TRENDS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
-const PERCENTILES_PATH_PATTERN =
-  /^\/api\/v1\/subnets\/(\d+)\/health\/percentiles$/;
-const INCIDENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
-const TRAJECTORY_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
-const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
-const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
-const MAX_UPTIME_ROWS = 10000;
-const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
-const ANALYTICS_WINDOW_PARAM = "window";
-const MAX_INCIDENT_ROWS = 1000;
-const MAX_GLOBAL_INCIDENT_SOURCE_ROWS = 5000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+import {
+  ANALYTICS_WINDOW_PARAM,
+  ANALYTICS_WINDOWS,
+  DAY_MS,
+  DENIED_RPC_PREFIXES,
+  EMBEDDING_SYNC_CRON,
+  HEALTH_PRUNE_CRON,
+  HEALTH_TREND_WINDOWS,
+  INCIDENTS_PATH_PATTERN,
+  JSON_CONTENT_TYPE,
+  MAX_ASK_BODY_BYTES,
+  MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+  MAX_INCIDENT_ROWS,
+  MAX_RPC_BODY_BYTES,
+  MAX_UPTIME_ROWS,
+  MAX_WEBHOOK_BODY_BYTES,
+  METAGRAPH_LATEST_KEY,
+  PERCENTILES_PATH_PATTERN,
+  RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  SAFE_RPC_METHODS,
+  TRAJECTORY_PATH_PATTERN,
+  TRENDS_PATH_PATTERN,
+  TRUSTED_RPC_UPSTREAM_ORIGINS,
+  UPTIME_PATH_PATTERN,
+  UPTIME_WINDOWS,
+  WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
+  WEBHOOK_TTL_SECONDS,
+} from "./config.mjs";
 
 const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
   entry.path.endsWith(".json"),
@@ -110,51 +111,6 @@ const ROUTES = API_ROUTES.map((entry) => ({
     return artifactPathFromTemplate(entry.artifact_path, params);
   },
 }));
-
-// Read-only, bounded Substrate/Subtensor methods safe to expose through the
-// public proxy. Deliberately excludes heavy/abusable reads (state_getMetadata,
-// state_getStorage) and anything mutating — those stay blocked by the allowlist
-// plus DENIED_RPC_PREFIXES.
-const SAFE_RPC_METHODS = new Set([
-  "chain_getBlock",
-  "chain_getBlockHash",
-  "chain_getFinalizedHead",
-  "chain_getHeader",
-  "rpc_methods",
-  "state_getRuntimeVersion",
-  "system_chain",
-  "system_health",
-  "system_name",
-  "system_properties",
-  "system_version",
-]);
-const DENIED_RPC_PREFIXES = [
-  "author_",
-  "state_call",
-  "sudo_",
-  "payment_",
-  "contracts_",
-];
-const MAX_RPC_BODY_BYTES = 65536;
-const METAGRAPH_LATEST_KEY = "metagraph:latest";
-const MAX_WEBHOOK_BODY_BYTES = 8192;
-const MAX_ASK_BODY_BYTES = 4096;
-const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
-  "x-metagraph-webhook-subscription-token";
-// Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
-// refreshes the TTL on each successful delivery.
-const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;
-const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
-  "https://archive.chain.opentensor.ai",
-  "https://bittensor-finney.api.onfinality.io",
-  "https://bittensor-public.nodies.app",
-  "https://entrypoint-finney.opentensor.ai",
-  "https://lite.chain.opentensor.ai",
-  "wss://archive.chain.opentensor.ai",
-  "wss://bittensor-finney.api.onfinality.io",
-  "wss://entrypoint-finney.opentensor.ai",
-  "wss://lite.chain.opentensor.ai",
-]);
 
 export default {
   async fetch(request, env, ctx) {
