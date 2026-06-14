@@ -660,12 +660,42 @@ describe("sanitizeFixtureBody (#352)", () => {
     assert.equal(out.list[0].keep, "ok");
     assert.equal(out.ok, true);
   });
+  test("redacts common compact and camelCase sensitive keys", () => {
+    const out = sanitizeFixtureBody({
+      accessToken: "access-token",
+      sessionId: "session-id",
+      cookieValue: "cookie-value",
+      passwordHash: "password-hash",
+      jwt: "jwt-value",
+      csrfToken: "csrf-token",
+      nested: { privateKey: "private-key", seedPhrase: "seed-phrase" },
+      keep: "ok",
+    });
+
+    assert.equal(out.accessToken, "[redacted]");
+    assert.equal(out.sessionId, "[redacted]");
+    assert.equal(out.cookieValue, "[redacted]");
+    assert.equal(out.passwordHash, "[redacted]");
+    assert.equal(out.jwt, "[redacted]");
+    assert.equal(out.csrfToken, "[redacted]");
+    assert.equal(out.nested.privateKey, "[redacted]");
+    assert.equal(out.nested.seedPhrase, "[redacted]");
+    assert.equal(out.keep, "ok");
+  });
   test("strips credentials from URL strings", () => {
     const out = sanitizeFixtureBody({
       url: "https://user:secret@api.example.io/x?token=abc",
+      apiKeyUrl: "https://api.example.io/x?api_key=abc",
+      accessTokenUrl: "https://api.example.io/x?access_token=abc",
+      jwtUrl: "https://api.example.io/x?jwt=abc",
+      sigUrl: "https://api.example.io/x?sig=abc",
     });
     assert.ok(!out.url.includes("secret"));
     assert.ok(!out.url.includes("token=abc"));
+    assert.equal(out.apiKeyUrl, "https://api.example.io/x");
+    assert.equal(out.accessTokenUrl, "https://api.example.io/x");
+    assert.equal(out.jwtUrl, "https://api.example.io/x");
+    assert.equal(out.sigUrl, "https://api.example.io/x");
   });
   test("bounds array length, string length, depth, and key count", () => {
     const out = sanitizeFixtureBody(

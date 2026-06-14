@@ -150,6 +150,52 @@
       "public_safe": true,
       "source_urls": ["https://docs.gittensor.io/repository-hyperparameters"],
       "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensory-contribution-interface",
+      "kind": "data-artifact",
+      "name": "Gittensory contribution-interface descriptor",
+      "notes": "Machine-readable descriptor declaring Gittensory as the SN74 contribution interface: MCP endpoint, contribution-relevant tools, GitHub App, and onboarding steps.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "source_urls": ["https://gittensory.aethereal.dev/"],
+      "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensory-mcp",
+      "kind": "subnet-api",
+      "name": "Gittensory MCP (contribution interface)",
+      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login.",
+      "provider": "gittensory",
+      "public_safe": true,
+      "source_urls": [
+        "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
+      ],
+      "url": "https://gittensory-api.aethereal.dev/mcp"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensory-website",
+      "kind": "website",
+      "name": "Gittensory",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "url": "https://gittensory.aethereal.dev/"
     }
   ],
   "website_url": "https://gittensor.io/"

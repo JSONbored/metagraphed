@@ -1,142 +1,142 @@
 {
   "artifact_count": 14,
-  "artifact_size_bytes": 1397029,
+  "artifact_size_bytes": 1801794,
   "artifacts": [
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/agent-catalog.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/agent-catalog.json",
       "latest_key": "latest/agent-catalog.json",
       "path": "/metagraph/agent-catalog.json",
-      "sha256": "bf57a4471bbef294f00ca8edf82867824d2a43035a184d7245e7fd7c9220e708",
-      "size_bytes": 27263,
+      "sha256": "218de81f6f080d80ef32175b7e26431cdfe710325d7686200540887031519e77",
+      "size_bytes": 29077,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/agent-resources.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/agent-resources.json",
       "latest_key": "latest/agent-resources.json",
       "path": "/metagraph/agent-resources.json",
-      "sha256": "45e5be9af2bc363fd904c8b4ae52fe72e1db3003537c056fdeacbb91ad1f2671",
+      "sha256": "03820d54c72e44810958900a0886bdeaad986b0da8c57269d0417fb416d7807d",
       "size_bytes": 3971,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/api-index.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "cb952eee411705a36dc4ebdc38e14cd9d468552304080e399b16bf2383cbc272",
-      "size_bytes": 101341,
+      "sha256": "9f70e1d0119e87a1f426ba1a2b5705c973d4b7739d99d22fcd5fc391efa42dfc",
+      "size_bytes": 103178,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "e639af991b4ca64060d6e57896a70bbb8a37276d15aa09e8be120ce283f5de72",
-      "size_bytes": 1211,
+      "sha256": "79d49f230052469821e61cfbf5c25fa938c3f9c33352a22777b8932f606bcb83",
+      "size_bytes": 2861,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/contracts.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "95dff8040df901be762f8ef427567e55e1b4ceca3b759d96b78bfb5d2570e496",
-      "size_bytes": 25804,
+      "sha256": "a53b2369f2dd32b34d61313df93ce75959617c48b03bd0c6c506e66d67e32613",
+      "size_bytes": 26701,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/coverage.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/coverage.json",
       "latest_key": "latest/coverage.json",
       "path": "/metagraph/coverage.json",
-      "sha256": "1e10d7152fc860992d6c04293bc710bf0352662d89c5977467ff7cb09ac0ae3b",
-      "size_bytes": 2637,
+      "sha256": "3b00369b8e5ab026d8e843a7188f0333dab3ed99eafab6050c817ed2f253b3d2",
+      "size_bytes": 2638,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/fixtures.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/fixtures.json",
       "latest_key": "latest/fixtures.json",
       "path": "/metagraph/fixtures.json",
-      "sha256": "5c5aa1a63a695028b7f33f27256bdc6af25ce69122bf3a0cced4db054030d598",
-      "size_bytes": 136,
+      "sha256": "349c92116fa7f3637d37aa9993bde64b8db1db8657defef530a5c58d87dd7911",
+      "size_bytes": 6448,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/lineage.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/lineage.json",
       "latest_key": "latest/lineage.json",
       "path": "/metagraph/lineage.json",
-      "sha256": "3b31b613a54e2a5f36e9f8861831468f75c34ac80deb927de6f75d18eff978f4",
+      "sha256": "375d58c9baa4f33eceb3e524493f4cbff017c5378dc1583b1be56df70783e30e",
       "size_bytes": 6107,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "7c7475cd96ab2a7cdce7147a3ae1dfff20efe2c815f0ae7fab4a5638b76195a7",
-      "size_bytes": 458661,
+      "sha256": "b6b860d61d47875b342fda0ce73dcf475c57ab558823850f513e5f38f1b4a06a",
+      "size_bytes": 636893,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/operational-surfaces.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/operational-surfaces.json",
       "latest_key": "latest/operational-surfaces.json",
       "path": "/metagraph/operational-surfaces.json",
-      "sha256": "9ee426768bd199a3412d060d3c90a749dd836b8c57e38b62aa68f64bef6b3f28",
-      "size_bytes": 27327,
+      "sha256": "76e3f95a258df1c818f1e5a001a798ccc7df09e8b3852e2a4a30d5f685bfb147",
+      "size_bytes": 27796,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/review/profile-completeness.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/review/profile-completeness.json",
       "latest_key": "latest/review/profile-completeness.json",
       "path": "/metagraph/review/profile-completeness.json",
-      "sha256": "f506a344630538e9a98d5bfd629c1fbb043c6de1001522276caba7f54bd4ea5a",
-      "size_bytes": 258809,
+      "sha256": "4d3d4b758b3ffdbb2aed3c82dee017111ce16284b76964273d61169c91542606",
+      "size_bytes": 259041,
       "storage_tier": "git"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/schemas/index.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/schemas/index.json",
       "latest_key": "latest/schemas/index.json",
       "path": "/metagraph/schemas/index.json",
-      "sha256": "c97a5b3962ddc13ebce3729a567df9184602ad47933b637ad2d9af9a19f88fb0",
-      "size_bytes": 22380,
+      "sha256": "8c492328cbcc45813a0563b8f587b125dd06d88e931e3286ba8df88386658607",
+      "size_bytes": 23965,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/1970-01-01T00-00-00-000Z/subnets.json",
+      "key": "runs/2026-06-14T09-03-05-163Z/subnets.json",
       "latest_key": "latest/subnets.json",
       "path": "/metagraph/subnets.json",
-      "sha256": "366c7a166da1ba4a52fd3444e1c012eadf45ce6df2cd0bacdd8cf9672c0bb91d",
-      "size_bytes": 194753,
+      "sha256": "8defa11ffdf6edcf03da1fd5429d940dc461d2e5b682573b881f68dc2d5139c0",
+      "size_bytes": 194610,
       "storage_tier": "dual"
     },
     {
       "content_type": "text/plain; charset=utf-8",
-      "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
+      "key": "runs/2026-06-14T09-03-05-163Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "761935fb06550f66572d93a3283482b3988dccc8e5fbf91f4c8c4da72759e153",
-      "size_bytes": 266629,
+      "sha256": "db016b0e4f0546112c0577e2fa007bbdd9a4a8909610653d4e59e2eab3773efd",
+      "size_bytes": 478508,
       "storage_tier": "dual"
     }
   ],
   "bucket_binding": "METAGRAPH_ARCHIVE",
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
-  "full_artifact_count": 2306,
-  "full_artifact_size_bytes": 39713404,
+  "full_artifact_count": 2214,
+  "full_artifact_size_bytes": 56950543,
   "full_manifest_key": "latest/r2-manifest.json",
-  "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "full_manifest_run_key": "runs/2026-06-14T09-03-05-163Z/r2-manifest.json",
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "latest_prefix": "latest/",
   "manifest_kind": "compact",
   "required_artifact_paths": [
@@ -149,16 +149,16 @@
     "/metagraph/types.d.ts",
     "/metagraph/verification/latest.json"
   ],
-  "run_prefix": "runs/1970-01-01T00-00-00-000Z/",
+  "run_prefix": "runs/2026-06-14T09-03-05-163Z/",
   "schema_version": 1,
   "storage_tier_counts": {
     "dual": 13,
     "git": 1,
-    "r2": 2292
+    "r2": 2200
   },
   "storage_tier_size_bytes": {
-    "dual": 1138220,
-    "git": 258809,
-    "r2": 38316375
+    "dual": 1542753,
+    "git": 259041,
+    "r2": 55148749
   }
 }

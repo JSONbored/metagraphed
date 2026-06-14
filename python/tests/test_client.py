@@ -133,6 +133,26 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(ctx.exception.status, 404)
         self.assertIn("no such subnet", str(ctx.exception))
 
+    def test_http_error_with_non_string_error_code_is_exception_safe(self):
+        import io
+
+        def fake_urlopen(request, timeout=None):
+            body = io.BytesIO(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": {"code": 123, "message": "nonconforming upstream"},
+                    }
+                ).encode("utf-8")
+            )
+            raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, body)
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_fetch("/api/v1/health")
+        self.assertEqual(ctx.exception.status, 502)
+        self.assertIn("123 — nonconforming upstream", str(ctx.exception))
+
     def test_non_json_response_raises_metagraphed_error(self):
         class _BadResponse(_FakeResponse):
             def __init__(self):

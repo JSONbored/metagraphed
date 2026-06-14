@@ -5,6 +5,7 @@ import {
   classifyProbe,
   classifyRpcProbe,
   contentMismatch,
+  FINNEY_GENESIS_HASH,
   isUnsafePublicUrl,
   mapLimit,
   nodeWebSocketConnector,
@@ -475,9 +476,14 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
               body: rpcBody(req.id, { methods: ["a", "b", "c"] }),
             });
           case "chain_getBlockHash":
+            // params[0] === 0 is the genesis probe; anything else is the
+            // archive probe (block 1).
             return fakeResponse({
               status: 200,
-              body: rpcBody(req.id, "0xdeadbeef"),
+              body: rpcBody(
+                req.id,
+                req.params[0] === 0 ? FINNEY_GENESIS_HASH : "0xdeadbeef",
+              ),
             });
           default:
             return fakeResponse({ status: 200, body: rpcBody(req.id, null) });
@@ -485,6 +491,7 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
       },
     });
     assert.equal(classifyRpcProbe(probe), "live");
+    assert.equal(probe.chain_verified, true);
     assert.equal(probe.archive_support, true);
     assert.equal(probe.latest_block, 0x1a2b);
     assert.equal(probe.rpc_method_count, 3);
@@ -983,6 +990,53 @@ describe("classifyProbe / classifyRpcProbe (remaining branches)", () => {
     assert.equal(classifyRpcProbe({ status_code: 500 }), "transient");
     assert.equal(classifyRpcProbe({ error: "boom" }), "unsupported");
     assert.equal(classifyRpcProbe({ method_results: {} }), "transient");
+  });
+
+  test("classifyRpcProbe: wrong-chain only on explicit genesis mismatch", () => {
+    const liveMethods = {
+      chain_getHeader: { ok: true },
+      system_health: { ok: true },
+    };
+    // Explicit mismatch → wrong-chain, even though the node otherwise looks live.
+    assert.equal(
+      classifyRpcProbe({ chain_verified: false, method_results: liveMethods }),
+      "wrong-chain",
+    );
+    // Matching or unverifiable genesis → judged on its other methods.
+    assert.equal(
+      classifyRpcProbe({ chain_verified: true, method_results: liveMethods }),
+      "live",
+    );
+    assert.equal(
+      classifyRpcProbe({ chain_verified: null, method_results: liveMethods }),
+      "live",
+    );
+    // wrong-chain is a hard failure regardless of authority.
+    assert.equal(statusForClassification("wrong-chain"), "failed");
+    assert.equal(
+      statusForClassification("wrong-chain", { authority: "community" }),
+      "failed",
+    );
+  });
+
+  test("probeSubtensorHttp flags a mismatched genesis as wrong-chain", async () => {
+    const probe = await probeSubtensorHttp("https://wrong.dev", 5000, {
+      isUnsafeUrl: async () => false,
+      fetchImpl: async (_url, init) => {
+        const req = JSON.parse(init.body);
+        const result =
+          req.method === "chain_getBlockHash"
+            ? "0xother_network_genesis"
+            : req.method === "chain_getHeader"
+              ? { number: "0x1" }
+              : req.method === "system_health"
+                ? { peers: 1, isSyncing: false }
+                : null;
+        return fakeResponse({ status: 200, body: rpcBody(req.id, result) });
+      },
+    });
+    assert.equal(probe.chain_verified, false);
+    assert.equal(classifyRpcProbe(probe), "wrong-chain");
   });
 });
 

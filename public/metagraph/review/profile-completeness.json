@@ -239,73 +239,6 @@
           "docs"
         ],
         "native_contact_present": false,
-        "native_description_present": false,
-        "native_identity_count": 0,
-        "native_identity_kinds": [],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "partial",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 1,
-      "live_identity_candidate_kind_count": 1,
-      "missing_critical_count": 6,
-      "missing_identity": [
-        "source-repo",
-        "website"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo",
-        "website"
-      ],
-      "name": "gm",
-      "native_identity_signal_count": 0,
-      "native_name_quality": "chain",
-      "netuid": 28,
-      "operational_interface_count": 0,
-      "priority_score": 111,
-      "profile_level": "identity-partial",
-      "review_state": "maintainer-reviewed",
-      "slug": "gm",
-      "source_count": 5,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs"
-      ]
-    },
-    {
-      "candidate_count": 6,
-      "completeness_score": 25,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 2,
-        "curated_identity_count": 1,
-        "curated_identity_kinds": [
-          "docs"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs"
-        ],
-        "native_contact_present": false,
         "native_description_present": true,
         "native_identity_count": 0,
         "native_identity_kinds": [],
@@ -476,73 +409,6 @@
       "profile_level": "identity-partial",
       "review_state": "maintainer-reviewed",
       "slug": "sn-86",
-      "source_count": 5,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs"
-      ]
-    },
-    {
-      "candidate_count": 6,
-      "completeness_score": 25,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 2,
-        "curated_identity_count": 1,
-        "curated_identity_kinds": [
-          "docs"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs"
-        ],
-        "native_contact_present": false,
-        "native_description_present": false,
-        "native_identity_count": 0,
-        "native_identity_kinds": [],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "partial",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 1,
-      "live_identity_candidate_kind_count": 1,
-      "missing_critical_count": 6,
-      "missing_identity": [
-        "source-repo",
-        "website"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo",
-        "website"
-      ],
-      "name": "eni",
-      "native_identity_signal_count": 0,
-      "native_name_quality": "chain",
-      "netuid": 101,
-      "operational_interface_count": 0,
-      "priority_score": 111,
-      "profile_level": "identity-partial",
-      "review_state": "maintainer-reviewed",
-      "slug": "eni",
       "source_count": 5,
       "stale_identity_candidate_kind_count": 0,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
@@ -786,7 +652,7 @@
           "docs",
           "website"
         ],
-        "native_contact_present": false,
+        "native_contact_present": true,
         "native_description_present": true,
         "native_identity_count": 1,
         "native_identity_kinds": [
@@ -794,7 +660,7 @@
         ],
         "needs_promotion_kinds": [],
         "stale_candidate_identity_kinds": [
-          "docs"
+          "website"
         ],
         "unverified_candidate_identity_kinds": []
       },
@@ -816,15 +682,15 @@
       "missing_required": [
         "source-repo"
       ],
-      "name": "Byzantium",
+      "name": "gm",
       "native_identity_signal_count": 1,
       "native_name_quality": "chain",
-      "netuid": 76,
+      "netuid": 28,
       "operational_interface_count": 0,
       "priority_score": 99,
       "profile_level": "identity-partial",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-76",
+      "slug": "gm",
       "source_count": 7,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
@@ -1538,134 +1404,70 @@
       ]
     },
     {
-      "candidate_count": 6,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
+      "candidate_count": 21,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
-        "missing-source-repo",
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 2,
-        "curated_identity_count": 2,
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
+          "source-repo",
           "website"
         ],
         "live_candidate_identity_kinds": [
-          "docs"
+          "docs",
+          "source-repo",
+          "website"
         ],
         "native_contact_present": false,
-        "native_description_present": false,
-        "native_identity_count": 0,
-        "native_identity_kinds": [],
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
         "needs_promotion_kinds": [],
         "stale_candidate_identity_kinds": [],
         "unverified_candidate_identity_kinds": []
       },
-      "identity_level": "partial",
+      "identity_level": "complete",
       "identity_promotion_kind_count": 0,
       "identity_promotion_kinds": [],
-      "identity_surface_count": 2,
-      "live_identity_candidate_kind_count": 1,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "source-repo"
-      ],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
       "missing_operational": [
         "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
       ],
-      "missing_required": [
-        "source-repo"
-      ],
-      "name": "Luminar Network",
-      "native_identity_signal_count": 0,
-      "native_name_quality": "placeholder",
-      "netuid": 87,
+      "missing_required": [],
+      "name": "Bitcast",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 93,
       "operational_interface_count": 0,
       "priority_score": 91,
-      "profile_level": "identity-partial",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-87",
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-93",
       "source_count": 9,
       "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 6,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 2,
-        "curated_identity_count": 2,
-        "curated_identity_kinds": [
-          "docs",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs"
-        ],
-        "native_contact_present": false,
-        "native_description_present": false,
-        "native_identity_count": 0,
-        "native_identity_kinds": [],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "partial",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 2,
-      "live_identity_candidate_kind_count": 1,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "source-repo"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo"
-      ],
-      "name": "DegenBrain",
-      "native_identity_signal_count": 0,
-      "native_name_quality": "chain",
-      "netuid": 90,
-      "operational_interface_count": 0,
-      "priority_score": 91,
-      "profile_level": "identity-partial",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-90",
-      "source_count": 7,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
+        "source-repo",
         "website"
       ]
     },
@@ -1890,74 +1692,6 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 6,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": false,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Bitcast",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 93,
-      "operational_interface_count": 0,
-      "priority_score": 90,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-93",
-      "source_count": 8,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 20,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
         "candidate_identity_count": 10,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
@@ -2078,6 +1812,148 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-4",
       "source_count": 9,
+      "stale_identity_candidate_kind_count": 1,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 25,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 12,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Data Universe",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 13,
+      "operational_interface_count": 0,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-13",
+      "source_count": 14,
+      "stale_identity_candidate_kind_count": 1,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "example",
+        "sdk",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 25,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "ItsAI",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 32,
+      "operational_interface_count": 0,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-32",
+      "source_count": 8,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2591,77 +2467,6 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 12,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [
-          "docs"
-        ],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Data Universe",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 13,
-      "operational_interface_count": 0,
-      "priority_score": 89,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-13",
-      "source_count": 14,
-      "stale_identity_candidate_kind_count": 1,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "sdk",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 24,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
         "candidate_identity_count": 15,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
@@ -2871,76 +2676,6 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 14,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [
-          "docs"
-        ],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "ItsAI",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 32,
-      "operational_interface_count": 0,
-      "priority_score": 89,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-32",
-      "source_count": 8,
-      "stale_identity_candidate_kind_count": 1,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 24,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
         "candidate_identity_count": 15,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
@@ -2991,6 +2726,77 @@
       "slug": "sn-45",
       "source_count": 8,
       "stale_identity_candidate_kind_count": 1,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 24,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "eni",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 101,
+      "operational_interface_count": 0,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "eni",
+      "source_count": 8,
+      "stale_identity_candidate_kind_count": 2,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -4093,6 +3899,76 @@
         "data-artifact"
       ],
       "missing_required": [],
+      "name": "OxMarkets",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 35,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-35",
+      "source_count": 8,
+      "stale_identity_candidate_kind_count": 1,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Score",
       "native_identity_signal_count": 2,
       "native_name_quality": "chain",
@@ -4377,76 +4253,6 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-1",
       "source_count": 10,
-      "stale_identity_candidate_kind_count": 1,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 15,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 6,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [
-          "docs"
-        ],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "OxMarkets",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 35,
-      "operational_interface_count": 0,
-      "priority_score": 85,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-35",
-      "source_count": 8,
       "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -4879,74 +4685,6 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 8,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Cacheon",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 14,
-      "operational_interface_count": 0,
-      "priority_score": 85,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "cacheon",
-      "source_count": 9,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 20,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
         "candidate_identity_count": 11,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
@@ -5278,6 +5016,75 @@
       ]
     },
     {
+      "candidate_count": 19,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "DSperse",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 2,
+      "operational_interface_count": 0,
+      "priority_score": 84,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "source_count": 8,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "sdk",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
       "candidate_count": 18,
       "completeness_score": 55,
       "confidence": "high",
@@ -5496,74 +5303,6 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 6,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": false,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "DSperse",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 2,
-      "operational_interface_count": 0,
-      "priority_score": 82,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "dsperse",
-      "source_count": 7,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 17,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
         "candidate_identity_count": 7,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
@@ -5752,6 +5491,76 @@
       "slug": "sn-61",
       "source_count": 9,
       "stale_identity_candidate_kind_count": 1,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 15,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ]
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 2,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Ridges",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 62,
+      "operational_interface_count": 0,
+      "priority_score": 80,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-62",
+      "source_count": 8,
+      "stale_identity_candidate_kind_count": 0,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -6057,27 +5866,26 @@
         ],
         "live_candidate_identity_kinds": [
           "docs",
-          "source-repo"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
           "source-repo",
           "website"
         ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": [
-          "docs",
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
           "website"
-        ]
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
       },
       "identity_level": "complete",
       "identity_promotion_kind_count": 0,
       "identity_promotion_kinds": [],
       "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 2,
+      "live_identity_candidate_kind_count": 3,
       "missing_critical_count": 4,
       "missing_identity": [],
       "missing_operational": [
@@ -6087,17 +5895,17 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Ridges",
-      "native_identity_signal_count": 2,
+      "name": "Byzantium",
+      "native_identity_signal_count": 1,
       "native_name_quality": "chain",
-      "netuid": 62,
+      "netuid": 76,
       "operational_interface_count": 0,
       "priority_score": 79,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-62",
+      "slug": "sn-76",
       "source_count": 8,
-      "stale_identity_candidate_kind_count": 0,
+      "stale_identity_candidate_kind_count": 1,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -6792,6 +6600,72 @@
     {
       "candidate_count": 8,
       "completeness_score": 55,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 2,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Basilica",
+      "native_identity_signal_count": 1,
+      "native_name_quality": "chain",
+      "netuid": 39,
+      "operational_interface_count": 0,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "review_state": "needs-review",
+      "slug": "sn-39",
+      "source_count": 9,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 8,
+      "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "gap_reasons": [
@@ -6989,72 +6863,6 @@
     {
       "candidate_count": 7,
       "completeness_score": 55,
-      "confidence": "low",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 3,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 1,
-        "native_identity_kinds": [
-          "source-repo"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 2,
-      "missing_critical_count": 4,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Basilica",
-      "native_identity_signal_count": 1,
-      "native_name_quality": "chain",
-      "netuid": 39,
-      "operational_interface_count": 0,
-      "priority_score": 72,
-      "profile_level": "identity-complete",
-      "review_state": "needs-review",
-      "slug": "sn-39",
-      "source_count": 8,
-      "stale_identity_candidate_kind_count": 0,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 7,
-      "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "gap_reasons": [
@@ -7179,6 +6987,135 @@
         "dashboard",
         "docs",
         "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 7,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 2,
+      "missing_critical_count": 4,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Luminar Network",
+      "native_identity_signal_count": 0,
+      "native_name_quality": "placeholder",
+      "netuid": 87,
+      "operational_interface_count": 0,
+      "priority_score": 72,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-87",
+      "source_count": 10,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 7,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "partial",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 2,
+      "live_identity_candidate_kind_count": 1,
+      "missing_critical_count": 4,
+      "missing_identity": [
+        "source-repo"
+      ],
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
+      "name": "DegenBrain",
+      "native_identity_signal_count": 0,
+      "native_name_quality": "chain",
+      "netuid": 90,
+      "operational_interface_count": 1,
+      "priority_score": 72,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-90",
+      "source_count": 7,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
         "website"
       ]
     },
@@ -7779,7 +7716,7 @@
       ]
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 17,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -7789,7 +7726,7 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 8,
+        "candidate_identity_count": 7,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
@@ -7830,7 +7767,7 @@
       "native_name_quality": "chain",
       "netuid": 97,
       "operational_interface_count": 1,
-      "priority_score": 68,
+      "priority_score": 67,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-97",
@@ -7842,6 +7779,73 @@
         "docs",
         "openapi",
         "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 21,
+      "completeness_score": 70,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 3,
+      "missing_critical_count": 3,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Cacheon",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 14,
+      "operational_interface_count": 1,
+      "priority_score": 66,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "cacheon",
+      "source_count": 9,
+      "stale_identity_candidate_kind_count": 0,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
         "website"
       ]
     },
@@ -7905,73 +7909,6 @@
       "slug": "sn-23",
       "source_count": 10,
       "stale_identity_candidate_kind_count": 1,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "subnet-api",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 17,
-      "completeness_score": 70,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_evidence": {
-        "candidate_identity_count": 7,
-        "curated_identity_count": 3,
-        "curated_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "live_candidate_identity_kinds": [
-          "docs",
-          "source-repo",
-          "website"
-        ],
-        "native_contact_present": true,
-        "native_description_present": true,
-        "native_identity_count": 2,
-        "native_identity_kinds": [
-          "source-repo",
-          "website"
-        ],
-        "needs_promotion_kinds": [],
-        "stale_candidate_identity_kinds": [],
-        "unverified_candidate_identity_kinds": []
-      },
-      "identity_level": "complete",
-      "identity_promotion_kind_count": 0,
-      "identity_promotion_kinds": [],
-      "identity_surface_count": 3,
-      "live_identity_candidate_kind_count": 3,
-      "missing_critical_count": 3,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "ninja",
-      "native_identity_signal_count": 2,
-      "native_name_quality": "chain",
-      "netuid": 66,
-      "operational_interface_count": 1,
-      "priority_score": 62,
-      "profile_level": "operational",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-66",
-      "source_count": 11,
-      "stale_identity_candidate_kind_count": 0,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -8108,6 +8045,75 @@
         "data-artifact",
         "docs",
         "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 14,
+      "completeness_score": 70,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
+      "identity_level": "complete",
+      "identity_promotion_kind_count": 0,
+      "identity_promotion_kinds": [],
+      "identity_surface_count": 3,
+      "live_identity_candidate_kind_count": 2,
+      "missing_critical_count": 3,
+      "missing_identity": [],
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "ninja",
+      "native_identity_signal_count": 2,
+      "native_name_quality": "chain",
+      "netuid": 66,
+      "operational_interface_count": 1,
+      "priority_score": 59,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-66",
+      "source_count": 11,
+      "stale_identity_candidate_kind_count": 2,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
         "website"
       ]
     },
@@ -8830,35 +8836,35 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 54,
+    "average_completeness_score": 55,
     "by_confidence": {
       "high": 87,
       "low": 4,
       "medium": 38
     },
     "by_identity_level": {
-      "complete": 102,
-      "partial": 27
+      "complete": 105,
+      "partial": 24
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "identity-complete": 75,
-      "identity-partial": 23,
-      "operational": 29
+      "identity-complete": 77,
+      "identity-partial": 19,
+      "operational": 31
     },
     "critical_gap_counts": {
       "missing-data-artifact": 111,
-      "missing-openapi": 116,
-      "missing-source-repo": 20,
+      "missing-openapi": 115,
+      "missing-source-repo": 17,
       "missing-sse": 127,
-      "missing-subnet-api": 114,
-      "missing-website": 16
+      "missing-subnet-api": 113,
+      "missing-website": 14
     },
     "identity_promotion_candidate_count": 1,
-    "native_identity_count": 121,
+    "native_identity_count": 122,
     "native_identity_unpromoted_count": 1,
-    "needs_identity_count": 27,
-    "needs_operational_count": 98,
+    "needs_identity_count": 24,
+    "needs_operational_count": 96,
     "profile_count": 129
   }
 }

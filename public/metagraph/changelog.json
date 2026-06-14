@@ -1,11 +1,60 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [],
+    "modified": [
+      {
+        "hash": "218de81f6f080d80ef32175b7e26431cdfe710325d7686200540887031519e77",
+        "path": "agent-catalog.json"
+      },
+      {
+        "hash": "03820d54c72e44810958900a0886bdeaad986b0da8c57269d0417fb416d7807d",
+        "path": "agent-resources.json"
+      },
+      {
+        "hash": "9f70e1d0119e87a1f426ba1a2b5705c973d4b7739d99d22fcd5fc391efa42dfc",
+        "path": "api-index.json"
+      },
+      {
+        "hash": "a53b2369f2dd32b34d61313df93ce75959617c48b03bd0c6c506e66d67e32613",
+        "path": "contracts.json"
+      },
+      {
+        "hash": "3b00369b8e5ab026d8e843a7188f0333dab3ed99eafab6050c817ed2f253b3d2",
+        "path": "coverage.json"
+      },
+      {
+        "hash": "349c92116fa7f3637d37aa9993bde64b8db1db8657defef530a5c58d87dd7911",
+        "path": "fixtures.json"
+      },
+      {
+        "hash": "375d58c9baa4f33eceb3e524493f4cbff017c5378dc1583b1be56df70783e30e",
+        "path": "lineage.json"
+      },
+      {
+        "hash": "b6b860d61d47875b342fda0ce73dcf475c57ab558823850f513e5f38f1b4a06a",
+        "path": "openapi.json"
+      },
+      {
+        "hash": "76e3f95a258df1c818f1e5a001a798ccc7df09e8b3852e2a4a30d5f685bfb147",
+        "path": "operational-surfaces.json"
+      },
+      {
+        "hash": "4d3d4b758b3ffdbb2aed3c82dee017111ce16284b76964273d61169c91542606",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "84f51be5590b51b9e099226e5cf3f0f7e370fda2c392c1dc914bb82973cad7fc",
+        "path": "schemas/index.json"
+      },
+      {
+        "hash": "8defa11ffdf6edcf03da1fd5429d940dc461d2e5b682573b881f68dc2d5139c0",
+        "path": "subnets.json"
+      }
+    ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "notes": [
     "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
     "Long-term historical runs are expected to live in R2 under versioned prefixes."
@@ -19,13 +68,13 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 0,
+    "artifact_modified_count": 12,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 2017,
+        "after": 2050,
         "before": 2017,
-        "delta": 0
+        "delta": 33
       },
       "curated_overlay_count": {
         "after": 129,
@@ -39,9 +88,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 1143,
+        "after": 1157,
         "before": 1143,
-        "delta": 0
+        "delta": 14
       }
     },
     "netuid_added_count": 0,

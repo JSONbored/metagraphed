@@ -3,31 +3,31 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:57.845Z",
+      "captured_at": "2026-06-14T09:09:41.051Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:57.845Z",
+          "captured_at": "2026-06-14T09:09:41.051Z",
           "content_type": "application/json",
-          "hash": "06d41d91c60dd8b9c9b114f083b3aa78231184bd57ff74c3d53f2abf31965003",
-          "latency_ms": 111,
+          "hash": "30287869845f68df9af584bd6e9fec08e28ced735fd39a661cac27f9f8ad4e9a",
+          "latency_ms": 140,
           "name": "Gradients OpenAPI",
           "provider": "gradients",
           "schema_url": "https://api.gradients.io/openapi.json",
           "shape": {
-            "component_schema_count": 96,
+            "component_schema_count": 104,
             "has_global_security": false,
             "method_counts": {
               "delete": 2,
-              "get": 22,
+              "get": 24,
               "post": 29,
               "put": 2
             },
             "openapi_version": "3.1.0",
-            "operation_count": 55,
-            "path_count": 54,
+            "operation_count": 57,
+            "path_count": 56,
             "sample_paths": [
               "/account-balance-check",
               "/account-create",
@@ -63,11 +63,11 @@
         }
       ],
       "status": "captured",
-      "total_operation_count": 55,
-      "total_path_count": 54
+      "total_operation_count": 57,
+      "total_path_count": 56
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:57.845Z",
+      "captured_at": "2026-06-14T09:09:41.051Z",
       "status": "captured",
       "surface_count": 4,
       "surfaces": [
@@ -114,7 +114,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "netuid": 56,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

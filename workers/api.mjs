@@ -121,6 +121,27 @@ const ROUTES = API_ROUTES.map((entry) => ({
   },
 }));
 
+// Routes that can include live operational-health overlays must never use the
+// edge Cache API. Cache eligibility is route-based instead of checking whether
+// live data was available for a particular request, so a cold KV/D1 overlay
+// cannot seed stale static fallbacks into the edge cache.
+const LIVE_OVERLAY_ROUTE_IDS = new Set([
+  "health",
+  "subnet-health",
+  "rpc-endpoints",
+  "freshness",
+  "subnet-overview",
+  "agent-catalog",
+  "agent-catalog-subnet",
+  "endpoints",
+  "subnet-endpoints",
+  "provider-endpoints",
+]);
+
+function isStaticEdgeCacheEligible(matched, network) {
+  return !network.isDefault || !LIVE_OVERLAY_ROUTE_IDS.has(matched.id);
+}
+
 export default {
   async fetch(request, env, ctx) {
     return handleRequest(request, env, ctx);
@@ -174,6 +195,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         networkRoute.url,
         networkRoute.network,
+        ctx,
       );
     }
   }
@@ -308,7 +330,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/incidents") {
       return handleGlobalIncidents(request, env, resolved.url);
     }
-    return handleApiRequest(request, env, resolved.url);
+    return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
 
   if (BADGE_SVG_PATTERN.test(url.pathname)) {
@@ -355,7 +377,13 @@ function isMainnetOnlyApiPath(pathname) {
 // Only the registry artifact surfaces are network-partitioned; dynamic/AI/live
 // features stay mainnet-only. testnet/local data is R2-only and may not exist yet
 // — readArtifact then returns a clean 404 carrying the requested network.
-async function handleNetworkScopedRequest(request, env, url, network) {
+async function handleNetworkScopedRequest(
+  request,
+  env,
+  url,
+  network,
+  ctx = {},
+) {
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -427,7 +455,7 @@ async function handleNetworkScopedRequest(request, env, url, network) {
         { network: network.id },
       );
     }
-    return handleApiRequest(request, env, resolved.url, network);
+    return handleApiRequest(request, env, resolved.url, network, ctx);
   }
 
   if (
@@ -886,10 +914,46 @@ async function lookupSubnetNetuid(
   return Number.isInteger(netuid) ? netuid : null;
 }
 
-async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
+async function handleApiRequest(
+  request,
+  env,
+  url,
+  network = DEFAULT_NETWORK,
+  ctx = {},
+) {
   const matched = matchRoute(url.pathname);
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
+  }
+  // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
+  // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
+  // not by whether live data happened to be available for this request, so cold
+  // KV/D1 fallback responses cannot seed stale operational metadata.
+  // The key namespaces by network + contract version so a deploy or a network
+  // switch can never serve a cross-version body; the response's own
+  // cache-control max-age bounds staleness.
+  const edgeCache =
+    request.method === "GET" && isStaticEdgeCacheEligible(matched, network)
+      ? globalThis.caches?.default
+      : null;
+  const edgeCacheKey = edgeCache
+    ? new Request(
+        `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
+          contractVersion(env),
+        )}${url.pathname}${url.search}`,
+      )
+    : null;
+  if (edgeCache) {
+    const hit = await edgeCache.match(edgeCacheKey);
+    if (hit) {
+      // Honour conditional requests against the cached body's weak ETag so
+      // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
+      const etag = hit.headers.get("etag");
+      if (etag && request.headers.get("if-none-match") === etag) {
+        return new Response(null, { status: 304, headers: hit.headers });
+      }
+      return hit;
+    }
   }
   // Mainnet (default) reads the unprefixed artifact (no-op); non-default networks
   // read metagraph/{prefix}/… — see artifactPathForNetwork.
@@ -981,7 +1045,7 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
   ) {
     responseData = { ...responseData, published_at: pub };
   }
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data: responseData,
@@ -1000,6 +1064,14 @@ async function handleApiRequest(request, env, url, network = DEFAULT_NETWORK) {
     },
     matched.cache,
   );
+  // Cache only route-declared pure static-artifact 200s. Live-overlay routes
+  // are skipped even when their live store is cold and the response falls back
+  // to the static artifact. 304/HEAD/non-200 are skipped. The edge entry
+  // expires per the response's cache-control max-age.
+  if (edgeCache && live === null && response.status === 200) {
+    ctx?.waitUntil?.(edgeCache.put(edgeCacheKey, response.clone()));
+  }
+  return response;
 }
 
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational

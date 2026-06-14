@@ -142,7 +142,6 @@ function buildCompactManifest(fullManifest) {
     ),
     required_artifact_paths: [
       "/metagraph/candidates.json",
-      "/metagraph/health/latest.json",
       "/metagraph/review-queue.json",
       "/metagraph/review/enrichment-evidence.json",
       "/metagraph/review/enrichment-targets.json",

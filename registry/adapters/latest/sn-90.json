@@ -1,0 +1,74 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-14T09:09:41.302Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-14T09:09:41.302Z",
+          "content_type": "application/json",
+          "hash": "e853e74701c38834f0886a1e05703feff1cedc9d2ebe38702b01287bc0a9ac1d",
+          "latency_ms": 111,
+          "name": "ogham community openapi",
+          "provider": "degenbrain",
+          "schema_url": "https://api.subnet90.com/openapi.json",
+          "shape": {
+            "component_schema_count": 5,
+            "has_global_security": false,
+            "method_counts": {
+              "get": 7,
+              "post": 3
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 10,
+            "path_count": 10,
+            "sample_paths": [
+              "/",
+              "/api/markets/pending",
+              "/api/markets/{market_id}/breakdown",
+              "/api/markets/{market_id}/responses",
+              "/api/resolutions",
+              "/api/resolutions/{statement_id}",
+              "/api/resolve",
+              "/api/test/next-chunk",
+              "/api/test/progress",
+              "/api/test/results/{chunk_id}"
+            ],
+            "security_scheme_count": 0,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "Brain-API",
+            "version": "1.0.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "community-sn-90-openapi-api-subnet90-com",
+          "url": "https://api.subnet90.com/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 10,
+      "total_path_count": 10
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-14T09:09:41.302Z",
+      "status": "captured",
+      "surface_count": 0,
+      "surfaces": []
+    }
+  },
+  "generated_at": "2026-06-14T09:03:05.163Z",
+  "netuid": 90,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-90",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

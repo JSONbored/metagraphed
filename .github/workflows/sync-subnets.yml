@@ -1,11 +1,13 @@
 name: Sync Subnets
 
 on:
-  schedule:
-    # Every 6h, an hour before each publish (cron 17 1,7,13,19) so a merged sync
-    # PR feeds fresh native/candidate data into the next publish. Was 2×/day,
-    # which let native data drift past the 24h freshness gate and stall publishes.
-    - cron: "17 0,6,12,18 * * *"
+  # Manual-only (ADR 0006). The scheduled trigger was retired: it opened a bot PR
+  # every 6h that was ~95% machine telemetry (chain block height + captured_at
+  # timestamps + adapter latency), churning git history and burying real
+  # contributor PRs. Chain existence/identity is machine data — it belongs in
+  # R2/D1, refreshed by the publish, not committed to git. Run this manually to
+  # backfill the registry/native snapshot until that refresh moves into the
+  # publish pipeline (ADR 0006 migration step 2).
   workflow_dispatch:
 
 permissions:

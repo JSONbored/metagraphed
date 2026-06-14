@@ -14,7 +14,22 @@ export const SUBTENSOR_PROBE_CALLS = [
   { key: "system_health", method: "system_health", params: [] },
   { key: "rpc_methods", method: "rpc_methods", params: [] },
   { key: "archive_probe", method: "chain_getBlockHash", params: [1] },
+  // Genesis (block 0) hash — uniquely identifies the network. Lets us reject an
+  // RPC endpoint that answers but is on the WRONG chain (cosmos.directory checks
+  // chain_id the same way). A wrong/misconfigured submitted endpoint returns a
+  // different genesis and is excluded before it can pollute the proxy pool.
+  { key: "genesis", method: "chain_getBlockHash", params: [0] },
 ];
+
+// Finney (Bittensor mainnet) genesis hash — verified live against
+// bittensor-finney.api.onfinality.io. Endpoints whose block-0 hash differs are
+// classified `wrong-chain`. Override per-network via probeSubtensorHttp options.
+export const FINNEY_GENESIS_HASH =
+  "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03";
+
+function normalizeHash(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : null;
+}
 
 // Surface kinds whose health changes minute-to-minute and is worth probing live
 // (the 2-minute cron prober). Everything else — docs, website, source-repo,
@@ -242,6 +257,12 @@ export function classifyRpcProbe(probe) {
   if (probe.status_code >= 500) {
     return "transient";
   }
+  // Wrong network: the node answered but its genesis hash didn't match. Only
+  // triggers on an EXPLICIT mismatch (chain_verified === false); a node that
+  // didn't return a genesis (null) is judged on its other methods.
+  if (probe.chain_verified === false) {
+    return "wrong-chain";
+  }
   if (probe.error) {
     return "unsupported";
   }
@@ -287,6 +308,10 @@ export function statusForClassification(classification, surface = null) {
   if (["live", "redirected"].includes(classification)) {
     return "ok";
   }
+  // Wrong network is always a hard failure — never softened by authority.
+  if (classification === "wrong-chain") {
+    return "failed";
+  }
   if (
     ["rate-limited", "auth-required", "transient", "timeout"].includes(
       classification,
@@ -305,7 +330,11 @@ export function statusForClassification(classification, surface = null) {
 
 // --- Subtensor JSON-RPC probes (HTTP + WSS) -----------------------------------
 export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
-  const { isUnsafeUrl = isUnsafePublicUrl, fetchImpl = fetch } = options;
+  const {
+    isUnsafeUrl = isUnsafePublicUrl,
+    fetchImpl = fetch,
+    expectedGenesis = FINNEY_GENESIS_HASH,
+  } = options;
   if (await isUnsafeUrl(url)) {
     return {
       unsafe_url: true,
@@ -319,6 +348,7 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
   const methodResults = {};
   let statusCode = null;
   let contentType = null;
+  let genesisHash = null;
   for (const [index, call] of SUBTENSOR_PROBE_CALLS.entries()) {
     const response = await jsonRpcHttp(
       url,
@@ -330,6 +360,9 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
     );
     statusCode = response.status_code || statusCode;
     contentType = response.content_type || contentType;
+    if (call.key === "genesis" && typeof response.result === "string") {
+      genesisHash = response.result;
+    }
     methodResults[call.key] = normalizeJsonRpcResult(response);
     if (response.transport_error) {
       return {
@@ -343,11 +376,20 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
     }
   }
 
+  // chain_verified: true on a matching genesis, false on an explicit mismatch
+  // (wrong network), null when the node didn't return a genesis hash (don't
+  // penalize a node that simply restricts chain_getBlockHash).
+  const expected = normalizeHash(expectedGenesis);
+  const chainVerified = genesisHash
+    ? normalizeHash(genesisHash) === expected
+    : null;
+
   return summarizeRpcProbe({
     content_type: contentType,
     latency_ms: Math.round(performance.now() - started),
     method_results: methodResults,
     status_code: statusCode,
+    chain_verified: chainVerified,
     verified_at: new Date().toISOString(),
   });
 }

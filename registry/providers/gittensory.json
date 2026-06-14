@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "gittensory",
+  "name": "Gittensory",
+  "kind": "data-provider",
+  "website_url": "https://gittensory.aethereal.dev",
+  "docs_url": "https://gittensory.aethereal.dev",
+  "github_url": "https://github.com/JSONbored/gittensory",
+  "authority": "provider-claimed",
+  "notes": "Gittensor-native contribution quality & planning layer for SN74: deterministic MCP signals for contributors and a free anti-slop + AI second-opinion gate (GitHub App) for maintainers. Provider-claimed; surfaces pending registry verification."
+}

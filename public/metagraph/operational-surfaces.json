@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 58,
+  "surface_count": 59,
   "surfaces": [
     {
       "auth_required": false,
@@ -385,6 +385,23 @@
       "subnet_slug": "allways",
       "surface_id": "community-sn-7-subnet-api-api-all-ways-io",
       "url": "https://api.all-ways.io/swaps"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "subnet-api",
+      "netuid": 14,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "surface_id": "community-sn-14-subnet-api-api-cacheon-ai",
+      "url": "https://api.cacheon.ai/api/status"
     },
     {
       "auth_required": false,
