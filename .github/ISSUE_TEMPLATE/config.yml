@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Subnet / provider data correction or enrichment
+    url: https://github.com/JSONbored/metagraphed/issues/new/choose
+    about: The registry DATA (subnets, providers, surfaces, health) lives in the metagraphed backend — file enrichments and corrections there, not here.
+  - name: Report a security vulnerability
+    url: https://github.com/JSONbored/metagraphed-ui/security/policy
+    about: Please report vulnerabilities privately per our security policy.
