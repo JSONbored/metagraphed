@@ -1569,3 +1569,90 @@ describe("MCP goal-shaped tools — branch coverage", () => {
     });
   });
 });
+
+describe("list_subnets", () => {
+  const deps = makeDeps({
+    "/metagraph/subnets.json": {
+      subnets: [
+        {
+          netuid: 0,
+          slug: "root",
+          name: "root",
+          subnet_type: "root",
+          status: "active",
+          integration_readiness: 15,
+          surface_count: 17,
+          categories: [],
+        },
+        {
+          netuid: 7,
+          slug: "allways",
+          name: "Allways",
+          subnet_type: "application",
+          status: "active",
+          integration_readiness: 90,
+          surface_count: 4,
+          categories: ["inference"],
+        },
+        {
+          netuid: 8,
+          slug: "parked",
+          name: "Parked",
+          subnet_type: "application",
+          status: "deprecated",
+          integration_readiness: 0,
+          surface_count: 0,
+          derived_categories: ["data"],
+        },
+      ],
+    },
+  });
+
+  test("paginates the full registry and reports next_offset", async () => {
+    const res = await callTool("list_subnets", { limit: 2 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 2);
+    assert.equal(out.next_offset, 2);
+    assert.equal(out.subnets[0].netuid, 0);
+    assert.equal(out.subnets[0].title, "root");
+    assert.equal(out.subnets[0].integration_readiness, 15);
+  });
+
+  test("offset reads the tail and clears next_offset", async () => {
+    const res = await callTool(
+      "list_subnets",
+      { offset: 2, limit: 2 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.next_offset, null);
+    assert.equal(out.subnets[0].netuid, 8);
+  });
+
+  test("filters by subnet_type, status, min_readiness, and domain", async () => {
+    const byType = (
+      await callTool("list_subnets", { subnet_type: "application" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byType.total, 2);
+
+    const byStatus = (
+      await callTool("list_subnets", { status: "deprecated" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byStatus.total, 1);
+    assert.equal(byStatus.subnets[0].netuid, 8);
+
+    const byReadiness = (
+      await callTool("list_subnets", { min_readiness: 50 }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byReadiness.total, 1);
+    assert.equal(byReadiness.subnets[0].netuid, 7);
+
+    const byDomain = (
+      await callTool("list_subnets", { domain: "data" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byDomain.total, 1);
+    assert.equal(byDomain.subnets[0].netuid, 8);
+  });
+});

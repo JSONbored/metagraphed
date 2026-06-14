@@ -50,7 +50,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.0.0";
+export const MCP_SERVER_VERSION = "1.1.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -92,7 +92,8 @@ export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
   "what each of the ~129 subnets exposes (APIs, docs, schemas), whether those " +
   "surfaces are healthy, and how to call them. Use search_subnets / " +
-  "find_subnets_by_capability to discover by keyword/capability, semantic_search " +
+  "find_subnets_by_capability to discover by keyword/capability, list_subnets to " +
+  "enumerate or page through the whole registry, semantic_search " +
   "to discover by intent (meaning-based), and ask for a grounded natural-" +
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
@@ -373,6 +374,131 @@ export const MCP_TOOLS = [
           url: `https://${ctx.domain}/api/v1/subnets/${doc.netuid}/overview`,
         }));
       return { query, count: ranked.length, results: ranked };
+    },
+  },
+  {
+    name: "list_subnets",
+    title: "List all Bittensor subnets",
+    description:
+      "Enumerate the full Bittensor subnet registry, paginated. Returns every " +
+      "subnet's netuid, slug, title, type, status, integration-readiness score " +
+      "(0-100), and callable-surface count. Use this to walk or page through the " +
+      "whole registry; for keyword or capability discovery use search_subnets / " +
+      "find_subnets_by_capability instead.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+        limit: {
+          type: "integer",
+          description: "Max rows to return (1-100, default 50).",
+          minimum: 1,
+          maximum: 100,
+        },
+        status: {
+          type: "string",
+          description: "Filter by lifecycle status, e.g. 'active'.",
+        },
+        subnet_type: {
+          type: "string",
+          description: "Filter by subnet type, e.g. 'application' or 'root'.",
+        },
+        domain: {
+          type: "string",
+          description:
+            "Filter to subnets tagged with this domain/category, e.g. 'inference'.",
+        },
+        min_readiness: {
+          type: "integer",
+          description:
+            "Only subnets whose integration_readiness is >= this (0-100).",
+          minimum: 0,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
+      const all = Array.isArray(index.subnets) ? index.subnets : [];
+      const status =
+        typeof args?.status === "string"
+          ? args.status.trim().toLowerCase()
+          : null;
+      const subnetType =
+        typeof args?.subnet_type === "string"
+          ? args.subnet_type.trim().toLowerCase()
+          : null;
+      const domain =
+        typeof args?.domain === "string"
+          ? args.domain.trim().toLowerCase()
+          : null;
+      const minReadiness = Number.isFinite(args?.min_readiness)
+        ? args.min_readiness
+        : null;
+      const filtered = all.filter((subnet) => {
+        if (status && String(subnet.status || "").toLowerCase() !== status) {
+          return false;
+        }
+        if (
+          subnetType &&
+          String(subnet.subnet_type || "").toLowerCase() !== subnetType
+        ) {
+          return false;
+        }
+        if (
+          minReadiness !== null &&
+          !(Number(subnet.integration_readiness) >= minReadiness)
+        ) {
+          return false;
+        }
+        if (domain) {
+          const tags = [
+            ...(Array.isArray(subnet.categories) ? subnet.categories : []),
+            ...(Array.isArray(subnet.derived_categories)
+              ? subnet.derived_categories
+              : []),
+          ].map((tag) => String(tag).toLowerCase());
+          if (!tags.includes(domain)) {
+            return false;
+          }
+        }
+        return true;
+      });
+      const total = filtered.length;
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      const limit = clampLimit(args?.limit, 50, 100);
+      const page = filtered.slice(offset, offset + limit).map((subnet) => ({
+        netuid: subnet.netuid,
+        slug: subnet.slug ?? null,
+        title: subnet.name ?? null,
+        subnet_type: subnet.subnet_type ?? null,
+        status: subnet.status ?? null,
+        integration_readiness:
+          typeof subnet.integration_readiness === "number"
+            ? subnet.integration_readiness
+            : null,
+        surface_count:
+          typeof subnet.surface_count === "number"
+            ? subnet.surface_count
+            : null,
+      }));
+      const nextOffset =
+        offset + page.length < total ? offset + page.length : null;
+      return {
+        total,
+        returned: page.length,
+        offset,
+        limit,
+        next_offset: nextOffset,
+        subnets: page,
+      };
     },
   },
   {
@@ -989,6 +1115,34 @@ const TOOL_OUTPUT_SCHEMAS = {
         title: NULLABLE_STRING,
         description: NULLABLE_STRING,
         url: NULLABLE_STRING,
+      }),
+    },
+  },
+  list_subnets: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "total",
+      "returned",
+      "offset",
+      "limit",
+      "next_offset",
+      "subnets",
+    ],
+    properties: {
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      offset: { type: "integer" },
+      limit: { type: "integer" },
+      next_offset: { type: ["integer", "null"] },
+      subnets: objectItems({
+        netuid: { type: "integer" },
+        slug: NULLABLE_STRING,
+        title: NULLABLE_STRING,
+        subnet_type: NULLABLE_STRING,
+        status: NULLABLE_STRING,
+        integration_readiness: { type: ["number", "null"] },
+        surface_count: { type: ["integer", "null"] },
       }),
     },
   },
