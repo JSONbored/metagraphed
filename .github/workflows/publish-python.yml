@@ -6,6 +6,11 @@ name: Publish Python SDK
 # trusted publisher pointing at this repo + workflow + the `pypi-production`
 # environment.
 on:
+  # Auto: release-please tags `python-v<semver>` when its Release PR merges
+  # (#394) → publish to PyPI. Manual: workflow_dispatch is kept as an override.
+  push:
+    tags:
+      - "python-v*"
   workflow_dispatch:
 
 permissions:
@@ -87,7 +92,10 @@ jobs:
         with:
           packages-dir: ${{ runner.temp }}/dist
 
+      # Only on the manual override — release-please already created the tag +
+      # GitHub Release when triggered via the python-v* tag (#394).
       - name: Tag + GitHub release
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}

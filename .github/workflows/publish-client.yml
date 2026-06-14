@@ -7,6 +7,11 @@ name: Publish client SDK
 # publish, and a Trusted Publisher pointing at this repo + workflow + the
 # `npm-production` environment.
 on:
+  # Auto: release-please tags `client-v<semver>` when its Release PR merges
+  # (#394) → publish to npm. Manual: workflow_dispatch is kept as an override.
+  push:
+    tags:
+      - "client-v*"
   workflow_dispatch:
 
 permissions:
@@ -109,7 +114,11 @@ jobs:
           tarball=$(find "$RUNNER_TEMP/client-package" -maxdepth 1 -type f -name "*.tgz" -print -quit)
           npm publish "$tarball" --access public --provenance --ignore-scripts
 
+      # Only on the manual override — when release-please triggers via the
+      # client-v* tag, it has already created the tag + GitHub Release with the
+      # generated notes, so re-creating them here would conflict (#394).
       - name: Tag + GitHub release
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}

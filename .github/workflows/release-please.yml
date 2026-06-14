@@ -1,0 +1,38 @@
+name: release-please
+
+# Conventional-commit-driven release automation (#394). On every push to main,
+# release-please maintains a "Release PR" per component (packages/client → npm,
+# python → PyPI, "." → the hosted platform) that bumps the SemVer + regenerates
+# that component's CHANGELOG.md from the conventional commits. Merging a Release
+# PR tags the component (e.g. client-v0.3.0) and creates the GitHub Release with
+# the generated notes. The OIDC publish workflows (publish-client / publish-python)
+# trigger on those tags (and keep a manual workflow_dispatch override). Commits are
+# already Conventional Commits, so the changelog is generated, not hand-maintained.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run release-please
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.GITHUB_TOKEN }}
