@@ -1081,9 +1081,14 @@ async function handleHealthTrends(request, env, netuid) {
   const db = env.METAGRAPH_HEALTH_DB;
   const nowMs = Date.now();
   const windows = {};
-  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-    let rows = [];
-    if (db?.prepare) {
+  // The per-window aggregations are independent — run them in parallel (one D1
+  // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
+  // serializing the two with an await-in-loop.
+  const windowRows = await Promise.all(
+    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+      if (!db?.prepare) {
+        return [label, []];
+      }
       try {
         const result = await withTimeout(
           db
@@ -1100,11 +1105,13 @@ async function handleHealthTrends(request, env, netuid) {
             .all(),
           d1TimeoutMs(env),
         );
-        rows = result?.results || [];
+        return [label, result?.results || []];
       } catch {
-        rows = [];
+        return [label, []];
       }
-    }
+    }),
+  );
+  for (const [label, rows] of windowRows) {
     windows[label] = rows;
   }
   const meta = await readHealthKv(env, KV_HEALTH_META);
