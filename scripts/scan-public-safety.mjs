@@ -42,7 +42,13 @@ const patterns = [
   // apply to those files.
   {
     name: "wallet/key wording",
-    regex: /\b(coldkey|wallet path|private key|seed phrase|mnemonic)\b/i,
+    regex: /\b(wallet path|private key|seed phrase|mnemonic)\b/i,
+    soft: true,
+    scanFixtureBody: true,
+  },
+  {
+    name: "Bittensor key terminology",
+    regex: /\bcoldkey\b/i,
     soft: true,
   },
   {
@@ -62,9 +68,9 @@ const patterns = [
 // guard. The hard secret patterns above still apply to these files. Captured
 // fixture response bodies additionally get a structural HARD-secret scan below
 // (parsed JSON string values, so a real key/token can't hide under a generic
-// JSON key); soft terminology stays exempt there too, since it is the same
-// public API vocabulary the subnet documents — soft-scanning mirrored bodies
-// guarantees false positives ("The miner hotkey to look up") and wedges publish.
+// JSON key). Fixture body soft scans stay limited to security-sensitive
+// wallet/key phrases because broad Bittensor terminology is legitimate upstream
+// API vocabulary ("The miner hotkey to look up") and wedges publish.
 function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
@@ -164,10 +170,10 @@ function scanCapturedFixtureBody(relativePath, content) {
 
   for (const { valuePath, value } of walkJsonStrings(body)) {
     for (const pattern of patterns) {
-      // Only HARD secret patterns apply to mirrored fixture bodies. Soft
-      // terminology (hotkey/wallet/coldkey wording) is legitimate upstream API
-      // documentation here, exactly as it is exempted for the line scan.
-      if (pattern.soft) {
+      // Keep broad Bittensor terminology exempt for mirrored fixture bodies, but
+      // still scan security-sensitive wallet/key phrases that can appear under
+      // generic live-response keys after sanitization.
+      if (pattern.soft && !pattern.scanFixtureBody) {
         continue;
       }
       if (pattern.regex.test(value)) {
