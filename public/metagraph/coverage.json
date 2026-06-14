@@ -1,14 +1,14 @@
 {
   "application_subnet_count": 128,
-  "candidate_count": 2017,
+  "candidate_count": 2050,
   "candidate_subnet_count": 129,
   "chain_subnet_count": 129,
   "completeness": {
-    "average_score": 54,
+    "average_score": 55,
     "dimension_coverage": {
       "community": {
-        "pct": 67,
-        "present": 87
+        "pct": 69,
+        "present": 89
       },
       "data-artifact": {
         "pct": 13,
@@ -19,24 +19,24 @@
         "present": 129
       },
       "openapi": {
-        "pct": 9,
-        "present": 12
+        "pct": 10,
+        "present": 13
       },
       "source-repo": {
-        "pct": 84,
-        "present": 109
+        "pct": 87,
+        "present": 112
       },
       "sse": {
         "pct": 1,
         "present": 1
       },
       "subnet-api": {
-        "pct": 11,
-        "present": 14
+        "pct": 12,
+        "present": 15
       },
       "website": {
-        "pct": 88,
-        "present": 113
+        "pct": 89,
+        "present": 115
       }
     },
     "fully_complete_count": 1,
@@ -46,8 +46,8 @@
     "score_distribution": {
       "100": 1,
       "0-24": 1,
-      "25-49": 26,
-      "50-74": 91,
+      "25-49": 22,
+      "50-74": 95,
       "75-99": 10
     },
     "scored_subnet_count": 129
@@ -79,12 +79,12 @@
   "native_only_count": 0,
   "native_only_with_candidates": 0,
   "native_only_without_candidates": 0,
-  "native_snapshot_captured_at": "2026-06-12T03:53:10Z",
+  "native_snapshot_captured_at": "2026-06-14T09:03:28Z",
   "network": "finney",
   "official_surface_count": 254,
   "probed_count": 129,
-  "probed_surface_count": 1136,
-  "registry_observed_surface_count": 832,
+  "probed_surface_count": 1150,
+  "registry_observed_surface_count": 846,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
@@ -100,5 +100,5 @@
     "overlays": "registry/subnets"
   },
   "subnets_without_official_surface": 57,
-  "surface_count": 1143
+  "surface_count": 1157
 }

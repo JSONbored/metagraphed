@@ -3,16 +3,16 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-12T03:58:58.940Z",
+      "captured_at": "2026-06-14T09:09:41.891Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-12T03:58:58.940Z",
+          "captured_at": "2026-06-14T09:09:41.891Z",
           "content_type": "application/json; charset=UTF-8",
           "hash": "fe0b7027c64483c36518429c5e56d5fc219e2b75780696b1d3d0ea141992e7ca",
-          "latency_ms": 1053,
+          "latency_ms": 960,
           "name": "Handshake58 OpenAPI schema",
           "provider": "handshake58",
           "schema_url": "https://handshake58.com/openapi.json",
@@ -48,7 +48,7 @@
       "total_path_count": 4
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-12T03:58:58.940Z",
+      "captured_at": "2026-06-14T09:09:41.891Z",
       "status": "captured",
       "surface_count": 3,
       "surfaces": [
@@ -85,7 +85,7 @@
       ]
     }
   },
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "netuid": 58,
   "notes": [
     "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",

@@ -1,5 +1,5 @@
 {
-  "content_hash": "4d424f04be150c0f8365e31ed173b942e306a075b5b6b9b2ac1e10faeba9766d",
+  "content_hash": "8ec4250803e96a59e7811f5cd3fe3101f9d04991353a7fc9f78683552e853d6e",
   "copyable_agent": {
     "description": "Paste-ready system prompt that turns any agent (Claude, Cursor, …) into a metagraphed-powered Bittensor integration agent.",
     "title": "Bittensor integration agent",
@@ -141,7 +141,7 @@
   ],
   "schema_version": 1,
   "summary": {
-    "callable_service_count": 67,
+    "callable_service_count": 69,
     "subnet_count": 129
   }
 }

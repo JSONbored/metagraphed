@@ -6,11 +6,12 @@ allways,Allways,subnet-team,provider-claimed,,https://all-ways.io
 alphacore,AlphaCore,subnet-team,official,https://github.com/AlphaCoreBittensor/alphacore,https://alpha-core.ai/
 backprop-finance,Backprop Finance,data-provider,provider-claimed,,https://backprop.finance
 bitads,BitAds,subnet-team,official,https://github.com/FirstTensorLabs/BitAds,https://bitads.ai/
+bitcast-network,Bitcast,subnet-team,community,,https://www.bitcast.network
 bitmind,BitMind,subnet-team,official,https://github.com/BitMind-AI,https://bitmind.ai/
 bitrecs,Bitrecs,subnet-team,official,https://github.com/bitrecs/bitrecs-subnet,https://www.bitrecs.ai/
 bitstarter,Bitstarter,subnet-team,official,,https://bitstarter.ai/
 blockmachine,BlockMachine,infrastructure-provider,provider-claimed,,https://blockmachine.io
-byzantium,Byzantium,subnet-team,official,,https://www.byzantiumai.net/
+byzantium,Byzantium,subnet-team,official,https://github.com/safe-scan-ai,https://www.byzantiumai.net/
 cacheon,Cacheon,subnet-team,official,https://github.com/latent-to/cacheon,https://cacheon.ai/
 chipforge,ChipForge,subnet-team,official,https://github.com/TatsuProject/ChipForge_SN84,https://www.chipforge.io/
 chutes,Chutes,subnet-team,official,https://github.com/chutesai/chutes,https://chutes.ai/
@@ -18,9 +19,11 @@ coldint,Coldint,subnet-team,official,https://github.com/coldint/coldint_validato
 compelle,Compelle,subnet-team,official,https://github.com/compelle/compelle-validator,https://compelle.com/
 compute-horde,Compute Horde,subnet-team,official,https://github.com/backend-developers-ltd/ComputeHorde,https://computehorde.io/
 connito,Connito,subnet-team,official,https://github.com/Connito-AI/Connito,https://connito.ai/
+covenant,Covenant AI,subnet-team,community,,https://www.covenant.ai
 degenbrain,DegenBrain,subnet-team,provider-claimed,,https://subnet90.com/
 desearch,Desearch,subnet-team,official,https://github.com/Desearch-ai/subnet-22,https://www.desearch.ai/
 ditto-assistant,Ditto,subnet-team,official,https://github.com/orgs/ditto-assistant/repositories,https://heyditto.ai/
+ditto,Ditto,subnet-team,community,,https://heyditto.ai
 djinn,Djinn,subnet-team,official,https://github.com/Djinn-Inc/djinn,https://www.djinn.gg/
 dwellir,Dwellir,infrastructure-provider,provider-claimed,,https://www.dwellir.com
 eightball,8 Ball,subnet-team,official,https://github.com/Barbariandev/8Ball_miner,https://8ball125.com/
@@ -42,6 +45,7 @@ hone,Hone,subnet-team,official,https://github.com/manifold-inc/hone,https://www.
 inference-labs,Inference Labs,subnet-team,official,https://github.com/inference-labs-inc/subnet-2,https://subnet2.inferencelabs.com/
 infinitehash,InfiniteHash,subnet-team,official,https://github.com/backend-developers-ltd/InfiniteHash,https://github.com/backend-developers-ltd/InfiniteHash
 its-ai,ItsAI,subnet-team,official,https://github.com/It-s-AI/llm-detection,https://its-ai.org/en
+lium,Lium,subnet-team,community,,https://lium.io
 luminar-network,Luminar Network,subnet-team,official,,https://luminar.network/
 macrocosmos,Macrocosmos,subnet-team,official,https://github.com/macrocosm-os/data-universe,https://www.macrocosmos.ai/
 mantis,MANTIS,subnet-team,official,https://github.com/Barbariandev/MANTIS,https://github.com/Barbariandev/MANTIS

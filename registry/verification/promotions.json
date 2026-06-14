@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2017,
-  "generated_at": "2026-06-12T03:52:59.910Z",
+  "candidate_count": 2050,
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
-  "observed_at": "2026-06-12T03:52:59.910Z",
+  "observed_at": "2026-06-14T09:03:05.163Z",
   "results": [
     {
       "candidate_id": "sn-0-backprop-dashboard",
@@ -500,6 +500,45 @@
         "transient_failure": false
       },
       "redirect_target": "https://www.macrocosmos.ai/team",
+      "status": "ok"
+    },
+    {
+      "candidate_id": "community-sn-2-sdk-pypi-org",
+      "classification": "live",
+      "confidence_score": 65,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "sdk",
+      "netuid": 2,
+      "provider": "inference-labs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "community-sn-2-website-www-inferencelabs-com",
+      "classification": "redirected",
+      "confidence_score": 68,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "netuid": 2,
+      "provider": "inference-labs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://inferencelabs.com/",
       "status": "ok"
     },
     {
@@ -3189,7 +3228,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.4.1-arm64.dmg",
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.4.2-arm64.dmg",
       "status": "ok"
     },
     {
@@ -3948,6 +3987,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "community-sn-13-example-github-com",
+      "classification": "live",
+      "confidence_score": 65,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "example",
+      "netuid": 13,
+      "provider": "macrocosmos",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "community-sn-13-sdk-github-com",
       "classification": "live",
       "confidence_score": 65,
@@ -4405,6 +4463,25 @@
         "transient_failure": false
       },
       "redirect_target": "https://www.macrocosmos.ai/team",
+      "status": "ok"
+    },
+    {
+      "candidate_id": "community-sn-14-subnet-api-api-cacheon-ai",
+      "classification": "live",
+      "confidence_score": 75,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 14,
+      "provider": "cacheon",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
       "status": "ok"
     },
     {
@@ -9545,6 +9622,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-28-native-chain-website",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "native-chain",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-28-subnetradar-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9638,6 +9734,139 @@
         "transient_failure": false
       },
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-api",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-docs",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-health",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-swagger",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-website-link-saygm-com-website-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "netuid": 28,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "failed"
     },
     {
       "candidate_id": "sn-29-backprop-dashboard",
@@ -10645,6 +10874,25 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 32,
+      "provider": "its-ai",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11243,6 +11491,25 @@
         "transient_failure": false
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 35,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-36-backprop-dashboard",
@@ -12093,6 +12360,25 @@
         "source_tier": "community-docs"
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "community-sn-39-docs-docs-basilica-ai",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 39,
+      "provider": "one-covenant",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-39-backprop-dashboard",
@@ -18751,6 +19037,25 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 62,
+      "provider": "ridges",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -20186,9 +20491,9 @@
     },
     {
       "candidate_id": "sn-66-native-chain-website",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "text/html",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "website",
       "netuid": 66,
@@ -20201,7 +20506,7 @@
         "source_tier": "native-chain",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-subnetradar-dashboard",
@@ -20300,28 +20605,28 @@
     },
     {
       "candidate_id": "sn-66-website-common-api",
-      "classification": "content-mismatch",
+      "classification": "dead",
       "confidence_score": 0,
-      "content_type": "text/html",
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
       "netuid": 66,
       "provider": "unarbos",
       "quality_signals": {
-        "content_type_matches_kind": false,
+        "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-website-common-docs",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "docs",
       "netuid": 66,
@@ -20334,13 +20639,13 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-website-common-health",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "text/plain",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
       "netuid": 66,
@@ -20353,75 +20658,56 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-website-common-openapi-json",
-      "classification": "content-mismatch",
+      "classification": "dead",
       "confidence_score": 0,
-      "content_type": "text/html",
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "openapi",
       "netuid": 66,
       "provider": "unarbos",
       "quality_signals": {
-        "content_type_matches_kind": false,
+        "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-website-common-swagger",
-      "classification": "content-mismatch",
+      "classification": "dead",
       "confidence_score": 0,
-      "content_type": "text/html",
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "openapi",
       "netuid": 66,
       "provider": "unarbos",
       "quality_signals": {
-        "content_type_matches_kind": false,
+        "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-66-website-common-swagger-json",
-      "classification": "content-mismatch",
+      "classification": "dead",
       "confidence_score": 0,
-      "content_type": "text/html",
+      "content_type": "text/plain; charset=utf-8",
       "error": null,
       "kind": "openapi",
       "netuid": 66,
       "provider": "unarbos",
       "quality_signals": {
-        "content_type_matches_kind": false,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "application/json",
-      "error": null,
-      "kind": "dashboard",
-      "netuid": 66,
-      "provider": "unarbos",
-      "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
@@ -20429,45 +20715,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-66-website-link-ninja-arbos-life-website-2",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "website",
-      "netuid": 66,
-      "provider": "unarbos",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
-      "candidate_id": "sn-66-website-link-ninja-arbos-life-website-3",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "website",
-      "netuid": 66,
-      "provider": "unarbos",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-67-backprop-dashboard",
@@ -23309,6 +23557,23 @@
       "status": "ok"
     },
     {
+      "candidate_id": "community-sn-76-source-repo-github-com",
+      "classification": "live",
+      "confidence_score": 80,
+      "error": null,
+      "kind": "source-repo",
+      "netuid": 76,
+      "provider": "byzantium",
+      "quality_signals": {
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
+        "public_safe": true,
+        "source_tier": "community-docs"
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-76-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23554,25 +23819,6 @@
         "transient_failure": false
       },
       "status": "failed"
-    },
-    {
-      "candidate_id": "sn-76-website-link-www-byzantiumai-net-website-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 76,
-      "provider": "byzantium",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
     },
     {
       "candidate_id": "sn-77-backprop-dashboard",
@@ -26495,6 +26741,23 @@
       "status": "ok"
     },
     {
+      "candidate_id": "community-sn-87-source-repo-github-com",
+      "classification": "live",
+      "confidence_score": 80,
+      "error": null,
+      "kind": "source-repo",
+      "netuid": 87,
+      "provider": "luminar-network",
+      "quality_signals": {
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
+        "public_safe": true,
+        "source_tier": "community-docs"
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-87-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -27232,6 +27495,25 @@
       "status": "failed"
     },
     {
+      "candidate_id": "community-sn-90-openapi-api-subnet90-com",
+      "classification": "live",
+      "confidence_score": 75,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 90,
+      "provider": "degenbrain",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-90-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -27824,6 +28106,25 @@
         "source_tier": "community-docs"
       },
       "status": "failed"
+    },
+    {
+      "candidate_id": "community-sn-93-dashboard-stats-bitcast-network",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 93,
+      "provider": "bitcast-network",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "status": "ok"
     },
     {
       "candidate_id": "sn-93-backprop-dashboard",
@@ -29489,25 +29790,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-97-website-link-us-east-1-hippius-com-website-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "netuid": 97,
-      "provider": "opentensor",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-98-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30640,6 +30922,43 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-101-native-chain-github",
+      "classification": "live",
+      "confidence_score": 80,
+      "error": null,
+      "kind": "source-repo",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
+        "public_safe": true,
+        "source_tier": "native-chain"
+      },
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-101-native-chain-website",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "native-chain",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101",
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-101-subnetradar-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30733,6 +31052,326 @@
         "transient_failure": false
       },
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-101-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/api",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/docs",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/health",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/openapi.json",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/swagger",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/swagger.json",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/login?return_to=https%3A%2F%2Fgithub.com%2Ftag101-ai%2Ftag101",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-10",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101/branches",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E&source=header-repo&source_repo=tag101-ai%2Ftag101",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-3",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-4",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-5",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/login?return_to=%2Ftag101-ai%2Ftag101",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-6",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101/actions",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-7",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101/projects",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-8",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101/security",
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-101-website-link-tag101-ai-website-9",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "netuid": 101,
+      "provider": "opentensor",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/tag101-ai/tag101/tag101-ai/tag101/pulse",
+      "status": "failed"
     },
     {
       "candidate_id": "sn-102-backprop-dashboard",
@@ -38166,11 +38805,11 @@
   "summary": {
     "by_classification": {
       "auth-required": 9,
-      "content-mismatch": 129,
-      "dead": 396,
-      "live": 1299,
+      "content-mismatch": 130,
+      "dead": 420,
+      "live": 1305,
       "rate-limited": 7,
-      "redirected": 141,
+      "redirected": 143,
       "transient": 4,
       "unsafe": 2,
       "unsupported": 30
@@ -38178,13 +38817,14 @@
     "by_kind": {
       "dashboard": 565,
       "data-artifact": 15,
-      "docs": 418,
-      "openapi": 274,
+      "docs": 424,
+      "example": 1,
+      "openapi": 281,
       "repo-registry": 2,
-      "sdk": 2,
-      "source-repo": 155,
-      "subnet-api": 217,
-      "website": 369
+      "sdk": 3,
+      "source-repo": 158,
+      "subnet-api": 222,
+      "website": 379
     },
     "by_provider": {
       "academia": 1,
@@ -38194,15 +38834,17 @@
       "alphacore": 12,
       "backprop-finance": 129,
       "bitads": 8,
+      "bitcast-network": 1,
       "bitmind": 2,
       "blockmachine": 18,
       "byzantium": 8,
-      "cacheon": 12,
+      "cacheon": 13,
       "chutes": 20,
       "coldint": 1,
       "compelle": 19,
       "compute-horde": 2,
       "connito": 9,
+      "degenbrain": 1,
       "desearch": 18,
       "ditto-assistant": 17,
       "djinn": 17,
@@ -38217,23 +38859,25 @@
       "hashichain": 1,
       "hippius": 18,
       "hone": 12,
-      "inference-labs": 11,
+      "inference-labs": 13,
       "infinitehash": 8,
-      "its-ai": 18,
-      "macrocosmos": 68,
+      "its-ai": 19,
+      "luminar-network": 1,
+      "macrocosmos": 69,
       "mantis": 1,
       "mobiusfund": 13,
       "natix": 19,
       "nepher-robotics": 10,
       "numinous": 13,
+      "one-covenant": 1,
       "oneoneone": 1,
-      "opentensor": 415,
+      "opentensor": 441,
       "oro": 16,
       "platform-network": 12,
       "qbittensor-labs": 36,
       "readyai": 3,
       "redteam": 10,
-      "ridges": 8,
+      "ridges": 9,
       "shiftlayer": 1,
       "signalplus": 1,
       "silx-labs": 12,
@@ -38253,13 +38897,13 @@
       "tensorusd": 14,
       "trajectoryrl": 12,
       "trishool": 12,
-      "unarbos": 11,
+      "unarbos": 8,
       "vanta": 11,
       "vectorchat": 1,
       "verathos": 9,
       "vidaio": 16
     },
-    "promotable_count": 1440
+    "promotable_count": 1448
   },
   "verification_finished_at": null,
   "verification_started_at": null
