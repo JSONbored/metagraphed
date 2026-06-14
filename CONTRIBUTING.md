@@ -43,20 +43,25 @@ Community data becomes a reviewed **candidate**, not direct registry truth. PR-f
 
 > Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts.
 
-Generate a candidate locally:
+Generate a candidate locally — three steps:
 
 ```bash
+# 1. Find the provider slug for the team/operator behind this surface.
+#    (No match? Register one in the same PR with `npm run provider:new`.)
+npm run providers:list
+
+# 2. Generate the candidate with a REAL --provider slug (a placeholder like
+#    "community" is not a registered provider and will fail validation).
 npm run candidate:new -- \
   --netuid 7 --kind docs \
   --url https://docs.example.com \
   --source-url https://github.com/example/project \
-  --provider community --submitted-by <github-login> --write
+  --provider <provider-slug> --submitted-by <github-login> --write
+
+# 3. Check it before pushing — a fast local pre-check that catches schema +
+#    provider-slug mistakes without the full build (CI runs the full validate).
+npm run validate:candidate -- registry/candidates/community/<your-file>.json
 ```
-
-Two helpers make this faster:
-
-- **Find a real provider slug** for `--provider` (instead of `community`, which routes to manual review and won't auto-merge): `npm run providers:list`.
-- **Check your candidate before pushing** — a fast local pre-check that catches schema mistakes and bad provider slugs without running the full build: `npm run validate:candidate -- registry/candidates/community/<your-file>.json` (no argument validates every community candidate).
 
 A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 

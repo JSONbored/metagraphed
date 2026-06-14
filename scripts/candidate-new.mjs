@@ -52,6 +52,18 @@ if (authRequired === null) {
   fail("--auth-required must be true or false");
 }
 
+// `provider` must be a registered slug for the candidate to validate (the
+// default placeholder "community" is NOT one). Warn — don't fail — so adding a
+// provider alongside the candidate still works; the contributor can fix it.
+const providerIds = new Set((await loadProviders()).map((entry) => entry.id));
+if (!providerIds.has(provider)) {
+  console.warn(
+    `Warning: provider "${provider}" is not a registered slug, so this candidate will ` +
+      "FAIL `npm run validate:candidate` and CI. Pick a real one with `npm run providers:list`, " +
+      "or register it with `npm run provider:new`.",
+  );
+}
+
 const host = new URL(url).hostname;
 const id = `community-sn-${netuid}-${kind}-${slugify(host)}`;
 const outPath =
