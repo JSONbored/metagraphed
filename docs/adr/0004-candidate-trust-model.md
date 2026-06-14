@@ -36,17 +36,20 @@ raw candidates. Candidates surface under explicitly-labelled
 Three guards defend the path from attacker-controlled text to a callable URL:
 
 ### 1. Prompt-injection sanitization (ADR 0003 / #339)
+
 All chain text is run through `sanitizeChainText` before it reaches an LLM, and
 the profile carries `injection_scrubbed`. The MCP tools + `llms.txt` additionally
 warn that field values are untrusted data (#340).
 
 ### 2. SSRF protection (DNS-resolving)
+
 `isUnsafeUrl` / `isUnsafeResolvedUrl` (`scripts/lib.mjs`) reject URLs that target
 internal infrastructure, checking against `unsafeIpBlocks`:
 loopback (`127.0.0.0/8`, `::1`), RFC-1918 private (`10/8`, `172.16/12`,
 `192.168/16`), CGNAT (`100.64/10`), **link-local + cloud metadata
 (`169.254.0.0/16`, e.g. `169.254.169.254`)**, the unspecified range, multicast,
 and the IPv6 equivalents (`fc00::/7`, `fe80::/10`, NAT64).
+
 - **Intake** (`normalizePublicUrl`) applies the synchronous literal-IP filter
   `isUnsafeUrl` so obviously-internal targets never enter the bundle.
 - **Probe + promotion** (`fetchWithSafeRedirects`, `generated-overlays.mjs`)
@@ -56,6 +59,7 @@ and the IPv6 equivalents (`fc00::/7`, `fe80::/10`, NAT64).
   check is what gates anything that gets probed or promoted.
 
 ### 3. Brand-impersonation guard (#341)
+
 `isBrandImpersonationUrl` rejects candidate URLs that impersonate metagraphed's
 own domain (`metagraph.sh.evil.com`, `metagraphsh.com`, `metagraph-sh.io`). These
 pass the SSRF guard — they resolve to public IPs — but a `base_url` reading as

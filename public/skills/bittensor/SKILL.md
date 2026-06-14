@@ -63,7 +63,7 @@ Cursor / other clients: add an MCP server with url
   for "is it up right now". The committed registry data (names, APIs, schemas)
   refreshes every ~6h.
 - **Auth honestly.** If `auth_required` is true, the user needs a key from that
-  subnet's team — metagraphed tells you *that* auth is required and *which*
+  subnet's team — metagraphed tells you _that_ auth is required and _which_
   scheme, not the secret itself.
 - **Scope.** ~30 of ~129 subnets expose callable public APIs today; the rest are
   catalogued but not yet integrable. `agent-catalog` is the integrable subset.

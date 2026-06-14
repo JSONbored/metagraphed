@@ -23,7 +23,7 @@ This created three coupled problems, all observed in production:
 1. **Generated-artifact churn.** Every data change re-commits all ~22 dual
    artifacts — including `surfaces.json` (1.1 MB), `evidence-ledger.json`
    (858 KB), `search.json`, `profiles.json` — and the digests (`r2-manifest`,
-   `build-summary`, `changelog`) churn on *every* build. The UGC import bot
+   `build-summary`, `changelog`) churn on _every_ build. The UGC import bot
    (`intake-import-pr.yml`) re-commits the whole set for a single 2 KB
    community submission. Git size grows with data volume and contribution rate,
    not curation effort.
@@ -32,7 +32,7 @@ This created three coupled problems, all observed in production:
    them. Run mid-`pipeline:refresh` (before the workflow commits), it
    self-fails the sync job whenever a refresh changes a diff-checked artifact.
 3. **A freshness/merge race.** The publish gate requires fresh probe-derived
-   health *and* fresh adapter snapshots, but the production build only re-probed
+   health _and_ fresh adapter snapshots, but the production build only re-probed
    health — adapters came from committed data that ages past the block window,
    so the publish depended on a recently-merged sync PR racing a 12 h window.
 
@@ -42,7 +42,7 @@ build is deterministic from committed inputs, and R2 keeps versioned `runs/`
 history. Their only roles — fast ASSETS edge path, PR-diff review, and
 reproducibility — are respectively a marginal optimization (R2 + 300 s edge
 cache is comparable), low value (review belongs on inputs; contributors are
-*blocked* from editing generated files), and redundant (outputs are a pure
+_blocked_ from editing generated files), and redundant (outputs are a pure
 function of committed inputs).
 
 ## Decision
@@ -59,13 +59,13 @@ everything else from R2.**
    `freshness`, `changelog`, `review/*`, `build-summary`, `r2-manifest`,
    `schema-drift`, `profile-completeness`.
 3. **Self-sufficient publish:** the production build re-snapshots adapters (it
-   already re-probes health), so all freshness-gated data is fresh *by
-   construction*; the gate verifies rather than blocks, and any push publishes.
+   already re-probes health), so all freshness-gated data is fresh _by
+   construction_; the gate verifies rather than blocks, and any push publishes.
 4. **UGC = a one-file commit:** the import bot commits only the source candidate;
    artifacts are rebuilt and published to R2 by the publish workflow.
 
-Verifiability of "trustworthy, complete coverage" shifts from *diffing committed
-outputs* to **reviewable committed inputs + a deterministic reproducible build +
+Verifiability of "trustworthy, complete coverage" shifts from _diffing committed
+outputs_ to **reviewable committed inputs + a deterministic reproducible build +
 the published, versioned R2 evidence-ledger** — a cleaner provenance story.
 
 ## Consequences
@@ -77,7 +77,7 @@ the published, versioned R2 evidence-ledger** — a cleaner provenance story.
 - Worker serves the moved artifacts from R2 + edge cache (first-hit ~ms, then
   cached; the existing 5 s R2 timeout / 504 handling applies).
 - **Hard sequencing constraint:** R2 must be populated by a successful publish
-  *before* an artifact is made R2-only, or production 404s. Phase 2 therefore
+  _before_ an artifact is made R2-only, or production 404s. Phase 2 therefore
   depends on Phase 1 shipping a green publish first.
 - Local development must `npm run build` to serve the data locally (already the
   case).

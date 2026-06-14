@@ -336,10 +336,13 @@ describe("webhook route edge cases", () => {
 
   test("404 on DELETE of an unknown subscription id", async () => {
     const res = await handleRequest(
-      req("/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000", {
-        method: "DELETE",
-        headers: { "x-metagraph-webhook-secret": "whatever" },
-      }),
+      req(
+        "/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000",
+        {
+          method: "DELETE",
+          headers: { "x-metagraph-webhook-secret": "whatever" },
+        },
+      ),
       envWith(makeKv()),
       {},
     );
@@ -373,7 +376,9 @@ describe("webhook route edge cases", () => {
       throw new Error("kv get down");
     };
     const res = await handleRequest(
-      req("/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000"),
+      req(
+        "/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000",
+      ),
       envWith(kv),
       {},
     );

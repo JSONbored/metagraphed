@@ -5,7 +5,6 @@ import {
   cpSync,
   existsSync,
   mkdtempSync,
-  mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,

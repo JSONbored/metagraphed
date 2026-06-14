@@ -649,8 +649,7 @@ const readinessByNetuid = new Map(
 // Index gets the compact score (list/ranking); the profile carries the full
 // component breakdown for the detail view.
 for (const entry of subnetIndex) {
-  entry.integration_readiness =
-    readinessByNetuid.get(entry.netuid)?.score ?? 0;
+  entry.integration_readiness = readinessByNetuid.get(entry.netuid)?.score ?? 0;
 }
 for (const profile of profileArtifacts.profiles) {
   const readiness = readinessByNetuid.get(profile.netuid) ?? null;
@@ -1165,7 +1164,11 @@ function buildSubnetServices(netuid) {
 // up right now" dimension is intentionally separate (get_subnet_health / the
 // health overlay). Components are published so agents can re-weight to their own
 // needs. Rubric: docs/integration-readiness.md.
-function subnetIntegrationReadiness({ services, lifecycle, completenessScore }) {
+function subnetIntegrationReadiness({
+  services,
+  lifecycle,
+  completenessScore,
+}) {
   const callable = services.filter((service) => service.eligibility.callable);
   const components = {
     has_callable_api: services.length > 0,
@@ -1364,14 +1367,17 @@ const serverCardContent = {
   _meta: MCP_REGISTRY_META,
   tools: listToolDefinitions(),
 };
-await writeJson(path.join(repoRoot, "public/.well-known/mcp/server-card.json"), {
-  ...serverCardContent,
-  // Real publish time + deterministic content fingerprint (issue #349) so
-  // agents don't read the deterministic 1970 generated_at as "stale".
-  generated_at: generatedAt,
-  published_at: publishedAt(),
-  content_hash: hashJson(serverCardContent),
-});
+await writeJson(
+  path.join(repoRoot, "public/.well-known/mcp/server-card.json"),
+  {
+    ...serverCardContent,
+    // Real publish time + deterministic content fingerprint (issue #349) so
+    // agents don't read the deterministic 1970 generated_at as "stale".
+    generated_at: generatedAt,
+    published_at: publishedAt(),
+    content_hash: hashJson(serverCardContent),
+  },
+);
 await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
   schema_version: 1,
   servers: [
@@ -1651,7 +1657,11 @@ const sitemapUrls = [
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls
   .map((loc) => `  <url><loc>${loc}</loc></url>`)
   .join("\n")}\n</urlset>\n`;
-await fs.writeFile(path.join(repoRoot, "public/sitemap.xml"), sitemapXml, "utf8");
+await fs.writeFile(
+  path.join(repoRoot, "public/sitemap.xml"),
+  sitemapXml,
+  "utf8",
+);
 await fs.writeFile(
   path.join(repoRoot, "public/robots.txt"),
   `User-agent: *\nAllow: /\nSitemap: ${llmsApiBase}/sitemap.xml\n`,
@@ -1692,11 +1702,7 @@ Anonymous abuse-control limits apply per client IP (no key raises them):
 - OpenAPI 3.1: ${llmsApiBase}/metagraph/openapi.json
 - MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
 `;
-await fs.writeFile(
-  path.join(repoRoot, "public/auth.md"),
-  authMarkdown,
-  "utf8",
-);
+await fs.writeFile(path.join(repoRoot, "public/auth.md"), authMarkdown, "utf8");
 
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(

@@ -87,14 +87,18 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
   return {
     block: nativeSubnet.block,
     candidate_count: 0,
-    categories: nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"],
+    categories:
+      nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"],
     coverage_level: "native-only",
     curation_level: "native",
     dashboard_url: null,
-    description: cleanDescription(nativeSubnet.chain_identity?.description) || null,
+    description:
+      cleanDescription(nativeSubnet.chain_identity?.description) || null,
     docs_url: null,
     gaps: {
-      missing_kinds: EXPECTED_GAP_KINDS.filter((kind) => !supportedKinds.has(kind)),
+      missing_kinds: EXPECTED_GAP_KINDS.filter(
+        (kind) => !supportedKinds.has(kind),
+      ),
       supported_kinds: [...supportedKinds].sort(),
       gap_notes: [],
     },
@@ -123,7 +127,10 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
       interface_metadata: "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
-    logo_url: backfilledIdentityUrl(null, nativeSubnet.chain_identity?.logo_url),
+    logo_url: backfilledIdentityUrl(
+      null,
+      nativeSubnet.chain_identity?.logo_url,
+    ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug: `sn-${nativeSubnet.netuid}`,
     source_repo: sourceRepo,
@@ -246,21 +253,26 @@ export async function buildNetworkRegistry({ prefix, snapshotPath }) {
     ),
   });
 
-  const detailDir = path.dirname(artifactOutputPath(`${prefix}/subnets/0.json`));
+  const detailDir = path.dirname(
+    artifactOutputPath(`${prefix}/subnets/0.json`),
+  );
   await fs.rm(detailDir, { recursive: true, force: true });
   await fs.mkdir(detailDir, { recursive: true });
   for (const subnet of subnets) {
-    await writeJson(artifactOutputPath(`${prefix}/subnets/${subnet.netuid}.json`), {
-      schema_version: SCHEMA_VERSION,
-      generated_at: generatedAt,
-      subnet,
-      candidate_surfaces: [],
-      candidates: [],
-      endpoints: [],
-      gaps: subnet.gaps,
-      surfaces: [],
-      verified_surfaces: [],
-    });
+    await writeJson(
+      artifactOutputPath(`${prefix}/subnets/${subnet.netuid}.json`),
+      {
+        schema_version: SCHEMA_VERSION,
+        generated_at: generatedAt,
+        subnet,
+        candidate_surfaces: [],
+        candidates: [],
+        endpoints: [],
+        gaps: subnet.gaps,
+        surfaces: [],
+        verified_surfaces: [],
+      },
+    );
   }
 
   await writeJson(

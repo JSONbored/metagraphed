@@ -717,7 +717,14 @@ describe("ai-search defensive branches", () => {
     const block = formatAskContextBlock(
       [{ metadata: { type: "subnet", title: "Apex", netuid: 1 } }],
       new Map([
-        [1, { callable_count: 2, base_url: "https://api.apex.io", health: "operational" }],
+        [
+          1,
+          {
+            callable_count: 2,
+            base_url: "https://api.apex.io",
+            health: "operational",
+          },
+        ],
       ]),
     );
     const parsed = JSON.parse(block);
