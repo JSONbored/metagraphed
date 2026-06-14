@@ -17,24 +17,45 @@ export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
 
 const credentialedUrlParams = new Set([
+  "access_key",
+  "access-token",
+  "access_token",
   "app_domain",
+  "api-key",
+  "api_key",
+  "apikey",
+  "auth",
+  "authorization",
   "authuser",
+  "bearer",
   "client_id",
   "code_challenge",
   "code_challenge_method",
   "continue",
+  "cookie",
+  "credential",
   "dsh",
   "flowname",
+  "jwt",
+  "key",
   "nonce",
   "opparams",
   "part",
+  "password",
   "prompt",
   "rart",
   "redirect_uri",
+  "refresh-token",
+  "refresh_token",
   "response_type",
   "scope",
+  "secret",
   "service",
+  "session",
+  "sig",
+  "signature",
   "state",
+  "token",
   "x-amz-credential",
   "x-amz-signature",
   "x-amz-security-token",
@@ -778,9 +799,10 @@ export function redactCredentialedUrls(value) {
 
 // Keys whose VALUES are redacted from a captured live response before it is
 // committed as a fixture (issue #352) — credentials/secrets that a subnet API
-// might echo back. Matched whole-word/segment, case-insensitive.
+// might echo back. Match common separator-delimited, camelCase, and compact
+// spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(^|[_-])(token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token)([_-]|$)/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
