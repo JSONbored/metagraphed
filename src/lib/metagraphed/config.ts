@@ -31,9 +31,13 @@ let cached: string | null = null;
 function sanitizeApiBase(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim().replace(/\/$/, "");
+  // Scheme allowlist on the value that actually flows downstream — only an
+  // http(s) origin may reach the footer href. The leading-anchored regexp is
+  // the taint barrier CodeQL js/xss-through-dom recognizes; the URL parse then
+  // rejects anything malformed (e.g. "https:" with no host).
+  if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed)) return null;
   try {
-    const { protocol } = new URL(trimmed);
-    if (protocol !== "http:" && protocol !== "https:") return null;
+    new URL(trimmed);
   } catch {
     return null;
   }
