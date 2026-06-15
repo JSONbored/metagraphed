@@ -45,14 +45,18 @@ const CLAUDE_URL = `https://claude.ai/new?q=${encodeURIComponent(AGENT_PROMPT)}`
 const CHATGPT_URL = `https://chatgpt.com/?q=${encodeURIComponent(AGENT_PROMPT)}`;
 
 // Icon + tone per resource kind. agent/skill lead (accent); the rest are neutral.
-const KIND_META: Record<string, { icon: typeof Bot; tone: string }> = {
+const KIND_META = {
   agent: { icon: Bot, tone: "text-accent" },
   skill: { icon: Sparkles, tone: "text-accent" },
   index: { icon: BookOpen, tone: "text-ink-muted" },
   contract: { icon: FileCode2, tone: "text-ink-muted" },
   api: { icon: Boxes, tone: "text-ink-muted" },
   data: { icon: Database, tone: "text-ink-muted" },
-};
+} satisfies Record<string, { icon: typeof Bot; tone: string }>;
+
+function kindMeta(kind: string) {
+  return Object.hasOwn(KIND_META, kind) ? KIND_META[kind as keyof typeof KIND_META] : KIND_META.api;
+}
 
 // Typed SDKs (published + versioned on PyPI / npm) that wrap every route.
 const SDKS: { lang: string; pkg: string; install: string; url: string }[] = [
@@ -203,7 +207,7 @@ function AgentsBody() {
         />
         <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
           {res.resources.map((r) => {
-            const meta = KIND_META[r.kind] ?? KIND_META.api;
+            const meta = kindMeta(r.kind);
             const Icon = meta.icon;
             return (
               <div key={r.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-card">

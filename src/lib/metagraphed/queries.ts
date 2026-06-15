@@ -3,6 +3,7 @@ import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import type {
   AdapterSnapshot,
+  AgentResource,
   AgentResources,
   Candidate,
   Coverage,
@@ -827,6 +828,77 @@ export const rpcUsageQuery = (window = "7d") =>
     staleTime: STALE_SHORT,
   });
 
+function stringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+const AGENT_RESOURCE_KINDS = new Set(["agent", "skill", "index", "contract", "api", "data"]);
+
+function normalizeAgentResource(raw: unknown, index: number): AgentResource | undefined {
+  const r = recordValue(raw);
+  const id = stringValue(r.id, `resource-${index}`);
+  const title = stringValue(r.title);
+  const url = stringValue(r.url);
+  if (!title || !url) return undefined;
+
+  const kind = stringValue(r.kind);
+  return {
+    id,
+    kind: AGENT_RESOURCE_KINDS.has(kind) ? kind : "api",
+    title,
+    url,
+  };
+}
+
+function normalizeAgentResources(raw: unknown): AgentResources {
+  const d = recordValue(raw);
+  const copyableAgent = recordValue(d.copyable_agent);
+  const mcp = recordValue(d.mcp);
+  const summary = recordValue(d.summary);
+  const tools = Array.isArray(mcp.tools)
+    ? mcp.tools
+        .map((tool) => {
+          const t = recordValue(tool);
+          return { name: stringValue(t.name), title: stringValue(t.title) || undefined };
+        })
+        .filter((tool) => tool.name)
+    : [];
+  const resources = Array.isArray(d.resources)
+    ? d.resources.flatMap((resource, index) => {
+        const normalized = normalizeAgentResource(resource, index);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+
+  return {
+    generated_at: stringValue(d.generated_at) || null,
+    published_at: stringValue(d.published_at) || null,
+    copyable_agent: {
+      title: stringValue(copyableAgent.title),
+      description: stringValue(copyableAgent.description),
+      url: stringValue(copyableAgent.url),
+    },
+    mcp: {
+      endpoint: stringValue(mcp.endpoint),
+      install: stringValue(mcp.install),
+      server_card: stringValue(mcp.server_card),
+      transport: stringValue(mcp.transport, "MCP"),
+      tools,
+    },
+    summary: {
+      callable_service_count: finiteNumber(summary.callable_service_count),
+      subnet_count: finiteNumber(summary.subnet_count),
+    },
+    resources,
+  };
+}
+
 // /api/v1/agent-resources — the machine-readable index of every AI surface
 // (MCP, agent.md, llms.txt, openapi, catalog, datasets, …). Single object.
 export const agentResourcesQuery = () =>
@@ -834,7 +906,7 @@ export const agentResourcesQuery = () =>
     queryKey: k("agent-resources"),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>("/api/v1/agent-resources", { signal });
-      return { ...res, data: res.data as AgentResources } as ApiResult<AgentResources>;
+      return { ...res, data: normalizeAgentResources(res.data) } as ApiResult<AgentResources>;
     },
     staleTime: STALE_MED,
   });
