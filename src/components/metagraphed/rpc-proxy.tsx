@@ -18,8 +18,14 @@ const PROXY_CHAINS: Record<string, { chain: string; label: string }> = {
   testnet: { chain: "test", label: "test · testnet" },
 };
 
+// Single-quote the URL so a copy-pasted curl command can't let the shell
+// interpret characters in it.
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 function curlFor(url: string): string {
-  return `curl -s ${url} \\
+  return `curl -s ${shellSingleQuote(url)} \\
   -X POST -H 'content-type: application/json' \\
   -d '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader","params":[]}'`;
 }
