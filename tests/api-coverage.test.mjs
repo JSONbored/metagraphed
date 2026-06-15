@@ -1156,3 +1156,59 @@ describe("logEvent", () => {
     assert.equal(res.status, 504);
   });
 });
+
+// --- overlay edge-cache (cacheable overlay route) -----------------------------
+describe("overlay edge-cache", () => {
+  test("serves an overlay cache hit and honors if-none-match (304)", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_CONTROL: makeKv({
+        "health:meta": { last_run_at: "2026-06-15T00:00:00.000Z" },
+      }),
+    };
+    const etag = '"overlay-test-etag"';
+    const cachedBody = JSON.stringify({ ok: true, data: { endpoints: [] } });
+    const cache = {
+      async match() {
+        return new Response(cachedBody, {
+          status: 200,
+          headers: { etag, "content-type": "application/json" },
+        });
+      },
+      async put() {},
+    };
+    await withGlobals({ cache }, async () => {
+      // (a) no if-none-match → the cached overlay response is returned as-is.
+      const hit = await handleRequest(req("/api/v1/endpoints"), env, {});
+      assert.equal(hit.status, 200);
+      assert.equal(hit.headers.get("etag"), etag);
+      // (b) matching if-none-match → 304 Not Modified.
+      const notModified = await handleRequest(
+        req("/api/v1/endpoints", { headers: { "if-none-match": etag } }),
+        env,
+        {},
+      );
+      assert.equal(notModified.status, 304);
+    });
+  });
+});
+
+// --- HEAD probe on an AI route -------------------------------------------------
+describe("semantic-search HEAD probe", () => {
+  test("HEAD returns a headers-only 200 without running inference", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_ENABLE_AI: "true",
+      AI: { run: async () => ({}) },
+      VECTORIZE: { query: async () => ({ matches: [] }) },
+    };
+    const res = await handleRequest(
+      req("/api/v1/search/semantic?q=x", { method: "HEAD" }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.equal(await res.text(), "");
+  });
+});
