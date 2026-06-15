@@ -1766,12 +1766,43 @@ for (const subnet of mergedSubnets) {
     claims: claimsByNetuid.get(subnet.netuid) || [],
   });
 }
+// Testnet base-layer RPC endpoints → the static /rpc/v1/test pool (see
+// registry/native/test-base-endpoints.json). Mapped to the probe-derived endpoint
+// shape with static eligibility/score so the proxy can route immediately; the
+// in-isolate breaker + failover handle liveness, /api/v1/rpc/usage the analytics.
+const testnetBaseEndpoints = await readOptionalJson(
+  path.join(repoRoot, "registry/native/test-base-endpoints.json"),
+);
+const testnetRpcPoolEndpoints = (testnetBaseEndpoints?.endpoints || []).map(
+  (endpoint) => ({
+    id: endpoint.id,
+    kind: endpoint.kind || "subtensor-rpc",
+    url: endpoint.url,
+    provider: endpoint.provider || "unknown",
+    layer: "bittensor-base",
+    score: 100,
+    pool_eligible: true,
+    status: "unknown",
+    health_source: "not-monitored",
+    health_stale: true,
+    latency_ms: null,
+    latest_block: null,
+    observed_at: null,
+    last_ok: null,
+    archive_support: false,
+    score_reasons: [{ reason: "static-testnet-base-layer", points: 0 }],
+    pool_eligibility_reasons: [
+      "static testnet pool member; liveness via proxy breaker + failover",
+    ],
+  }),
+);
 await writeJson(
   artifactFile("rpc/pools.json"),
   buildEndpointPoolArtifact({
     generatedAt,
     contractVersion,
     rpcArtifact: rpcEndpoints,
+    testnetEndpoints: testnetRpcPoolEndpoints,
   }),
 );
 await writeJson(

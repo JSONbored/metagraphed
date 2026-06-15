@@ -1889,19 +1889,30 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       400,
     );
   }
-  const poolId = "finney-rpc";
+  // Network-aware pool selection: /rpc/v1/{network} → its pool (finney→finney-rpc,
+  // test→test-rpc). An unknown network 404s instead of silently routing to
+  // mainnet. `network` also tags the B3 usage telemetry below.
+  const network = url.pathname.split("/")[3] || "";
+  const poolId = RPC_PROXY_POOLS[network];
+  if (!poolId) {
+    return errorResponse(
+      "rpc_network_unsupported",
+      `Unknown RPC network "${network || "(none)"}". Supported networks: ${Object.keys(RPC_PROXY_POOLS).join(", ")}.`,
+      404,
+      { supported_networks: Object.keys(RPC_PROXY_POOLS) },
+    );
+  }
   const staticPool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
   // Overlay the 2-minute cron health so the proxy avoids sustained-down endpoints
   // (the in-isolate breaker still handles instantaneous failures). Falls back to
-  // the static pool when the live snapshot is cold.
+  // the static pool when the live snapshot is cold (always the case for the static
+  // testnet pool, which is intentionally not probe-derived).
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
   const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
-  // Usage telemetry (B3): network = the /rpc/v1/{network} path segment; startedAt
-  // anchors end-to-end proxy latency. recordRpcUsage is best-effort + async, so it
-  // never adds latency to — or can fail — the proxied call (see the helper).
-  const network = url.pathname.split("/")[3] || "finney";
+  // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
+  // recorder is best-effort + async (never adds latency to / fails the call).
   const startedAt = Date.now();
   const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
   if (!candidates.length) {
@@ -2043,6 +2054,9 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
 const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
+// /rpc/v1/{network} → the pool id served from rpc/pools.json. Adding a network
+// here (plus its pool + allowlisted origins) is all the proxy needs to serve it.
+const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
 // (~2 min) tolerates cross-provider probe-timing skew while still routing around

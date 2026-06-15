@@ -1789,6 +1789,11 @@ export function buildEndpointPoolArtifact({
   contractVersion,
   rpcArtifact = null,
   endpointArtifact = null,
+  // Static, non-default-network base-layer RPC endpoints (e.g. testnet). These
+  // are NOT probe-derived: they carry static pool_eligible/score so /rpc/v1/{net}
+  // can route immediately, with the proxy's in-isolate breaker + failover handling
+  // liveness. Shape matches the mapped `endpoints` below (see test-base-endpoints).
+  testnetEndpoints = [],
 }) {
   const sourceArtifact = endpointArtifact || rpcArtifact || { endpoints: [] };
   const endpoints = (sourceArtifact.endpoints || []).map((endpoint) => {
@@ -1855,6 +1860,11 @@ export function buildEndpointPoolArtifact({
         "archive",
         endpoints.filter((endpoint) => endpoint.archive_support === true),
       ),
+      // Testnet base-layer RPC pool (/rpc/v1/test). Static members — appended only
+      // when configured (registry/native/test-base-endpoints.json present).
+      ...(testnetEndpoints.length
+        ? [endpointPool("test-rpc", "subtensor-rpc", testnetEndpoints)]
+        : []),
     ],
   };
 }
