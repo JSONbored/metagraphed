@@ -234,6 +234,14 @@
       "review_state": "maintainer-approved",
       "reviewed_at": "2026-06-12T00:00:00.000Z",
       "notes": "Approved cross-network lineage for Bitrecs ↔ gamma_small; generated equality alone must not create new public lineage links."
+    },
+    {
+      "mainnet_netuid": 74,
+      "testnet_netuid": 422,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Gittensor SN74 ↔ testnet 422 (entrius-test). Documented in the project's own repo: entrius/gittensor .env.example reads 'NETUID=74 # 422 if using testnet'. Evidence is the repo config (github_repo), not on-chain field equality — testnet 422 declares no on-chain repo."
     }
   ]
 }

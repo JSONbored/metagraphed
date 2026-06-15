@@ -1,7 +1,7 @@
 {
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "graduated_subnet_count": 29,
-  "link_count": 29,
+  "graduated_subnet_count": 30,
+  "link_count": 30,
   "links": [
     {
       "mainnet_name": "Apex",
@@ -140,6 +140,14 @@
       "testnet_netuid": 69
     },
     {
+      "mainnet_name": "Gittensor",
+      "mainnet_netuid": 74,
+      "mainnet_slug": "gittensor",
+      "matched_by": "github_repo",
+      "testnet_name": "entrius-test",
+      "testnet_netuid": 422
+    },
+    {
       "mainnet_name": "MVTRX",
       "mainnet_netuid": 79,
       "mainnet_slug": "sn-79",
@@ -238,11 +246,11 @@
   ],
   "matched_by_counts": {
     "chain_name": 24,
-    "github_repo": 5
+    "github_repo": 6
   },
   "published_at": null,
   "schema_version": 1,
   "source_network": "mainnet",
   "target_network": "testnet",
-  "testnet_only_count": 477
+  "testnet_only_count": 476
 }
