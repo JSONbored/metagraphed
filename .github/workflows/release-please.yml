@@ -5,8 +5,10 @@ name: release-please
 # python → PyPI, "." → the hosted platform) that bumps the SemVer + regenerates
 # that component's CHANGELOG.md from the conventional commits. Merging a Release
 # PR tags the component (e.g. client-v0.3.0) and creates the GitHub Release with
-# the generated notes. The OIDC publish workflows (publish-client / publish-python)
-# trigger on those tags (and keep a manual workflow_dispatch override). Commits are
+# the generated notes. release-please then dispatches the OIDC publish workflows
+# (publish-client / publish-python) via workflow_dispatch — see the Dispatch steps
+# below. A tag-push trigger can't be used: GITHUB_TOKEN-created tags don't fire
+# workflows, and the validate gate requires GITHUB_REF=refs/heads/main. Commits are
 # already Conventional Commits, so the changelog is generated, not hand-maintained.
 on:
   push:
