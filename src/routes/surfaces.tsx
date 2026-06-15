@@ -11,6 +11,7 @@ import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
@@ -202,7 +203,17 @@ function SurfacesTable() {
             <span className="mg-label">{s.kind ?? "surface"}</span>
             <CurationChip level={s.curation_level} />
           </div>
-          <div className="mt-1 font-medium text-ink-strong truncate">{s.name ?? "—"}</div>
+          <div className="mt-1 flex items-center gap-2">
+            <BrandIcon
+              url={s.url}
+              providerSlug={s.provider_slug}
+              name={s.name ?? s.provider}
+              fallback={s.netuid}
+              size={20}
+              className="shrink-0"
+            />
+            <span className="font-medium text-ink-strong truncate">{s.name ?? "—"}</span>
+          </div>
           {s.url ? (
             <div className="mt-1 text-[12px] truncate">
               <ExternalLink
@@ -301,7 +312,19 @@ function SurfacesTable() {
                   )}
                 </td>
                 <td className="px-3 py-2 font-mono text-[11px]">{s.kind ?? "—"}</td>
-                <td className="px-3 py-2 font-medium text-ink-strong">{s.name ?? "—"}</td>
+                <td className="px-3 py-2 font-medium text-ink-strong">
+                  <span className="inline-flex items-center gap-2">
+                    <BrandIcon
+                      url={s.url}
+                      providerSlug={s.provider_slug}
+                      name={s.name ?? s.provider}
+                      fallback={s.netuid}
+                      size={18}
+                      className="shrink-0"
+                    />
+                    <span className="truncate">{s.name ?? "—"}</span>
+                  </span>
+                </td>
                 <td className="px-3 py-2 text-[12px]">
                   {s.url ? (
                     <ExternalLink

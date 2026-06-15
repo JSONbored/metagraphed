@@ -27,6 +27,7 @@ import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
 import { Kbd } from "./kbd";
+import { BrandIcon } from "./brand-icon";
 import { classNames } from "@/lib/metagraphed/format";
 import { searchQuery } from "@/lib/metagraphed/queries";
 
@@ -514,6 +515,14 @@ function GlobalSearch() {
                               role="option"
                               aria-selected={isActive}
                             >
+                              <BrandIcon
+                                url={h.url}
+                                netuid={h.netuid}
+                                name={h.title ?? h.url ?? h.id}
+                                fallback={h.netuid ?? h.id}
+                                size={20}
+                                className="shrink-0"
+                              />
                               <KindBadge kind={h.kind} />
                               <span className="flex-1 min-w-0">
                                 <span className="block truncate text-sm text-ink-strong">

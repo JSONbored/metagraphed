@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { HealthDot } from "./chips";
 import { TimeAgo } from "./time-ago";
+import { BrandIcon } from "./brand-icon";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
 /**
@@ -63,9 +64,16 @@ export function EndpointList({
                         <Link
                           to="/providers/$slug"
                           params={{ slug: e.provider_slug ?? e.provider }}
-                          className="hover:text-ink-strong"
+                          className="inline-flex items-center gap-1.5 hover:text-ink-strong"
                         >
-                          {e.provider}
+                          <BrandIcon
+                            url={e.url}
+                            providerSlug={e.provider_slug ?? e.provider}
+                            name={e.provider}
+                            size={16}
+                            className="shrink-0"
+                          />
+                          <span className="truncate">{e.provider}</span>
                         </Link>
                       ) : (
                         "—"
@@ -121,8 +129,15 @@ export function EndpointList({
                       <Link
                         to="/providers/$slug"
                         params={{ slug: e.provider_slug ?? e.provider }}
-                        className="hover:text-ink-strong"
+                        className="inline-flex items-center gap-1.5 hover:text-ink-strong"
                       >
+                        <BrandIcon
+                          url={e.url}
+                          providerSlug={e.provider_slug ?? e.provider}
+                          name={e.provider}
+                          size={14}
+                          className="shrink-0"
+                        />
                         {e.provider}
                       </Link>
                     ) : (
