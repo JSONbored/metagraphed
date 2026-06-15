@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { Network, Radio, Layers, Activity } from "lucide-react";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -33,7 +32,7 @@ import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-s
 import type { Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/subnets/")({
-  validateSearch: zodValidator(tableSearchSchema),
+  validateSearch: tableSearchSchema,
   head: () => ({
     meta: [
       { title: "Subnets — Metagraphed" },

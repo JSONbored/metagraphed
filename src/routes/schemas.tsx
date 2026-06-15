@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { fallback } from "@tanstack/zod-adapter";
+import { fallback } from "@/lib/metagraphed/url-state";
 import {
   ChevronDown,
   ChevronRight,
@@ -47,7 +46,7 @@ function sameOriginApiPathUrl(path?: string) {
 }
 
 export const Route = createFileRoute("/schemas")({
-  validateSearch: zodValidator(schemasSearchSchema),
+  validateSearch: schemasSearchSchema,
   head: () => ({
     meta: [
       { title: "Schemas — Metagraphed" },

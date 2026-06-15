@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -28,7 +27,7 @@ import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-s
 import type { Surface } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/surfaces")({
-  validateSearch: zodValidator(tableSearchSchema),
+  validateSearch: tableSearchSchema,
   head: () => ({
     meta: [
       { title: "Surfaces — Metagraphed" },
