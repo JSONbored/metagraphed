@@ -118,6 +118,20 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("flags wallet/key wording in a generic description fixture body value", async () => {
+    await writeTestFixture({
+      description:
+        "seed phrase: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    });
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(
+        `${TEST_FIXTURE}:response.body.description: wallet/key wording`,
+      ),
+      `sensitive wallet/key wording must fire in generic description fields; got:\n${output}`,
+    );
+  });
+
   test("does not flag wallet/key wording in an OpenAPI documentation field", async () => {
     // Regression for the sn-97 publish wedge: a captured openapi parameter
     // description reads "…your wallet path / seed phrase…" — public API docs the

@@ -176,13 +176,13 @@ function scanCapturedFixtureBody(relativePath, content) {
       if (pattern.soft && !pattern.scanFixtureBody) {
         continue;
       }
-      // OpenAPI/JSON documentation fields (description/summary/title) are human
-      // API docs the subnet published — a captured spec's parameter description
-      // routinely reads "Your wallet path…"/"do not share your private key". Those
-      // are docs, not leaked secret VALUES, so exempt them from the SOFT wording
-      // heuristics. Hard secret patterns (keys/tokens) still scan these fields
-      // below, so a real secret can't hide in a description.
-      if (pattern.soft && isDocumentationField(valuePath)) {
+      // OpenAPI documentation fields (description/summary/title) are human API
+      // docs the subnet published — a captured spec's parameter description can
+      // legitimately read "Your wallet path…". Keep this SOFT wording exemption
+      // scoped to OpenAPI-shaped paths so generic response fields named
+      // description/summary/title are still scanned for wallet/key disclosures.
+      // Hard secret patterns (keys/tokens) still scan these fields below.
+      if (pattern.soft && isOpenApiDocumentationField(valuePath, body)) {
         continue;
       }
       if (pattern.regex.test(value)) {
@@ -194,11 +194,37 @@ function scanCapturedFixtureBody(relativePath, content) {
   }
 }
 
-function isDocumentationField(valuePath) {
-  return (
+function isOpenApiDocumentationField(valuePath, body) {
+  const isDocumentationField =
     valuePath.endsWith(".description") ||
     valuePath.endsWith(".summary") ||
-    valuePath.endsWith(".title")
+    valuePath.endsWith(".title");
+  if (!isDocumentationField || !isOpenApiBody(body)) {
+    return false;
+  }
+
+  return (
+    valuePath.startsWith(".openapi.") ||
+    valuePath.startsWith(".swagger.") ||
+    valuePath.startsWith(".info.") ||
+    valuePath.startsWith(".components.") ||
+    valuePath.startsWith(".definitions.") ||
+    valuePath.startsWith(".tags[") ||
+    valuePath.startsWith(".externalDocs.") ||
+    valuePath.startsWith(".paths.")
+  );
+}
+
+function isOpenApiBody(body) {
+  return (
+    body &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    (typeof body.openapi === "string" ||
+      typeof body.swagger === "string" ||
+      (body.paths &&
+        typeof body.paths === "object" &&
+        !Array.isArray(body.paths)))
   );
 }
 
