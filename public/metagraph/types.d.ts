@@ -1977,6 +1977,11 @@ export interface components {
             github_url?: string;
             id: string;
             kind: components["schemas"]["ProviderKind"];
+            /**
+             * Format: uri
+             * @description Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness.
+             */
+            logo_url?: string;
             name: string;
             /** @description Sorted unique netuids this provider operates a curated surface on (issue #347). Derived/reporting — never feeds completeness. */
             netuids?: number[];
@@ -6541,6 +6546,7 @@ export interface operations {
                      *           "github_url": "https://api.metagraph.sh/example",
                      *           "id": "example-subnet",
                      *           "kind": "subnet-team",
+                     *           "logo_url": "https://api.metagraph.sh/example",
                      *           "name": "Example Subnet",
                      *           "netuids": [
                      *             7

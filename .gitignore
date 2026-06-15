@@ -180,5 +180,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Claude Code session directory (local, per-developer)
-.claude/
+# Claude Code session directory (local, per-developer) — but version-control the
+# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery).
+.claude/*
+!.claude/commands/

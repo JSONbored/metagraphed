@@ -117,7 +117,7 @@
         "enabled": true,
         "method": "GET",
         "expect": "json",
-        "timeout_ms": 10000
+        "timeout_ms": 25000
       },
       "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
     },
@@ -137,7 +137,7 @@
         "enabled": true,
         "method": "GET",
         "expect": "json",
-        "timeout_ms": 10000
+        "timeout_ms": 25000
       },
       "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
     },
@@ -157,7 +157,7 @@
         "enabled": true,
         "method": "GET",
         "expect": "json",
-        "timeout_ms": 10000
+        "timeout_ms": 25000
       },
       "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
     },

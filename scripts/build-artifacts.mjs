@@ -744,8 +744,16 @@ const enrichedProviders = providers.map((provider) => {
   const clusterDomain = clusterDomainFromUrl(
     provider.team_url || provider.website_url,
   );
+  // Curated logo wins; else borrow the on-chain logo of the single subnet this
+  // provider operates (display-only, never feeds completeness). Multi-subnet
+  // providers stay logo-less — the UI resolves a favicon from website_url.
+  const logoUrl =
+    provider.logo_url ||
+    (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.logo_url : null) ||
+    null;
   return {
     ...provider,
+    ...(logoUrl ? { logo_url: logoUrl } : {}),
     netuids,
     subnet_count: netuids.length,
     surface_count: providerSurfaces.length,

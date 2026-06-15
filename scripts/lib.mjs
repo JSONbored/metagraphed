@@ -1072,10 +1072,18 @@ export function nativeContactUrl(contact) {
 // Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
 // neutralize prompt-injection, strip URLs, collapse whitespace, drop empties.
 // Shared by the build + the reproducibility validator so the two never drift.
+// Bare placeholder words some subnets set as their ENTIRE on-chain description
+// ("deprecated", "none", "tbd", …) — treated as no description, mirroring
+// CONTACT_HANDLE_JUNK. Several deprecated subnets (sn3/39/81) carry a literal
+// "deprecated" description on-chain that should not leak into the served data.
+const JUNK_DESCRIPTION = /^(?:deprecated|none|null|n\/a|tbd|todo|test)$/i;
+
 export function cleanDescription(value) {
   if (typeof value !== "string") return null;
   const cleaned = stripUrls(sanitizeChainText(value).text);
-  return cleaned.length >= 2 ? cleaned : null;
+  if (cleaned.length < 2) return null;
+  if (JUNK_DESCRIPTION.test(cleaned.trim())) return null;
+  return cleaned;
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
@@ -1860,10 +1868,15 @@ export function buildEndpointPoolArtifact({
         "archive",
         endpoints.filter((endpoint) => endpoint.archive_support === true),
       ),
-      // Testnet base-layer RPC pool (/rpc/v1/test). Static members — appended only
-      // when configured (registry/native/test-base-endpoints.json present).
-      ...(testnetEndpoints.length
+      // Testnet base-layer pools (registry/native/test-base-endpoints.json).
+      // test-rpc is the proxy target (/rpc/v1/test); test-wss is reference-only
+      // (the HTTP proxy can't proxy WSS), parity with finney-wss. Each appended
+      // only when that kind is configured, so no empty pools.
+      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-rpc")
         ? [endpointPool("test-rpc", "subtensor-rpc", testnetEndpoints)]
+        : []),
+      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-wss")
+        ? [endpointPool("test-wss", "subtensor-wss", testnetEndpoints)]
         : []),
     ],
   };

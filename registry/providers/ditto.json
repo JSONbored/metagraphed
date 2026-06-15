@@ -1,9 +1,0 @@
-{
-  "authority": "community",
-  "id": "ditto",
-  "kind": "subnet-team",
-  "name": "Ditto",
-  "notes": "SN118 (Ditto) team. Verified from public sources: subnetalpha SN118 page, heyditto.ai, github.com/ditto-assistant (Omni Aura team).",
-  "schema_version": 1,
-  "website_url": "https://heyditto.ai"
-}
