@@ -6,8 +6,8 @@ import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
 import { CopyButton } from "./copy-button";
 import { TimeAgo } from "./time-ago";
-import { EmptyState } from "./states";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { EmptyState, StaleBanner } from "./states";
+import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { RpcUsage } from "@/lib/metagraphed/types";
 
 // The proxy is one service fronting multiple chains (finney + test today). Map
@@ -161,6 +161,7 @@ export function ProxyUsagePanel() {
   const usage = data.data as RpcUsage;
   const s = usage.summary;
   const hasTraffic = s.total_requests > 0;
+  const stale = isStaleFreshness(data.meta?.generated_at);
 
   return (
     <div className="space-y-3">
@@ -190,6 +191,8 @@ export function ProxyUsagePanel() {
           ))}
         </div>
       </div>
+
+      {stale ? <StaleBanner generatedAt={data.meta?.generated_at} /> : null}
 
       {!hasTraffic ? (
         <EmptyState

@@ -108,18 +108,23 @@ export function EmptyState({
 }
 
 /**
- * A quiet, muted freshness note shown only when a snapshot is genuinely stale
- * (callers gate on isStaleFreshness, which is now a 12h threshold). No usable
- * timestamp → render nothing: the 1970 reproducible-hash placeholder is an
- * internal artifact detail, not a user-facing alarm. Deliberately understated —
- * the relative age itself ("14h ago") is the signal, not a loud warning box.
+ * A quiet, muted freshness note shown when a snapshot is genuinely stale
+ * (callers gate on isStaleFreshness, which is now a 12h threshold) or when
+ * freshness metadata is unusable. Unknown timestamps stay user-visible so the
+ * UI does not present potentially unverified snapshots as normal.
  */
-export function StaleBanner({ generatedAt }: { generatedAt?: string }) {
-  if (!isUsableTimestamp(generatedAt)) return null;
+export function StaleBanner({ generatedAt }: { generatedAt?: string | null }) {
+  const hasTimestamp = isUsableTimestamp(generatedAt);
   return (
     <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
       <Clock className="size-3 shrink-0" aria-hidden />
-      Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+      {hasTimestamp ? (
+        <>
+          Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+        </>
+      ) : (
+        <>Snapshot freshness unknown — verify before relying on this data.</>
+      )}
     </p>
   );
 }

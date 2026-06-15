@@ -45,7 +45,7 @@ export function isStaleFreshness(iso?: string | null, thresholdMs = 12 * 60 * 60
   // Data refreshes on a ~6h cycle, so only flag a snapshot as stale once it has
   // clearly missed multiple cycles (12h). The old 5-minute threshold fired on
   // every page constantly — noise, not signal. Missing/invalid/placeholder
-  // timestamps stay conservative (the banner itself renders nothing on those).
+  // timestamps stay conservative so callers can show an unknown-freshness cue.
   if (!isUsableTimestamp(iso)) return true;
   return Date.now() - Date.parse(iso) > thresholdMs;
 }
