@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ArrowUpRight, Network, Activity, Server, FileCode2, Radio } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -42,8 +42,27 @@ function OverviewPage() {
   return (
     <AppShell>
       <HomeHero />
-      <KpiStrip />
-      <RegistryPulse />
+      {/* Suspense (not useQuery) so the headline KPIs + pulse render server-side
+          — useQuery doesn't SSR-render here, leaving the band all-dashes. */}
+      <QueryErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+            </div>
+          }
+        >
+          <KpiStrip />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <RegistryPulse />
+        </Suspense>
+      </QueryErrorBoundary>
 
       <section className="mt-10">
         <SectionEyebrow>Featured pilots</SectionEyebrow>
@@ -153,11 +172,12 @@ function SectionEyebrow({ children, live }: { children: React.ReactNode; live?: 
 /* ----------------------------- KPI strip ----------------------------- */
 
 function KpiStrip() {
-  // At-a-glance widget; partial loading is fine, so useQuery (not useSuspenseQuery)
-  // keeps a single failed stat from blocking the whole strip.
-  const coverage = useQuery(coverageQuery()).data?.data;
-  const freshness = useQuery(freshnessQuery()).data?.data;
-  const health = useQuery(healthQuery()).data?.data;
+  // useSuspenseQuery so the headline stats render server-side (a plain useQuery
+  // doesn't SSR-render in this setup — there's no router-query dehydration — so
+  // the band paints all-dashes). Wrapped in Suspense + QueryErrorBoundary above.
+  const coverage = useSuspenseQuery(coverageQuery()).data?.data;
+  const freshness = useSuspenseQuery(freshnessQuery()).data?.data;
+  const health = useSuspenseQuery(healthQuery()).data?.data;
 
   const total = coverage?.netuids_total ?? coverage?.netuids_active;
   const active = coverage?.netuids_active;
@@ -316,9 +336,11 @@ function TableSkeleton() {
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
   // Non-blocking: a /api/v1/health failure must not error the whole table —
-  // useQuery (not useSuspenseQuery) so the per-subnet overlay degrades gracefully.
-  const health = useQuery(healthQuery()).data?.data;
-  const coverage = useQuery(coverageQuery()).data?.data;
+  // useSuspenseQuery so the Health/completeness overlay renders server-side too
+  // (this component is already inside a Suspense boundary). A plain useQuery left
+  // the home table's Health column "Unknown" until client hydration.
+  const health = useSuspenseQuery(healthQuery()).data?.data;
+  const coverage = useSuspenseQuery(coverageQuery()).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
   const hsubs = (health as { subnets?: Array<{ netuid: number; status?: string }> } | undefined)

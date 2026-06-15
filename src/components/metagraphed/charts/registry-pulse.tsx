@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Donut, DonutLegend } from "./donut";
 import { Sparkline } from "./sparkline";
 import { coverageQuery, healthQuery, freshnessQuery } from "@/lib/metagraphed/queries";
@@ -6,13 +6,14 @@ import { humaniseSeconds } from "@/lib/metagraphed/format";
 
 /**
  * Home "registry pulse" strip — three small modules: curation donut, health
- * donut, freshness sparkline. Best-effort; renders skeletons until data
- * lands and degrades gracefully when fields are missing.
+ * donut, freshness sparkline. useSuspenseQuery so it renders server-side (the
+ * caller wraps it in Suspense + QueryErrorBoundary); a plain useQuery painted an
+ * empty strip on SSR. Still degrades gracefully when individual fields are null.
  */
 export function RegistryPulse() {
-  const coverage = useQuery(coverageQuery()).data?.data;
-  const health = useQuery(healthQuery()).data?.data;
-  const fresh = useQuery(freshnessQuery()).data?.data;
+  const coverage = useSuspenseQuery(coverageQuery()).data?.data;
+  const health = useSuspenseQuery(healthQuery()).data?.data;
+  const fresh = useSuspenseQuery(freshnessQuery()).data?.data;
 
   const curationSegs = [
     {
