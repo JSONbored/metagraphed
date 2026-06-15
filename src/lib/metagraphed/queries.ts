@@ -94,6 +94,10 @@ function finiteTimestamp(value: unknown): string | undefined {
   return Number.isFinite(Date.parse(value)) ? value : undefined;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
 function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
   let staleCount = 0;
   let ageTotal = 0;
@@ -261,19 +265,30 @@ export const subnetHealthMapQuery = () =>
   queryOptions({
     queryKey: k("subnet-health-map"),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
-      const d = (res.data ?? {}) as Record<string, unknown>;
-      const subnets = Array.isArray(d.subnets) ? (d.subnets as Record<string, unknown>[]) : [];
-      const map: Record<number, SubnetHealthEntry> = {};
-      for (const sn of subnets) {
-        const netuid = sn.netuid;
-        if (typeof netuid !== "number") continue;
-        map[netuid] = {
-          health: statusToHealth(sn.status) ?? "unknown",
-          last_checked: (sn.last_checked as string) ?? (sn.last_ok as string),
-        };
+      const empty = { data: {} as Record<number, SubnetHealthEntry> };
+      try {
+        const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
+        const d = isPlainRecord(res.data) ? res.data : {};
+        const subnets = Array.isArray(d.subnets) ? d.subnets : [];
+        const map: Record<number, SubnetHealthEntry> = {};
+        for (const sn of subnets) {
+          if (!isPlainRecord(sn)) continue;
+          const netuid = sn.netuid;
+          if (typeof netuid !== "number") continue;
+          map[netuid] = {
+            health: statusToHealth(sn.status) ?? "unknown",
+            last_checked:
+              typeof sn.last_checked === "string"
+                ? sn.last_checked
+                : typeof sn.last_ok === "string"
+                  ? sn.last_ok
+                  : undefined,
+          };
+        }
+        return { data: map, meta: res.meta, url: res.url };
+      } catch {
+        return empty;
       }
-      return { data: map, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
   });
