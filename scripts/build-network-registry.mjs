@@ -83,6 +83,11 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
   const supportedKinds = new Set();
   if (sourceRepo) supportedKinds.add("source-repo");
   if (websiteUrl) supportedKinds.add("website");
+  // Contact handle (issue #344) — already surfaced on the index entry; carry it
+  // on the detail too so the testnet subnet profile matches the index.
+  const discordHandle = nativeContactHandle(
+    nativeSubnet.chain_identity?.discord,
+  );
 
   return {
     block: nativeSubnet.block,
@@ -94,6 +99,8 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
     dashboard_url: null,
     description:
       cleanDescription(nativeSubnet.chain_identity?.description) || null,
+    discord: discordHandle,
+    discord_url: nativeContactUrl(discordHandle),
     docs_url: null,
     gaps: {
       missing_kinds: EXPECTED_GAP_KINDS.filter(
