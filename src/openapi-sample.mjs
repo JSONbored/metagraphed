@@ -29,6 +29,10 @@ function valueForPattern(pattern) {
       return "/api/v1/example";
     case "^#/components/schemas/[A-Za-z0-9]+$":
       return "#/components/schemas/Example";
+    case "^[Hh][Tt][Tt][Pp][Ss]?://":
+      // http(s)-only guard (e.g. provider logo_url) — keep the sample a valid
+      // absolute URL so it satisfies both the pattern and format: uri.
+      return "https://api.metagraph.sh/example";
     default:
       return "example";
   }
