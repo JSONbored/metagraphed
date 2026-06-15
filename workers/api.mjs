@@ -1879,6 +1879,11 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
 const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
+// Max blocks an endpoint may trail the freshest reported tip before the proxy
+// demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
+// (~2 min) tolerates cross-provider probe-timing skew while still routing around
+// a genuinely stalled/lagging node.
+const BLOCK_LAG_TOLERANCE = 10;
 
 // JSON-RPC error codes that signal node trouble (retry another upstream) rather
 // than a client/application error (return immediately so we don't mask a real
@@ -3065,7 +3070,27 @@ export function orderSafeRpcEndpoints(
   const ejected = shuffled.filter((e) =>
     isRpcEndpointEjected(healthMap, e.id, now),
   );
-  const ordered = [...live, ...ejected];
+  // Prefer the most-synced live nodes (like cosmos.directory's "most up-to-date"
+  // routing): any endpoint more than BLOCK_LAG_TOLERANCE behind the freshest
+  // reported tip is demoted behind the synced set — it would serve stale reads.
+  // Endpoints with no readable block height keep their place (can't judge them);
+  // the weighted-random order within each band is preserved for load spread.
+  const liveBlocks = live
+    .map((e) => Number(e.latest_block))
+    .filter((b) => Number.isFinite(b) && b > 0);
+  const maxBlock = liveBlocks.length ? Math.max(...liveBlocks) : null;
+  const isLagging = (endpoint) => {
+    const block = Number(endpoint.latest_block);
+    return (
+      maxBlock != null &&
+      Number.isFinite(block) &&
+      block > 0 &&
+      maxBlock - block > BLOCK_LAG_TOLERANCE
+    );
+  };
+  const synced = live.filter((endpoint) => !isLagging(endpoint));
+  const lagging = live.filter(isLagging);
+  const ordered = [...synced, ...lagging, ...ejected];
   return {
     endpoints: ordered,
     unsafeEndpoint: ordered.length ? null : unsafeEndpoint,

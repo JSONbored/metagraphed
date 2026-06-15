@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  orderSafeRpcEndpoints,
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
 } from "../workers/api.mjs";
@@ -96,5 +97,45 @@ describe("weightedPickEndpoint", () => {
     ];
     assert.equal(weightedPickEndpoint(eps, () => 0).id, "a");
     assert.equal(weightedPickEndpoint(eps, () => 0.6).id, "b");
+  });
+});
+
+describe("orderSafeRpcEndpoints — block-height routing", () => {
+  const opts = { healthMap: new Map(), now: 0 };
+
+  test("demotes a node lagging the freshest tip behind the synced set", () => {
+    const pool = {
+      endpoints: [
+        ep("lag", SAFE_A, { latest_block: 8_399_000 }), // 1000 behind → lagging
+        ep("fresh", SAFE_B, { latest_block: 8_400_000 }), // at the tip
+      ],
+    };
+    const { endpoints } = orderSafeRpcEndpoints(pool, () => 0, opts);
+    assert.equal(endpoints[0].id, "fresh");
+    assert.equal(endpoints[endpoints.length - 1].id, "lag");
+  });
+
+  test("keeps nodes within tolerance together in the synced band", () => {
+    const pool = {
+      endpoints: [
+        ep("a", SAFE_A, { latest_block: 8_400_000 }),
+        ep("b", SAFE_B, { latest_block: 8_399_995 }), // 5 behind → within tolerance
+      ],
+    };
+    const { endpoints } = orderSafeRpcEndpoints(pool, () => 0, opts);
+    assert.equal(endpoints.length, 2);
+    assert.deepEqual(endpoints.map((e) => e.id).sort(), ["a", "b"]);
+  });
+
+  test("does not judge endpoints with no readable block height", () => {
+    const pool = {
+      endpoints: [
+        ep("known", SAFE_A, { latest_block: 8_400_000 }),
+        ep("nullblock", SAFE_B, { latest_block: null }),
+      ],
+    };
+    const { endpoints } = orderSafeRpcEndpoints(pool, () => 0, opts);
+    // null-block endpoint isn't demoted (can't judge) — both stay in the pool.
+    assert.equal(endpoints.length, 2);
   });
 });

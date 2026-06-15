@@ -230,6 +230,7 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
         ...endpoint,
         status: live.status,
         latency_ms: live.latency_ms ?? endpoint.latency_ms,
+        latest_block: live.latest_block ?? endpoint.latest_block ?? null,
         health_source: "live-cron-prober",
         pool_eligible:
           Boolean(endpoint.pool_eligible) && !wrongChain && !sustainedDown,

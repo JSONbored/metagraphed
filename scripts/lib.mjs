@@ -1898,6 +1898,19 @@ function endpointPool(id, kind, endpoints) {
   };
 }
 
+// Only callable infrastructure (RPC/WSS + the agent-callable surface kinds) can
+// have a meaningful "down" incident. Docs / dashboards / websites / repos are
+// reference links, not endpoints — a website that returns HTML probes as
+// "unsupported" and must NOT be reported as an incident.
+const CALLABLE_ENDPOINT_KINDS = new Set([
+  "subtensor-rpc",
+  "subtensor-wss",
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
+
 export function buildEndpointIncidentArtifact({
   endpointArtifact,
   generatedAt,
@@ -1905,6 +1918,7 @@ export function buildEndpointIncidentArtifact({
 }) {
   const endpoints = endpointArtifact?.endpoints || [];
   const incidents = endpoints
+    .filter((endpoint) => CALLABLE_ENDPOINT_KINDS.has(endpoint.kind))
     .filter((endpoint) => endpoint.monitoring_status === "monitored")
     .filter((endpoint) => ["failed", "degraded"].includes(endpoint.status))
     .map((endpoint) => {

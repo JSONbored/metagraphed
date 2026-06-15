@@ -506,6 +506,9 @@ async function persistToKv(kv, probed, runAt) {
       status: row.status,
       classification: row.classification,
       latency_ms: row.latency_ms,
+      // Fresh tip height (from chain_getHeader) so the proxy can prefer the
+      // most-synced node and demote laggards. Null when the probe couldn't read.
+      latest_block: row.latest_block ?? null,
       archive_support: row.archive_support,
       last_ok: iso(row.last_ok_ms),
       consecutive_failures: row.consecutive_failures,
