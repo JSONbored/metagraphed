@@ -176,6 +176,15 @@ function scanCapturedFixtureBody(relativePath, content) {
       if (pattern.soft && !pattern.scanFixtureBody) {
         continue;
       }
+      // OpenAPI/JSON documentation fields (description/summary/title) are human
+      // API docs the subnet published — a captured spec's parameter description
+      // routinely reads "Your wallet path…"/"do not share your private key". Those
+      // are docs, not leaked secret VALUES, so exempt them from the SOFT wording
+      // heuristics. Hard secret patterns (keys/tokens) still scan these fields
+      // below, so a real secret can't hide in a description.
+      if (pattern.soft && isDocumentationField(valuePath)) {
+        continue;
+      }
       if (pattern.regex.test(value)) {
         findings.push(
           `${relativePath}:response.body${valuePath}: ${pattern.name}`,
@@ -183,6 +192,14 @@ function scanCapturedFixtureBody(relativePath, content) {
       }
     }
   }
+}
+
+function isDocumentationField(valuePath) {
+  return (
+    valuePath.endsWith(".description") ||
+    valuePath.endsWith(".summary") ||
+    valuePath.endsWith(".title")
+  );
 }
 
 function* walkJsonStrings(node, valuePath = "") {

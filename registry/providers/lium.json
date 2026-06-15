@@ -1,9 +1,0 @@
-{
-  "authority": "community",
-  "id": "lium",
-  "kind": "subnet-team",
-  "name": "Lium",
-  "notes": "SN51 (lium.io) team — GPU compute marketplace. Verified from public sources: lium.io and its published OpenAPI.",
-  "schema_version": 1,
-  "website_url": "https://lium.io"
-}

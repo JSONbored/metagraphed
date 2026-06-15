@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "network": "test",
+  "notes": "Bittensor testnet base-layer public RPC endpoints, backing the /rpc/v1/test load-balanced reverse proxy. This is a STATIC pool (not probe-derived): liveness is handled by the proxy's in-isolate circuit breaker + failover, and observability by /api/v1/rpc/usage (per-network). Both endpoints were verified live with genesis 0x8f9cf856bf558a14440e75569c9e58594757048d7b3a84b5d25f6bd978263105 (the testnet genesis, distinct from finney's 0x2f0555…), in-sync with the test-subnets.json snapshot. Probe-based pool health is intentionally deferred — the netuid-keyed health DB would need network threading to avoid polluting finney's root health.",
+  "endpoints": [
+    {
+      "id": "opentensor-test-finney-rpc",
+      "url": "https://test.finney.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-rpc"
+    },
+    {
+      "id": "opentensor-test-chain-rpc",
+      "url": "https://test.chain.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-rpc"
+    },
+    {
+      "id": "opentensor-test-finney-wss",
+      "url": "wss://test.finney.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-wss"
+    },
+    {
+      "id": "opentensor-test-chain-wss",
+      "url": "wss://test.chain.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-wss"
+    }
+  ]
+}

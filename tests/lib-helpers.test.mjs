@@ -54,6 +54,19 @@ describe("cleanDescription", () => {
     assert.equal(cleanDescription(null), null);
     assert.equal(cleanDescription("https://only-a-url.com"), null);
   });
+  test("drops bare placeholder/junk descriptions (deprecated/none/tbd)", () => {
+    // sn3/39/81 carry a literal "deprecated" description on-chain — junk, not a
+    // real description, so it must not leak into the served data.
+    assert.equal(cleanDescription("deprecated"), null);
+    assert.equal(cleanDescription("Deprecated"), null);
+    assert.equal(cleanDescription("  none  "), null);
+    assert.equal(cleanDescription("tbd"), null);
+    // a real description that merely CONTAINS the word is kept.
+    assert.equal(
+      cleanDescription("Deprecated v1 API gateway for subnet 7"),
+      "Deprecated v1 API gateway for subnet 7",
+    );
+  });
   test("normalizes real descriptions", () => {
     assert.equal(
       cleanDescription("  Autonomous   software   development  "),
