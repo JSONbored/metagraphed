@@ -34,7 +34,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 ## Where to start
 
-- **Issues** labeled [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) and [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted) are scoped and ready.
+- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and submit one candidate file ([Community submissions](#community-submissions) below). Each issue links the exact `candidate:new` command.
 - **Data gaps** — generate the current curation queue: `npm run curation:brief` (add `-- --limit 20` for more, `-- --json` for machine-readable). Start with profile-light subnets: directory-only entries, missing websites or source repos, public APIs with no OpenAPI metadata yet. See [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
 ## Community submissions
