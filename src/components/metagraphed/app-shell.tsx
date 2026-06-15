@@ -21,7 +21,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { API_BASE } from "@/lib/metagraphed/config";
+import { DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
@@ -698,8 +698,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="font-mono">
             data:{" "}
-            <a href={`${API_BASE}/api/v1`} className="underline" target="_blank" rel="noreferrer">
-              {API_BASE}/api/v1
+            <a
+              href={`${DEFAULT_API_BASE}/api/v1`}
+              className="underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {DEFAULT_API_BASE}/api/v1
             </a>
           </div>
         </footer>
