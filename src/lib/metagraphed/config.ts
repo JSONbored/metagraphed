@@ -22,11 +22,28 @@ export const DEFAULT_API_BASE = (
 
 let cached: string | null = null;
 
+/**
+ * An API base must be an http(s) origin. Rejects javascript:/data:/etc. so a
+ * persisted or user-supplied value can never flow into an `href` as an
+ * executable URL — this is the taint barrier for CodeQL js/xss-through-dom
+ * (the base is read from localStorage and rendered as a link in the footer).
+ */
+function sanitizeApiBase(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().replace(/\/$/, "");
+  try {
+    const { protocol } = new URL(trimmed);
+    if (protocol !== "http:" && protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  return trimmed;
+}
+
 function readStored(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const v = window.localStorage.getItem(STORAGE_KEY);
-    return v ? v.replace(/\/$/, "") : null;
+    return sanitizeApiBase(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     return null;
   }
@@ -42,8 +59,7 @@ export function getApiBase(): string {
 
 /** Set + persist a new API base. Dispatches an event subscribers can react to. */
 export function setApiBase(url: string) {
-  const clean = url.trim().replace(/\/$/, "");
-  const next = clean || DEFAULT_API_BASE;
+  const next = sanitizeApiBase(url) ?? DEFAULT_API_BASE;
   cached = next;
   if (typeof window !== "undefined") {
     try {
