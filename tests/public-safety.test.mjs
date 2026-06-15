@@ -117,4 +117,46 @@ describe("captured-fixture body scan", () => {
       `hard secret patterns must still fire on fixture body values; got:\n${output}`,
     );
   });
+
+  test("does not flag wallet/key wording in an OpenAPI documentation field", async () => {
+    // Regression for the sn-97 publish wedge: a captured openapi parameter
+    // description reads "…your wallet path / seed phrase…" — public API docs the
+    // subnet published, not a leaked secret value.
+    await writeTestFixture({
+      paths: {
+        "/user/credits": {
+          get: {
+            parameters: [
+              {
+                description:
+                  "Provide your wallet path or seed phrase to authenticate the request.",
+              },
+            ],
+          },
+        },
+      },
+    });
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_FIXTURE),
+      false,
+      `wallet/key wording in a documentation field should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("still flags a hard secret even inside a documentation field", async () => {
+    // The doc-field exemption is soft-only: a real token in a description is
+    // still caught by the hard secret patterns.
+    await writeTestFixture({
+      info: {
+        description:
+          "Example call: token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+      },
+    });
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_FIXTURE}:response.body`),
+      `hard secrets must fire even inside doc fields; got:\n${output}`,
+    );
+  });
 });
