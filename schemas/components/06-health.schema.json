@@ -630,6 +630,79 @@
         },
         "additionalProperties": true
       },
+      "RpcUsageArtifact": {
+        "type": "object",
+        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file).",
+        "required": [
+          "schema_version",
+          "source",
+          "summary",
+          "endpoints",
+          "networks"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "summary": {
+            "type": "object",
+            "required": ["total_requests", "ok_requests", "error_requests"],
+            "properties": {
+              "total_requests": { "type": "integer", "minimum": 0 },
+              "ok_requests": { "type": "integer", "minimum": 0 },
+              "error_requests": { "type": "integer", "minimum": 0 },
+              "error_rate": { "type": ["number", "null"] },
+              "failover_requests": { "type": "integer", "minimum": 0 },
+              "failover_rate": { "type": ["number", "null"] },
+              "cache_hits": { "type": "integer", "minimum": 0 },
+              "cache_hit_rate": { "type": ["number", "null"] },
+              "latency_ms": {
+                "type": "object",
+                "properties": {
+                  "p50": { "type": ["integer", "null"] },
+                  "p95": { "type": ["integer", "null"] },
+                  "avg": { "type": ["integer", "null"] }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["endpoint_id", "requests", "ok_requests"],
+              "properties": {
+                "rank": { "type": "integer", "minimum": 1 },
+                "endpoint_id": { "type": ["string", "null"] },
+                "provider": { "type": ["string", "null"] },
+                "requests": { "type": "integer", "minimum": 0 },
+                "ok_requests": { "type": "integer", "minimum": 0 },
+                "error_rate": { "type": ["number", "null"] },
+                "avg_latency_ms": { "type": ["integer", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "networks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["network", "requests", "ok_requests"],
+              "properties": {
+                "network": { "type": "string" },
+                "requests": { "type": "integer", "minimum": 0 },
+                "ok_requests": { "type": "integer", "minimum": 0 },
+                "error_rate": { "type": ["number", "null"] }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "ReliabilityScore": {
         "type": "object",
         "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",

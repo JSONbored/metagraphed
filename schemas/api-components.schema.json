@@ -6361,6 +6361,192 @@
           }
         ]
       },
+      "RpcUsageArtifact": {
+        "additionalProperties": true,
+        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file).",
+        "properties": {
+          "endpoints": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "avg_latency_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "endpoint_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "error_rate": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "ok_requests": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "provider": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rank": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "requests": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "endpoint_id",
+                "requests",
+                "ok_requests"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "networks": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "error_rate": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "network": {
+                  "type": "string"
+                },
+                "ok_requests": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "requests": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "network",
+                "requests",
+                "ok_requests"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "properties": {
+              "cache_hit_rate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "cache_hits": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "error_rate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "error_requests": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "failover_rate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "failover_requests": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "latency_ms": {
+                "additionalProperties": true,
+                "properties": {
+                  "avg": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "p50": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "p95": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "ok_requests": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_requests": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_requests",
+              "ok_requests",
+              "error_requests"
+            ],
+            "type": "object"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "summary",
+          "endpoints",
+          "networks"
+        ],
+        "type": "object"
+      },
       "SchemaDriftArtifact": {
         "allOf": [
           {

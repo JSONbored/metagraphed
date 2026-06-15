@@ -379,6 +379,35 @@ describe("pruneHealthHistory", () => {
     assert.match(db.calls.runs[0].sql, /DELETE FROM surface_checks/);
     assert.equal(db.calls.runs[0].binds[0], 100_000_000 - 1000);
   });
+
+  test("also prunes rpc_proxy_events to the same cutoff (B3)", async () => {
+    const db = makeDb();
+    await pruneHealthHistory(
+      {},
+      { now: () => 100_000_000, db, retentionMs: 1000 },
+    );
+    assert.match(db.calls.runs[1].sql, /DELETE FROM rpc_proxy_events/);
+    assert.equal(db.calls.runs[1].binds[0], 100_000_000 - 1000);
+  });
+
+  test("a missing rpc_proxy_events table (pre-migration) does not fail the prune", async () => {
+    // surface_checks DELETE succeeds; the rpc_proxy_events DELETE throws (no such
+    // table) — the prune must still report success for the surface_checks window.
+    const db = {
+      prepare: (sql) => ({
+        bind: () => ({
+          async run() {
+            if (/rpc_proxy_events/.test(sql)) {
+              throw new Error("no such table: rpc_proxy_events");
+            }
+            return { meta: { changes: 3 } };
+          },
+        }),
+      }),
+    };
+    const result = await pruneHealthHistory({}, { now: () => 5_000, db });
+    assert.equal(result.pruned, true);
+  });
 });
 
 describe("handleScheduled dispatch", () => {

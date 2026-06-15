@@ -360,6 +360,73 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
   };
 }
 
+// RPC reverse-proxy usage analytics (B3) from the rpc_proxy_events telemetry.
+// `totals`: one aggregate row { total, ok_count, failover_count, cache_hits,
+// avg_latency_ms }. `latency`: one row { p50, p95 } (window percentiles).
+// `endpointRows`/`networkRows`: per-endpoint / per-network breakdowns ordered by
+// request volume. Cold/unmigrated D1 yields a schema-stable zeroed payload (every
+// arg may be empty/undefined), so the route never errors before the table exists.
+export function formatRpcUsage({
+  window,
+  observedAt,
+  totals,
+  latency,
+  endpointRows,
+  networkRows,
+}) {
+  const total = Number(totals?.total) || 0;
+  const okCount = Number(totals?.ok_count) || 0;
+  const failoverCount = Number(totals?.failover_count) || 0;
+  const cacheHits = Number(totals?.cache_hits) || 0;
+  const errorCount = Math.max(0, total - okCount);
+  const ratioOf = (numerator, denominator) =>
+    denominator ? round4(numerator / denominator) : null;
+  return {
+    schema_version: 1,
+    window: window || null,
+    observed_at: observedAt || null,
+    source: "rpc-proxy",
+    summary: {
+      total_requests: total,
+      ok_requests: okCount,
+      error_requests: errorCount,
+      error_rate: ratioOf(errorCount, total),
+      failover_requests: failoverCount,
+      failover_rate: ratioOf(failoverCount, total),
+      cache_hits: cacheHits,
+      cache_hit_rate: ratioOf(cacheHits, total),
+      latency_ms: {
+        p50: roundInt(latency?.p50),
+        p95: roundInt(latency?.p95),
+        avg: roundInt(totals?.avg_latency_ms),
+      },
+    },
+    endpoints: (endpointRows || []).map((row, index) => {
+      const requests = Number(row.requests) || 0;
+      const ok = Number(row.ok_count) || 0;
+      return {
+        rank: index + 1,
+        endpoint_id: row.endpoint_id,
+        provider: row.provider || null,
+        requests,
+        ok_requests: ok,
+        error_rate: ratioOf(requests - ok, requests),
+        avg_latency_ms: roundInt(row.avg_latency_ms),
+      };
+    }),
+    networks: (networkRows || []).map((row) => {
+      const requests = Number(row.requests) || 0;
+      const ok = Number(row.ok_count) || 0;
+      return {
+        network: row.network,
+        requests,
+        ok_requests: ok,
+        error_rate: ratioOf(requests - ok, requests),
+      };
+    }),
+  };
+}
+
 // SLA + downtime incidents per surface. `slaRows`: [{ surface_id, total,
 // ok_count }]. `incidentRows`: [{ surface_id, started_at, ended_at,
 // failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).

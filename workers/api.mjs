@@ -49,6 +49,7 @@ import {
   formatIncidents,
   formatLeaderboards,
   formatPercentiles,
+  formatRpcUsage,
   formatTrajectory,
   formatTrends,
   formatUptime,
@@ -289,6 +290,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
   if (url.pathname === "/api/v1/registry/leaderboards") {
     return handleLeaderboards(request, env, url);
+  }
+
+  // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
+  if (url.pathname === "/api/v1/rpc/usage") {
+    return handleRpcUsage(request, env, url);
   }
 
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
@@ -1648,6 +1654,119 @@ async function handleLeaderboards(request, env, url) {
   );
 }
 
+// Best-effort, async usage telemetry for the RPC proxy (B3). A telemetry write
+// must never add latency to, or fail, a proxied call — so it runs under
+// ctx.waitUntil and swallows every error (notably "no such table" before the
+// 0004 migration is applied). When the binding/ctx is absent (tests, local dev)
+// it is a no-op. The proxy degrades to "no analytics", never to "broken".
+function recordRpcUsage(env, ctx, event) {
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare || typeof ctx?.waitUntil !== "function") return;
+  try {
+    const write = db
+      .prepare(
+        `INSERT INTO rpc_proxy_events
+           (observed_at, network, endpoint_id, provider, ok, status, attempts, latency_ms, cache)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        event.observed_at,
+        event.network,
+        event.endpoint_id ?? null,
+        event.provider ?? null,
+        event.ok ? 1 : 0,
+        event.status ?? null,
+        event.attempts ?? null,
+        event.latency_ms ?? null,
+        event.cache ?? null,
+      )
+      .run();
+    ctx.waitUntil(Promise.resolve(write).catch(() => {}));
+  } catch {
+    // prepare/bind threw synchronously (malformed binding); drop the sample.
+  }
+}
+
+// RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,
+// failover + error rate, cache-hit rate, and the per-endpoint distribution that
+// shows whether the load balancer is actually spreading traffic. Computed live
+// from the rpc_proxy_events D1 telemetry; cold/unmigrated D1 returns a
+// schema-stable zeroed payload (d1All swallows the missing-table error).
+async function handleRpcUsage(request, env, url) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) return analyticsQueryError(error);
+  const since = Date.now() - days * DAY_MS;
+  const [totalsRows, latencyRows, endpointRows, networkRows] =
+    await Promise.all([
+      d1All(
+        env,
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
+                SUM(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,
+                SUM(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,
+                AVG(latency_ms) AS avg_latency_ms
+         FROM rpc_proxy_events
+         WHERE observed_at >= ?`,
+        [since],
+      ),
+      d1All(
+        env,
+        `WITH ranked AS (
+           SELECT latency_ms,
+                  ROW_NUMBER() OVER (ORDER BY latency_ms) AS rn,
+                  COUNT(*) OVER () AS cnt
+           FROM rpc_proxy_events
+           WHERE observed_at >= ? AND latency_ms IS NOT NULL
+         )
+         SELECT MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
+                MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95
+         FROM ranked`,
+        [since],
+      ),
+      d1All(
+        env,
+        `SELECT endpoint_id, provider,
+                COUNT(*) AS requests,
+                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
+                AVG(latency_ms) AS avg_latency_ms
+         FROM rpc_proxy_events
+         WHERE observed_at >= ? AND endpoint_id IS NOT NULL
+         GROUP BY endpoint_id, provider
+         ORDER BY requests DESC
+         LIMIT 50`,
+        [since],
+      ),
+      d1All(
+        env,
+        `SELECT network,
+                COUNT(*) AS requests,
+                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count
+         FROM rpc_proxy_events
+         WHERE observed_at >= ?
+         GROUP BY network
+         ORDER BY requests DESC`,
+        [since],
+      ),
+    ]);
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatRpcUsage({
+    window: label,
+    observedAt: meta?.last_run_at || null,
+    totals: totalsRows[0],
+    latency: latencyRows[0],
+    endpointRows,
+    networkRows,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await analyticsMeta(env, "/metagraph/rpc/usage.json", null),
+    },
+    "short",
+  );
+}
+
 async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   if (request.method !== "POST") {
     return errorResponse(
@@ -1779,8 +1898,24 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // the static pool when the live snapshot is cold.
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
   const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
+  // Usage telemetry (B3): network = the /rpc/v1/{network} path segment; startedAt
+  // anchors end-to-end proxy latency. recordRpcUsage is best-effort + async, so it
+  // never adds latency to — or can fail — the proxied call (see the helper).
+  const network = url.pathname.split("/")[3] || "finney";
+  const startedAt = Date.now();
   const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
   if (!candidates.length) {
+    recordRpcUsage(env, ctx, {
+      observed_at: startedAt,
+      network,
+      endpoint_id: null,
+      provider: null,
+      ok: false,
+      status: unsafeEndpoint ? 502 : 503,
+      attempts: 0,
+      latency_ms: Date.now() - startedAt,
+      cache: "bypass",
+    });
     if (unsafeEndpoint) {
       return errorResponse(
         "rpc_endpoint_unsafe",
@@ -1821,6 +1956,17 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
         headers.set("cache-control", "no-store");
         headers.set("x-metagraph-rpc-cache", "hit");
         setRpcRateLimitHeaders(headers);
+        recordRpcUsage(env, ctx, {
+          observed_at: startedAt,
+          network,
+          endpoint_id: null,
+          provider: null,
+          ok: true,
+          status: 200,
+          attempts: 0,
+          latency_ms: Date.now() - startedAt,
+          cache: "hit",
+        });
         return new Response(
           JSON.stringify(rpcResultEnvelope(rpcBody, cachedPayload.result)),
           { status: 200, headers },
@@ -1830,6 +1976,24 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   }
 
   const response = await proxyWithFailover(candidates, { bodyText, poolId });
+  // The endpoint headers are set ONLY when an upstream served (streamRpcResponse);
+  // the all-failed path returns a bare 502, so a missing endpoint-id header marks
+  // a routing failure (ok=false). Recorded once here — every downstream return
+  // reuses this same response, so its served-endpoint/status/attempts are stable.
+  const servedEndpointId = response.headers.get("x-metagraph-rpc-endpoint-id");
+  recordRpcUsage(env, ctx, {
+    observed_at: startedAt,
+    network,
+    endpoint_id: servedEndpointId,
+    provider: response.headers.get("x-metagraph-rpc-provider"),
+    ok: Boolean(servedEndpointId),
+    status: response.status,
+    attempts:
+      Number(response.headers.get("x-metagraph-rpc-attempts")) ||
+      candidates.length,
+    latency_ms: Date.now() - startedAt,
+    cache: cacheKey ? "miss" : "bypass",
+  });
   if (!cacheKey) {
     return response;
   }

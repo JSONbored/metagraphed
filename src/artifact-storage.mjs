@@ -34,6 +34,9 @@ const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   /^registry\/leaderboards\.json$/,
+  // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
+  // /api/v1/rpc/usage — never written as a file.
+  /^rpc\/usage\.json$/,
   // Per-subnet agent capability catalog (full service detail) — large, built.
   /^agent-catalog\/(?:\d+|\{netuid\})\.json$/,
   /^metagraph\/latest\.json$/,

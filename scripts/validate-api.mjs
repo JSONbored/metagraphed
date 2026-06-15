@@ -84,6 +84,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/rpc/usage",
+    (body) => {
+      assert.equal(body.data.source, "rpc-proxy");
+      assert.equal(typeof body.data.summary.total_requests, "number");
+      assert.equal(Array.isArray(body.data.endpoints), true);
+      assert.equal(Array.isArray(body.data.networks), true);
+    },
+  ],
+  [
     "/api/v1/profiles?profile_level=adapter-backed",
     (body) =>
       assert.equal(

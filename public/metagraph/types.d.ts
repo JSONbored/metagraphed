@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rpc/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry). */
+        get: operations["rpcUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schemas": {
         parameters: {
             query?: never;
@@ -2545,6 +2562,53 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file). */
+        RpcUsageArtifact: {
+            endpoints: ({
+                avg_latency_ms?: number | null;
+                endpoint_id: string | null;
+                error_rate?: number | null;
+                ok_requests: number;
+                provider?: string | null;
+                rank?: number;
+                requests: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            networks: ({
+                error_rate?: number | null;
+                network: string;
+                ok_requests: number;
+                requests: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            summary: {
+                cache_hit_rate?: number | null;
+                cache_hits?: number;
+                error_rate?: number | null;
+                error_requests: number;
+                failover_rate?: number | null;
+                failover_requests?: number;
+                latency_ms?: {
+                    avg?: number | null;
+                    p50?: number | null;
+                    p95?: number | null;
+                } & {
+                    [key: string]: unknown;
+                };
+                ok_requests: number;
+                total_requests: number;
+            } & {
+                [key: string]: unknown;
+            };
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         SchemaDriftArtifact: components["schemas"]["ArtifactBase"] & ({
             openapi_surface_count: number;
             schema_backed_surface_count: number;
@@ -8213,6 +8277,131 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RpcPoolsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rpcUsage: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "endpoints": [
+                     *           {
+                     *             "endpoint_id": "https://api.metagraph.sh/example",
+                     *             "ok_requests": 1,
+                     *             "requests": 1
+                     *           }
+                     *         ],
+                     *         "networks": [
+                     *           {
+                     *             "network": "example",
+                     *             "ok_requests": 1,
+                     *             "requests": 1
+                     *           }
+                     *         ],
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "summary": {
+                     *           "cache_hit_rate": 0.5,
+                     *           "cache_hits": 1,
+                     *           "error_rate": 0.5,
+                     *           "error_requests": 1,
+                     *           "failover_rate": 0.5,
+                     *           "failover_requests": 1,
+                     *           "latency_ms": {},
+                     *           "ok_requests": 1,
+                     *           "total_requests": 1
+                     *         },
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober"
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RpcUsageArtifact"];
                     };
                 };
             };

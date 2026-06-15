@@ -27,6 +27,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-trajectory",
   "subnet-uptime",
   "registry-leaderboards",
+  "rpc-usage",
   "global-incidents",
   // Live-only operational health (served from KV/D1, no static file on disk).
   "health-latest",

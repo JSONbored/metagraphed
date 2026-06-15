@@ -616,6 +616,17 @@ export async function pruneHealthHistory(env, overrides = {}) {
       .prepare(`DELETE FROM surface_checks WHERE checked_at < ?`)
       .bind(cutoff)
       .run();
+    // Prune RPC proxy usage telemetry (B3) to the same 30-day hot window. Wrapped
+    // separately + best-effort so a not-yet-migrated rpc_proxy_events table never
+    // blocks the surface_checks prune (the table arrives with the 0004 migration).
+    try {
+      await db
+        .prepare(`DELETE FROM rpc_proxy_events WHERE observed_at < ?`)
+        .bind(cutoff)
+        .run();
+    } catch {
+      // rpc_proxy_events absent or transient error — skip the telemetry prune.
+    }
     return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
   } catch {
     return { pruned: false };

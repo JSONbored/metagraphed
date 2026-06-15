@@ -444,6 +444,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+      "id": "rpc-usage",
+      "path": "/metagraph/rpc/usage.json",
+      "schema_ref": "#/components/schemas/RpcUsageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Bittensor base-layer RPC endpoint registry and probe status.",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
