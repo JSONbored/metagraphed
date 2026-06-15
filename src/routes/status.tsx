@@ -15,6 +15,9 @@ import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
 
 const REFRESH_MS = 60_000;
 const SURFACES_INITIAL = 10;
+// A downtime event whose last failure is within this of the latest snapshot is
+// treated as still-ongoing (probe cadence is ~2 min, so ~5 cycles).
+const ONGOING_MS = 10 * 60_000;
 const WINDOWS = ["7d", "30d"] as const;
 type IncidentWindow = (typeof WINDOWS)[number];
 
@@ -193,27 +196,50 @@ function RecentIncidents() {
     refetchInterval: REFRESH_MS,
   });
   const ledger = data.data;
+  // A surface is still failing ("ongoing") when its most recent downtime event
+  // ends within a few probe cycles of the latest snapshot; everything else is a
+  // resolved past event. This separates "what's down right now" from "what's
+  // flapped over the window", so the window count never reads as a live outage.
+  const observedMs = ledger?.observed_at ? Date.parse(ledger.observed_at) : Date.now();
+  const isOngoing = (s: GlobalIncidentSurface) => {
+    const latest = s.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
+    return latest > 0 && observedMs - latest < ONGOING_MS;
+  };
   const surfaces = useMemo(() => {
     const list = [...(ledger?.surfaces ?? [])];
-    list.sort((a, b) => b.incident_count - a.incident_count || b.downtime_ms - a.downtime_ms);
+    list.sort(
+      (a, b) =>
+        Number(isOngoing(b)) - Number(isOngoing(a)) ||
+        b.incident_count - a.incident_count ||
+        b.downtime_ms - a.downtime_ms,
+    );
     return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ledger]);
   const summary = ledger?.summary;
   const affected = summary?.affected_surface_count ?? surfaces.length;
+  const ongoingCount = surfaces.filter(isOngoing).length;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-card p-3">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Incidents · {window}
+            {ongoingCount > 0 ? "Active now" : "Downtime events · " + window}
           </div>
-          <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
-            <AnimatedNumber value={summary?.incident_count} />
+          <div
+            className={classNames(
+              "font-display text-lg font-semibold tabular-nums",
+              ongoingCount > 0 ? "text-health-down" : "text-health-ok",
+            )}
+          >
+            {ongoingCount > 0 ? <>{ongoingCount} ongoing</> : "All clear"}
           </div>
         </div>
         <div className="text-[11px] font-mono text-ink-muted">
-          across {affected} {affected === 1 ? "surface" : "surfaces"}
+          <AnimatedNumber value={summary?.incident_count} /> sustained event
+          {summary?.incident_count === 1 ? "" : "s"} · {window} · across {affected}{" "}
+          {affected === 1 ? "surface" : "surfaces"}
         </div>
         <div className="ml-auto inline-flex items-center overflow-hidden rounded-md border border-border bg-card text-[11px]">
           {WINDOWS.map((w) => (
@@ -237,12 +263,12 @@ function RecentIncidents() {
       </div>
 
       {surfaces.length === 0 ? (
-        <EmptyState title="No incidents in this window" />
+        <EmptyState title="No sustained downtime in this window" />
       ) : (
         <>
           <ul className="space-y-2">
             {(showAll ? surfaces : surfaces.slice(0, SURFACES_INITIAL)).map((s) => (
-              <SurfaceRow key={`${s.netuid}/${s.surface_id}`} surface={s} />
+              <SurfaceRow key={`${s.netuid}/${s.surface_id}`} surface={s} ongoing={isOngoing(s)} />
             ))}
           </ul>
           {surfaces.length > SURFACES_INITIAL ? (
@@ -260,18 +286,29 @@ function RecentIncidents() {
   );
 }
 
-function SurfaceRow({ surface }: { surface: GlobalIncidentSurface }) {
+function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongoing?: boolean }) {
   const latest = surface.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
   const downtime = humaniseSeconds(surface.downtime_ms / 1000);
   return (
     <li className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2.5">
+      <span
+        className={classNames(
+          "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest shrink-0",
+          ongoing
+            ? "border-health-down/40 bg-health-down/5 text-health-down"
+            : "border-border bg-paper text-ink-muted",
+        )}
+        title={ongoing ? "Still failing as of the latest probe" : "Recovered"}
+      >
+        {ongoing ? "Ongoing" : "Resolved"}
+      </span>
       <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
         SN{surface.netuid}
       </span>
       <span className="font-mono text-[12px] text-ink-strong truncate">{surface.surface_id}</span>
       <span className="ml-auto inline-flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
-        <span className="text-health-down tabular-nums">
-          {surface.incident_count} {surface.incident_count === 1 ? "incident" : "incidents"}
+        <span className="text-ink-muted tabular-nums">
+          {surface.incident_count} {surface.incident_count === 1 ? "event" : "events"}
         </span>
         <span className="tabular-nums" title="total downtime in window">
           {downtime} down
