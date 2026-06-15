@@ -1,7 +1,7 @@
 {
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "graduated_subnet_count": 30,
-  "link_count": 30,
+  "graduated_subnet_count": 43,
+  "link_count": 43,
   "links": [
     {
       "mainnet_name": "Apex",
@@ -20,12 +20,52 @@
       "testnet_netuid": 4
     },
     {
+      "mainnet_name": "Numinous",
+      "mainnet_netuid": 6,
+      "mainnet_slug": "numinous",
+      "matched_by": "github_repo",
+      "testnet_name": "glagolitic_uku",
+      "testnet_netuid": 155
+    },
+    {
+      "mainnet_name": "Compute Horde",
+      "mainnet_netuid": 12,
+      "mainnet_slug": "sn-12",
+      "matched_by": "github_repo",
+      "testnet_name": "thai_cho_chan",
+      "testnet_netuid": 174
+    },
+    {
+      "mainnet_name": "Cacheon",
+      "mainnet_netuid": 14,
+      "mainnet_slug": "cacheon",
+      "matched_by": "github_repo",
+      "testnet_name": "cacheon-testnet",
+      "testnet_netuid": 470
+    },
+    {
+      "mainnet_name": "BitAds",
+      "mainnet_netuid": 16,
+      "mainnet_slug": "sn-16",
+      "matched_by": "github_repo",
+      "testnet_name": "yag",
+      "testnet_netuid": 368
+    },
+    {
       "mainnet_name": "Zeus",
       "mainnet_netuid": 18,
       "mainnet_slug": "sn-18",
       "matched_by": "chain_name",
       "testnet_name": "zeus",
       "testnet_netuid": 301
+    },
+    {
+      "mainnet_name": "AdTAO",
+      "mainnet_netuid": 21,
+      "mainnet_slug": "sn-21",
+      "matched_by": "github_repo",
+      "testnet_name": "Subnet 466",
+      "testnet_netuid": 466
     },
     {
       "mainnet_name": "Quasar",
@@ -36,6 +76,14 @@
       "testnet_netuid": 383
     },
     {
+      "mainnet_name": "Mainframe",
+      "mainnet_netuid": 25,
+      "mainnet_slug": "sn-25",
+      "matched_by": "github_repo",
+      "testnet_name": "glagolitic_zemlja",
+      "testnet_netuid": 141
+    },
+    {
       "mainnet_name": "ItsAI",
       "mainnet_netuid": 32,
       "mainnet_slug": "sn-32",
@@ -44,12 +92,36 @@
       "testnet_netuid": 32
     },
     {
+      "mainnet_name": "ReadyAI",
+      "mainnet_netuid": 33,
+      "mainnet_slug": "sn-33",
+      "matched_by": "github_repo",
+      "testnet_name": "glagolitic_dobro",
+      "testnet_netuid": 138
+    },
+    {
+      "mainnet_name": "OxMarkets",
+      "mainnet_netuid": 35,
+      "mainnet_slug": "sn-35",
+      "matched_by": "github_repo",
+      "testnet_name": "waw",
+      "testnet_netuid": 78
+    },
+    {
       "mainnet_name": "Aurelius",
       "mainnet_netuid": 37,
       "mainnet_slug": "sn-37",
       "matched_by": "chain_name",
       "testnet_name": "Aurelius",
       "testnet_netuid": 455
+    },
+    {
+      "mainnet_name": "colosseum",
+      "mainnet_netuid": 38,
+      "mainnet_slug": "colosseum",
+      "matched_by": "github_repo",
+      "testnet_name": "sn38-chronogpt",
+      "testnet_netuid": 474
     },
     {
       "mainnet_name": "Graphite",
@@ -74,6 +146,14 @@
       "matched_by": "chain_name",
       "testnet_name": "dojo",
       "testnet_netuid": 52
+    },
+    {
+      "mainnet_name": "Yanez MIID",
+      "mainnet_netuid": 54,
+      "mainnet_slug": "sn-54",
+      "matched_by": "github_repo",
+      "testnet_name": "yanez",
+      "testnet_netuid": 322
     },
     {
       "mainnet_name": "NIOME",
@@ -124,6 +204,14 @@
       "testnet_netuid": 64
     },
     {
+      "mainnet_name": "TAO Private Network",
+      "mainnet_netuid": 65,
+      "mainnet_slug": "sn-65",
+      "matched_by": "github_repo",
+      "testnet_name": "ronx",
+      "testnet_netuid": 279
+    },
+    {
       "mainnet_name": "NOVA",
       "mainnet_netuid": 68,
       "mainnet_slug": "sn-68",
@@ -138,6 +226,14 @@
       "matched_by": "chain_name",
       "testnet_name": "ain",
       "testnet_netuid": 69
+    },
+    {
+      "mainnet_name": "StreetVision by NATIX",
+      "mainnet_netuid": 72,
+      "mainnet_slug": "sn-72",
+      "matched_by": "github_repo",
+      "testnet_name": "Stan Marsh",
+      "testnet_netuid": 323
     },
     {
       "mainnet_name": "Gittensor",
@@ -178,6 +274,14 @@
       "matched_by": "chain_name",
       "testnet_name": "ansuz",
       "testnet_netuid": 84
+    },
+    {
+      "mainnet_name": "Investing",
+      "mainnet_netuid": 88,
+      "mainnet_slug": "sn-88",
+      "matched_by": "github_repo",
+      "testnet_name": "kana_na",
+      "testnet_netuid": 339
     },
     {
       "mainnet_name": "DegenBrain",
@@ -246,11 +350,11 @@
   ],
   "matched_by_counts": {
     "chain_name": 24,
-    "github_repo": 6
+    "github_repo": 19
   },
   "published_at": null,
   "schema_version": 1,
   "source_network": "mainnet",
   "target_network": "testnet",
-  "testnet_only_count": 476
+  "testnet_only_count": 463
 }
