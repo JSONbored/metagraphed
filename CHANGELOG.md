@@ -19,6 +19,40 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.3.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.2.0...platform-v0.3.0) (2026-06-15)
+
+
+### Features
+
+* **claude:** /lineage-discovery slash command for testnet↔mainnet lineage ([#657](https://github.com/JSONbored/metagraphed/issues/657)) ([b3827fa](https://github.com/JSONbored/metagraphed/commit/b3827fa7e005d05e9285ea5d79b96bcc582d7183))
+* **lineage:** Gittensor SN74 ↔ testnet 422 (researched from repo config) ([#655](https://github.com/JSONbored/metagraphed/issues/655)) ([9dc7fc6](https://github.com/JSONbored/metagraphed/commit/9dc7fc6dda17641f2eeb7e886adb0645df23f1be))
+* **providers:** curated/hand-picked provider logo_url (display-only) ([#739](https://github.com/JSONbored/metagraphed/issues/739)) ([5387a94](https://github.com/JSONbored/metagraphed/commit/5387a948fbdfec0a9561cdc331c8799f122a5499))
+* **rpc:** block-height-aware proxy routing + scope endpoint-incidents to callable kinds ([#643](https://github.com/JSONbored/metagraphed/issues/643)) ([c6df1cd](https://github.com/JSONbored/metagraphed/commit/c6df1cd375fa263e7f08e48d5fa9d11c525fb44f))
+* **rpc:** network-aware proxy + live testnet RPC pool (/rpc/v1/test) ([#647](https://github.com/JSONbored/metagraphed/issues/647)) ([d7a648e](https://github.com/JSONbored/metagraphed/commit/d7a648edadfc94e764c1a34d8476915ead97727a))
+* **rpc:** proxy usage analytics — D1 telemetry + /api/v1/rpc/usage (B3) ([#644](https://github.com/JSONbored/metagraphed/issues/644)) ([6b5058b](https://github.com/JSONbored/metagraphed/commit/6b5058bb893861eab77b1385031cd44a582026aa))
+* **rpc:** testnet WSS reference pool (test-wss), parity with finney-wss ([#651](https://github.com/JSONbored/metagraphed/issues/651)) ([791dc9a](https://github.com/JSONbored/metagraphed/commit/791dc9abe800d71b3c347607a83840f3f724b478))
+* **testnet:** surface-discovery flywheel (TN-E) ([#654](https://github.com/JSONbored/metagraphed/issues/654)) ([9c82162](https://github.com/JSONbored/metagraphed/commit/9c821620051f3f0003df860894414b8f06575f99))
+
+
+### Bug Fixes
+
+* **ci:** extract repoHostname helper to clear no-useless-assignment ([#758](https://github.com/JSONbored/metagraphed/issues/758)) ([0df0a3d](https://github.com/JSONbored/metagraphed/commit/0df0a3dac126c70b27be47ee95ceb45b7839e65c))
+* **claude:** harden lineage discovery against prompt injection ([#661](https://github.com/JSONbored/metagraphed/issues/661)) ([fad45ba](https://github.com/JSONbored/metagraphed/commit/fad45baa4376e73f91593be06beec02e61c8de64))
+* **data:** QA pass — gradients probe timeout, junk "deprecated" descriptions, orphan providers ([#659](https://github.com/JSONbored/metagraphed/issues/659)) ([8c3b035](https://github.com/JSONbored/metagraphed/commit/8c3b035b8c4b720028775f183b06a6b310fcc3a9))
+* **health:** only count sustained downtime as an incident + retire 2 dead surfaces ([#641](https://github.com/JSONbored/metagraphed/issues/641)) ([3589ff3](https://github.com/JSONbored/metagraphed/commit/3589ff3c84f9f9f350cce811fa5bed3a024d4175))
+* **health:** persist live RPC block heights ([#645](https://github.com/JSONbored/metagraphed/issues/645)) ([e1e6630](https://github.com/JSONbored/metagraphed/commit/e1e6630dc66d35d497bc477344b20a32cd4a5972))
+* **rpc:** isolate cache by network ([#653](https://github.com/JSONbored/metagraphed/issues/653)) ([5dd53fd](https://github.com/JSONbored/metagraphed/commit/5dd53fdc3814731c211fecb64365445b689c5a11))
+* **safety:** exempt OpenAPI doc fields from soft wallet/key fixture scan ([#648](https://github.com/JSONbored/metagraphed/issues/648)) ([d4c00a0](https://github.com/JSONbored/metagraphed/commit/d4c00a091ea4b501ac3ade5d054cfef5d0856a77))
+* **safety:** scope fixture doc-field exemptions ([#652](https://github.com/JSONbored/metagraphed/issues/652)) ([2584a33](https://github.com/JSONbored/metagraphed/commit/2584a339a02c8b5188314c4d597b7c5e2aff2561))
+* **security:** patch esbuild + harden github host check ([#754](https://github.com/JSONbored/metagraphed/issues/754)) ([b1c42be](https://github.com/JSONbored/metagraphed/commit/b1c42beb43cc46872e414b666ed4d2024436044f))
+* **security:** patch js-yaml (GHSA-h67p) + ws (GHSA-96hv) via overrides ([#756](https://github.com/JSONbored/metagraphed/issues/756)) ([6da02cf](https://github.com/JSONbored/metagraphed/commit/6da02cfadf8c0d0ac3e5bc2afca1f9803500723a))
+* **testnet:** guard discovery redirects ([#656](https://github.com/JSONbored/metagraphed/issues/656)) ([d59d519](https://github.com/JSONbored/metagraphed/commit/d59d519063eca29e77f8c5d1cffe551b6cfad62a))
+
+
+### Documentation
+
+* **contributing:** spotlight enrichment buffer + provider-slug hint ([#738](https://github.com/JSONbored/metagraphed/issues/738)) ([827b759](https://github.com/JSONbored/metagraphed/commit/827b759977e3aa3e0a5a4499eb17a7e377fe9536))
+
 ## [0.2.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.1.0...platform-v0.2.0) (2026-06-15)
 
 
