@@ -380,6 +380,9 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       latency_ms: Number.isFinite(base.latency_ms) ? base.latency_ms : null,
       status_code: Number.isInteger(base.status_code) ? base.status_code : null,
       archive_support: base.archive_support ?? null,
+      latest_block: Number.isFinite(base.latest_block)
+        ? base.latest_block
+        : null,
       checked_at_ms: runAt,
       last_ok_ms: lastOkMs,
       consecutive_failures: consecutiveFailures,

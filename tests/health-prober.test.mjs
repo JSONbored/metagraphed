@@ -243,6 +243,7 @@ const probeImpl = async (input) =>
         latency_ms: 42,
         status_code: 200,
         archive_support: true,
+        latest_block: 12345,
       }
     : {
         status: "failed",
@@ -317,6 +318,7 @@ describe("runHealthProber", () => {
     assert.equal(pool.eligible_count, 1);
     assert.equal(pool.endpoints[0].pool_eligible, true);
     assert.equal(pool.endpoints[0].archive_support, true);
+    assert.equal(pool.endpoints[0].latest_block, 12345);
 
     const meta = kv.json(KV_HEALTH_META);
     assert.equal(meta.probed_count, 2);
@@ -1014,6 +1016,7 @@ describe("persistToKv via runHealthProber", () => {
             classification: "live",
             latency_ms: 10,
             archive_support: true,
+            latest_block: 76543,
           }
         : { status: "failed", classification: "dead", latency_ms: null };
     const kv = makeKv();
@@ -1040,6 +1043,10 @@ describe("persistToKv via runHealthProber", () => {
     assert.equal(
       pool.endpoints.find((e) => e.id === "rpc-ok").pool_eligible,
       true,
+    );
+    assert.equal(
+      pool.endpoints.find((e) => e.id === "rpc-ok").latest_block,
+      76543,
     );
     assert.equal(
       pool.endpoints.find((e) => e.id === "rpc-bad").pool_eligible,
