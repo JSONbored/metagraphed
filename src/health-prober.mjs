@@ -31,8 +31,37 @@ const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];
 const DNS_TIMEOUT_MS = 4000;
+const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 
 const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+
+function safeRpcBlockNumber(value) {
+  if (value == null) return null;
+  const block = Number(value);
+  return Number.isSafeInteger(block) && block > 0 ? block : null;
+}
+
+function rpcBlockMedianFloor(blocks) {
+  if (!blocks.length) return null;
+  const sorted = [...blocks].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
+function sanitizeRpcLatestBlocks(rows) {
+  const rpcRows = rows.filter((row) => RPC_KINDS.has(row.kind));
+  const blocks = rpcRows
+    .map((row) => safeRpcBlockNumber(row.latest_block))
+    .filter((block) => block != null);
+  const median = rpcBlockMedianFloor(blocks);
+  for (const row of rpcRows) {
+    const block = safeRpcBlockNumber(row.latest_block);
+    row.latest_block =
+      block != null &&
+      (median == null || block <= median + RPC_BLOCK_PLAUSIBILITY_TOLERANCE)
+        ? block
+        : null;
+  }
+}
 
 // --- DNS-aware SSRF guard for the Worker prober (codex #255) -------------------
 // The literal `isUnsafePublicUrl` guard can't see DNS rebinding (a public-looking
@@ -380,14 +409,14 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       latency_ms: Number.isFinite(base.latency_ms) ? base.latency_ms : null,
       status_code: Number.isInteger(base.status_code) ? base.status_code : null,
       archive_support: base.archive_support ?? null,
-      latest_block: Number.isFinite(base.latest_block)
-        ? base.latest_block
-        : null,
+      latest_block: safeRpcBlockNumber(base.latest_block),
       checked_at_ms: runAt,
       last_ok_ms: lastOkMs,
       consecutive_failures: consecutiveFailures,
     };
   });
+
+  sanitizeRpcLatestBlocks(probed);
 
   await persistToD1(db, probed, runAt);
   await persistToKv(kv, probed, runAt);
