@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
 import { CopyButton } from "./copy-button";
 import { TimeAgo } from "./time-ago";
@@ -9,13 +10,19 @@ import { EmptyState, StaleBanner } from "./states";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { RpcUsage } from "@/lib/metagraphed/types";
 
-// The proxy currently routes the finney (mainnet) pool. The /test path is
-// accepted but shares the finney pool today, so we feature finney as the live,
-// honest endpoint rather than advertising a separate testnet proxy.
-const PROXY_URL = `${API_BASE}/rpc/v1/finney`;
-const CURL_EXAMPLE = `curl -s ${PROXY_URL} \\
+// The proxy is one service fronting multiple chains (finney + test today). Map
+// the selected network to its chain segment + a label; the hero shows the URL
+// for whichever network the selector is on.
+const PROXY_CHAINS: Record<string, { chain: string; label: string }> = {
+  mainnet: { chain: "finney", label: "finney · mainnet" },
+  testnet: { chain: "test", label: "test · testnet" },
+};
+
+function curlFor(url: string): string {
+  return `curl -s ${url} \\
   -X POST -H 'content-type: application/json' \\
   -d '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader","params":[]}'`;
+}
 
 const HOW_IT_WORKS: { icon: typeof Zap; title: string; body: string }[] = [
   {
@@ -46,6 +53,10 @@ const HOW_IT_WORKS: { icon: typeof Zap; title: string; body: string }[] = [
 ];
 
 export function ProxyHero() {
+  const { network } = useNetwork();
+  const { chain, label } = PROXY_CHAINS[network.id] ?? PROXY_CHAINS.mainnet;
+  const proxyUrl = `${API_BASE}/rpc/v1/${chain}`;
+  const curlExample = curlFor(proxyUrl);
   return (
     <div className="rounded-lg border border-accent/30 bg-gradient-to-br from-accent/[0.06] to-transparent p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -55,6 +66,9 @@ export function ProxyHero() {
         </span>
         <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           Load-balanced reverse proxy
+        </span>
+        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent">
+          {label}
         </span>
       </div>
       <h2 className="mt-2 font-display text-lg font-semibold text-ink-strong">
@@ -68,8 +82,8 @@ export function ProxyHero() {
 
       <div className="mt-4 flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
         <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">POST</span>
-        <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{PROXY_URL}</code>
-        <CopyButton value={PROXY_URL} label="proxy URL" />
+        <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{proxyUrl}</code>
+        <CopyButton value={proxyUrl} label="proxy URL" />
       </div>
 
       <div className="mt-2 rounded border border-border bg-paper">
@@ -77,10 +91,10 @@ export function ProxyHero() {
           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
             Try it
           </span>
-          <CopyButton value={CURL_EXAMPLE} label="curl command" />
+          <CopyButton value={curlExample} label="curl command" />
         </div>
         <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-ink">
-          {CURL_EXAMPLE}
+          {curlExample}
         </pre>
       </div>
 
@@ -225,6 +239,23 @@ export function ProxyUsagePanel() {
               hint={`${formatNumber(s.cache_hits)} served`}
             />
           </div>
+
+          {usage.networks.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                By network
+              </span>
+              {usage.networks.map((n) => (
+                <span
+                  key={n.network}
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 font-mono text-[11px]"
+                >
+                  <span className="text-ink-strong">{n.network}</span>
+                  <span className="text-ink-muted">{formatNumber(n.requests)}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           {usage.endpoints.length > 0 ? (
             <div className="rounded border border-border bg-card overflow-x-auto">
