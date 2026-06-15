@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ArrowUpRight, Network, Activity, Server, FileCode2, Radio } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -331,12 +331,11 @@ function TableSkeleton() {
 
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
-  // Non-blocking: a /api/v1/health failure must not error the whole table —
-  // useSuspenseQuery so the Health/completeness overlay renders server-side too
-  // (this component is already inside a Suspense boundary). A plain useQuery left
-  // the home table's Health column "Unknown" until client hydration.
-  const health = useSuspenseQuery(healthQuery()).data?.data;
-  const coverage = useSuspenseQuery(coverageQuery()).data?.data;
+  // Non-blocking: health/coverage failures must not error the whole table.
+  // Keep these auxiliary overlay queries out of Suspense so the primary subnets
+  // list still renders when either endpoint is temporarily unavailable.
+  const health = useQuery({ ...healthQuery(), throwOnError: false }).data?.data;
+  const coverage = useQuery({ ...coverageQuery(), throwOnError: false }).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
   const hsubs = (health as { subnets?: Array<{ netuid: number; status?: string }> } | undefined)
