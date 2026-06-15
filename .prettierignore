@@ -18,3 +18,8 @@ registry/verification
 registry/adapters/latest
 migrations
 tmp
+
+# release-please regenerates these CHANGELOGs on every release in its own format;
+# they are machine-generated, not prettier-gated (python/CHANGELOG.md is covered by the `python` entry above).
+CHANGELOG.md
+packages/client/CHANGELOG.md
