@@ -48,6 +48,8 @@
     "logo_url": {
       "type": "string",
       "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+      "examples": ["https://example.com/logo.png"],
       "description": "Curated/hand-picked provider logo (square, ideally >=128px). Display-only; the UI falls back to the website favicon when absent."
     },
     "team_url": {

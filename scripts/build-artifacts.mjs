@@ -33,6 +33,7 @@ import {
   nativeDisplayName,
   nativeNameQuality,
   netuidForEvidenceClaim,
+  normalizePublicHttpUrl,
   normalizePublicUrl,
   publishedAt,
   readJson,
@@ -747,8 +748,9 @@ const enrichedProviders = providers.map((provider) => {
   // Curated logo wins; else borrow the on-chain logo of the single subnet this
   // provider operates (display-only, never feeds completeness). Multi-subnet
   // providers stay logo-less — the UI resolves a favicon from website_url.
+  const curatedLogoUrl = normalizePublicHttpUrl(provider.logo_url);
   const logoUrl =
-    provider.logo_url ||
+    curatedLogoUrl ||
     (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.logo_url : null) ||
     null;
   return {

@@ -1,6 +1,7 @@
 import {
   clusterDomainFromUrl,
   flattenSurfaces,
+  normalizePublicHttpUrl,
   normalizePublicUrl,
   registrySurfaceKey,
   slugify,
@@ -1243,6 +1244,7 @@ export function validateProviderForSubmission({
   const githubUrl = normalizePublicUrl(provider?.github_url);
   const teamUrl = normalizePublicUrl(provider?.team_url);
   const contactUrl = normalizePublicUrl(provider?.contact_url);
+  const logoUrl = normalizePublicHttpUrl(provider?.logo_url);
 
   if (!provider || typeof provider !== "object") {
     return {
@@ -1292,6 +1294,7 @@ export function validateProviderForSubmission({
     ["github_url", githubUrl],
     ["team_url", teamUrl],
     ["contact_url", contactUrl],
+    ["logo_url", logoUrl],
   ]) {
     if (provider[field] && !normalized) {
       errors.push({

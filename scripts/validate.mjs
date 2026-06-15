@@ -11,6 +11,7 @@ import {
   loadSubnets,
   isCredentialedUrl,
   isValidUrl,
+  normalizePublicHttpUrl,
   nativeDisplayName,
   nativeNameQuality,
   listJsonFilesRecursive,
@@ -141,6 +142,12 @@ function validateProvider(provider) {
       continue;
     }
     assert(isValidUrl(provider[key]), `${provider.id}: ${key} must be a URL`);
+  }
+  if (provider.logo_url !== undefined) {
+    assert(
+      normalizePublicHttpUrl(provider.logo_url),
+      `${provider.id}: logo_url must be a public HTTP(S) URL`,
+    );
   }
   assert(
     authorities.has(provider.authority),

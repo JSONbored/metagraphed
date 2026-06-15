@@ -1980,6 +1980,7 @@ export interface components {
             /**
              * Format: uri
              * @description Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness.
+             * @example https://example.com/logo.png
              */
             logo_url?: string;
             name: string;

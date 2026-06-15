@@ -894,6 +894,16 @@ export function normalizePublicUrl(value) {
   }
 }
 
+export function normalizePublicHttpUrl(value) {
+  const normalized = normalizePublicUrl(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const protocol = new URL(normalized).protocol;
+  return ["http:", "https:"].includes(protocol) ? normalized : null;
+}
+
 // Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
 // deprecated subnets' "https://deprecated.png" + "github.com/username/repo",
 // or "example.com" stubs). These must never surface as real links.

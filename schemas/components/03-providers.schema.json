@@ -45,6 +45,8 @@
           "logo_url": {
             "type": "string",
             "format": "uri",
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+            "examples": ["https://example.com/logo.png"],
             "description": "Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness."
           },
           "team_url": {

@@ -3814,7 +3814,11 @@
           },
           "logo_url": {
             "description": "Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness.",
+            "examples": [
+              "https://example.com/logo.png"
+            ],
             "format": "uri",
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
             "type": "string"
           },
           "name": {
