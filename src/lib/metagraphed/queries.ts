@@ -247,6 +247,35 @@ export const healthQuery = () =>
     staleTime: STALE_SHORT,
   });
 
+// Per-subnet probe health, keyed by netuid. The /api/v1/subnets LIST rows carry
+// only chain `status` ("active"), never probe health or last_checked — that
+// lives in /api/v1/health `data.subnets[]` (one entry per probed subnet). The
+// subnets table joins this map in so the Health + Updated columns (and the
+// health filter) resolve; subnets with no probed surfaces have no entry and stay
+// "unknown" (correct — there is nothing to probe).
+export type SubnetHealthEntry = { health: HealthState; last_checked?: string };
+
+export const subnetHealthMapQuery = () =>
+  queryOptions({
+    queryKey: k("subnet-health-map"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
+      const d = (res.data ?? {}) as Record<string, unknown>;
+      const subnets = Array.isArray(d.subnets) ? (d.subnets as Record<string, unknown>[]) : [];
+      const map: Record<number, SubnetHealthEntry> = {};
+      for (const sn of subnets) {
+        const netuid = sn.netuid;
+        if (typeof netuid !== "number") continue;
+        map[netuid] = {
+          health: statusToHealth(sn.status) ?? "unknown",
+          last_checked: (sn.last_checked as string) ?? (sn.last_ok as string),
+        };
+      }
+      return { data: map, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_SHORT,
+  });
+
 export const sourceHealthQuery = () =>
   queryOptions({
     queryKey: k("source-health"),
@@ -285,8 +314,13 @@ function normalizeSubnet(raw: unknown): Subnet {
     participants: (s.participants as number) ?? (s.participant_count as number),
     surfaces_count: (s.surfaces_count as number) ?? (s.surface_count as number),
     candidates_count: (s.candidates_count as number) ?? (s.candidate_count as number),
-    health: (s.health as HealthState) ?? statusToHealth(s.status),
+    // chain `status` is "active" → "unknown" here; the real probe health is
+    // joined from /api/v1/health in the table. Default to "unknown" (never
+    // undefined) so the health filter matches unprobed rows.
+    health: (s.health as HealthState) ?? statusToHealth(s.status) ?? "unknown",
     icon_url: (s.icon_url as string) ?? (s.logo_url as string),
+    // API key is website_url; the BrandIcon favicon fallback reads `website`.
+    website: (s.website as string) ?? (s.website_url as string),
     updated_at: (s.updated_at as string) ?? (s.last_checked as string) ?? (s.last_ok as string),
   } as Subnet;
 }
@@ -466,11 +500,34 @@ export const subnetHealthQuery = (netuid: number) =>
     staleTime: STALE_SHORT,
   });
 
+// Candidate rows carry `review_notes` (not `notes`) and a nested
+// `verification.verified_at` (no top-level `discovered_at`).
+function normalizeCandidate(raw: unknown): Candidate {
+  if (!raw || typeof raw !== "object") return raw as Candidate;
+  const c = raw as Record<string, unknown>;
+  const verification = (c.verification as Record<string, unknown> | undefined) ?? {};
+  return {
+    ...(c as object),
+    notes: (c.notes as string) ?? (c.review_notes as string),
+    discovered_at:
+      (c.discovered_at as string) ??
+      (verification.verified_at as string) ??
+      (c.observed_at as string),
+  } as Candidate;
+}
+
 export const subnetCandidatesQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-candidates", netuid),
-    queryFn: ({ signal }) =>
-      fetchList<Candidate>(`/api/v1/subnets/${netuid}/candidates`, "candidates", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/subnets/${netuid}/candidates`,
+        "candidates",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeCandidate) } as ApiResult<Candidate[]>;
+    },
     staleTime: STALE_LONG,
   });
 

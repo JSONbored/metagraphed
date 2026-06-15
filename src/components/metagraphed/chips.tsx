@@ -114,10 +114,29 @@ const curationCls: Record<CurationLevel, string> = {
   "adapter-backed": "bg-curation-pilot/10 text-curation-pilot border-curation-pilot/30",
 };
 
+// Surfaces carry a per-surface `authority` (rather than a curation_level); give
+// those values their own readable labels + reuse the nearest curation styling.
+const authorityLabel: Record<string, string> = {
+  official: "Official",
+  "registry-observed": "Observed",
+  "provider-claimed": "Claimed",
+  community: "Community",
+  "native-chain": "Native",
+};
+
+const authorityCls: Record<string, string> = {
+  official: curationCls["maintainer-reviewed"],
+  "registry-observed": curationCls["machine-verified"],
+  "provider-claimed": curationCls["adapter-backed"],
+  community: curationCls["candidate-discovered"],
+  "native-chain": curationCls["native"],
+};
+
 export function CurationChip({ level }: { level?: CurationLevel | string }) {
   const lvl = (level as CurationLevel) ?? "candidate-discovered";
-  const label = curationLabel[lvl] ?? String(level ?? "—");
-  const cls = curationCls[lvl] ?? curationCls["candidate-discovered"];
+  const key = String(level ?? "");
+  const label = curationLabel[lvl] ?? authorityLabel[key] ?? (level ? key : "—");
+  const cls = curationCls[lvl] ?? authorityCls[key] ?? curationCls["candidate-discovered"];
   return (
     <span
       className={classNames(

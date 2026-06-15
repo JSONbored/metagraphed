@@ -22,7 +22,12 @@ import {
   SortHeader,
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
-import { subnetsInfiniteQuery, coverageQuery, healthQuery } from "@/lib/metagraphed/queries";
+import {
+  subnetsInfiniteQuery,
+  coverageQuery,
+  healthQuery,
+  subnetHealthMapQuery,
+} from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import type { Subnet } from "@/lib/metagraphed/types";
@@ -142,13 +147,12 @@ function SubnetsTable() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
+  // /api/v1/subnets supports only q + cursor/limit. `sort` returns HTTP 400, and
+  // `curation`/`health` are ignored server-side — so those are applied
+  // client-side (filtered/sorted over the fetched pages) and must NOT be sent.
   const baseParams = {
     q: search.q || undefined,
-    sort: search.sort || undefined,
-    order: search.sort ? search.order : undefined,
     limit: search.limit,
-    curation: search.curation || undefined,
-    health: search.health || undefined,
   };
 
   const {
@@ -161,10 +165,19 @@ function SubnetsTable() {
     isFetching,
   } = useSuspenseInfiniteQuery(subnetsInfiniteQuery(baseParams, search.cursor));
 
+  // Per-subnet probe health (the list rows don't carry it; join it from
+  // /api/v1/health so the Health + Updated columns and the health filter work).
+  const healthMap = useSuspenseQuery(subnetHealthMapQuery()).data.data ?? {};
+
   const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
-  const all = pages.flatMap((p) => (p.data ?? []) as Subnet[]);
+  const all = pages
+    .flatMap((p) => (p.data ?? []) as Subnet[])
+    .map((s) => {
+      const h = healthMap[s.netuid];
+      return h ? { ...s, health: h.health, updated_at: s.updated_at ?? h.last_checked } : s;
+    });
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
   // Treat the URL cursor as the immutable starting point for this infinite query.
