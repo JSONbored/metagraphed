@@ -105,18 +105,24 @@ function looksLikeOpenApi(body) {
   );
 }
 
-async function classify(subnet) {
-  const url = subnet.url;
-  // Parse the host rather than substring-matching "github.com" (which would also
-  // match e.g. https://evil.com/?x=github.com). Non-URL inputs fall through to probing.
-  let host = "";
+// Parse the host rather than substring-matching "github.com" (which would also
+// match e.g. https://evil.com/?x=github.com). Returns "" for non-URL inputs so
+// they fall through to probing.
+function repoHostname(rawUrl) {
   try {
-    host = new URL(url.includes("://") ? url : `https://${url}`).hostname
+    return new URL(
+      rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`,
+    ).hostname
       .replace(/^www\./, "")
       .toLowerCase();
   } catch {
-    host = "";
+    return "";
   }
+}
+
+async function classify(subnet) {
+  const url = subnet.url;
+  const host = repoHostname(url);
   if (host === "github.com" || host.endsWith(".github.com")) {
     return { ...subnet, classification: "repo", callable: false, status: null };
   }
