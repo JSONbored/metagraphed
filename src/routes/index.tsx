@@ -252,7 +252,12 @@ function PilotCard({ slug, netuid, title, subtitle }: PilotProps) {
   // wrapping <Suspense>, errors by the wrapping <QueryErrorBoundary>.
   const snapshot = useSuspenseQuery(adapterQuery(slug)).data;
 
-  const generated = snapshot.meta?.generated_at;
+  // The adapter payload carries generated_at on the data object (the envelope
+  // meta is a fallback). There is no `metrics` map on the adapter snapshot, so
+  // the grid renders nothing rather than fabricating values.
+  const generated =
+    (snapshot.data as { generated_at?: string } | undefined)?.generated_at ??
+    snapshot.meta?.generated_at;
   const metrics = (snapshot.data?.metrics ?? {}) as Record<string, unknown>;
   const metricEntries = Object.entries(metrics).slice(0, 4);
 

@@ -147,10 +147,30 @@ async function fetchDetail<T>(
   return { data: raw as T, meta: res.meta, url: res.url };
 }
 
+// The backend /api/v1/coverage uses chain-accurate field names; the UI's KPI
+// tiles read friendlier aliases. Map the real fields onto the names the
+// components expect (keeping the raw fields via spread). manifested_count is
+// currently always 0, so fall through to the first-party surface count for the
+// "manifested surfaces" tile rather than render a bare 0.
+function normalizeCoverage(raw: unknown): Coverage {
+  const d = (raw ?? {}) as Record<string, number | undefined>;
+  return {
+    ...(d as object),
+    netuids_total: d.netuids_total ?? d.chain_subnet_count,
+    netuids_active: d.netuids_active ?? d.application_subnet_count ?? d.probed_count,
+    adapter_backed: d.adapter_backed ?? d.first_party_subnet_count,
+    manifested: d.manifested ?? (d.manifested_count || undefined) ?? d.official_surface_count,
+    surfaces_total: d.surfaces_total ?? d.official_surface_count ?? d.surface_count,
+  } as Coverage;
+}
+
 export const coverageQuery = () =>
   queryOptions({
     queryKey: k("coverage"),
-    queryFn: ({ signal }) => apiFetch<Coverage>("/api/v1/coverage", { signal }),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/coverage", { signal });
+      return { data: normalizeCoverage(res.data), meta: res.meta, url: res.url };
+    },
     staleTime: STALE_MED,
   });
 
@@ -266,6 +286,7 @@ function normalizeSubnet(raw: unknown): Subnet {
     surfaces_count: (s.surfaces_count as number) ?? (s.surface_count as number),
     candidates_count: (s.candidates_count as number) ?? (s.candidate_count as number),
     health: (s.health as HealthState) ?? statusToHealth(s.status),
+    icon_url: (s.icon_url as string) ?? (s.logo_url as string),
     updated_at: (s.updated_at as string) ?? (s.last_checked as string) ?? (s.last_ok as string),
   } as Subnet;
 }
@@ -335,6 +356,7 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     name: pickStr(profile.name, subnet.name, subnet.native_name, profile.native_name),
     slug: pickStr(profile.slug, subnet.slug, subnet.native_slug),
     native_name: pickStr(subnet.native_name, profile.native_name),
+    icon_url: pickStr(profile.icon_url as string, subnet.logo_url as string),
     symbol: pickStr(subnet.symbol),
     description: pickStr(subnet.notes, profile.notes),
     notes: pickStr(subnet.notes, profile.notes),
@@ -402,8 +424,15 @@ export const subnetProfileQuery = (netuid: number) =>
 export const subnetSurfacesQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-surfaces", netuid),
-    queryFn: ({ signal }) =>
-      fetchList<Surface>(`/api/v1/subnets/${netuid}/surfaces`, "surfaces", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/subnets/${netuid}/surfaces`,
+        "surfaces",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeSurface) } as ApiResult<Surface[]>;
+    },
     staleTime: STALE_MED,
   });
 
@@ -448,7 +477,10 @@ export const subnetCandidatesQuery = (netuid: number) =>
 export const surfacesQuery = (params?: QueryParams) =>
   queryOptions({
     queryKey: k("surfaces", params ?? {}),
-    queryFn: ({ signal }) => fetchList<Surface>("/api/v1/surfaces", "surfaces", params, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/surfaces", "surfaces", params, signal);
+      return { ...res, data: res.data.map(normalizeSurface) } as ApiResult<Surface[]>;
+    },
     staleTime: STALE_MED,
   });
 
@@ -567,9 +599,26 @@ function normalizeEndpoint(raw: unknown): Endpoint {
     id: e.id as string,
     health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
     provider_slug: (e.provider_slug as string) ?? (e.provider as string) ?? (e.operator as string),
+    archive:
+      (e.archive as boolean | undefined) ??
+      (e.archive_support as boolean | undefined) ??
+      (e.archive_capable as boolean | undefined),
     last_probed_at:
       (e.last_probed_at as string) ?? (e.last_checked as string) ?? (e.observed_at as string),
   } as Endpoint;
+}
+
+function normalizeSurface(raw: unknown): Surface {
+  if (!raw || typeof raw !== "object") return raw as Surface;
+  const s = raw as Record<string, unknown>;
+  return {
+    ...(s as object),
+    // Per-surface payloads carry `authority` (official | registry-observed |
+    // community | native-chain) — the real trust signal — but not curation_level.
+    // Surface it as the chip level so surfaces don't all read "candidate-discovered".
+    curation_level: (s.curation_level as CurationLevel) ?? (s.authority as CurationLevel),
+    provider_slug: (s.provider_slug as string) ?? (s.provider as string),
+  } as Surface;
 }
 
 function isHealthState(v: unknown): v is HealthState {
@@ -624,18 +673,45 @@ export const rpcEndpointsQuery = () =>
     staleTime: STALE_MED,
   });
 
+// Pool rows are { id, kind, endpoint_count, eligible_count, best_endpoint_id,
+// endpoints[] }; the pools table reads name/members_count/proxy_enabled/
+// archive_capable. Derive those from the real fields (region is not modelled,
+// stays "—"). archive_capable = any member endpoint supports archive; a pool is
+// proxy-eligible when it has eligible endpoints.
+function normalizePool(raw: unknown): RpcPool {
+  if (!raw || typeof raw !== "object") return raw as RpcPool;
+  const p = raw as Record<string, unknown>;
+  const endpoints = Array.isArray(p.endpoints) ? (p.endpoints as Record<string, unknown>[]) : [];
+  return {
+    ...(p as object),
+    id: p.id as string,
+    name: (p.name as string) ?? (p.id as string) ?? (p.kind as string),
+    members_count: (p.members_count as number) ?? (p.endpoint_count as number) ?? endpoints.length,
+    proxy_enabled:
+      (p.proxy_enabled as boolean) ??
+      (typeof p.eligible_count === "number" && (p.eligible_count as number) > 0),
+    archive_capable:
+      (p.archive_capable as boolean) ?? endpoints.some((e) => e.archive_support === true),
+  } as RpcPool;
+}
+
 export const rpcPoolsQuery = () =>
   queryOptions({
     queryKey: k("rpc-pools"),
-    queryFn: ({ signal }) => fetchList<RpcPool>("/api/v1/rpc/pools", "pools", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/rpc/pools", "pools", undefined, signal);
+      return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
+    },
     staleTime: STALE_MED,
   });
 
 export const endpointPoolsQuery = () =>
   queryOptions({
     queryKey: k("endpoint-pools"),
-    queryFn: ({ signal }) =>
-      fetchList<RpcPool>("/api/v1/endpoint-pools", "pools", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/endpoint-pools", "pools", undefined, signal);
+      return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
+    },
     staleTime: STALE_MED,
   });
 
@@ -880,23 +956,67 @@ export const providerEndpointsQuery = (slug: string) =>
     staleTime: STALE_MED,
   });
 
+// /api/v1/gaps returns per-subnet gap PROFILES
+// ({ netuid, name, slug, coverage_level, curation_level, gaps: { missing_kinds,
+// gap_notes, supported_kinds } }), not flat gap records. Reshape each subnet that
+// has missing surface kinds into a single displayable gap card.
+function normalizeGap(raw: unknown): Gap {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const g = (r.gaps as Record<string, unknown> | undefined) ?? {};
+  const missing = Array.isArray(g.missing_kinds) ? (g.missing_kinds as string[]) : [];
+  const notes = Array.isArray(g.gap_notes) ? (g.gap_notes as string[]) : [];
+  const netuid = r.netuid as number | undefined;
+  const name = (r.name as string) ?? (netuid != null ? `SN${netuid}` : "subnet");
+  const core = missing.filter((kind) => kind === "openapi" || kind === "subnet-api").length;
+  const severity =
+    core >= 1 && missing.length >= 3 ? "high" : missing.length >= 2 ? "medium" : "low";
+  return {
+    id: (r.slug as string) ?? `gap-${netuid}`,
+    netuid,
+    category: (r.curation_level as string) ?? (r.coverage_level as string),
+    severity,
+    title: `${name} — ${missing.length} missing surface${missing.length === 1 ? "" : "s"}`,
+    description: missing.length ? `Missing: ${missing.join(", ")}` : undefined,
+    suggested_action: notes[0],
+  } as Gap;
+}
+
 export const gapsQuery = () =>
   queryOptions({
     queryKey: k("gaps"),
-    queryFn: ({ signal }) => fetchList<Gap>("/api/v1/gaps", "gaps", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/gaps", "gaps", undefined, signal);
+      // Only surface subnets that actually have missing kinds.
+      const rows = res.data.map(normalizeGap).filter((gap) => Boolean(gap.description));
+      return { ...res, data: rows } as ApiResult<Gap[]>;
+    },
     staleTime: STALE_LONG,
   });
 
 export const reviewProfileCompletenessQuery = () =>
   queryOptions({
     queryKey: k("review-profile-completeness"),
-    queryFn: ({ signal }) =>
-      fetchList<{ netuid: number; completeness: number; missing?: string[] }>(
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
         "/api/v1/review/profile-completeness",
         "profiles",
         undefined,
         signal,
-      ),
+      );
+      // API exposes completeness_score (0-100); the UI bars expect a 0-1 ratio.
+      const rows = res.data.map((r) => ({
+        netuid: r.netuid as number,
+        name: r.name as string | undefined,
+        completeness:
+          typeof r.completeness === "number"
+            ? (r.completeness as number)
+            : typeof r.completeness_score === "number"
+              ? (r.completeness_score as number) / 100
+              : undefined,
+        missing: (r.missing_required as string[]) ?? (r.gap_reasons as string[]),
+      }));
+      return { ...res, data: rows };
+    },
     staleTime: STALE_LONG,
   });
 
@@ -916,13 +1036,27 @@ export const reviewAdapterCandidatesQuery = () =>
 export const reviewEnrichmentQueueQuery = () =>
   queryOptions({
     queryKey: k("review-enrichment-queue"),
-    queryFn: ({ signal }) =>
-      fetchList<{ id: string; netuid?: number; priority?: string; note?: string }>(
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
         "/api/v1/review/enrichment-queue",
         "queue",
         undefined,
         signal,
-      ),
+      );
+      // API rows: { name, slug, netuid, priority_score, contribution_hint, ... }.
+      const rows = res.data.map((r) => ({
+        id: (r.slug as string) ?? (r.name as string) ?? String(r.netuid ?? ""),
+        netuid: r.netuid as number | undefined,
+        priority:
+          (r.priority as string) ??
+          (typeof r.priority_score === "number"
+            ? String(Math.round(r.priority_score as number))
+            : undefined),
+        note:
+          (r.note as string) ?? (r.contribution_hint as string) ?? (r.recommended_action as string),
+      }));
+      return { ...res, data: rows };
+    },
     staleTime: STALE_LONG,
   });
 

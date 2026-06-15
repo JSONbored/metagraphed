@@ -8,7 +8,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { providersQuery, providerCountsQuery } from "@/lib/metagraphed/queries";
+import { providersQuery, providerCountsQuery, endpointsQuery } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
@@ -422,13 +422,17 @@ function ProviderOverview({
     .sort((a, b) => b[1] - a[1])
     .map(([label, value], i) => ({ label, value, color: kindPalette[i % kindPalette.length]! }));
 
-  const endpointStatus = providers.reduce(
-    (acc, p) => {
-      const s = p.endpoint_summary?.by_status ?? {};
-      acc.ok += s.ok ?? 0;
-      acc.warn += s.degraded ?? s.warn ?? 0;
-      acc.down += s.failed ?? s.down ?? 0;
-      acc.unknown += s.unknown ?? 0;
+  // The /providers list omits per-provider endpoint_summary (only the detail
+  // route has it), so derive the cross-provider endpoint health from the
+  // endpoints collection directly.
+  const endpoints = useSuspenseQuery(endpointsQuery({ limit: 1000 })).data.data ?? [];
+  const endpointStatus = endpoints.reduce(
+    (acc, e) => {
+      const h = e.health ?? "unknown";
+      if (h === "ok") acc.ok += 1;
+      else if (h === "warn") acc.warn += 1;
+      else if (h === "down") acc.down += 1;
+      else acc.unknown += 1;
       return acc;
     },
     { ok: 0, warn: 0, down: 0, unknown: 0 },
