@@ -125,9 +125,9 @@
       "id": "sn-66-ninja-health",
       "kind": "subnet-api",
       "name": "Ninja health endpoint",
-      "notes": "Public read-only health endpoint for the Ninja service.",
+      "notes": "Health path returns HTTP 404 (the host is up; the /health route does not exist) — verified 2026-06-15. Probe disabled pending a valid health URL.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

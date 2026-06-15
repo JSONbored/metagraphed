@@ -510,6 +510,9 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
+    // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
+    assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
+    assert.equal(incidentQuery.params.at(-2), 2);
   });
 
   test("global incidents SQL bounds source rows before window grouping", async () => {
@@ -541,6 +544,9 @@ describe("analytics routes (fake D1 with data)", () => {
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params[1], 5000);
     assert.equal(incidentQuery.params.at(-1), 1000);
+    // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
+    assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
+    assert.equal(incidentQuery.params.at(-2), 2);
   });
 
   test("trajectory computes deltas from snapshots", async () => {

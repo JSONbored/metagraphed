@@ -187,16 +187,16 @@
       "kind": "subtensor-rpc",
       "url": "https://bittensor-public.nodies.app",
       "provider": "nodies",
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
-      "public_safe": true,
+      "public_safe": false,
       "source_urls": [
         "https://www.comparenodes.com/library/public-endpoints/bittensor/",
         "https://docs.nodies.app/rpc-services/public-endpoints"
       ],
-      "rate_limit_notes": "Public endpoint discovered from endpoint directories and verified with read-only JSON-RPC probes.",
+      "rate_limit_notes": "No longer a free public endpoint: returns HTTP 403 'requires a paid subscription plan' (verified 2026-06-15). Demoted out of the public RPC pool; probe disabled.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "JSON-RPC",
         "expect": "json",
         "timeout_ms": 12000

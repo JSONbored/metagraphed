@@ -315,6 +315,15 @@ export function formatTrends({ netuid, observedAt, windows }) {
 // the incidents handler.
 export const INCIDENT_GAP_MS = 6 * 60 * 1000;
 
+// Minimum consecutive failed probes for a gap-island to count as an incident.
+// A single failed probe that recovers on the next (~2 min later) is transient
+// noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
+// dominated the ledger (~76% of rows were single-sample, zero-duration). This
+// mirrors the Cosmos liveness model: an isolated missed block is tolerated;
+// only sustained misses (MinSignedPerWindow) count as downtime. At 2 (≥ ~4 min
+// sustained) the ledger reflects real dips, not prober flapping.
+export const MIN_INCIDENT_SAMPLES = 2;
+
 function round4(value) {
   return value == null ? null : Number(Number(value).toFixed(4));
 }

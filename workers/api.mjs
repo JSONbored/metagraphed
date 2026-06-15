@@ -53,6 +53,7 @@ import {
   formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
+  MIN_INCIDENT_SAMPLES,
   LEADERBOARD_BOARDS,
   mergeFreshness,
   mergeRpcEndpoints,
@@ -1333,9 +1334,10 @@ async function handleHealthIncidents(request, env, netuid, url) {
               COUNT(*) AS failed_samples
        FROM grouped
        GROUP BY surface_id, grp
+       HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
        LIMIT ?`,
-      [netuid, since, INCIDENT_GAP_MS, MAX_INCIDENT_ROWS],
+      [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
     ),
   ]);
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -1398,12 +1400,14 @@ async function handleGlobalIncidents(request, env, url) {
             COUNT(*) AS failed_samples
      FROM grouped
      GROUP BY netuid, surface_id, grp
+     HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
      LIMIT ?`,
     [
       since,
       MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
       INCIDENT_GAP_MS,
+      MIN_INCIDENT_SAMPLES,
       MAX_INCIDENT_ROWS,
     ],
   );
