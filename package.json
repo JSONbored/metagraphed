@@ -24,6 +24,7 @@
     "sync:subnets:dry-run": "node scripts/sync-subnets.mjs --dry-run",
     "discover:candidates": "node scripts/discover-candidates.mjs --write",
     "discover:candidates:dry-run": "node scripts/discover-candidates.mjs --dry-run",
+    "discover:testnet": "node scripts/discover-testnet-surfaces.mjs",
     "verify:candidates": "node scripts/verify-candidates.mjs --write",
     "verify:candidates:dry-run": "node scripts/verify-candidates.mjs --dry-run",
     "curate:baseline": "node scripts/curate-baseline.mjs --write",

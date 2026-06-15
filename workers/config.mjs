@@ -74,10 +74,13 @@ export const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "https://bittensor-public.nodies.app",
   "https://entrypoint-finney.opentensor.ai",
   "https://lite.chain.opentensor.ai",
-  // Bittensor testnet base-layer RPC (the /rpc/v1/test pool); verified testnet
-  // genesis 0x8f9cf8…, distinct from finney. See registry/native/test-base-endpoints.json.
+  // Bittensor testnet base-layer RPC + WSS (the /rpc/v1/test + test-wss pools);
+  // verified testnet genesis 0x8f9cf8…, distinct from finney. WSS endpoints
+  // confirmed (101 Switching Protocols). See registry/native/test-base-endpoints.json.
   "https://test.finney.opentensor.ai",
   "https://test.chain.opentensor.ai",
+  "wss://test.finney.opentensor.ai",
+  "wss://test.chain.opentensor.ai",
   "wss://archive.chain.opentensor.ai",
   "wss://bittensor-finney.api.onfinality.io",
   "wss://entrypoint-finney.opentensor.ai",
