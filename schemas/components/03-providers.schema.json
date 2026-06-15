@@ -42,6 +42,11 @@
             "type": "string",
             "format": "uri"
           },
+          "logo_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness."
+          },
           "team_url": {
             "type": "string",
             "format": "uri"
