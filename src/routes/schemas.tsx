@@ -34,6 +34,17 @@ const schemasSearchSchema = z.object({
   open: fallback(z.string(), "").default(""),
 });
 
+function sameOriginApiPathUrl(path?: string) {
+  if (typeof path !== "string" || !path.startsWith("/")) return undefined;
+  try {
+    const apiBaseUrl = new URL(API_BASE);
+    const artifactUrl = new URL(path, apiBaseUrl);
+    return artifactUrl.origin === apiBaseUrl.origin ? artifactUrl.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const Route = createFileRoute("/schemas")({
   validateSearch: zodValidator(schemasSearchSchema),
   head: () => ({
@@ -112,26 +123,29 @@ function ContractsList() {
   if (rows.length === 0) return <EmptyState title="No contracts published" />;
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((c) => (
-        <div key={c.id} className="rounded border border-border bg-card p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
-              {c.description ? (
-                <div className="font-mono text-[10px] text-ink-muted">{c.description}</div>
-              ) : null}
+      {rows.map((c) => {
+        const artifactUrl = sameOriginApiPathUrl(c.path);
+        return (
+          <div key={c.id} className="rounded border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
+                {c.description ? (
+                  <div className="font-mono text-[10px] text-ink-muted">{c.description}</div>
+                ) : null}
+              </div>
+              <FileCode className="size-4 text-ink-muted" />
             </div>
-            <FileCode className="size-4 text-ink-muted" />
+            {c.path && artifactUrl ? (
+              <div className="mt-2">
+                <ExternalLink href={artifactUrl} className="text-[11px]">
+                  {c.path}
+                </ExternalLink>
+              </div>
+            ) : null}
           </div>
-          {c.path ? (
-            <div className="mt-2">
-              <ExternalLink href={`${API_BASE}${c.path}`} className="text-[11px]">
-                {c.path}
-              </ExternalLink>
-            </div>
-          ) : null}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
