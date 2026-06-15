@@ -109,5 +109,8 @@
     "prettier": "^3.8.3",
     "vitest": "^4.1.8",
     "wrangler": "4.93.1"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }

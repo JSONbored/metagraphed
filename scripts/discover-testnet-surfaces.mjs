@@ -65,7 +65,17 @@ function looksLikeOpenApi(body) {
 
 async function classify(subnet) {
   const url = subnet.url;
-  if (url.includes("github.com")) {
+  // Parse the host rather than substring-matching "github.com" (which would also
+  // match e.g. https://evil.com/?x=github.com). Non-URL inputs fall through to probing.
+  let host = "";
+  try {
+    host = new URL(url.includes("://") ? url : `https://${url}`).hostname
+      .replace(/^www\./, "")
+      .toLowerCase();
+  } catch {
+    host = "";
+  }
+  if (host === "github.com" || host.endsWith(".github.com")) {
     return { ...subnet, classification: "repo", callable: false, status: null };
   }
   const base = url.replace(/\/$/, "");
