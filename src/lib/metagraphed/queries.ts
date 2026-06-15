@@ -951,6 +951,8 @@ function normalizeProviderListItem(raw: unknown): Provider {
     website,
     docs,
     repo,
+    // Curated/backfilled provider logo → BrandIcon's iconUrl (mirrors subnets).
+    icon_url: (r.icon_url as Provider["icon_url"]) ?? (r.logo_url as string),
     notes: pickStr(r.notes, r.public_notes),
   } as Provider;
 }
@@ -1041,6 +1043,7 @@ function normalizeProvider(raw: unknown, slug: string): Provider {
     endpoints_count: summary?.endpoint_count as number | undefined,
     generated_at: pickStr(root.generated_at as string, inner.generated_at as string),
     ...inner,
+    icon_url: (inner.icon_url as Provider["icon_url"]) ?? (inner.logo_url as string),
   } as Provider;
 }
 
