@@ -9,6 +9,7 @@ import {
   BookOpen,
   Sparkles,
   Boxes,
+  Package,
   ArrowUpRight,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -52,6 +53,35 @@ const KIND_META: Record<string, { icon: typeof Bot; label: string; tone: string 
   data: { icon: Database, label: "Data", tone: "text-ink-strong" },
 };
 
+// Typed SDKs (published + versioned on PyPI / npm) that wrap every route.
+const SDKS: {
+  lang: string;
+  pkg: string;
+  install: string;
+  snippet: string;
+  url: string;
+}[] = [
+  {
+    lang: "Python",
+    pkg: "metagraphed",
+    install: "pip install metagraphed",
+    snippet: `from metagraphed import MetagraphedClient
+
+client = MetagraphedClient()  # https://api.metagraph.sh
+catalog = client.fetch("/api/v1/agent-catalog")`,
+    url: "https://pypi.org/project/metagraphed/",
+  },
+  {
+    lang: "TypeScript",
+    pkg: "@jsonbored/metagraphed",
+    install: "npm i @jsonbored/metagraphed",
+    snippet: `import { metagraphedFetch } from "@jsonbored/metagraphed";
+
+const catalog = await metagraphedFetch("/api/v1/agent-catalog");`,
+    url: "https://www.npmjs.com/package/@jsonbored/metagraphed",
+  },
+];
+
 const QUICKSTART: { label: string; cmd: string }[] = [
   {
     label: "Ask a grounded question",
@@ -76,7 +106,7 @@ function AgentsPage() {
         eyebrow="For AI agents"
         live
         title="Built for agents to read"
-        description="Metagraphed is machine-readable end to end — an MCP server, agent tool specs, llms.txt, grounded Q&A, semantic search, and bulk data over the Bittensor subnet registry. No SDK, no key, no account."
+        description="Metagraphed is machine-readable end to end — an MCP server, typed Python + TypeScript SDKs, agent tool specs, llms.txt, grounded Q&A, semantic search, and bulk data over the Bittensor subnet registry. No key, no account."
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
@@ -181,6 +211,49 @@ function AgentsBody() {
             {res.summary.callable_service_count} callable services · {res.summary.subnet_count}{" "}
             subnets indexed
           </p>
+        </div>
+      </section>
+
+      {/* Typed SDKs */}
+      <section>
+        <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
+          Use the SDK
+        </h2>
+        <p className="mb-3 text-[13px] text-ink-muted">
+          Typed clients that wrap every route (and the RPC proxy) — published and versioned on PyPI
+          and npm.
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {SDKS.map((sdk) => (
+            <div key={sdk.lang} className="rounded-lg border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Package className="size-4 text-accent" aria-hidden />
+                <h3 className="font-display text-[13px] font-semibold text-ink-strong">
+                  {sdk.lang}
+                </h3>
+                <ExternalLink href={sdk.url} className="font-mono text-[11px] text-ink-muted">
+                  {sdk.pkg}
+                </ExternalLink>
+              </div>
+              <div className="mt-2 flex items-center gap-2 rounded border border-border bg-paper px-3 py-1.5">
+                <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-ink-strong">
+                  {sdk.install}
+                </code>
+                <CopyButton value={sdk.install} label={`${sdk.lang} install`} />
+              </div>
+              <div className="mt-2 rounded border border-border bg-paper">
+                <div className="flex items-center justify-between border-b border-border px-2 py-1">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    example
+                  </span>
+                  <CopyButton value={sdk.snippet} label={`${sdk.lang} example`} />
+                </div>
+                <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-ink">
+                  {sdk.snippet}
+                </pre>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
