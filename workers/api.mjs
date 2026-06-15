@@ -1949,7 +1949,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   const cache = cachePolicy.cacheable ? globalThis.caches?.default : null;
   let cacheKey = null;
   if (cache) {
-    cacheKey = await rpcCacheKey(rpcBody.method, rpcBody.params);
+    cacheKey = await rpcCacheKey(network, rpcBody.method, rpcBody.params);
     const hit = await cache.match(cacheKey);
     if (hit) {
       // Only the JSON-RPC `result` is cached (never caller-controlled envelope
@@ -2137,8 +2137,9 @@ function rpcResultEnvelope(requestBody, result) {
   return envelope;
 }
 
-async function rpcCacheKey(method, params) {
+async function rpcCacheKey(network, method, params) {
   const normalized = JSON.stringify([
+    network,
     method,
     Array.isArray(params) ? params : [],
   ]);
@@ -2150,7 +2151,7 @@ async function rpcCacheKey(method, params) {
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
   return new Request(
-    `https://rpc-cache.metagraph.internal/finney/${method}/${hash}`,
+    `https://rpc-cache.metagraph.internal/${network}/${method}/${hash}`,
   );
 }
 

@@ -58,6 +58,19 @@ describe("RPC response cache flow", () => {
           },
         ],
       },
+      {
+        id: "test-rpc",
+        endpoints: [
+          {
+            id: "tx",
+            provider: "tx",
+            pool_eligible: true,
+            status: "ok",
+            score: 100,
+            url: "https://test.finney.opentensor.ai",
+          },
+        ],
+      },
     ],
   };
   const env = {
@@ -81,8 +94,8 @@ describe("RPC response cache flow", () => {
       },
     },
   };
-  const reqFor = (method, params, id = 1) =>
-    new Request("https://metagraph.sh/rpc/v1/finney", {
+  const reqFor = (method, params, id = 1, network = "finney") =>
+    new Request(`https://metagraph.sh/rpc/v1/${network}`, {
       method: "POST",
       body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
     });
@@ -186,6 +199,52 @@ describe("RPC response cache flow", () => {
         id: "victim-expected-id",
         result: "0xhash",
       });
+    });
+  });
+
+  test("cache entries are isolated by RPC network", async () => {
+    const cache = makeCache();
+    const seen = [];
+    const fetchImpl = async (url) => {
+      seen.push(url);
+      const result = url.includes("test.finney.opentensor.ai")
+        ? "TESTNET_CHAIN"
+        : "FINNEY_CHAIN";
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+        status: 200,
+      });
+    };
+    await withGlobals({ cache, fetchImpl }, async () => {
+      const waits = [];
+      const ctx = { waitUntil: (p) => waits.push(p) };
+      const testnet = await handleRequest(
+        reqFor("system_chain", [], "test-prime", "test"),
+        env,
+        ctx,
+      );
+      assert.equal(testnet.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal((await testnet.json()).result, "TESTNET_CHAIN");
+      await Promise.all(waits);
+
+      const finney = await handleRequest(
+        reqFor("system_chain", [], "finney-caller", "finney"),
+        env,
+        ctx,
+      );
+      assert.equal(finney.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal((await finney.json()).result, "FINNEY_CHAIN");
+      assert.equal(seen.length, 2, "finney must not reuse testnet cache entry");
+      assert.equal(cache.store.size, 2);
+      assert.ok(
+        [...cache.store.keys()].some((key) =>
+          key.includes("/test/system_chain/"),
+        ),
+      );
+      assert.ok(
+        [...cache.store.keys()].some((key) =>
+          key.includes("/finney/system_chain/"),
+        ),
+      );
     });
   });
 
