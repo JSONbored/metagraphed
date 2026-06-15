@@ -3,7 +3,12 @@ import { describe, test } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv, readJson, repoRoot } from "../scripts/lib.mjs";
+import {
+  cleanDescription,
+  createLocalArtifactEnv,
+  readJson,
+  repoRoot,
+} from "../scripts/lib.mjs";
 
 // search.json is R2-tier (built to dist/), with a public/ fallback.
 function loadArtifact(relative) {
@@ -63,17 +68,27 @@ describe("search corpus invariants", () => {
   const subnets = subnetsArtifact.subnets;
 
   test("subnets with a description expose it as the search subtitle", () => {
-    const described = subnets.filter((subnet) => subnet.description);
+    // The served subtitle is the *cleaned* description. Junk stubs some
+    // deprecated subnets carry on-chain ("deprecated" on sn3/39/81) are filtered
+    // to null by the build (cleanDescription) and fall back to the symbol, so we
+    // reuse that same function to (a) exclude them and (b) compare against the
+    // value the build would actually emit — keeping test + build in lockstep.
+    const described = subnets
+      .map((subnet) => ({
+        subnet,
+        description: cleanDescription(subnet.description),
+      }))
+      .filter((entry) => entry.description);
     assert.ok(
       described.length > 50,
       "expected many subnets to carry descriptions",
     );
-    for (const subnet of described) {
+    for (const { subnet, description } of described) {
       const doc = subnetDocs.find((entry) => entry.netuid === subnet.netuid);
       assert.equal(
         doc.subtitle,
-        subnet.description,
-        `subnet ${subnet.netuid} subtitle should be its description`,
+        description,
+        `subnet ${subnet.netuid} subtitle should be its cleaned description`,
       );
       assert.ok(
         !/^SN\d+\s/.test(doc.subtitle),
