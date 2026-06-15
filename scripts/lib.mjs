@@ -1072,10 +1072,18 @@ export function nativeContactUrl(contact) {
 // Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
 // neutralize prompt-injection, strip URLs, collapse whitespace, drop empties.
 // Shared by the build + the reproducibility validator so the two never drift.
+// Bare placeholder words some subnets set as their ENTIRE on-chain description
+// ("deprecated", "none", "tbd", …) — treated as no description, mirroring
+// CONTACT_HANDLE_JUNK. Several deprecated subnets (sn3/39/81) carry a literal
+// "deprecated" description on-chain that should not leak into the served data.
+const JUNK_DESCRIPTION = /^(?:deprecated|none|null|n\/a|tbd|todo|test)$/i;
+
 export function cleanDescription(value) {
   if (typeof value !== "string") return null;
   const cleaned = stripUrls(sanitizeChainText(value).text);
-  return cleaned.length >= 2 ? cleaned : null;
+  if (cleaned.length < 2) return null;
+  if (JUNK_DESCRIPTION.test(cleaned.trim())) return null;
+  return cleaned;
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
