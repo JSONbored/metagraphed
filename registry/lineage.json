@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-15T00:00:00.000Z",
   "notes": "Maintainer-approved cross-network lineage pairs. Builds may only publish lineage links listed here; self-declared on-chain repo/name equality is evidence for review, not authorization to create new links.",
   "links": [
     {
@@ -242,6 +242,110 @@
       "review_state": "maintainer-approved",
       "reviewed_at": "2026-06-15T00:00:00.000Z",
       "notes": "Gittensor SN74 ↔ testnet 422 (entrius-test). Documented in the project's own repo: entrius/gittensor .env.example reads 'NETUID=74 # 422 if using testnet'. Evidence is the repo config (github_repo), not on-chain field equality — testnet 422 declares no on-chain repo."
+    },
+    {
+      "mainnet_netuid": 6,
+      "testnet_netuid": 155,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Numinous SN6 ↔ testnet 155 (glagolitic_uku). Documented in numinouslabs/numinous neurons/validator/utils/config.py: '{\"subtensor.network\": \"test\", \"netuid\": 155, \"numinous.env\": None},'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 12,
+      "testnet_netuid": 174,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Compute Horde SN12 ↔ testnet 174 (thai_cho_chan). Documented in backend-developers-ltd/ComputeHorde README.md: '- ComputeHorde testnet netuid: 174'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 14,
+      "testnet_netuid": 470,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Cacheon SN14 ↔ testnet 470 (cacheon-testnet). Documented in latent-to/cacheon miner/README.md: '--network test --netuid 470'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 16,
+      "testnet_netuid": 368,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "BitAds SN16 ↔ testnet 368 (yag). Documented in FirstTensorLabs/BitAds docker-compose.yml: '# Defaults: NETUID=368 (testnet), use NETUID=16 for mainnet (finney)'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 21,
+      "testnet_netuid": 466,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "AdTAO SN21 ↔ testnet 466 (unknown). Documented in ippcteam/SN21-adtao README.md: 'Bittensor Subnet 21 · Mainnet finney · Testnet test (netuid 466)'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 25,
+      "testnet_netuid": 141,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Mainframe SN25 ↔ testnet 141 (glagolitic_zemlja). Documented in macrocosm-os/mainframe documentation/api/README.md: '- netuid: The subnet ID (25 for mainnet, 141 for testnet)'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 33,
+      "testnet_netuid": 138,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "ReadyAI SN33 ↔ testnet 138 (glagolitic_dobro). Documented in afterpartyai/bittensor-conversation-genome-project README.md: 'specify --netuid 138 which is our testnet subnet uid.'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 35,
+      "testnet_netuid": 78,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "OxMarkets SN35 ↔ testnet 78 (waw). Documented in General-Tao-Ventures/cartha-validator cartha_validator/config.py: 'description=\"NetUID for testnet subnet (default: 78)\",' (config default; testnet 78 has generic on-chain name). Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 38,
+      "testnet_netuid": 474,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "ChronoLLM SN38 ↔ testnet 474 (sn38-chronogpt). Documented in chronollm/sn38 sn38/template/constants.py: '\"test\": {\"netuid\": 474, \"owner_uid\": 0},'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 54,
+      "testnet_netuid": 322,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Yanez MIID SN54 ↔ testnet 322 (yanez). Documented in yanez-compliance/MIID-subnet MIID/utils/config.py: \"Auto-changes to 'subnet322-test' when running on testnet (netuid 322).\". Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 65,
+      "testnet_netuid": 279,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "TAO Private Network SN65 ↔ testnet 279 (ronx). Documented in taofu-labs/tpn-subnet README.md: '# Use netuid 65 for mainnet, 279 for testnet'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 72,
+      "testnet_netuid": 323,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "StreetVision by NATIX SN72 ↔ testnet 323 (Stan Marsh). Documented in natixnetwork/streetvision-subnet natix/validator/config.py: 'TESTNET_UID = 323'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 88,
+      "testnet_netuid": 339,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-15T00:00:00.000Z",
+      "notes": "Investing SN88 ↔ testnet 339 (kana_na). Documented in mobiusfund/investing README.md: '--netuid 88 #339 --subtensor.network test'. Repo-config evidence for maintainer review, not proof."
     }
   ]
 }
