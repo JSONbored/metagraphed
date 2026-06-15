@@ -19,10 +19,10 @@ import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
-import { providerQuery, providerEndpointsQuery } from "@/lib/metagraphed/queries";
+import { providerQuery, providerEndpointsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import type { Endpoint } from "@/lib/metagraphed/types";
+import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
 
 type SearchParams = { tab?: string };
 
@@ -261,6 +261,16 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
   const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
   const meta = data.meta;
   const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
+  // Join the subnet index so each tile can show the subnet's logo + name
+  // (BrandIcon resolves icon_url → netuid brand-override → favicon → monogram).
+  const subnetIndex = useSuspenseQuery(subnetsQuery({ limit: 256 })).data;
+  const subnetByNetuid = useMemo(() => {
+    const m = new Map<number, Subnet>();
+    for (const s of (subnetIndex.data ?? []) as Subnet[]) {
+      if (s.netuid != null) m.set(s.netuid, s);
+    }
+    return m;
+  }, [subnetIndex]);
   const grouped = useMemo(() => {
     const m = new Map<number, Endpoint[]>();
     for (const r of rows) {
@@ -283,25 +293,41 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
   return (
     <>
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map(([netuid, items]) => (
-          <li key={netuid}>
-            <Link
-              to="/subnets/$netuid"
-              params={{ netuid: netuid }}
-              className="block rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
-            >
-              <div className="flex items-baseline justify-between">
-                <span className="mg-label">Netuid</span>
-                <span className="font-display text-base font-semibold text-ink-strong tabular-nums">
-                  {String(netuid).padStart(3, "0")}
-                </span>
-              </div>
-              <div className="mt-1 font-mono text-[10px] text-ink-muted">
-                {items.length} endpoint{items.length === 1 ? "" : "s"}
-              </div>
-            </Link>
-          </li>
-        ))}
+        {visible.map(([netuid, items]) => {
+          const sn = subnetByNetuid.get(netuid);
+          return (
+            <li key={netuid}>
+              <Link
+                to="/subnets/$netuid"
+                params={{ netuid: netuid }}
+                className="flex items-center gap-2.5 rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
+              >
+                <BrandIcon
+                  url={sn?.website}
+                  iconUrl={sn?.icon_url}
+                  netuid={netuid}
+                  name={sn?.name ?? `Subnet ${netuid}`}
+                  fallback={netuid}
+                  size={30}
+                  className="shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-display text-sm font-semibold text-ink-strong">
+                      {sn?.name ?? "Subnet"}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] text-ink-muted tabular-nums">
+                      {String(netuid).padStart(3, "0")}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 font-mono text-[10px] text-ink-muted">
+                    {items.length} endpoint{items.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       {compact && grouped.length > visible.length ? (
         <div className="mt-2 text-[11px] text-ink-muted">
