@@ -6,6 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
@@ -49,16 +50,14 @@ function StatusPage() {
         title="System status"
         description="Live operational status across every monitored subnet surface. Probe-derived — user submissions cannot set health or incident state."
       />
-      <div className="space-y-8">
+      <div className="space-y-section">
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-28 w-full" />}>
             <Verdict />
           </Suspense>
         </QueryErrorBoundary>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Recent incidents
-          </h2>
+          <SectionHeading title="Recent incidents" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <RecentIncidents />

@@ -58,6 +58,13 @@
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Layout rhythm — one canonical gap between major page sections. Consumed via
+     space-y-section / gap-section so no page hand-picks its own value. */
+  --spacing-section: 3rem;
+
+  /* Subtle accent wash for hero / primary surfaces; theme-aware via --accent. */
+  --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent);
 }
 
 /* ============ LIGHT (default) — Paper white + Citron ============ */

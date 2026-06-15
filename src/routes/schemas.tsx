@@ -22,6 +22,7 @@ import { EmptyState, ErrorState, Skeleton, StaleBanner } from "@/components/meta
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -87,11 +88,9 @@ function SchemasPage() {
           <SchemasKpiStrip />
         </Suspense>
       </QueryErrorBoundary>
-      <div className="mt-6 space-y-8">
+      <div className="mt-6 space-y-section">
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Contracts
-          </h2>
+          <SectionHeading title="Contracts" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
               <ContractsList />
@@ -99,9 +98,7 @@ function SchemasPage() {
           </QueryErrorBoundary>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Schema index
-          </h2>
+          <SectionHeading title="Schema index" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-64 w-full" />}>
               <SchemasList />

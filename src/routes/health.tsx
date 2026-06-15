@@ -8,6 +8,7 @@ import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
@@ -87,16 +88,14 @@ function HealthPage() {
           />
         }
       />
-      <div className="space-y-8">
+      <div className="space-y-section">
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-24 w-full" />}>
             <GlobalHealth interval={effectiveInterval} />
           </Suspense>
         </QueryErrorBoundary>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Source health
-          </h2>
+          <SectionHeading title="Source health" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <SourceHealth interval={effectiveInterval} />
@@ -104,9 +103,7 @@ function HealthPage() {
           </QueryErrorBoundary>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Incidents
-          </h2>
+          <SectionHeading title="Incidents" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <Incidents interval={effectiveInterval} />
@@ -250,7 +247,7 @@ function GlobalHealth({ interval }: { interval: number | false }) {
   return (
     <div className="space-y-4">
       {stale ? <StaleBanner generatedAt={hRes.meta?.generated_at} /> : null}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
           <Donut
             segments={segs}
@@ -276,12 +273,6 @@ function GlobalHealth({ interval }: { interval: number | false }) {
             <Cell label="Max age" num={f?.max_age_seconds} format={(n) => humaniseSeconds(n)} />
             <Cell label="Stale" num={f?.stale_count} />
           </div>
-        </div>
-        <div className="rounded border border-border bg-card p-3 grid grid-cols-2 gap-2">
-          <Cell label="OK" num={h?.ok} accent="text-health-ok" />
-          <Cell label="Warn" num={h?.warn} accent="text-health-warn" />
-          <Cell label="Down" num={h?.down} accent="text-health-down" />
-          <Cell label="Unknown" num={h?.unknown} accent="text-ink-muted" />
         </div>
       </div>
       <div className="text-[11px] font-mono text-ink-muted">

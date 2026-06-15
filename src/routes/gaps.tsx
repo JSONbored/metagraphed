@@ -8,6 +8,7 @@ import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import {
   gapsQuery,
   reviewProfileCompletenessQuery,
@@ -56,11 +57,9 @@ function GapsPage() {
           <GapsKpiStrip />
         </Suspense>
       </QueryErrorBoundary>
-      <div className="mt-6 space-y-8">
+      <div className="mt-6 space-y-section">
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Integrability scoreboard
-          </h2>
+          <SectionHeading title="Integrability scoreboard" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <IntegrabilityBoard />
@@ -68,9 +67,7 @@ function GapsPage() {
           </QueryErrorBoundary>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Open gaps
-          </h2>
+          <SectionHeading title="Open gaps" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <GapsList />
@@ -79,9 +76,7 @@ function GapsPage() {
         </section>
         <section className="grid gap-6 lg:grid-cols-2">
           <div>
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-              Profile completeness
-            </h2>
+            <SectionHeading title="Profile completeness" />
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <CompletenessList />
@@ -89,9 +84,7 @@ function GapsPage() {
             </QueryErrorBoundary>
           </div>
           <div>
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-              Adapter candidates
-            </h2>
+            <SectionHeading title="Adapter candidates" />
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <AdapterCandidates />
@@ -100,9 +93,7 @@ function GapsPage() {
           </div>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Enrichment queue
-          </h2>
+          <SectionHeading title="Enrichment queue" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <EnrichmentQueue />
@@ -298,9 +289,9 @@ function GapsKpiStrip() {
     { label: "Queue depth", value: String(queue.length) },
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border border border-border rounded overflow-hidden">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
       {stats.map((s) => (
-        <div key={s.label} className="bg-card p-3">
+        <div key={s.label} className="rounded border border-border bg-card p-3">
           <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
             {s.label}
           </div>

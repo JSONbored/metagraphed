@@ -8,6 +8,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
@@ -59,15 +60,13 @@ function EndpointsPage() {
         title="Endpoints"
         description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
       />
-      <div className="space-y-12">
+      <div className="space-y-section">
         {/* The headline feature: the live reverse proxy + its usage analytics. */}
         <section>
           <ProxyHero />
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Proxy usage
-          </h2>
+          <SectionHeading title="Proxy usage" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-40 w-full" />}>
               <ProxyUsagePanel />
@@ -91,9 +90,7 @@ function EndpointsPage() {
         </QueryErrorBoundary>
 
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            RPC pools
-          </h2>
+          <SectionHeading title="RPC pools" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
               <PoolsTable />
@@ -101,9 +98,7 @@ function EndpointsPage() {
           </QueryErrorBoundary>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Callable endpoints
-          </h2>
+          <SectionHeading title="Callable endpoints" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <EndpointsTable />
@@ -111,9 +106,7 @@ function EndpointsPage() {
           </QueryErrorBoundary>
         </section>
         <section>
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            Recent incidents
-          </h2>
+          <SectionHeading title="Recent incidents" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
               <IncidentsSection />

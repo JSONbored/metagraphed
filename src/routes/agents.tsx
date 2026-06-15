@@ -18,6 +18,7 @@ import { CopyButton } from "@/components/metagraphed/copy-button";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { AgentResources } from "@/lib/metagraphed/types";
@@ -110,14 +111,14 @@ function AgentsBody() {
   const mcp = res.mcp;
 
   return (
-    <div className="mt-6 space-y-16">
+    <div className="mt-6 space-y-section">
       {/* MCP — the one primary path, given room of its own */}
       <section>
-        <SectionHead
+        <SectionHeading
           title="Connect over MCP"
           intro={`One command in Claude Code, Cursor, or any MCP client. ${mcp.tools.length} tools over ${mcp.transport} — search the registry, find a subnet for a task, get a callable RPC endpoint, ask a grounded question.`}
         />
-        <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/[0.05] px-4 py-3.5">
+        <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent-surface px-4 py-3.5">
           <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
           <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-ink-strong">
             {mcp.install}
@@ -140,7 +141,7 @@ function AgentsBody() {
       {/* Two calmer alternatives, side by side */}
       <section className="grid gap-10 md:grid-cols-2">
         <div>
-          <SectionHead
+          <SectionHeading
             title="Or install the SDK"
             intro="Typed clients for Python and TypeScript that wrap every route and the RPC proxy."
           />
@@ -166,7 +167,7 @@ function AgentsBody() {
         </div>
 
         <div>
-          <SectionHead title="Or drop into a chat" intro={res.copyable_agent.description} />
+          <SectionHeading title="Or drop into a chat" intro={res.copyable_agent.description} />
           <div className="flex flex-wrap gap-2">
             <a
               href={CLAUDE_URL}
@@ -196,7 +197,7 @@ function AgentsBody() {
 
       {/* Every machine-readable surface — a calm list, not a card wall */}
       <section>
-        <SectionHead
+        <SectionHeading
           title="Everything else, fetchable directly"
           intro={`A paste-ready agent prompt, a Bittensor skill, llms.txt, the OpenAPI contract, grounded Q&A, semantic search, and bulk data — ${res.summary.callable_service_count} callable services across ${res.summary.subnet_count} subnets, all indexed at /api/v1/agent-resources.`}
         />
@@ -223,7 +224,7 @@ function AgentsBody() {
 
       {/* Quickstart curls — no key, no account */}
       <section>
-        <SectionHead title="Try it" intro="No key, no account — hit any surface with curl." />
+        <SectionHeading title="Try it" intro="No key, no account — hit any surface with curl." />
         <div className="space-y-2.5">
           {QUICKSTART.map((q) => (
             <div key={q.label} className="rounded-lg border border-border bg-card">
@@ -240,17 +241,6 @@ function AgentsBody() {
           ))}
         </div>
       </section>
-    </div>
-  );
-}
-
-function SectionHead({ title, intro }: { title: string; intro: string }) {
-  return (
-    <div className="mb-4 max-w-2xl">
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-        {title}
-      </h2>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-muted">{intro}</p>
     </div>
   );
 }
