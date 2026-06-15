@@ -182,9 +182,5 @@ function Loading() {
   );
 }
 function Failed() {
-  return (
-    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-      Preview unavailable
-    </div>
-  );
+  return <div className="mg-label">Preview unavailable</div>;
 }

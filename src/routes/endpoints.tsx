@@ -814,7 +814,7 @@ function IncidentsSection() {
                     )}
                     <HealthDot state={g.dominantState} />
                     <span className="font-mono text-[12px] text-ink-strong truncate">{g.host}</span>
-                    <span className="ml-auto inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+                    <span className="ml-auto inline-flex items-center gap-2 mg-label shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
                       ) : null}

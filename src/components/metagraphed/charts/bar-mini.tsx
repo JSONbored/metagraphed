@@ -27,9 +27,7 @@ export function BarMini({ data, max, className, showValue = true }: Props) {
         const pct = cap > 0 ? Math.max(2, Math.round((d.value / cap) * 100)) : 0;
         return (
           <li key={d.label} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted truncate">
-              {d.label}
-            </span>
+            <span className="mg-label truncate">{d.label}</span>
             <span className="relative h-1.5 rounded-full bg-surface overflow-hidden">
               <span
                 className="absolute inset-y-0 left-0 rounded-full"

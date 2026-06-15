@@ -156,11 +156,7 @@ export function PageHeading({
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
       <div>
-        {eyebrow ? (
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-            {eyebrow}
-          </div>
-        ) : null}
+        {eyebrow ? <div className="mg-label mb-1">{eyebrow}</div> : null}
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
           {title}
         </h1>

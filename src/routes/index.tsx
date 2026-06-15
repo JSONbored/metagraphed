@@ -122,7 +122,7 @@ function HomeHero() {
     <section className="mg-hero-slab relative overflow-hidden mb-8 px-6 py-10 md:px-10 md:py-14">
       <div className="relative z-10 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0 max-w-2xl">
-          <div className="mg-fade-in font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-2">
+          <div className="mg-fade-in mg-label inline-flex items-center gap-2">
             <span className="mg-live-dot" />
             Unofficial · Public · Read-only
           </div>
@@ -162,7 +162,7 @@ function HomeHero() {
 
 function SectionEyebrow({ children, live }: { children: React.ReactNode; live?: boolean }) {
   return (
-    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-2">
+    <div className="mg-label inline-flex items-center gap-2">
       {live ? <span className="mg-live-dot" /> : null}
       {children}
     </div>
@@ -252,9 +252,7 @@ function PilotCardFallback({ netuid, title, subtitle }: Omit<PilotProps, "slug">
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {subtitle}
-          </div>
+          <div className="mg-label">{subtitle}</div>
           <div className="font-display text-lg font-semibold text-ink-strong">{title}</div>
         </div>
         <CurationChip level="adapter-backed" />
@@ -289,9 +287,7 @@ function PilotCard({ slug, netuid, title, subtitle }: PilotProps) {
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {subtitle}
-          </div>
+          <div className="mg-label">{subtitle}</div>
           <div className="font-display text-lg font-semibold text-ink-strong">{title}</div>
         </div>
         <CurationChip level="adapter-backed" />

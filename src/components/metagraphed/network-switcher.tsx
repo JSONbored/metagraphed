@@ -83,9 +83,7 @@ export function NetworkSwitcher() {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-3 space-y-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-            Network
-          </div>
+          <div className="mg-label mb-1.5">Network</div>
           <ul className="space-y-1">
             {CHAIN_NETWORKS.map((n) => {
               const active = n.id === network.id;
@@ -167,7 +165,7 @@ export function NetworkSwitcher() {
           <button
             type="button"
             onClick={() => setShowAdvanced((s) => !s)}
-            className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong flex items-center gap-1"
+            className="mg-label hover:text-ink-strong flex items-center gap-1"
           >
             <Pencil className="size-3" /> Advanced · API origin
             <ChevronDown

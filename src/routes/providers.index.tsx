@@ -267,9 +267,7 @@ function ProvidersGrid() {
                         size={36}
                       />
                       <div className="min-w-0">
-                        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                          {p.kind ?? "provider"}
-                        </div>
+                        <div className="mg-label">{p.kind ?? "provider"}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {isOfficial ? (
                             <span
@@ -462,9 +460,7 @@ function ProviderOverview({
           centerSub="providers"
         />
         <div className="min-w-0 flex-1">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-            By kind
-          </div>
+          <div className="mg-label mb-1">By kind</div>
           <DonutLegend segments={kindSegs.slice(0, 5)} />
         </div>
       </div>
@@ -479,16 +475,12 @@ function ProviderOverview({
           centerSub="endpoints"
         />
         <div className="min-w-0 flex-1">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-            Endpoint health
-          </div>
+          <div className="mg-label mb-1">Endpoint health</div>
           <DonutLegend segments={statusSegs} />
         </div>
       </div>
       <div className="rounded border border-border bg-card p-3">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-          Top providers · endpoints
-        </div>
+        <div className="mg-label mb-1">Top providers · endpoints</div>
         <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
           {totalEndpoints}
         </div>

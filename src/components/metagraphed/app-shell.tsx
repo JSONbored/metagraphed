@@ -89,9 +89,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="space-y-5" aria-label="Primary">
       {SECTIONS.map((section) => (
         <div key={section.label}>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5 px-2">
-            {section.label}
-          </div>
+          <div className="mg-label mb-1.5 px-2">{section.label}</div>
           <ul className="space-y-0.5">
             {section.items.map((item) => {
               const active =
@@ -135,7 +133,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             />
           </span>
         </Link>
-        <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted flex items-center gap-1">
+        <div className="mt-1 mg-label flex items-center gap-1">
           <Compass className="size-3" /> Unofficial registry
         </div>
       </div>
@@ -420,9 +418,7 @@ function GlobalSearch() {
             <div className="p-3 space-y-3">
               {recent.length > 0 ? (
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-                    Recent
-                  </div>
+                  <div className="mg-label mb-1.5">Recent</div>
                   <ul className="flex flex-wrap gap-1">
                     {recent.map((r) => (
                       <li key={r}>
@@ -439,9 +435,7 @@ function GlobalSearch() {
                 </div>
               ) : null}
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-                  Try
-                </div>
+                <div className="mg-label mb-1.5">Try</div>
                 <ul className="flex flex-wrap gap-1">
                   {["bittensor", "taostats", "rpc", "openapi", "sn7"].map((s) => (
                     <li key={s}>
@@ -490,7 +484,7 @@ function GlobalSearch() {
                 return (
                   <div key={g.kind} className="border-b border-border last:border-b-0">
                     <div className="flex items-center justify-between px-3 py-1.5 bg-surface/30">
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      <span className="mg-label">
                         {g.kind === "subnet"
                           ? "Subnets"
                           : g.kind === "surface"
@@ -561,11 +555,7 @@ function SeeAllLink({ kind, q }: { kind: string; q: string }) {
   const to = map[kind];
   if (!to) return null;
   return (
-    <Link
-      to={to}
-      search={{ q } as never}
-      className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
-    >
+    <Link to={to} search={{ q } as never} className="mg-label hover:text-ink-strong">
       see all →
     </Link>
   );

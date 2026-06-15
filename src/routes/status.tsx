@@ -148,9 +148,7 @@ function Verdict() {
             centerSub="uptime 24h"
           />
           <div className="min-w-0 flex-1">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-              Status mix
-            </div>
+            <div className="mg-label mb-1">Status mix</div>
             <DonutLegend segments={segs} />
           </div>
         </div>
@@ -176,7 +174,7 @@ function Kpi({
 }) {
   return (
     <div className="bg-card p-3 mg-kpi">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
+      <div className="mg-label">{label}</div>
       <div
         className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}
       >
@@ -223,7 +221,7 @@ function RecentIncidents() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-card p-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          <div className="mg-label">
             {ongoingCount > 0 ? "Active now" : "Downtime events · " + window}
           </div>
           <div
@@ -301,11 +299,9 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
       >
         {ongoing ? "Ongoing" : "Resolved"}
       </span>
-      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
-        SN{surface.netuid}
-      </span>
+      <span className="mg-label shrink-0">SN{surface.netuid}</span>
       <span className="font-mono text-[12px] text-ink-strong truncate">{surface.surface_id}</span>
-      <span className="ml-auto inline-flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+      <span className="ml-auto inline-flex items-center gap-3 mg-label shrink-0">
         <span className="text-ink-muted tabular-nums">
           {surface.incident_count} {surface.incident_count === 1 ? "event" : "events"}
         </span>

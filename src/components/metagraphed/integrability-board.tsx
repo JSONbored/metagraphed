@@ -75,9 +75,7 @@ export function IntegrabilityBoard() {
               <h3 className="font-display text-sm font-semibold text-ink-strong">
                 Coverage by dimension
               </h3>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                % of subnets
-              </span>
+              <span className="mg-label">% of subnets</span>
             </div>
             <BarMini data={dimensionData} max={100} />
             <p className="mt-2 text-[11px] text-ink-muted">
@@ -92,9 +90,7 @@ export function IntegrabilityBoard() {
               <h3 className="font-display text-sm font-semibold text-ink-strong">
                 Completeness scores
               </h3>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                subnets
-              </span>
+              <span className="mg-label">subnets</span>
             </div>
             <BarMini data={distribution} />
             <p className="mt-2 text-[11px] text-ink-muted">

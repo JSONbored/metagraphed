@@ -52,9 +52,7 @@ export function KpiCard({
             <Icon className="size-3.5" />
           </span>
         ) : null}
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          {eyebrow}
-        </span>
+        <span className="mg-label">{eyebrow}</span>
       </div>
       <div className="flex items-baseline gap-2">
         <span className="font-display text-3xl font-semibold tracking-tight text-ink-strong tabular-nums leading-none">
@@ -63,7 +61,7 @@ export function KpiCard({
         {hint ? <span className="font-mono text-[11px] text-ink-muted">{hint}</span> : null}
       </div>
       {to ? (
-        <span className="mt-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted group-hover:text-ink-strong transition-colors">
+        <span className="mt-auto inline-flex items-center gap-1 mg-label group-hover:text-ink-strong transition-colors">
           {cta}
           <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>

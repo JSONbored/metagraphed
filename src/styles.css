@@ -195,6 +195,15 @@
   }
 }
 
+/* Canonical micro-label: mono · 10px · uppercase · widest tracking · muted ink.
+   Tokenizes the app's most-repeated inline class cluster. @apply keeps the
+   output byte-identical to the utilities it replaces (no visual drift). */
+@layer components {
+  .mg-label {
+    @apply font-mono text-[10px] uppercase tracking-widest text-ink-muted;
+  }
+}
+
 /* Subtle pulse for warn/down health dots. Reduced motion → static. */
 @keyframes mg-pulse {
   0%,

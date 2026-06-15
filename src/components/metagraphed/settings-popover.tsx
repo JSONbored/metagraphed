@@ -106,9 +106,7 @@ function Section({
 }) {
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-        {label}
-      </div>
+      <div className="mg-label mb-1.5">{label}</div>
       {children}
       {sub ? <p className="mt-1 text-[10px] text-ink-muted">{sub}</p> : null}
     </div>

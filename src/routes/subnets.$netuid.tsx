@@ -348,9 +348,7 @@ function LiveHealthCard({ netuid }: { netuid: number }) {
         <HCell color="bg-health-unknown" label="Unknown" value={formatNumber(h?.unknown)} />
       </div>
       <div className="flex items-baseline justify-between border-t border-border pt-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Uptime 24h
-        </span>
+        <span className="mg-label">Uptime 24h</span>
         <span className="font-display text-sm font-semibold text-ink-strong tabular-nums">
           {h?.uptime_24h != null ? `${(h.uptime_24h * 100).toFixed(2)}%` : "—"}
         </span>
@@ -378,9 +376,7 @@ function HCell({
     <div className="rounded border border-border bg-surface/30 p-2">
       <div className="flex items-center gap-1.5">
         <span className={classNames("size-1.5 rounded-full", color, pulse && "mg-pulse")} />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          {label}
-        </span>
+        <span className="mg-label">{label}</span>
       </div>
       <div className="mt-0.5 font-display text-sm font-semibold text-ink-strong tabular-nums">
         {value}
@@ -400,9 +396,7 @@ function PrimaryAppSurfaceCard({
         Primary app surface
       </h3>
       <div className="flex items-center gap-2 mb-1">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          {surface.kind ?? "surface"}
-        </span>
+        <span className="mg-label">{surface.kind ?? "surface"}</span>
       </div>
       <div className="font-medium text-ink-strong text-sm">{surface.name ?? surface.url}</div>
       {surface.provider ? (
@@ -524,9 +518,7 @@ function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: bo
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
         {missing.length > 0 ? (
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-              Missing kinds
-            </div>
+            <div className="mg-label mb-1">Missing kinds</div>
             <div className="flex flex-wrap gap-1">
               {missing.map((k) => (
                 <span
@@ -690,9 +682,7 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
       {visible.map(([kind, items]) => (
         <div key={kind}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {kind}
-            </span>
+            <span className="mg-label">{kind}</span>
             <span className="font-mono text-[10px] text-ink-muted">{items.length}</span>
           </div>
           <ul className="space-y-2">

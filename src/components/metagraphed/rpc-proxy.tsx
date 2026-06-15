@@ -64,9 +64,7 @@ export function ProxyHero() {
           <span className="size-1.5 rounded-full bg-health-ok" />
           Live
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Load-balanced reverse proxy
-        </span>
+        <span className="mg-label">Load-balanced reverse proxy</span>
         <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent">
           {label}
         </span>
@@ -81,16 +79,14 @@ export function ProxyHero() {
       </p>
 
       <div className="mt-4 flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">POST</span>
+        <span className="mg-label">POST</span>
         <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{proxyUrl}</code>
         <CopyButton value={proxyUrl} label="proxy URL" />
       </div>
 
       <div className="mt-2 rounded border border-border bg-paper">
         <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Try it
-          </span>
+          <span className="mg-label">Try it</span>
           <CopyButton value={curlExample} label="curl command" />
         </div>
         <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-ink">
@@ -239,9 +235,7 @@ export function ProxyUsagePanel() {
 
           {usage.networks.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                By network
-              </span>
+              <span className="mg-label">By network</span>
               {usage.networks.map((n) => (
                 <span
                   key={n.network}
@@ -257,7 +251,7 @@ export function ProxyUsagePanel() {
           {usage.endpoints.length > 0 ? (
             <div className="rounded border border-border bg-card overflow-x-auto">
               <table className="w-full text-sm">
-                <caption className="px-3 pt-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                <caption className="px-3 pt-2 text-left mg-label">
                   Per-endpoint distribution
                 </caption>
                 <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">

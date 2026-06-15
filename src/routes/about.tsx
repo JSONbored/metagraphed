@@ -196,7 +196,7 @@ function AtAGlance() {
   ];
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3 inline-flex items-center gap-2">
+      <div className="mg-label mb-3 inline-flex items-center gap-2">
         <span className="mg-live-dot" /> At a glance
       </div>
       <ul className="space-y-2.5">
@@ -210,9 +210,7 @@ function AtAGlance() {
                 <Icon className="size-3.5" />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  {label}
-                </div>
+                <div className="mg-label">{label}</div>
                 <div className="font-display text-base font-semibold text-ink-strong tabular-nums">
                   {value}
                 </div>

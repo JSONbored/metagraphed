@@ -291,9 +291,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
               className="block rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
             >
               <div className="flex items-baseline justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Netuid
-                </span>
+                <span className="mg-label">Netuid</span>
                 <span className="font-display text-base font-semibold text-ink-strong tabular-nums">
                   {String(netuid).padStart(3, "0")}
                 </span>

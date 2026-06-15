@@ -257,16 +257,12 @@ function GlobalHealth({ interval }: { interval: number | false }) {
             centerSub="uptime 24h"
           />
           <div className="min-w-0 flex-1">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-              Status mix
-            </div>
+            <div className="mg-label mb-1">Status mix</div>
             <DonutLegend segments={segs} />
           </div>
         </div>
         <div className="rounded border border-border bg-card p-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
-            Source freshness
-          </div>
+          <div className="mg-label mb-2">Source freshness</div>
           <Sparkline values={sourceAges} width={280} height={56} ariaLabel="Source freshness" />
           <div className="mt-2 grid grid-cols-3 gap-2">
             <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => humaniseSeconds(n)} />
@@ -295,7 +291,7 @@ function Cell({
 }) {
   return (
     <div className="bg-card p-3 mg-kpi">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
+      <div className="mg-label">{label}</div>
       <div
         className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}
       >
@@ -445,9 +441,7 @@ function Incidents({ interval }: { interval: number | false }) {
     <div className="space-y-3">
       <div className="flex items-center gap-3 rounded border border-border bg-card p-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Incidents · 14d
-          </div>
+          <div className="mg-label">Incidents · 14d</div>
           <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
             {rows.length}
           </div>
@@ -512,7 +506,7 @@ function Incidents({ interval }: { interval: number | false }) {
                     )}
                     <HealthPill state={g.dominantState} />
                     <span className="font-mono text-[12px] text-ink-strong truncate">{g.host}</span>
-                    <span className="ml-auto inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+                    <span className="ml-auto inline-flex items-center gap-2 mg-label shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
                       ) : null}

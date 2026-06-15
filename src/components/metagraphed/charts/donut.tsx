@@ -104,10 +104,7 @@ export function DonutLegend({ segments }: { segments: DonutSegment[] }) {
   return (
     <ul className="space-y-1">
       {segments.map((s) => (
-        <li
-          key={s.label}
-          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-        >
+        <li key={s.label} className="flex items-center gap-2 mg-label">
           <span
             aria-hidden
             className="inline-block size-2 rounded-sm"

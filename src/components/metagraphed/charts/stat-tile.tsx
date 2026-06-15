@@ -59,9 +59,7 @@ export function StatTile({
         </span>
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted truncate">
-          {eyebrow}
-        </div>
+        <div className="mg-label truncate">{eyebrow}</div>
         <div className="flex items-baseline gap-1.5">
           <span className="font-display text-xl md:text-2xl font-semibold tabular-nums leading-none text-ink-strong">
             {value}

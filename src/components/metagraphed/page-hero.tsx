@@ -38,7 +38,7 @@ export function PageHero({
       <div className="relative z-10 grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0 max-w-2xl">
           {eyebrow ? (
-            <div className="mg-fade-in font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-2">
+            <div className="mg-fade-in mg-label inline-flex items-center gap-2">
               {live ? <span className="mg-live-dot" /> : null}
               {eyebrow}
             </div>

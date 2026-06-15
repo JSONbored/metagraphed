@@ -199,9 +199,7 @@ function SurfacesTable() {
       cards={rows.map((s) => (
         <div key={s.id} className="rounded border border-border bg-card p-3 min-h-11">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {s.kind ?? "surface"}
-            </span>
+            <span className="mg-label">{s.kind ?? "surface"}</span>
             <CurationChip level={s.curation_level} />
           </div>
           <div className="mt-1 font-medium text-ink-strong truncate">{s.name ?? "—"}</div>

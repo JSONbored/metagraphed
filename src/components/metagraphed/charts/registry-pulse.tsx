@@ -62,9 +62,7 @@ export function RegistryPulse() {
         <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
           Registry pulse
         </h2>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          live · /api/v1/coverage · /health · /freshness
-        </span>
+        <span className="mg-label">live · /api/v1/coverage · /health · /freshness</span>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <PulseCell title="Curation mix">
@@ -93,9 +91,7 @@ export function RegistryPulse() {
             />
             <div className="min-w-0 flex-1">
               <DonutLegend segments={healthSegs} />
-              <div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {totalHealth} monitored surfaces
-              </div>
+              <div className="mt-2 mg-label">{totalHealth} monitored surfaces</div>
             </div>
           </div>
         </PulseCell>
@@ -109,7 +105,7 @@ export function RegistryPulse() {
               color="var(--accent, #7aa2ff)"
               ariaLabel="Source freshness trend"
             />
-            <dl className="grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <dl className="grid grid-cols-3 gap-2 mg-label">
               <Stat
                 label="avg"
                 value={
@@ -134,9 +130,7 @@ export function RegistryPulse() {
 function PulseCell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded border border-border/60 bg-paper/40 p-3">
-      <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-        {title}
-      </div>
+      <div className="mb-2 mg-label">{title}</div>
       {children}
     </div>
   );

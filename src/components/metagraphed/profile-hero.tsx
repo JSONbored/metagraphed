@@ -47,11 +47,7 @@ export function ProfileHero({
         <div className="flex items-start gap-3 min-w-0">
           {icon ? <div className="shrink-0 mt-0.5">{icon}</div> : null}
           <div className="min-w-0">
-            {eyebrow ? (
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-                {eyebrow}
-              </div>
-            ) : null}
+            {eyebrow ? <div className="mg-label mb-1">{eyebrow}</div> : null}
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
                 {title}
@@ -83,9 +79,7 @@ export function ProfileHero({
           >
             {visibleStats.map((s) => (
               <div key={s.label} className="bg-card p-3 mg-kpi">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  {s.label}
-                </div>
+                <div className="mg-label">{s.label}</div>
                 <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
                   {s.value}
                 </div>

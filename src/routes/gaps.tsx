@@ -292,9 +292,7 @@ function GapsKpiStrip() {
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
       {stats.map((s) => (
         <div key={s.label} className="rounded border border-border bg-card p-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {s.label}
-          </div>
+          <div className="mg-label">{s.label}</div>
           <div
             className={`font-display text-xl font-semibold tabular-nums ${s.tone ?? "text-ink-strong"}`}
           >

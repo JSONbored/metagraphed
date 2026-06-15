@@ -97,9 +97,7 @@ export function EndpointList({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    {e.kind ?? "endpoint"}
-                  </span>
+                  <span className="mg-label">{e.kind ?? "endpoint"}</span>
                   {showNetuid && e.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -117,9 +115,7 @@ export function EndpointList({
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
               {showProvider ? (
                 <>
-                  <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    Provider
-                  </dt>
+                  <dt className="mg-label">Provider</dt>
                   <dd className="text-right">
                     {e.provider ? (
                       <Link
@@ -135,15 +131,11 @@ export function EndpointList({
                   </dd>
                 </>
               ) : null}
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Latency
-              </dt>
+              <dt className="mg-label">Latency</dt>
               <dd className="text-right font-mono text-ink">
                 {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
               </dd>
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Probed
-              </dt>
+              <dt className="mg-label">Probed</dt>
               <dd className="text-right font-mono text-ink-muted">
                 <TimeAgo at={e.last_probed_at} />
               </dd>

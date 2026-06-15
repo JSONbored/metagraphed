@@ -148,9 +148,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       {sortedGroups.map(([source, items]) => (
         <div key={source} className="rounded border border-border bg-card p-3">
           <div className="flex items-center justify-between mb-2 gap-3">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {source}
-            </span>
+            <span className="mg-label">{source}</span>
             <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
               <span>
                 latest <TimeAgo at={items[0]?.recorded_at} />
@@ -167,7 +165,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                 <HoverPreview
                   content={
                     <div className="space-y-1.5">
-                      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      <div className="mg-label">
                         {sourceLabel(item)}
                         {item.netuid != null ? <> · SN{item.netuid}</> : null}
                       </div>
