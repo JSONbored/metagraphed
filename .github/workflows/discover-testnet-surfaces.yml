@@ -1,0 +1,66 @@
+name: Discover Testnet Surfaces
+
+# The testnet flywheel (TN-E). Testnet subnets are native-only (chain identity,
+# no curated surfaces); as one matures it may stand up a public API/openapi. This
+# re-probes every declared chain-identity URL and reports which are live + which
+# expose a CALLABLE API, so a newly-callable subnet is caught early.
+#
+# Per ADR 0006 (see sync-subnets.yml) machine-probed data is NOT committed to git
+# — this publishes a report artifact + a job summary, never a bot PR. A callable
+# hit is the signal for a maintainer to curate it as a real testnet surface.
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly — testnet subnets stand up public APIs on the order of weeks, and a
+    # report-only run carries no git churn, so a low cadence keeps noise down.
+    - cron: "23 7 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discover-testnet-surfaces
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm ci
+
+      - name: Probe testnet subnet surfaces
+        run: |
+          node scripts/discover-testnet-surfaces.mjs --out testnet-discovery.json | tee discovery.log
+          {
+            echo '## Testnet surface discovery'
+            echo '```'
+            cat discovery.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Flag any callable testnet APIs found
+        run: |
+          count=$(node -e "process.stdout.write(String(require('./testnet-discovery.json').summary.callable_count))")
+          if [ "$count" != "0" ]; then
+            echo "::warning title=Testnet callable API(s) discovered::$count subnet(s) now expose a callable API — promote them to curated testnet surfaces."
+          fi
+
+      - name: Upload discovery report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: testnet-discovery
+          path: testnet-discovery.json
+          retention-days: 90
