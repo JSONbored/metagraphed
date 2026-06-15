@@ -25,6 +25,9 @@ import {
 const SNAPSHOT = path.join(repoRoot, "registry/native/test-subnets.json");
 const PROBE_TIMEOUT_MS = 8000;
 const CONCURRENCY = 12;
+const MAX_REDIRECTS = 5;
+const MAX_BODY_BYTES = 4096;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 // Derived callable-API probe paths appended to each subnet_url base.
 const API_PATHS = [
   "/openapi.json",
@@ -34,21 +37,60 @@ const API_PATHS = [
   "/docs/openapi.json",
 ];
 
-async function safeFetch(url) {
-  // SSRF guard: refuse private/loopback/rebinding targets before any request.
+async function readBodySnippet(res) {
+  if (!res.body) {
+    return "";
+  }
+
+  const reader = res.body.getReader();
+  const chunks = [];
+  let bytesRead = 0;
+  try {
+    while (bytesRead < MAX_BODY_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const remaining = MAX_BODY_BYTES - bytesRead;
+      chunks.push(
+        value.byteLength > remaining ? value.slice(0, remaining) : value,
+      );
+      bytesRead += Math.min(value.byteLength, remaining);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+
+  return new TextDecoder().decode(Buffer.concat(chunks)).toLowerCase();
+}
+
+async function safeFetch(url, redirectCount = 0) {
+  // SSRF guard: refuse private/loopback/rebinding targets before every request,
+  // including each manually-followed redirect target.
   if (await isUnsafeResolvedUrl(url)) {
     return { status: 0, contentType: "blocked-unsafe-url", body: "" };
   }
   try {
     const res = await fetch(url, {
       method: "GET",
-      redirect: "follow",
+      redirect: "manual",
       headers: { "user-agent": "metagraphed-testnet-discovery/1.0" },
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
+
+    const location = res.headers.get("location");
+    if (REDIRECT_STATUSES.has(res.status) && location) {
+      await res.body?.cancel();
+      if (redirectCount >= MAX_REDIRECTS) {
+        return { status: 0, contentType: "too-many-redirects", body: "" };
+      }
+      const redirectTarget = new URL(location, url).toString();
+      return safeFetch(redirectTarget, redirectCount + 1);
+    }
+
     const contentType = (res.headers.get("content-type") || "").split(";")[0];
-    const buf = await res.arrayBuffer();
-    const body = new TextDecoder().decode(buf.slice(0, 4096)).toLowerCase();
+    const body = await readBodySnippet(res);
     return { status: res.status, contentType, body };
   } catch (error) {
     return { status: 0, contentType: error?.name || "FetchError", body: "" };
