@@ -45,6 +45,11 @@
       "type": "string",
       "format": "uri"
     },
+    "logo_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Curated/hand-picked provider logo (square, ideally >=128px). Display-only; the UI falls back to the website favicon when absent."
+    },
     "team_url": {
       "type": "string",
       "format": "uri"
