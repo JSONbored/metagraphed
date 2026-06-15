@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  Bot,
   AlertOctagon,
   ChevronRight,
   Compass,
@@ -70,6 +71,7 @@ const SECTIONS: NavSection[] = [
       { to: "/status", label: "Status", icon: Gauge },
       { to: "/health", label: "Health", icon: Activity },
       { to: "/schemas", label: "Schemas", icon: FileCode },
+      { to: "/agents", label: "For agents", icon: Bot },
     ],
   },
   {

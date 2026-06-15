@@ -3,6 +3,7 @@ import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import type {
   AdapterSnapshot,
+  AgentResources,
   Candidate,
   Coverage,
   CurationLevel,
@@ -809,6 +810,18 @@ export const rpcUsageQuery = (window = "7d") =>
       return { ...res, data: normalizeRpcUsage(res.data) } as ApiResult<RpcUsage>;
     },
     staleTime: STALE_SHORT,
+  });
+
+// /api/v1/agent-resources — the machine-readable index of every AI surface
+// (MCP, agent.md, llms.txt, openapi, catalog, datasets, …). Single object.
+export const agentResourcesQuery = () =>
+  queryOptions({
+    queryKey: k("agent-resources"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/agent-resources", { signal });
+      return { ...res, data: res.data as AgentResources } as ApiResult<AgentResources>;
+    },
+    staleTime: STALE_MED,
   });
 
 export const endpointPoolsQuery = () =>

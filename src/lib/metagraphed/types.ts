@@ -222,6 +222,30 @@ export interface RpcUsage {
   networks: RpcUsageNetwork[];
 }
 
+/** One machine-readable resource from /api/v1/agent-resources. */
+export interface AgentResource {
+  id: string;
+  kind: string; // agent | skill | index | contract | api | data
+  title: string;
+  url: string;
+}
+
+/** /api/v1/agent-resources — the machine-readable index of metagraphed's AI surfaces. */
+export interface AgentResources {
+  generated_at?: string | null;
+  published_at?: string | null;
+  copyable_agent: { title: string; description: string; url: string };
+  mcp: {
+    endpoint: string;
+    install: string;
+    server_card: string;
+    transport: string;
+    tools: { name: string; title?: string }[];
+  };
+  summary: { callable_service_count: number; subnet_count: number };
+  resources: AgentResource[];
+}
+
 /** One reconstructed downtime window from /api/v1/incidents (epoch-ms timestamps). */
 export interface GlobalIncident {
   started_at: number;
