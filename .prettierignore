@@ -1,5 +1,8 @@
 node_modules
 python
+# CI-ephemeral: validate.yml's "Classify validation route" step writes this to the
+# workspace root before `prettier --check .` runs, so it must not be format-gated.
+validate-route.json
 packages/*/dist
 packages/*/src/metagraphed-api.ts
 packages/*/src/metagraphed-client.ts
