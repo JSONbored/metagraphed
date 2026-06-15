@@ -59,7 +59,7 @@ function EndpointsPage() {
         title="Endpoints"
         description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
       />
-      <div className="space-y-8">
+      <div className="space-y-12">
         {/* The headline feature: the live reverse proxy + its usage analytics. */}
         <section>
           <ProxyHero />
@@ -143,7 +143,7 @@ function EndpointsStatStrip() {
   const ok = rows.filter((e) => e.health === "ok").length;
   const okPct = total > 0 ? Math.round((ok / total) * 100) : null;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <StatTile icon={Radio} eyebrow="Endpoints" value={total} hint="tracked" />
       <StatTile
         icon={Server}

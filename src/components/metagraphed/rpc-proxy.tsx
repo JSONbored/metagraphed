@@ -6,8 +6,8 @@ import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
 import { CopyButton } from "./copy-button";
 import { TimeAgo } from "./time-ago";
-import { EmptyState, StaleBanner } from "./states";
-import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { EmptyState } from "./states";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { RpcUsage } from "@/lib/metagraphed/types";
 
 // The proxy is one service fronting multiple chains (finney + test today). Map
@@ -58,7 +58,7 @@ export function ProxyHero() {
   const proxyUrl = `${API_BASE}/rpc/v1/${chain}`;
   const curlExample = curlFor(proxyUrl);
   return (
-    <div className="rounded-lg border border-accent/30 bg-gradient-to-br from-accent/[0.06] to-transparent p-5">
+    <div className="rounded-lg border border-accent/30 bg-accent/[0.03] p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-ok">
           <span className="size-1.5 rounded-full bg-health-ok" />
@@ -158,7 +158,6 @@ export function ProxyUsagePanel() {
   const { data } = useSuspenseQuery(rpcUsageQuery(window));
   const usage = data.data as RpcUsage;
   const s = usage.summary;
-  const stale = isStaleFreshness(data.meta?.generated_at);
   const hasTraffic = s.total_requests > 0;
 
   return (
@@ -189,8 +188,6 @@ export function ProxyUsagePanel() {
           ))}
         </div>
       </div>
-
-      {stale ? <StaleBanner generatedAt={data.meta?.generated_at} /> : null}
 
       {!hasTraffic ? (
         <EmptyState
@@ -261,7 +258,7 @@ export function ProxyUsagePanel() {
             <div className="rounded border border-border bg-card overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="px-3 pt-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Per-endpoint distribution — is the balancer actually spreading load?
+                  Per-endpoint distribution
                 </caption>
                 <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
                   <tr>

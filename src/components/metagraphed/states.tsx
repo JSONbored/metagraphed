@@ -1,4 +1,10 @@
-import { AlertCircle, RefreshCw, Inbox, ExternalLink as ExternalLinkIcon } from "lucide-react";
+import {
+  AlertCircle,
+  RefreshCw,
+  Inbox,
+  Clock,
+  ExternalLink as ExternalLinkIcon,
+} from "lucide-react";
 import { ApiError } from "@/lib/metagraphed/client";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -101,22 +107,20 @@ export function EmptyState({
   );
 }
 
+/**
+ * A quiet, muted freshness note shown only when a snapshot is genuinely stale
+ * (callers gate on isStaleFreshness, which is now a 12h threshold). No usable
+ * timestamp → render nothing: the 1970 reproducible-hash placeholder is an
+ * internal artifact detail, not a user-facing alarm. Deliberately understated —
+ * the relative age itself ("14h ago") is the signal, not a loud warning box.
+ */
 export function StaleBanner({ generatedAt }: { generatedAt?: string }) {
-  const usableGeneratedAt = isUsableTimestamp(generatedAt) ? generatedAt : null;
+  if (!isUsableTimestamp(generatedAt)) return null;
   return (
-    <div className="rounded border border-health-warn/30 bg-health-warn/5 px-3 py-2 text-[11px] text-health-warn flex items-center gap-2">
-      <AlertCircle className="size-3" />
-      <span>
-        {usableGeneratedAt ? (
-          <>
-            Data may be stale — last generated <TimeAgo at={usableGeneratedAt} /> (
-            {new Date(usableGeneratedAt).toLocaleString()}).
-          </>
-        ) : (
-          "Data freshness is unknown — no usable generation timestamp was provided."
-        )}
-      </span>
-    </div>
+    <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
+      <Clock className="size-3 shrink-0" aria-hidden />
+      Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+    </p>
   );
 }
 
