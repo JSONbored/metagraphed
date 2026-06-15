@@ -19,6 +19,19 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.3.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.0...platform-v0.3.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **health:** validate live rpc block heights ([#761](https://github.com/JSONbored/metagraphed/issues/761)) ([10ecf60](https://github.com/JSONbored/metagraphed/commit/10ecf6024d4fbc30b72d3cd1f9c7bc842ecdb406))
+* **provider:** validate logo_url safety ([#762](https://github.com/JSONbored/metagraphed/issues/762)) ([8d2ee64](https://github.com/JSONbored/metagraphed/commit/8d2ee64c78163b810b637c07da2accafbd4456fb))
+
+
+### Documentation
+
+* **release:** correct release-please publish-trigger comment ([#759](https://github.com/JSONbored/metagraphed/issues/759)) ([72f7e53](https://github.com/JSONbored/metagraphed/commit/72f7e530a3fcd617f29659a5a10284b560c7aeb4))
+
 ## [0.3.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.2.0...platform-v0.3.0) (2026-06-15)
 
 
