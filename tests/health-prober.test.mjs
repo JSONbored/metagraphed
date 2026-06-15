@@ -325,6 +325,59 @@ describe("runHealthProber", () => {
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
   });
 
+  test("rejects unsafe or implausibly high live RPC block heights", async () => {
+    const kv = makeKv();
+    const rpcSurfaces = [
+      {
+        ...SURFACES[1],
+        surface_id: "honest-rpc",
+        url: "https://honest.example/rpc",
+      },
+      {
+        ...SURFACES[1],
+        surface_id: "forged-rpc",
+        url: "https://forged.example/rpc",
+      },
+      {
+        ...SURFACES[1],
+        surface_id: "unsafe-rpc",
+        url: "https://unsafe.example/rpc",
+      },
+    ];
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => rpcSurfaces,
+        probeSurface: async (input) => ({
+          status: "ok",
+          classification: "live",
+          latency_ms: 42,
+          status_code: 200,
+          latest_block:
+            input.id === "honest-rpc"
+              ? 8_400_000
+              : input.id === "forged-rpc"
+                ? 9_007_199_254_740_991
+                : 9_007_199_254_740_992,
+        }),
+        probeOptions: {},
+      },
+    );
+
+    const byId = new Map(
+      kv
+        .json(KV_HEALTH_RPC_POOL)
+        .endpoints.map((endpoint) => [endpoint.id, endpoint]),
+    );
+    assert.equal(byId.get("honest-rpc").latest_block, 8_400_000);
+    assert.equal(byId.get("forged-rpc").latest_block, null);
+    assert.equal(byId.get("unsafe-rpc").latest_block, null);
+  });
+
   test("bumps consecutive_failures from prior state for the breaker", async () => {
     const db = makeDb({
       priorStatus: [
