@@ -20,6 +20,7 @@ import type {
   Provider,
   ProviderEndpointSummary,
   RpcPool,
+  RpcUsage,
   SchemaInfo,
   Subnet,
   SubnetProfile,
@@ -760,6 +761,54 @@ export const rpcPoolsQuery = () =>
       return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
     },
     staleTime: STALE_MED,
+  });
+
+// /api/v1/rpc/usage returns a single analytics object (not a list), like the
+// global incident ledger. Cold/unmigrated D1 already yields a schema-stable
+// zeroed payload server-side; this normaliser just hardens against missing
+// fields so a partial response can't crash the proxy panel.
+function normalizeRpcUsage(raw: unknown): RpcUsage {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const s = (r.summary && typeof r.summary === "object" ? r.summary : {}) as Record<
+    string,
+    unknown
+  >;
+  const lat = (s.latency_ms && typeof s.latency_ms === "object" ? s.latency_ms : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    window: (r.window as string | null) ?? null,
+    observed_at: (r.observed_at as string | null) ?? null,
+    source: (r.source as string) ?? "rpc-proxy",
+    summary: {
+      total_requests: finiteNumber(s.total_requests),
+      ok_requests: finiteNumber(s.ok_requests),
+      error_requests: finiteNumber(s.error_requests),
+      error_rate: finiteOptionalNumber(s.error_rate) ?? null,
+      failover_requests: finiteNumber(s.failover_requests),
+      failover_rate: finiteOptionalNumber(s.failover_rate) ?? null,
+      cache_hits: finiteNumber(s.cache_hits),
+      cache_hit_rate: finiteOptionalNumber(s.cache_hit_rate) ?? null,
+      latency_ms: {
+        p50: finiteOptionalNumber(lat.p50) ?? null,
+        p95: finiteOptionalNumber(lat.p95) ?? null,
+        avg: finiteOptionalNumber(lat.avg) ?? null,
+      },
+    },
+    endpoints: Array.isArray(r.endpoints) ? (r.endpoints as RpcUsage["endpoints"]) : [],
+    networks: Array.isArray(r.networks) ? (r.networks as RpcUsage["networks"]) : [],
+  };
+}
+
+export const rpcUsageQuery = (window = "7d") =>
+  queryOptions({
+    queryKey: k("rpc-usage", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/rpc/usage", { params: { window }, signal });
+      return { ...res, data: normalizeRpcUsage(res.data) } as ApiResult<RpcUsage>;
+    },
+    staleTime: STALE_SHORT,
   });
 
 export const endpointPoolsQuery = () =>

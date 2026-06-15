@@ -15,6 +15,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
+import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { endpointsQuery, endpointIncidentsQuery, rpcPoolsQuery } from "@/lib/metagraphed/queries";
 import {
@@ -56,23 +57,39 @@ function EndpointsPage() {
         eyebrow="Infrastructure"
         live
         title="Endpoints"
-        description="Subtensor RPC/WSS pools and application-layer endpoints. Pool eligibility is metadata only — proxy routing is future-scoped."
+        description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
       />
-      <QueryErrorBoundary>
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-            </div>
-          }
-        >
-          <EndpointsStatStrip />
-        </Suspense>
-      </QueryErrorBoundary>
       <div className="space-y-8">
+        {/* The headline feature: the live reverse proxy + its usage analytics. */}
+        <section>
+          <ProxyHero />
+        </section>
+        <section>
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+            Proxy usage
+          </h2>
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+              <ProxyUsagePanel />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
+
+        <QueryErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </div>
+            }
+          >
+            <EndpointsStatStrip />
+          </Suspense>
+        </QueryErrorBoundary>
+
         <section>
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
             RPC pools
@@ -85,7 +102,7 @@ function EndpointsPage() {
         </section>
         <section>
           <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-            All endpoints
+            Callable endpoints
           </h2>
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
@@ -106,9 +123,10 @@ function EndpointsPage() {
       </div>
       <ApiSourceFooter
         paths={[
+          "/rpc/v1/finney",
+          "/api/v1/rpc/usage",
           "/api/v1/endpoints",
-          "/api/v1/rpc/endpoints",
-          "/api/v1/endpoint-pools",
+          "/api/v1/rpc/pools",
           "/api/v1/endpoint-incidents",
         ]}
       />
@@ -154,7 +172,7 @@ function PoolsTable() {
     return (
       <EmptyState
         title="No RPC pools tracked"
-        description="Pool routing is future-scoped — eligibility metadata appears here once it's registered."
+        description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
       />
     );
   return (
@@ -203,8 +221,8 @@ function PoolsTable() {
         </table>
       </div>
       <p className="px-1 font-mono text-[10px] text-ink-muted">
-        Pool eligibility is metadata only — proxy routing is future-scoped and disabled unless the
-        backend explicitly opts in.
+        Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
+        in-sync, healthy nodes and fails over automatically.
       </p>
     </div>
   );
@@ -242,6 +260,7 @@ function EndpointsTable() {
   const poolsById = useMemo(() => indexPoolsById(pools), [pools]);
 
   const [q, setQ] = useState("");
+  const [callableOnly, setCallableOnly] = useState(true);
   const [category, setCategory] = useState<EndpointCategory | "all">("all");
   const [provider, setProvider] = useState<string>("");
   const [health, setHealth] = useState<string>("");
@@ -276,17 +295,30 @@ function EndpointsTable() {
     [rows, poolsById],
   );
 
+  // "Callable" = anything an agent can actually POST/GET against (rpc/wss/api/
+  // sse/data). The registry also carries non-callable directory links (websites,
+  // docs, dashboards → category "other"); those are hidden by default so the
+  // table answers "what can I call?" rather than burying it under reference URLs.
+  const directoryCount = useMemo(
+    () => enriched.filter((x) => x.cat === "other").length,
+    [enriched],
+  );
+  const scoped = useMemo(
+    () => (callableOnly ? enriched.filter((x) => x.cat !== "other") : enriched),
+    [enriched, callableOnly],
+  );
+
   const categoryCounts = useMemo(() => {
-    const counts: Partial<Record<EndpointCategory | "all", number>> = { all: rows.length };
-    for (const x of enriched) counts[x.cat] = (counts[x.cat] ?? 0) + 1;
+    const counts: Partial<Record<EndpointCategory | "all", number>> = { all: scoped.length };
+    for (const x of scoped) counts[x.cat] = (counts[x.cat] ?? 0) + 1;
     return counts;
-  }, [enriched, rows.length]);
+  }, [scoped]);
 
   const netuidNum = netuid.trim() === "" ? null : Number(netuid);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return enriched
+    return scoped
       .filter(({ e, cat, eli }) => {
         if (category !== "all" && cat !== category) return false;
         if (provider && (e.provider ?? e.provider_slug) !== provider) return false;
@@ -300,7 +332,7 @@ function EndpointsTable() {
           .some((v) => String(v).toLowerCase().includes(needle));
       })
       .map((x) => x.e);
-  }, [enriched, q, category, provider, health, region, eligibility, netuidNum]);
+  }, [scoped, q, category, provider, health, region, eligibility, netuidNum]);
 
   const sorted = useMemo(() => {
     const mul = sortOrder === "asc" ? 1 : -1;
@@ -401,8 +433,35 @@ function EndpointsTable() {
             <X className="size-3" /> Clear
           </button>
         ) : null}
-        <span className="ml-auto font-mono text-[10px] text-ink-muted">
-          {sorted.length} of {rows.length}
+        <button
+          type="button"
+          onClick={() => {
+            setCallableOnly((v) => {
+              if (!v && category === "other") setCategory("all");
+              return !v;
+            });
+          }}
+          aria-pressed={callableOnly}
+          title={
+            callableOnly
+              ? `Showing callable endpoints — ${directoryCount} directory links hidden`
+              : "Showing all endpoints, including directory links"
+          }
+          className={classNames(
+            "ml-auto inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+            callableOnly
+              ? "border-accent/40 bg-accent/10 text-accent"
+              : "border-border bg-card text-ink-muted hover:text-ink-strong",
+          )}
+        >
+          <span className={classNames("size-1.5 rounded-full", callableOnly && "bg-accent")} />
+          Callable only
+          {directoryCount > 0 ? (
+            <span className="text-ink-muted">· {directoryCount} links</span>
+          ) : null}
+        </button>
+        <span className="font-mono text-[10px] text-ink-muted">
+          {sorted.length} of {scoped.length}
         </span>
       </div>
 

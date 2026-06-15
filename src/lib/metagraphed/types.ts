@@ -183,6 +183,45 @@ export interface EndpointIncident {
   [key: string]: unknown;
 }
 
+/** One served-endpoint row from /api/v1/rpc/usage (proxy request distribution). */
+export interface RpcUsageEndpoint {
+  rank: number;
+  endpoint_id: string | null;
+  provider: string | null;
+  requests: number;
+  ok_requests: number;
+  error_rate: number | null;
+  avg_latency_ms: number | null;
+}
+
+/** Per-network proxy volume from /api/v1/rpc/usage. */
+export interface RpcUsageNetwork {
+  network: string;
+  requests: number;
+  ok_requests: number;
+  error_rate: number | null;
+}
+
+/** /api/v1/rpc/usage — reverse-proxy usage analytics over a 7d/30d window. */
+export interface RpcUsage {
+  window?: string | null;
+  observed_at?: string | null;
+  source?: string;
+  summary: {
+    total_requests: number;
+    ok_requests: number;
+    error_requests: number;
+    error_rate: number | null;
+    failover_requests: number;
+    failover_rate: number | null;
+    cache_hits: number;
+    cache_hit_rate: number | null;
+    latency_ms: { p50: number | null; p95: number | null; avg: number | null };
+  };
+  endpoints: RpcUsageEndpoint[];
+  networks: RpcUsageNetwork[];
+}
+
 /** One reconstructed downtime window from /api/v1/incidents (epoch-ms timestamps). */
 export interface GlobalIncident {
   started_at: number;
