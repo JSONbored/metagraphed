@@ -40,7 +40,10 @@ function githubOrgFromUrl(input?: string | null): string | null {
   if (!input) return null;
   try {
     const u = new URL(input.includes("://") ? input : `https://${input}`);
-    if (!u.hostname.endsWith("github.com")) return null;
+    // Exact host or a real github.com subdomain — `endsWith("github.com")` alone
+    // would also accept an attacker host like "evilgithub.com".
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
     const seg = u.pathname.split("/").filter(Boolean);
     return seg[0] ?? null;
   } catch {
