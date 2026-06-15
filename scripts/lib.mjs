@@ -1860,10 +1860,15 @@ export function buildEndpointPoolArtifact({
         "archive",
         endpoints.filter((endpoint) => endpoint.archive_support === true),
       ),
-      // Testnet base-layer RPC pool (/rpc/v1/test). Static members — appended only
-      // when configured (registry/native/test-base-endpoints.json present).
-      ...(testnetEndpoints.length
+      // Testnet base-layer pools (registry/native/test-base-endpoints.json).
+      // test-rpc is the proxy target (/rpc/v1/test); test-wss is reference-only
+      // (the HTTP proxy can't proxy WSS), parity with finney-wss. Each appended
+      // only when that kind is configured, so no empty pools.
+      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-rpc")
         ? [endpointPool("test-rpc", "subtensor-rpc", testnetEndpoints)]
+        : []),
+      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-wss")
+        ? [endpointPool("test-wss", "subtensor-wss", testnetEndpoints)]
         : []),
     ],
   };

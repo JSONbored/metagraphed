@@ -14,6 +14,18 @@
       "url": "https://test.chain.opentensor.ai",
       "provider": "opentensor",
       "kind": "subtensor-rpc"
+    },
+    {
+      "id": "opentensor-test-finney-wss",
+      "url": "wss://test.finney.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-wss"
+    },
+    {
+      "id": "opentensor-test-chain-wss",
+      "url": "wss://test.chain.opentensor.ai",
+      "provider": "opentensor",
+      "kind": "subtensor-wss"
     }
   ]
 }
