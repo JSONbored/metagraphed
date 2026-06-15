@@ -767,6 +767,7 @@ const LOCAL_NETWORK_INFO = {
   },
   guide: "/skills/bittensor/SKILL.md",
 };
+const RPC_PROXY_NETWORKS = new Set(["finney"]);
 // Only an /api/v1/ or /metagraph/ path whose first segment is a known network
 // alias is treated as network-scoped; real routes (subnets, providers, …) never
 // collide with the alias set, so this never shadows an existing path.
@@ -1742,9 +1743,10 @@ async function handleRpcUsage(request, env, url) {
                 COUNT(*) AS requests,
                 SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count
          FROM rpc_proxy_events
-         WHERE observed_at >= ?
+         WHERE observed_at >= ? AND network IN ('finney')
          GROUP BY network
-         ORDER BY requests DESC`,
+         ORDER BY requests DESC
+         LIMIT 10`,
         [since],
       ),
     ]);
@@ -1785,6 +1787,29 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       "rpc_proxy_disabled",
       "Read-only RPC proxying is intentionally disabled until endpoint scoring, abuse controls, and method filtering are enabled.",
       501,
+    );
+  }
+
+  // The legacy /rpc/v1/wss route points at WebSocket-only endpoints that cannot
+  // be HTTP-POSTed, so reject it with a clear error instead of treating "wss" as
+  // an unsupported telemetry network.
+  if (url.pathname.endsWith("/wss")) {
+    return errorResponse(
+      "rpc_websocket_unsupported",
+      "WebSocket JSON-RPC is not available through this HTTP proxy. POST to /rpc/v1/finney for HTTP JSON-RPC, or connect to a public WSS endpoint directly.",
+      400,
+    );
+  }
+
+  const network = url.pathname.split("/")[3] || "finney";
+  if (!RPC_PROXY_NETWORKS.has(network)) {
+    return errorResponse(
+      "rpc_network_unsupported",
+      "Unsupported RPC proxy network. POST to /rpc/v1/finney for HTTP JSON-RPC.",
+      404,
+      {
+        allowed_networks: [...RPC_PROXY_NETWORKS].sort(),
+      },
     );
   }
 
@@ -1878,17 +1903,6 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     );
   }
 
-  // The proxy forwards an HTTP JSON-RPC POST, so it can only reach HTTP(S)
-  // upstreams. The /wss route points at WebSocket-only endpoints that cannot be
-  // HTTP-POSTed, so reject it with a clear error instead of failing the upstream
-  // fetch (which would surface as a 500).
-  if (url.pathname.endsWith("/wss")) {
-    return errorResponse(
-      "rpc_websocket_unsupported",
-      "WebSocket JSON-RPC is not available through this HTTP proxy. POST to /rpc/v1/finney for HTTP JSON-RPC, or connect to a public WSS endpoint directly.",
-      400,
-    );
-  }
   const poolId = "finney-rpc";
   const staticPool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
@@ -1898,10 +1912,9 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // the static pool when the live snapshot is cold.
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
   const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
-  // Usage telemetry (B3): network = the /rpc/v1/{network} path segment; startedAt
-  // anchors end-to-end proxy latency. recordRpcUsage is best-effort + async, so it
-  // never adds latency to — or can fail — the proxied call (see the helper).
-  const network = url.pathname.split("/")[3] || "finney";
+  // Usage telemetry (B3): network is validated above so untrusted path segments
+  // cannot create high-cardinality D1 labels. recordRpcUsage is best-effort +
+  // async, so it never adds latency to — or can fail — the proxied call.
   const startedAt = Date.now();
   const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
   if (!candidates.length) {

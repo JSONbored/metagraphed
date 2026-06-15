@@ -116,6 +116,7 @@ describe("/api/v1/rpc/usage route", () => {
   });
 
   test("aggregates volume, latency, endpoints, and networks from D1", async () => {
+    const networkSql = [];
     // One mock D1 that routes each of the four aggregation queries by SQL shape.
     const usageDb = {
       prepare: (sql) => ({
@@ -151,6 +152,7 @@ describe("/api/v1/rpc/usage route", () => {
               };
             }
             if (sql.includes("GROUP BY network")) {
+              networkSql.push(sql);
               return {
                 results: [{ network: "finney", requests: 500, ok_count: 480 }],
               };
@@ -172,6 +174,8 @@ describe("/api/v1/rpc/usage route", () => {
     assert.equal(body.data.summary.latency_ms.p95, 430);
     assert.equal(body.data.endpoints[0].endpoint_id, "fx");
     assert.equal(body.data.networks[0].network, "finney");
+    assert.match(networkSql[0], /network IN \('finney'\)/);
+    assert.match(networkSql[0], /LIMIT 10/);
   });
 });
 
@@ -258,6 +262,35 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
     assert.equal(endpointId, "fx");
     assert.equal(ok, 1);
     assert.equal(cache, "bypass");
+  });
+
+  test("rejects unsupported RPC network paths before telemetry", async () => {
+    let prepared = false;
+    const env = {
+      ...baseEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          prepared = true;
+          return { bind: () => ({ run: async () => ({}) }) };
+        },
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://metagraph.sh/rpc/v1/attacker-1", {
+        method: "POST",
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "system_health",
+          params: [],
+        }),
+      }),
+      env,
+      { waitUntil() {} },
+    );
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, "rpc_network_unsupported");
+    assert.equal(prepared, false);
   });
 
   test("a telemetry write that throws never breaks the proxied call", async () => {

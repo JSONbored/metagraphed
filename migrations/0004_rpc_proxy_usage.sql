@@ -13,7 +13,7 @@
 CREATE TABLE IF NOT EXISTS rpc_proxy_events (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   observed_at  INTEGER NOT NULL,            -- epoch ms the proxy request started
-  network      TEXT    NOT NULL,            -- finney | test (path segment)
+  network      TEXT    NOT NULL CHECK (network IN ('finney')), -- supported RPC proxy network
   endpoint_id  TEXT,                        -- pool endpoint that served (NULL: cache hit / none eligible)
   provider     TEXT,                        -- served endpoint's provider label
   ok           INTEGER NOT NULL,            -- 1 if the proxy routed to a responding upstream (or cache hit)
