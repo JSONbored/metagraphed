@@ -3834,6 +3834,11 @@
           "kind": {
             "$ref": "#/components/schemas/ProviderKind"
           },
+          "logo_url": {
+            "description": "Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness.",
+            "format": "uri",
+            "type": "string"
+          },
           "name": {
             "minLength": 1,
             "type": "string"
@@ -14013,6 +14018,7 @@
                       "github_url": "https://api.metagraph.sh/example",
                       "id": "example-subnet",
                       "kind": "subnet-team",
+                      "logo_url": "https://api.metagraph.sh/example",
                       "name": "Example Subnet",
                       "netuids": [
                         7
