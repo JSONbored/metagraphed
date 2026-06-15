@@ -111,6 +111,8 @@
     "wrangler": "4.93.1"
   },
   "overrides": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "js-yaml": "^4.2.0",
+    "ws": "^8.21.0"
   }
 }
