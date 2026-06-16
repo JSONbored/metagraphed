@@ -14,15 +14,15 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://cacheon.ai/docs/miners/api-contract",
-      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "source_url": "https://api.cacheon.ai/openapi.json",
+      "source_urls": ["https://api.cacheon.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://api.cacheon.ai/api/status"
+      "url": "https://api.cacheon.ai/api/metrics"
     }
   ],
   "schema_version": 1,
   "submission": {
-    "submitted_by": "jsonbored",
-    "submitted_by_url": "https://github.com/jsonbored"
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
   }
 }
