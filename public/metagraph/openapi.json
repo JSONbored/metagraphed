@@ -3572,6 +3572,10 @@
             ],
             "type": "string"
           },
+          "readiness_verified": {
+            "description": "Serve-time only (#357): true when ≥1 catalogued surface was probed healthy (status \"ok\") by the live cron — so an agent never treats a catalogued-but-dead API as ready. Absent on the static build artifact (no live truth there); overlaid on live agent-catalog detail responses. The numeric score stays a deterministic build value; this is the live verification gate on top of it.",
+            "type": "boolean"
+          },
           "readiness_version": {
             "minimum": 1,
             "type": "integer"
@@ -10050,6 +10054,7 @@
                     "readiness": {
                       "components": {},
                       "readiness_tier": "buildable",
+                      "readiness_verified": false,
                       "readiness_version": 1,
                       "score": 100
                     },

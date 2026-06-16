@@ -968,6 +968,46 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.services[0].eligibility.callable, false);
   });
 
+  test("overlayCatalogDetail gates readiness_verified on a live ok probe (#357)", () => {
+    const readiness = {
+      score: 100,
+      readiness_tier: "buildable",
+      readiness_version: 2,
+      components: { has_callable_api: true },
+    };
+    const detail = {
+      netuid: 7,
+      readiness,
+      services: [
+        {
+          surface_id: "7:subnet-api:x",
+          base_url: "https://x",
+          health: { status: "ok", stale: true },
+          eligibility: { callable: true },
+        },
+      ],
+    };
+    // live `x` probed "failed" → catalogued but NOT verified; score untouched.
+    const dead = overlayCatalogDetail(detail, live, 7);
+    assert.equal(dead.readiness.readiness_verified, false);
+    assert.equal(dead.readiness.score, 100);
+    assert.equal(dead.readiness.readiness_tier, "buildable");
+    // same surface probed "ok" → verified.
+    const okLive = {
+      ...live,
+      surfaces: [{ ...live.surfaces[0], status: "ok" }],
+    };
+    const verified = overlayCatalogDetail(detail, okLive, 7);
+    assert.equal(verified.readiness.readiness_verified, true);
+    // a detail with no readiness object → field simply absent (no crash).
+    const bare = overlayCatalogDetail(
+      { netuid: 7, services: detail.services },
+      okLive,
+      7,
+    );
+    assert.equal(bare.readiness, undefined);
+  });
+
   test("overlayCatalogIndex returns null without a live snapshot", () => {
     assert.equal(overlayCatalogIndex({ subnets: [] }, null), null);
   });

@@ -60,6 +60,18 @@ score:
 | `identity-only` | neither of the above, but `has_source_repo` or `active_lifecycle` |
 | `dormant`       | none — no interface, no candidate, no docs, no repo, not active   |
 
+## Live verification (`readiness.readiness_verified`)
+
+The numeric `score` is deliberately build-time and deterministic, so
+`has_callable_api` fires on a _catalogued_ surface — a subnet can score 100 with
+a dead API. `readiness_verified` (#357) closes that gap **at serve time only**:
+it is `true` when ≥1 catalogued surface was probed healthy (status `"ok"`) by the
+live 2-minute cron. It is **absent** on the static build artifact (there is no
+live truth there) and overlaid onto live agent-catalog detail responses. Treat it
+as the "proven callable right now" gate on top of the deterministic score — an
+agent that needs ground truth before wiring should require
+`readiness_verified === true`, not just a high score.
+
 ## Re-weighting
 
 The composite is one reasonable default. Because every component boolean ships

@@ -700,6 +700,10 @@
             "description": "Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score."
           },
           "readiness_version": { "type": "integer", "minimum": 1 },
+          "readiness_verified": {
+            "type": "boolean",
+            "description": "Serve-time only (#357): true when ≥1 catalogued surface was probed healthy (status \"ok\") by the live cron — so an agent never treats a catalogued-but-dead API as ready. Absent on the static build artifact (no live truth there); overlaid on live agent-catalog detail responses. The numeric score stays a deterministic build value; this is the live verification gate on top of it."
+          },
           "components": {
             "type": "object",
             "additionalProperties": false,

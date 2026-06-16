@@ -1923,6 +1923,8 @@ export interface components {
              * @enum {string}
              */
             readiness_tier: "buildable" | "emerging" | "identity-only" | "dormant";
+            /** @description Serve-time only (#357): true when ≥1 catalogued surface was probed healthy (status "ok") by the live cron — so an agent never treats a catalogued-but-dead API as ready. Absent on the static build artifact (no live truth there); overlaid on live agent-catalog detail responses. The numeric score stays a deterministic build value; this is the live verification gate on top of it. */
+            readiness_verified?: boolean;
             readiness_version: number;
             score: number;
         };
@@ -3812,6 +3814,7 @@ export interface operations {
                      *         "readiness": {
                      *           "components": {},
                      *           "readiness_tier": "buildable",
+                     *           "readiness_verified": false,
                      *           "readiness_version": 1,
                      *           "score": 100
                      *         },

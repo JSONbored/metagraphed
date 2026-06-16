@@ -974,9 +974,19 @@ export function overlayCatalogDetail(staticDetail, live, netuid) {
       },
     };
   });
+  // #357: readiness_verified — only true when a catalogued surface was actually
+  // probed healthy ("ok") by the live cron, so an agent never treats a
+  // catalogued-but-dead API as ready. Computed from the same rows that drive
+  // per-service health; absent on the static artifact (no live truth there).
+  const readinessVerified = services.some(
+    (service) => service.health?.status === "ok",
+  );
   return {
     ...staticDetail,
     services,
+    readiness: staticDetail?.readiness
+      ? { ...staticDetail.readiness, readiness_verified: readinessVerified }
+      : staticDetail?.readiness,
     operational_observed_at: live.last_run_at || null,
     health_source: live.health_source || "live-cron-prober",
   };
