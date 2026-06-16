@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-12-data-artifact-grafana-bittensor-church",
+      "kind": "data-artifact",
+      "name": "Compute Horde community data-artifact",
+      "netuid": 12,
+      "provider": "compute-horde",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://computehorde.io/",
+      "source_urls": ["https://computehorde.io/"],
+      "state": "schema-valid",
+      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
