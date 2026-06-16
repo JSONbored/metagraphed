@@ -180,6 +180,18 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run test:coverage
 
+      # Upload coverage to Codecov — the primary PR coverage gate (delta-based
+      # project + patch, see codecov.yml). vitest's thresholds are now just a
+      # local backstop. Runs on PRs AND main pushes (main = the comparison base);
+      # the upload failing never fails CI (the gate is Codecov's own status).
+      - name: Upload coverage to Codecov
+        if: steps.route.outputs.mode == 'full'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
       - name: Generate R2 manifest
         if: steps.route.outputs.mode == 'full'
         run: npm run r2:manifest
