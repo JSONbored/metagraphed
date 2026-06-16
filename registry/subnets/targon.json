@@ -40,7 +40,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/manifold-inc/targon"],
+      "source_urls": [
+        "https://github.com/manifold-inc/targon"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -58,7 +60,10 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://targon.com/", "https://docs.targon.com/"],
+      "source_urls": [
+        "https://targon.com/",
+        "https://docs.targon.com/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -97,7 +102,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/manifold-inc/targon"],
+      "source_urls": [
+        "https://github.com/manifold-inc/targon"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -106,5 +113,8 @@
       },
       "notes": "Official Targon source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/targoncompute"
+  }
 }

@@ -41,7 +41,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/mainframe"],
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -50,5 +52,8 @@
       },
       "notes": "Official Mainframe source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  }
 }

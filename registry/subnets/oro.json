@@ -39,7 +39,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "source_urls": [
+        "https://github.com/ORO-AI/oro"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -57,7 +59,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/ORO-AI/oro/blob/main/README.md"],
+      "source_urls": [
+        "https://github.com/ORO-AI/oro/blob/main/README.md"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -75,7 +79,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "source_urls": [
+        "https://github.com/ORO-AI/oro"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -84,5 +90,8 @@
       },
       "notes": "Official ORO source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/oroagents"
+  }
 }

@@ -161,5 +161,8 @@
       },
       "notes": "Read-only leaderboard endpoint documented by the Numinous OpenAPI schema."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/numinous_ai"
+  }
 }

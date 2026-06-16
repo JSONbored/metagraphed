@@ -74,7 +74,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://www.vantanetwork.io/"],
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -92,7 +94,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://www.vantanetwork.io/"],
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -110,7 +114,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://www.vantanetwork.io/"],
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -128,7 +134,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/taoshidev/vanta-network"],
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -137,5 +145,8 @@
       },
       "notes": "Official Vanta Network source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/taoshiio"
+  }
 }

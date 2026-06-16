@@ -78,7 +78,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/TrishoolAI/trishool-phase2"],
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -87,5 +89,8 @@
       },
       "notes": "Official Trishool phase two source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/trishoolai"
+  }
 }

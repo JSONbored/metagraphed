@@ -76,7 +76,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://trajrl.com/docs"],
+      "source_urls": [
+        "https://trajrl.com/docs"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -94,7 +96,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -112,7 +116,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -130,7 +136,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -148,7 +156,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -166,7 +176,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/trajectoryRL/trajectoryRL"],
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajectoryRL"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -175,5 +187,8 @@
       },
       "notes": "Official TrajectoryRL source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/trajectoryrl"
+  }
 }

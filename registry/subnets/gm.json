@@ -33,5 +33,8 @@
       "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
     ]
   },
-  "surfaces": []
+  "surfaces": [],
+  "social": {
+    "x": "https://x.com/say_gm_"
+  }
 }

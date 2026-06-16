@@ -54,7 +54,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://endure.network/"],
+      "source_urls": [
+        "https://endure.network/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -72,7 +74,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://endure.network/"],
+      "source_urls": [
+        "https://endure.network/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -81,5 +85,8 @@
       },
       "notes": "Official Endure documentation linked from the project website."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/endurenet"
+  }
 }

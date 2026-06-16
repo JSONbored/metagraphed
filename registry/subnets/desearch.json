@@ -53,7 +53,9 @@
       },
       "provider": "desearch",
       "public_safe": true,
-      "source_urls": ["https://www.desearch.ai/"],
+      "source_urls": [
+        "https://www.desearch.ai/"
+      ],
       "url": "https://www.desearch.ai/"
     },
     {
@@ -71,7 +73,9 @@
       },
       "provider": "desearch",
       "public_safe": true,
-      "source_urls": ["https://www.desearch.ai/docs"],
+      "source_urls": [
+        "https://www.desearch.ai/docs"
+      ],
       "url": "https://www.desearch.ai/docs"
     },
     {
@@ -211,9 +215,14 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/22"],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/22"
+      ],
       "url": "https://taomarketcap.com/subnets/22"
     }
   ],
-  "website_url": "https://www.desearch.ai/"
+  "website_url": "https://www.desearch.ai/",
+  "social": {
+    "x": "https://x.com/desearch_ai"
+  }
 }
