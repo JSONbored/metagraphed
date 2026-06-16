@@ -72,9 +72,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://bitads.ai/docs"
-      ],
+      "source_urls": ["https://bitads.ai/docs"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -92,9 +90,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/FirstTensorLabs/BitAds"
-      ],
+      "source_urls": ["https://github.com/FirstTensorLabs/BitAds"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

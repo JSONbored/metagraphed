@@ -61,9 +61,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/macrocosm-os/data-universe"
-      ],
+      "source_urls": ["https://github.com/macrocosm-os/data-universe"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -184,9 +182,7 @@
       "auth_required": false,
       "authority": "registry-observed",
       "public_safe": true,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/13"
-      ],
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/13"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

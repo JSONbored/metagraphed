@@ -61,9 +61,7 @@
       "auth_required": false,
       "authority": "provider-claimed",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/one-covenant/templar"
-      ],
+      "source_urls": ["https://github.com/one-covenant/templar"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -102,9 +100,7 @@
       "auth_required": false,
       "authority": "provider-claimed",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/one-covenant/templar"
-      ],
+      "source_urls": ["https://github.com/one-covenant/templar"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -122,9 +118,7 @@
       "auth_required": false,
       "authority": "provider-claimed",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/one-covenant/templar"
-      ],
+      "source_urls": ["https://github.com/one-covenant/templar"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

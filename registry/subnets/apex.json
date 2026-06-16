@@ -41,9 +41,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/macrocosm-os/apex"
-      ],
+      "source_urls": ["https://github.com/macrocosm-os/apex"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -81,9 +79,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/macrocosm-os/apex"
-      ],
+      "source_urls": ["https://github.com/macrocosm-os/apex"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

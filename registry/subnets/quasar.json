@@ -57,9 +57,7 @@
       },
       "provider": "silx-labs",
       "public_safe": true,
-      "source_urls": [
-        "https://silxinc.com/"
-      ],
+      "source_urls": ["https://silxinc.com/"],
       "url": "https://silxinc.com/"
     },
     {
@@ -199,9 +197,7 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
-      ],
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/24"],
       "url": "https://taomarketcap.com/subnets/24"
     }
   ],
