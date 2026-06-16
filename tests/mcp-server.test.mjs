@@ -185,25 +185,18 @@ describe("MCP JSON-RPC lifecycle", () => {
     assert.equal(res.body.result.tools.length, MCP_TOOLS.length);
   });
 
-  test("resources/list, templates, and prompts/list answer empty", async () => {
-    const resources = await rpc({
+  test("initialize advertises tools + resources + prompts capabilities", async () => {
+    const res = await rpc({
       jsonrpc: "2.0",
       id: 1,
-      method: "resources/list",
+      method: "initialize",
+      params: {},
     });
-    assert.deepEqual(resources.body.result, { resources: [] });
-    const templates = await rpc({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "resources/templates/list",
+    assert.deepEqual(res.body.result.capabilities, {
+      tools: { listChanged: false },
+      resources: { listChanged: false },
+      prompts: { listChanged: false },
     });
-    assert.deepEqual(templates.body.result, { resourceTemplates: [] });
-    const prompts = await rpc({
-      jsonrpc: "2.0",
-      id: 3,
-      method: "prompts/list",
-    });
-    assert.deepEqual(prompts.body.result, { prompts: [] });
   });
 
   test("notifications return 202 with no body", async () => {
@@ -241,6 +234,174 @@ describe("MCP JSON-RPC lifecycle", () => {
   test("invalid envelope without id is dropped as a notification", async () => {
     const res = await rpc({ method: "ping" });
     assert.equal(res.status, 202);
+  });
+});
+
+describe("MCP resources (#742)", () => {
+  test("resources/templates/list returns the subnet/provider/schema templates", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/templates/list",
+    });
+    const tpls = res.body.result.resourceTemplates;
+    assert.equal(tpls.length, 3);
+    assert.deepEqual(
+      tpls.map((t) => t.uriTemplate).sort(),
+      [
+        "metagraph://provider/{slug}",
+        "metagraph://schema/{surface_id}",
+        "metagraph://subnet/{netuid}",
+      ],
+    );
+    for (const t of tpls) {
+      assert.ok(t.name && t.title && t.description && t.mimeType);
+    }
+  });
+
+  test("resources/list enumerates fixed + subnet/provider/schema resources", async () => {
+    const deps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 7, name: "Allways" },
+          { netuid: 12, name: "Compute" },
+        ],
+      },
+      "/metagraph/providers.json": {
+        providers: [{ slug: "datura", name: "Datura" }],
+      },
+      "/metagraph/schemas/index.json": {
+        schemas: [
+          { surface_id: "7:subnet-api:allways", content_type: "application/json" },
+        ],
+      },
+    });
+    const res = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "resources/list" },
+      { deps },
+    );
+    const uris = res.body.result.resources.map((r) => r.uri);
+    assert.ok(uris.includes("metagraph://registry/summary"));
+    assert.ok(uris.includes("metagraph://subnet/7"));
+    assert.ok(uris.includes("metagraph://provider/datura"));
+    assert.ok(uris.includes("metagraph://schema/7:subnet-api:allways"));
+    assert.equal(res.body.result.nextCursor, undefined);
+    for (const r of res.body.result.resources) {
+      assert.ok(r.uri && r.name && r.title && r.mimeType);
+    }
+  });
+
+  test("resources/list degrades gracefully when indexes are missing", async () => {
+    const res = await rpc({ jsonrpc: "2.0", id: 1, method: "resources/list" });
+    const uris = res.body.result.resources.map((r) => r.uri);
+    assert.ok(uris.includes("metagraph://registry/summary"));
+    assert.ok(uris.includes("metagraph://registry/catalog"));
+  });
+
+  test("resources/read returns the backing artifact for a subnet uri", async () => {
+    const deps = makeDeps({
+      "/metagraph/overview/7.json": { netuid: 7, name: "Allways" },
+    });
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://subnet/7" },
+      },
+      { deps },
+    );
+    const contents = res.body.result.contents;
+    assert.equal(contents.length, 1);
+    assert.equal(contents[0].uri, "metagraph://subnet/7");
+    assert.equal(contents[0].mimeType, "application/json");
+    assert.deepEqual(JSON.parse(contents[0].text), {
+      netuid: 7,
+      name: "Allways",
+    });
+  });
+
+  test("resources/read maps a fixed uri to its artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/registry-summary.json": { completeness: 0.42 },
+    });
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://registry/summary" },
+      },
+      { deps },
+    );
+    assert.deepEqual(JSON.parse(res.body.result.contents[0].text), {
+      completeness: 0.42,
+    });
+  });
+
+  test("resources/read rejects malformed / traversing uris with -32602", async () => {
+    for (const uri of [
+      "metagraph://subnet/../secrets",
+      "metagraph://subnet/", // empty id
+      "metagraph://bogus/1", // unknown type
+      "https://evil.example/x", // wrong scheme
+    ]) {
+      const res = await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri },
+      });
+      assert.equal(res.body.error.code, -32602, `expected -32602 for ${uri}`);
+    }
+  });
+});
+
+describe("MCP prompts (#742)", () => {
+  test("prompts/list returns >=3 recipes with arguments", async () => {
+    const res = await rpc({ jsonrpc: "2.0", id: 1, method: "prompts/list" });
+    const prompts = res.body.result.prompts;
+    assert.ok(prompts.length >= 3);
+    for (const p of prompts) {
+      assert.ok(p.name && p.title && p.description);
+      assert.ok(Array.isArray(p.arguments));
+    }
+    assert.ok(prompts.some((p) => p.name === "integrate_with_subnet"));
+  });
+
+  test("prompts/get returns a user message referencing the tools", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "integrate_with_subnet", arguments: { netuid: 7 } },
+    });
+    const messages = res.body.result.messages;
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0].role, "user");
+    assert.equal(messages[0].content.type, "text");
+    assert.match(messages[0].content.text, /get_subnet/);
+    assert.match(messages[0].content.text, /netuid: 7/);
+  });
+
+  test("prompts/get rejects a missing required argument with -32602", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "integrate_with_subnet", arguments: {} },
+    });
+    assert.equal(res.body.error.code, -32602);
+  });
+
+  test("prompts/get rejects an unknown prompt with -32602", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "does_not_exist", arguments: {} },
+    });
+    assert.equal(res.body.error.code, -32602);
   });
 });
 

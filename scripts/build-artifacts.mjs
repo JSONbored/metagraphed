@@ -59,7 +59,10 @@ import {
   MCP_INSTRUCTIONS,
   MCP_PROTOCOL_VERSIONS,
   MCP_REGISTRY_META,
+  MCP_CAPABILITIES,
+  MCP_RESOURCE_TEMPLATES,
   listToolDefinitions,
+  listPromptDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
 import {
@@ -1358,10 +1361,12 @@ const serverCardContent = {
   transport: "streamable-http",
   protocol_versions: MCP_PROTOCOL_VERSIONS,
   authentication: "none",
-  capabilities: { tools: { listChanged: false } },
+  capabilities: MCP_CAPABILITIES,
   // Backlink to this server's MCP Registry identity (mirrors server.json).
   _meta: MCP_REGISTRY_META,
   tools: listToolDefinitions(),
+  resource_templates: MCP_RESOURCE_TEMPLATES,
+  prompts: listPromptDefinitions(),
 };
 await writeJson(
   path.join(repoRoot, "public/.well-known/mcp/server-card.json"),
