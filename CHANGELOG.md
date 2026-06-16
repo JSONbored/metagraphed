@@ -19,6 +19,25 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.7.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.6.0...platform-v0.7.0) (2026-06-16)
+
+
+### Features
+
+* **api:** most-enriched registry leaderboard board ([#753](https://github.com/JSONbored/metagraphed/issues/753)) ([#789](https://github.com/JSONbored/metagraphed/issues/789)) ([b0822f3](https://github.com/JSONbored/metagraphed/commit/b0822f3896b9065e62606ea89261f4c555f13327))
+* **data:** structured per-API auth detail + snippet rewiring ([#746](https://github.com/JSONbored/metagraphed/issues/746)) ([#783](https://github.com/JSONbored/metagraphed/issues/783)) ([0ac9d0e](https://github.com/JSONbored/metagraphed/commit/0ac9d0e57c9d3dc79d4da71894ef32212fe13ad0))
+* **data:** structured rate_limit metadata on callable surfaces ([#747](https://github.com/JSONbored/metagraphed/issues/747)) ([#780](https://github.com/JSONbored/metagraphed/issues/780)) ([f15d88f](https://github.com/JSONbored/metagraphed/commit/f15d88fd69f062dfbceeab607872a77ad8e83daf))
+* **registry:** add SN58 Handshake58 directory providers API ([#781](https://github.com/JSONbored/metagraphed/issues/781)) ([c57e902](https://github.com/JSONbored/metagraphed/commit/c57e902cecb9531e3aa161cf3f410a17bbdaadb7))
+* **registry:** add SN74 Gittensor dash/stats data artifact ([#779](https://github.com/JSONbored/metagraphed/issues/779)) ([a31c059](https://github.com/JSONbored/metagraphed/commit/a31c0597e4699a11c04a8f119df3b89ef7af78c4))
+
+
+### Bug Fixes
+
+* **feeds:** vary cache by accept header ([#784](https://github.com/JSONbored/metagraphed/issues/784)) ([84a1ab5](https://github.com/JSONbored/metagraphed/commit/84a1ab545dda6cb88369a99e4063ad48420fbb6f))
+* **provider:** constrain fallback logo URLs ([#785](https://github.com/JSONbored/metagraphed/issues/785)) ([364d2e6](https://github.com/JSONbored/metagraphed/commit/364d2e60a45009d1e9df7950e8445654538fae50))
+* **provider:** sanitize social URL artifacts ([#786](https://github.com/JSONbored/metagraphed/issues/786)) ([7087a3d](https://github.com/JSONbored/metagraphed/commit/7087a3d254689e0d29e6b1fadbde84eaf61ae249))
+* restrict curated social overlay hosts ([#787](https://github.com/JSONbored/metagraphed/issues/787)) ([83a568e](https://github.com/JSONbored/metagraphed/commit/83a568e6576adb627a6d160e2fb12d7853eb314a))
+
 ## [0.6.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.5.0...platform-v0.6.0) (2026-06-16)
 
 
