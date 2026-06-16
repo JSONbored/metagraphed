@@ -176,7 +176,15 @@ describe("Metagraphed submission gate policy", () => {
       );
       execFileSync(
         process.execPath,
-        ["scripts/submission-pr.mjs", "--changed-files", changedFilesPath, "--out", outputPath, "--submitter", "JSONbored"],
+        [
+          "scripts/submission-pr.mjs",
+          "--changed-files",
+          changedFilesPath,
+          "--out",
+          outputPath,
+          "--submitter",
+          "JSONbored",
+        ],
         { stdio: "pipe" },
       ); // must NOT throw — exit 0
       const report = JSON.parse(readFileSync(outputPath, "utf8"));

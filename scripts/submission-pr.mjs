@@ -46,7 +46,9 @@ const isRemovedDirectFile = (file) =>
   file.endsWith(".json") &&
   !existsSync(path.join(inputRoot, file));
 const removedDirectFiles = changedFiles.filter(isRemovedDirectFile);
-const effectiveChangedFiles = changedFiles.filter((file) => !isRemovedDirectFile(file));
+const effectiveChangedFiles = changedFiles.filter(
+  (file) => !isRemovedDirectFile(file),
+);
 if (removedDirectFiles.length > 0) {
   console.log(
     `Submission preflight: ${removedDirectFiles.length} removed direct file(s) treated as registry deletion(s): ${removedDirectFiles.join(", ")}`,
