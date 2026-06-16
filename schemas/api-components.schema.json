@@ -3845,6 +3845,33 @@
           "schema_version": {
             "const": 1
           },
+          "social": {
+            "additionalProperties": false,
+            "description": "Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness.",
+            "properties": {
+              "reddit": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "telegram": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "x": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "youtube": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
           "subnet_count": {
             "description": "Number of distinct subnets this provider operates (netuids.length).",
             "minimum": 0,

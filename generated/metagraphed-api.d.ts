@@ -1999,6 +1999,17 @@ export interface components {
             public_notes?: string;
             /** @constant */
             schema_version: 1;
+            /** @description Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness. */
+            social?: {
+                /** Format: uri */
+                reddit?: string;
+                /** Format: uri */
+                telegram?: string;
+                /** Format: uri */
+                x?: string;
+                /** Format: uri */
+                youtube?: string;
+            };
             /** @description Number of distinct subnets this provider operates (netuids.length). */
             subnet_count?: number;
             /** @description Number of curated surfaces attributed to this provider. */
@@ -6588,6 +6599,7 @@ export interface operations {
                      *           "notes": "Example description.",
                      *           "public_notes": "example",
                      *           "schema_version": 1,
+                     *           "social": {},
                      *           "subnet_count": 1,
                      *           "surface_count": 1,
                      *           "team_url": "https://api.metagraph.sh/example",

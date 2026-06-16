@@ -761,9 +761,17 @@ const enrichedProviders = providers.map((provider) => {
     curatedLogoUrl ||
     (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.logo_url : null) ||
     null;
+  // Structured social links (#745): a curated provider `social` override wins;
+  // else a single-subnet provider borrows that subnet's social (mirrors the
+  // logo_url borrow above). Display-only — never feeds completeness.
+  const social =
+    socialAccounts(null, provider.social) ||
+    (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.social : null) ||
+    null;
   return {
     ...provider,
     ...(logoUrl ? { logo_url: logoUrl } : {}),
+    ...(social ? { social } : {}),
     netuids,
     subnet_count: netuids.length,
     surface_count: providerSurfaces.length,

@@ -1738,3 +1738,37 @@ test("#745 social accounts stay display-only and never feed completeness", () =>
     );
   }
 });
+
+test("#745 provider social is display-only and borrows from a single subnet", () => {
+  const { providers } = JSON.parse(
+    readFileSync(artifactFilePath("providers.json"), "utf8"),
+  );
+  const subnetSocialByNetuid = new Map(
+    JSON.parse(readFileSync(artifactFilePath("subnets.json"), "utf8"))
+      .subnets.filter((subnet) => subnet.social)
+      .map((subnet) => [subnet.netuid, subnet.social]),
+  );
+
+  for (const provider of providers.filter((entry) => entry.social)) {
+    assert.deepEqual(
+      Object.keys(provider.social).filter(
+        (key) => !["x", "telegram", "reddit", "youtube"].includes(key),
+      ),
+      [],
+      `provider ${provider.id} social carries unexpected keys`,
+    );
+    // A single-subnet provider with no curated override borrows that subnet's
+    // social verbatim (mirrors the logo_url borrow). When the subnet it operates
+    // also carries social, the two must agree.
+    if (provider.netuids.length === 1) {
+      const borrowed = subnetSocialByNetuid.get(provider.netuids[0]);
+      if (borrowed) {
+        assert.deepEqual(
+          provider.social,
+          borrowed,
+          `provider ${provider.id} should borrow SN${provider.netuids[0]} social`,
+        );
+      }
+    }
+  }
+});
