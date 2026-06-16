@@ -19,6 +19,13 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.8.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.7.0...platform-v0.8.0) (2026-06-16)
+
+
+### Features
+
+* **client:** retries, ETag caching, convenience methods + fetchAll on the TS SDK ([#790](https://github.com/JSONbored/metagraphed/issues/790)) ([c7076b1](https://github.com/JSONbored/metagraphed/commit/c7076b1c40158fe842e90261a21063121054a1df))
+
 ## [0.7.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.6.0...platform-v0.7.0) (2026-06-16)
 
 
