@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-58-subnet-api-handshake58-com",
+      "kind": "subnet-api",
+      "name": "Handshake58 Bittensor provider directory API",
+      "netuid": 58,
+      "provider": "handshake58",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://handshake58.com/openapi.json",
+      "source_urls": ["https://handshake58.com/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://handshake58.com/api/directory/providers"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}
