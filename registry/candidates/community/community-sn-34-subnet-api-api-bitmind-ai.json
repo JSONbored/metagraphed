@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-34-subnet-api-api-bitmind-ai",
+      "kind": "subnet-api",
+      "name": "BitMind community subnet-api",
+      "netuid": 34,
+      "provider": "bitmind",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://docs.bitmind.ai/api-reference",
+      "source_urls": ["https://docs.bitmind.ai/api-reference"],
+      "state": "schema-valid",
+      "url": "https://api.bitmind.ai/"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jaso0n0818",
+    "submitted_by_url": "https://github.com/jaso0n0818"
+  }
+}
