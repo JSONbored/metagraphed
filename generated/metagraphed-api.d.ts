@@ -2814,6 +2814,8 @@ export interface components {
             block?: number;
             candidate_count?: number;
             categories?: string[];
+            /** @description Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data. */
+            contact?: string | null;
             coverage_level: components["schemas"]["CoverageLevel"];
             curation: components["schemas"]["CurationMetadata"];
             curation_level: components["schemas"]["CurationLevel"];
@@ -2903,6 +2905,8 @@ export interface components {
             block?: number;
             candidate_count?: number;
             categories?: string[];
+            /** @description Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data. */
+            contact?: string | null;
             /** @description On-chain SubnetIdentitiesV3 flag claiming a maintainer contact exists. Operator-controlled and orthogonal to discord/discord_url: a subnet may expose a Discord contact while this is false, or vice versa. */
             contact_present?: boolean;
             coverage_level: components["schemas"]["CoverageLevel"];
@@ -9299,6 +9303,7 @@ export interface operations {
                      *           "categories": [
                      *             "example"
                      *           ],
+                     *           "contact": "example",
                      *           "coverage_level": "native-only",
                      *           "curation": {
                      *             "level": "native",
@@ -11039,6 +11044,7 @@ export interface operations {
                      *           "categories": [
                      *             "example"
                      *           ],
+                     *           "contact": "example",
                      *           "coverage_level": "native-only",
                      *           "curation": {
                      *             "level": "native",
