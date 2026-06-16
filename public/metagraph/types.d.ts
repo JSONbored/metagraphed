@@ -2787,6 +2787,17 @@ export interface components {
             };
             registered_at_block?: number;
             slug: string;
+            /** @description Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification. */
+            social?: {
+                /** Format: uri */
+                reddit?: string;
+                /** Format: uri */
+                telegram?: string;
+                /** Format: uri */
+                x?: string;
+                /** Format: uri */
+                youtube?: string;
+            } | null;
             /** Format: uri */
             source_repo?: string | null;
             status: components["schemas"]["SubnetStatus"];
@@ -2875,6 +2886,17 @@ export interface components {
             /** @description Count of low-trust registry-observed (harvested) surfaces for this subnet. */
             registry_observed_count?: number;
             slug: string;
+            /** @description Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification. */
+            social?: {
+                /** Format: uri */
+                reddit?: string;
+                /** Format: uri */
+                telegram?: string;
+                /** Format: uri */
+                x?: string;
+                /** Format: uri */
+                youtube?: string;
+            } | null;
             /** Format: uri */
             source_repo?: string | null;
             status: components["schemas"]["SubnetStatus"];
@@ -9209,6 +9231,7 @@ export interface operations {
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
                      *           "slug": "example-subnet",
+                     *           "social": {},
                      *           "source_repo": "https://api.metagraph.sh/example",
                      *           "status": "active",
                      *           "subnet_type": "root",
@@ -10946,6 +10969,7 @@ export interface operations {
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
                      *           "slug": "example-subnet",
+                     *           "social": {},
                      *           "source_repo": "https://api.metagraph.sh/example",
                      *           "status": "active",
                      *           "subnet_type": "root",

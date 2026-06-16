@@ -21,6 +21,7 @@ import {
   sanitizeOpenApiDocument,
   isPlaceholderIdentityUrl,
   backfilledIdentityUrl,
+  socialAccounts,
   nativeContactHandle,
   nativeDisplayName,
   nativeContactUrl,
@@ -844,5 +845,93 @@ describe("clusterDomainFromUrl", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);
     assert.equal(clusterDomainFromUrl(null), null);
     assert.equal(clusterDomainFromUrl(undefined), null);
+  });
+});
+
+describe("socialAccounts (#745)", () => {
+  test("extracts handles from on-chain `additional` free text", () => {
+    assert.deepEqual(
+      socialAccounts("Follow us at https://x.com/bitads_ai for updates"),
+      { x: "https://x.com/bitads_ai" },
+    );
+    assert.deepEqual(
+      socialAccounts(
+        "x https://x.com/foo tg https://t.me/bar yt https://youtu.be/abc123",
+      ),
+      {
+        x: "https://x.com/foo",
+        telegram: "https://t.me/bar",
+        youtube: "https://youtu.be/abc123",
+      },
+    );
+  });
+
+  test("maps twitter.com -> x and youtube.com -> youtube", () => {
+    const out = socialAccounts(
+      "https://twitter.com/legacy and https://www.youtube.com/@chan",
+    );
+    assert.equal(out.x, "https://twitter.com/legacy");
+    assert.equal(out.youtube, "https://www.youtube.com/@chan");
+  });
+
+  test("first handle per platform wins (chain text is left-to-right)", () => {
+    assert.deepEqual(
+      socialAccounts("https://x.com/first then https://x.com/second"),
+      { x: "https://x.com/first" },
+    );
+  });
+
+  test("strips trailing punctuation from extracted URLs", () => {
+    assert.deepEqual(socialAccounts("see https://x.com/handle."), {
+      x: "https://x.com/handle",
+    });
+  });
+
+  test("curated overlay wins per platform and can add platforms", () => {
+    assert.deepEqual(
+      socialAccounts("https://x.com/from_chain", {
+        x: "https://x.com/curated",
+        telegram: "https://t.me/curated",
+      }),
+      { x: "https://x.com/curated", telegram: "https://t.me/curated" },
+    );
+    // overlay-only (no chain text) still resolves
+    assert.deepEqual(
+      socialAccounts(null, { reddit: "https://reddit.com/r/x" }),
+      {
+        reddit: "https://reddit.com/r/x",
+      },
+    );
+  });
+
+  test("ignores non-social hosts, junk URLs, and unusable overlay values", () => {
+    assert.equal(
+      socialAccounts("homepage https://example.com and repo github.com/a/b"),
+      null,
+    );
+    assert.equal(socialAccounts(null, { x: "not a url" }), null);
+    assert.equal(socialAccounts(null, { x: "" }), null);
+  });
+
+  test("returns null for empty / non-string input", () => {
+    assert.equal(socialAccounts(""), null);
+    assert.equal(socialAccounts("just words, no links"), null);
+    assert.equal(socialAccounts(null), null);
+    assert.equal(socialAccounts(undefined), null);
+    assert.equal(socialAccounts(42), null);
+  });
+
+  test("only ever emits the four known display-only keys (flywheel-safe)", () => {
+    const out = socialAccounts(
+      "https://x.com/a https://t.me/b https://reddit.com/r/c https://youtu.be/d",
+    );
+    // No score/gap/completeness keys can leak out of this helper — its entire
+    // surface is the display-only social object (the #343 flywheel gate).
+    assert.deepEqual(Object.keys(out).sort(), [
+      "reddit",
+      "telegram",
+      "x",
+      "youtube",
+    ]);
   });
 });

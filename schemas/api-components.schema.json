@@ -7242,6 +7242,36 @@
           "slug": {
             "type": "string"
           },
+          "social": {
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "reddit": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "telegram": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "x": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "youtube": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "source_repo": {
             "format": "uri",
             "type": [
@@ -7589,6 +7619,36 @@
           },
           "slug": {
             "type": "string"
+          },
+          "social": {
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "reddit": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "telegram": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "x": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "youtube": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "source_repo": {
             "format": "uri",

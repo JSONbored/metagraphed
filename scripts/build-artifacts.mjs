@@ -6,6 +6,7 @@ import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
   backfilledIdentityUrl,
+  socialAccounts,
   buildSubnetLineageLinks,
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
@@ -357,6 +358,10 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     discord_url:
       overlayByNetuid.get(subnet.netuid)?.discord_url ||
       nativeContactUrl(discordContact),
+    // #745: structured social links — computed once on the canonical merged
+    // subnet (mergeSubnet), passed through here so index + detail agree.
+    // Display-only; never feeds completeness (the #343 flywheel gate).
+    social: subnet.social,
     docs_url: subnet.docs_url,
     first_party: surfaceTrust.official > 0,
     gap_count: subnet.gaps.missing_kinds.length,
@@ -2235,6 +2240,15 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
       gap_notes: [],
     },
     links: overlay?.links || [],
+    // Structured social handles (#745): curated overlay wins over on-chain
+    // SubnetIdentitiesV3 `additional` extraction. Display/search-only — never
+    // feeds completeness (the #343 flywheel gate). Lives on the canonical
+    // merged subnet so the detail artifact, index projection, and
+    // buildExpectedGeneratedSubnet (validate) all agree.
+    social: socialAccounts(
+      nativeSubnet.chain_identity?.additional,
+      overlay?.social,
+    ),
   };
 }
 

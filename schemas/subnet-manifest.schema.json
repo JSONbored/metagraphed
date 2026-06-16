@@ -67,6 +67,33 @@
         "$ref": "#/$defs/link"
       }
     },
+    "social": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Curated social links — wins over on-chain extraction (#745). Display-only; never feeds completeness.",
+      "properties": {
+        "x": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        },
+        "telegram": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        },
+        "reddit": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        },
+        "youtube": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        }
+      }
+    },
     "baseline_excluded_surface_ids": {
       "type": "array",
       "items": {

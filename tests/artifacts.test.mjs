@@ -1685,3 +1685,56 @@ function restoreSupportArtifacts(snapshot) {
     writeFileSync(filePath, content);
   }
 }
+
+test("#745 social accounts stay display-only and never feed completeness", () => {
+  const index = JSON.parse(
+    readFileSync(artifactFilePath("subnets.json"), "utf8"),
+  );
+  const withSocial = index.subnets.filter((subnet) => subnet.social);
+  // The on-chain `additional` corpus currently yields a handful of handles. If a
+  // snapshot ever yields zero, the lib-helpers unit tests still pin extraction;
+  // this invariant guards the build wiring whenever the data is present.
+  for (const entry of withSocial) {
+    assert.deepEqual(
+      Object.keys(entry.social).filter(
+        (key) => !["x", "telegram", "reddit", "youtube"].includes(key),
+      ),
+      [],
+      `SN${entry.netuid} social carries unexpected keys`,
+    );
+
+    // The detail artifact must embed the same social object as the index.
+    const detail = JSON.parse(
+      readFileSync(artifactFilePath(`subnets/${entry.netuid}.json`), "utf8"),
+    );
+    assert.deepEqual(
+      detail.subnet.social,
+      entry.social,
+      `SN${entry.netuid} detail/index social disagree`,
+    );
+
+    // The completeness + gap surface must never reference social — it is not a
+    // gap signal and must not move completeness_score (#343 flywheel gate).
+    const profilePath = artifactFilePath(`profiles/${entry.netuid}.json`);
+    if (!existsSync(profilePath)) {
+      continue;
+    }
+    const { profile } = JSON.parse(readFileSync(profilePath, "utf8"));
+    const completenessSurface = JSON.stringify({
+      completeness: profile.completeness,
+      completeness_score: profile.completeness_score,
+      gap_reasons: profile.gap_reasons,
+      missing_identity: profile.missing_identity,
+      missing_operational: profile.missing_operational,
+      missing_required: profile.missing_required,
+      missing_critical_count: profile.missing_critical_count,
+      primary_links: profile.primary_links,
+      suggested_submission_kinds: profile.suggested_submission_kinds,
+    });
+    assert.doesNotMatch(
+      completenessSurface,
+      /social/i,
+      `SN${entry.netuid} completeness surface must not reference social`,
+    );
+  }
+});

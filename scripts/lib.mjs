@@ -929,6 +929,70 @@ export function backfilledIdentityUrl(overlayValue, chainValue) {
   return normalized;
 }
 
+// Social platforms recognized in the free-text on-chain `additional` field, by
+// canonical host (#745).
+const SOCIAL_HOSTS = {
+  x: ["x.com", "twitter.com"],
+  telegram: ["t.me", "telegram.me", "telegram.org"],
+  reddit: ["reddit.com"],
+  youtube: ["youtube.com", "youtu.be"],
+};
+const SOCIAL_KEYS = Object.keys(SOCIAL_HOSTS);
+
+function socialHostKey(host) {
+  const h = host.replace(/^www\./, "").toLowerCase();
+  for (const key of SOCIAL_KEYS) {
+    if (SOCIAL_HOSTS[key].some((d) => h === d || h.endsWith(`.${d}`))) {
+      return key;
+    }
+  }
+  return null;
+}
+
+// Resolve a subnet/provider's structured social links: a curated overlay
+// `social` object wins per platform; otherwise extract from the free-text
+// on-chain `additional` content (sanitized + junk-guarded via
+// normalizePublicHttpUrl). Returns a { x?, telegram?, reddit?, youtube? } object
+// or null. Shared by build-artifacts (mergeSubnet) and validate
+// (buildExpectedGeneratedSubnet) so the chain extraction can't drift.
+// Display-only: a chain-claimed handle is NOT verification, and this NEVER feeds
+// completeness_score/missing_* (the flywheel's gaps stay the product).
+export function socialAccounts(additionalText, overlaySocial = null) {
+  const out = {};
+  const text = typeof additionalText === "string" ? additionalText : "";
+  const re =
+    /\b(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com|t\.me|telegram\.(?:me|org)|reddit\.com|youtube\.com|youtu\.be)\/[^\s"'<>)\]]+/gi;
+  for (const raw of text.match(re) || []) {
+    const normalized = normalizePublicHttpUrl(raw.replace(/[.,;]+$/, ""));
+    if (!normalized || isPlaceholderIdentityUrl(normalized)) {
+      continue;
+    }
+    let host;
+    try {
+      host = new URL(normalized).hostname;
+    } catch {
+      continue;
+    }
+    const key = socialHostKey(host);
+    if (key && !out[key]) {
+      out[key] = normalized;
+    }
+  }
+  if (
+    overlaySocial &&
+    typeof overlaySocial === "object" &&
+    !Array.isArray(overlaySocial)
+  ) {
+    for (const key of SOCIAL_KEYS) {
+      const curated = normalizePublicHttpUrl(overlaySocial[key]);
+      if (curated) {
+        out[key] = curated;
+      }
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function registrySurfaceKey(entry) {
   const normalizedUrl = normalizePublicUrl(entry?.url);
   return [

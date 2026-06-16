@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
   backfilledIdentityUrl,
+  socialAccounts,
   flattenSurfaces,
   loadCandidates,
   loadVerification,
@@ -791,6 +792,12 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
       gap_notes: [],
     },
     links: overlay?.links || [],
+    // Mirror mergeSubnet's #745 social backfill (overlay wins, else sanitized
+    // on-chain `additional`) so the reproducibility check matches the generator.
+    social: socialAccounts(
+      nativeSubnet.chain_identity?.additional,
+      overlay?.social,
+    ),
   };
 }
 

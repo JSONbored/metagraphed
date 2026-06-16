@@ -7264,6 +7264,36 @@
           "slug": {
             "type": "string"
           },
+          "social": {
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "reddit": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "telegram": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "x": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "youtube": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "source_repo": {
             "format": "uri",
             "type": [
@@ -7611,6 +7641,36 @@
           },
           "slug": {
             "type": "string"
+          },
+          "social": {
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "reddit": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "telegram": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "x": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "youtube": {
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "source_repo": {
             "format": "uri",
@@ -18475,6 +18535,7 @@
                       "provenance": {},
                       "registered_at_block": 5000000,
                       "slug": "example-subnet",
+                      "social": {},
                       "source_repo": "https://api.metagraph.sh/example",
                       "status": "active",
                       "subnet_type": "root",
@@ -20937,6 +20998,7 @@
                       "provenance": {},
                       "registered_at_block": 5000000,
                       "slug": "example-subnet",
+                      "social": {},
                       "source_repo": "https://api.metagraph.sh/example",
                       "status": "active",
                       "subnet_type": "root",
