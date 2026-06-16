@@ -257,6 +257,7 @@ describe("feeds — handleFeedRequest", () => {
       accept: "text/html, application/rss+xml",
     });
     assert.match(res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.equal(res.headers.get("vary"), "Accept");
   });
 
   test("per-subnet feed merges registry + incident items for that netuid", async () => {

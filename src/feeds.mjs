@@ -382,6 +382,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     headers: {
       "content-type": FEED_CONTENT_TYPES[format],
       "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
+      vary: "Accept",
       "x-content-type-options": "nosniff",
     },
   });
