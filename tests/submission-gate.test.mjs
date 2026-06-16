@@ -62,9 +62,18 @@ describe("Metagraphed submission gate policy", () => {
   });
 
   test("accepts a one-file direct candidate for private review", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].rate_limit = {
+      requests: 60,
+      window: "1m",
+      burst: 10,
+      scope: "per-key",
+      cost_notes: "Free tier limit.",
+    };
+
     const report = buildPrSubmissionReport({
       changedFiles: ["registry/candidates/community/allways-docs-example.json"],
-      candidateDocument: validCandidateDocument,
+      candidateDocument: document,
       native,
       providers,
       existingSubnets: subnets,
@@ -76,6 +85,10 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.private_review_required, true);
     assert.equal(report.blocking, false);
     assert.equal(report.candidate.id, "community-sn-7-docs-example");
+    assert.deepEqual(
+      report.candidate.rate_limit,
+      document.candidates[0].rate_limit,
+    );
   });
 
   test("blocks direct candidates with malformed schema metadata", () => {

@@ -90,6 +90,7 @@ const CANDIDATE_SCHEMA_FIELDS = new Set([
   "public_safe",
   "verification",
   "rate_limit_notes",
+  "rate_limit",
   "review_notes",
 ]);
 
@@ -832,6 +833,85 @@ function validateCandidateSchemaShape(candidate) {
       message: "candidate source_type must be a string",
     });
   }
+  if (candidate.rate_limit !== undefined) {
+    if (
+      !candidate.rate_limit ||
+      typeof candidate.rate_limit !== "object" ||
+      Array.isArray(candidate.rate_limit)
+    ) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate rate_limit must be an object",
+      });
+    } else {
+      const allowedRateLimitFields = new Set([
+        "requests",
+        "window",
+        "burst",
+        "scope",
+        "cost_notes",
+      ]);
+      for (const field of ["requests", "window"]) {
+        if (candidate.rate_limit[field] === undefined) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is required`,
+          });
+        }
+      }
+      for (const field of Object.keys(candidate.rate_limit)) {
+        if (!allowedRateLimitFields.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is not allowed`,
+          });
+        }
+      }
+      for (const field of ["requests", "burst"]) {
+        if (
+          candidate.rate_limit[field] !== undefined &&
+          (!Number.isInteger(candidate.rate_limit[field]) ||
+            candidate.rate_limit[field] < 0)
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} must be a non-negative integer`,
+          });
+        }
+      }
+      if (
+        candidate.rate_limit.window !== undefined &&
+        (typeof candidate.rate_limit.window !== "string" ||
+          candidate.rate_limit.window.length === 0)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.window is required",
+        });
+      }
+      if (
+        candidate.rate_limit.scope !== undefined &&
+        !["per-key", "per-ip", "global", "unknown"].includes(
+          candidate.rate_limit.scope,
+        )
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.scope is unsupported",
+        });
+      }
+      if (
+        candidate.rate_limit.cost_notes !== undefined &&
+        typeof candidate.rate_limit.cost_notes !== "string"
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.cost_notes must be a string",
+        });
+      }
+    }
+  }
+
   for (const field of ["rate_limit_notes", "review_notes"]) {
     if (
       candidate[field] !== undefined &&

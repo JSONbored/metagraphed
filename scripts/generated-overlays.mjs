@@ -426,6 +426,7 @@ function promoteCandidate(candidate, verification) {
     public_safe: true,
     source_urls: candidate.source_urls || [candidate.source_url],
     quality_signals: verification.quality_signals,
+    rate_limit: candidate.rate_limit,
     rate_limit_notes: candidate.rate_limit_notes,
     probe: probeForKind(candidate.kind),
     notes: candidate.review_notes,

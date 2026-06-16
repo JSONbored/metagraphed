@@ -898,6 +898,66 @@ describe("script utility contracts", () => {
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 
+  test("promotes structured candidate rate limits into generated surfaces", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 88, name: "Limiter", status: "active" }],
+    };
+    const rateLimit = {
+      requests: 120,
+      window: "1m",
+      burst: 20,
+      scope: "per-ip",
+      cost_notes: "Shared anonymous budget.",
+    };
+    const candidates = [
+      {
+        id: "sn-88-limiter-api",
+        netuid: 88,
+        name: "Limiter API",
+        kind: "subnet-api",
+        url: "https://limiter.example.com/api",
+        provider: "limiter",
+        source_type: "project-website-common-path",
+        source_tier: "provider-claimed",
+        source_url: "https://limiter.example.com/docs",
+        source_urls: ["https://limiter.example.com/docs"],
+        rate_limit: rateLimit,
+        rate_limit_notes: "See docs for tier details.",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: [
+        {
+          candidate_id: "sn-88-limiter-api",
+          classification: "live",
+          content_type: "application/json",
+          quality_signals: {
+            content_type_matches_kind: true,
+            public_safe: true,
+            rate_limited: false,
+            redirected: false,
+            source_tier: "provider-claimed",
+            transient_failure: false,
+          },
+        },
+      ],
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      verification,
+    });
+
+    const [surface] = overlaySet.generatedOverlays[0].surfaces;
+    assert.deepEqual(surface.rate_limit, rateLimit);
+    assert.equal(surface.rate_limit_notes, "See docs for tier details.");
+  });
+
   test("does not promote HTML-only Swagger pages as OpenAPI surfaces", async () => {
     const nativeSnapshot = {
       captured_at: "2026-06-08T00:00:00.000Z",
