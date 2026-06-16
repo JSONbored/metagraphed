@@ -768,8 +768,10 @@ const enrichedProviders = providers.map((provider) => {
     socialAccounts(null, provider.social) ||
     (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.social : null) ||
     null;
+  const safeProvider = { ...provider };
+  delete safeProvider.social;
   return {
-    ...provider,
+    ...safeProvider,
     ...(logoUrl ? { logo_url: logoUrl } : {}),
     ...(social ? { social } : {}),
     netuids,

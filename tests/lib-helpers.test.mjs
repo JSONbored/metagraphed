@@ -936,6 +936,10 @@ describe("socialAccounts (#745)", () => {
     );
     assert.equal(socialAccounts(null, { x: "not a url" }), null);
     assert.equal(socialAccounts(null, { x: "" }), null);
+    assert.equal(
+      socialAccounts(null, { x: "http://169.254.169.254/latest/meta-data" }),
+      null,
+    );
   });
 
   test("returns null for empty / non-string input", () => {

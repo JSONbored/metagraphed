@@ -132,6 +132,7 @@ describe("submission-policy provider extraction and validation", () => {
         github_url: "http://169.254.169.254",
         team_url: "http://192.168.0.1",
         contact_url: "ftp://example.com",
+        social: { x: "http://169.254.169.254/latest/meta-data" },
         authority: "official",
         notes: "legacy notes",
       },
@@ -165,6 +166,10 @@ describe("submission-policy provider extraction and validation", () => {
     );
     assert.equal(
       messages.includes("provider contact_url is invalid or unsafe"),
+      true,
+    );
+    assert.equal(
+      messages.includes("provider social.x is invalid or unsafe"),
       true,
     );
     assert.equal(

@@ -1245,6 +1245,12 @@ export function validateProviderForSubmission({
   const teamUrl = normalizePublicUrl(provider?.team_url);
   const contactUrl = normalizePublicUrl(provider?.contact_url);
   const logoUrl = normalizePublicHttpUrl(provider?.logo_url);
+  const socialEntries =
+    provider?.social &&
+    typeof provider.social === "object" &&
+    !Array.isArray(provider.social)
+      ? Object.entries(provider.social)
+      : [];
 
   if (!provider || typeof provider !== "object") {
     return {
@@ -1303,6 +1309,19 @@ export function validateProviderForSubmission({
       });
     } else if (provider[field] && provider[field] !== normalized) {
       warnings.push(`provider ${field} will be normalized by registry tooling`);
+    }
+  }
+  for (const [key, value] of socialEntries) {
+    const normalized = normalizePublicHttpUrl(value);
+    if (!normalized) {
+      errors.push({
+        category: "private-or-unsafe-url",
+        message: `provider social.${key} is invalid or unsafe`,
+      });
+    } else if (value !== normalized) {
+      warnings.push(
+        `provider social.${key} will be normalized by registry tooling`,
+      );
     }
   }
   if (!["community", "provider-claimed"].includes(provider.authority)) {
