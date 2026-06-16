@@ -1648,7 +1648,10 @@ export function listPromptDefinitions() {
 function getPrompt(params) {
   const prompt = PROMPTS_BY_NAME.get(params?.name);
   if (!prompt) {
-    throw toolError("invalid_params", `Unknown prompt: ${String(params?.name)}`);
+    throw toolError(
+      "invalid_params",
+      `Unknown prompt: ${String(params?.name)}`,
+    );
   }
   const args = params?.arguments || {};
   for (const arg of prompt.arguments) {

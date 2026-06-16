@@ -246,14 +246,11 @@ describe("MCP resources (#742)", () => {
     });
     const tpls = res.body.result.resourceTemplates;
     assert.equal(tpls.length, 3);
-    assert.deepEqual(
-      tpls.map((t) => t.uriTemplate).sort(),
-      [
-        "metagraph://provider/{slug}",
-        "metagraph://schema/{surface_id}",
-        "metagraph://subnet/{netuid}",
-      ],
-    );
+    assert.deepEqual(tpls.map((t) => t.uriTemplate).sort(), [
+      "metagraph://provider/{slug}",
+      "metagraph://schema/{surface_id}",
+      "metagraph://subnet/{netuid}",
+    ]);
     for (const t of tpls) {
       assert.ok(t.name && t.title && t.description && t.mimeType);
     }
@@ -272,7 +269,10 @@ describe("MCP resources (#742)", () => {
       },
       "/metagraph/schemas/index.json": {
         schemas: [
-          { surface_id: "7:subnet-api:allways", content_type: "application/json" },
+          {
+            surface_id: "7:subnet-api:allways",
+            content_type: "application/json",
+          },
         ],
       },
     });
