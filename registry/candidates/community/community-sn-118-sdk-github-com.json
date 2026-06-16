@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-118-sdk-github-com",
+      "kind": "sdk",
+      "name": "Ditto community sdk",
+      "netuid": 118,
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://heyditto.ai/docs/mcp-server",
+      "source_urls": ["https://heyditto.ai/docs/mcp-server"],
+      "state": "schema-valid",
+      "url": "https://github.com/ditto-assistant/ditto-mcp"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
