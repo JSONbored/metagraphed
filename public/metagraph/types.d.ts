@@ -1913,8 +1913,16 @@ export interface components {
                 callable_now?: boolean;
                 documented?: boolean;
                 has_callable_api?: boolean;
+                has_candidate_api?: boolean;
+                has_public_docs?: boolean;
+                has_source_repo?: boolean;
                 profile_complete?: boolean;
             };
+            /**
+             * @description Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score.
+             * @enum {string}
+             */
+            readiness_tier: "buildable" | "emerging" | "identity-only" | "dormant";
             readiness_version: number;
             score: number;
         };
@@ -3803,6 +3811,7 @@ export interface operations {
                      *         "notes": "Example description.",
                      *         "readiness": {
                      *           "components": {},
+                     *           "readiness_tier": "buildable",
                      *           "readiness_version": 1,
                      *           "score": 100
                      *         },
@@ -10702,6 +10711,7 @@ export interface operations {
                      *           },
                      *           "readiness": {
                      *             "components": {},
+                     *             "readiness_tier": "buildable",
                      *             "readiness_version": 1,
                      *             "score": 100
                      *           },
@@ -11001,6 +11011,7 @@ export interface operations {
                      *           },
                      *           "readiness": {
                      *             "components": {},
+                     *             "readiness_tier": "buildable",
                      *             "readiness_version": 1,
                      *             "score": 100
                      *           },

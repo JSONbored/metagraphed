@@ -3547,11 +3547,30 @@
               "has_callable_api": {
                 "type": "boolean"
               },
+              "has_candidate_api": {
+                "type": "boolean"
+              },
+              "has_public_docs": {
+                "type": "boolean"
+              },
+              "has_source_repo": {
+                "type": "boolean"
+              },
               "profile_complete": {
                 "type": "boolean"
               }
             },
             "type": "object"
+          },
+          "readiness_tier": {
+            "description": "Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score.",
+            "enum": [
+              "buildable",
+              "emerging",
+              "identity-only",
+              "dormant"
+            ],
+            "type": "string"
           },
           "readiness_version": {
             "minimum": 1,
@@ -3565,6 +3584,7 @@
         },
         "required": [
           "score",
+          "readiness_tier",
           "readiness_version",
           "components"
         ],
@@ -10029,6 +10049,7 @@
                     "notes": "Example description.",
                     "readiness": {
                       "components": {},
+                      "readiness_tier": "buildable",
                       "readiness_version": 1,
                       "score": 100
                     },
@@ -20821,6 +20842,7 @@
                       },
                       "readiness": {
                         "components": {},
+                        "readiness_tier": "buildable",
                         "readiness_version": 1,
                         "score": 100
                       },
@@ -21148,6 +21170,7 @@
                       },
                       "readiness": {
                         "components": {},
+                        "readiness_tier": "buildable",
                         "readiness_version": 1,
                         "score": 100
                       },

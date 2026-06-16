@@ -24,22 +24,41 @@ breakdown ships alongside the score so you can re-weight it for your own needs.
   (emissions, TAO price, miner quality) is a different question — that's chain
   data, not metagraphed's lane.
 
-## Rubric (`readiness_version: 1`)
+## Rubric (`readiness_version: 2`)
 
 Score = sum of the component weights below, clamped to 100. Each component is an
 objective boolean published under `readiness.components`.
 
-| Component          | Weight | True when                                                                                                                                         |
-| ------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `has_callable_api` | 30     | the subnet exposes ≥1 catalogued service surface                                                                                                  |
-| `documented`       | 25     | ≥1 service has a captured OpenAPI/Swagger schema                                                                                                  |
-| `auth_clarity`     | 15     | every callable service has clear auth — either no auth, or auth required _with_ known schemes (so an agent knows whether and how to authenticate) |
-| `callable_now`     | 15     | ≥1 service is structurally callable (public-safe, not dead/unsafe)                                                                                |
-| `active_lifecycle` | 10     | `lifecycle === "active"` (not deprecated/parked/pending)                                                                                          |
-| `profile_complete` | 5      | the subnet's `completeness_score` ≥ 70                                                                                                            |
+| Component           | Weight | True when                                                                                                                                         |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `has_callable_api`  | 30     | the subnet exposes ≥1 catalogued service surface                                                                                                  |
+| `documented`        | 25     | ≥1 service has a captured OpenAPI/Swagger schema                                                                                                  |
+| `auth_clarity`      | 15     | every callable service has clear auth — either no auth, or auth required _with_ known schemes (so an agent knows whether and how to authenticate) |
+| `callable_now`      | 15     | ≥1 service is structurally callable (public-safe, not dead/unsafe)                                                                                |
+| `active_lifecycle`  | 10     | `lifecycle === "active"` (not deprecated/parked/pending)                                                                                          |
+| `profile_complete`  | 5      | the subnet's `completeness_score` ≥ 70                                                                                                            |
+| `has_source_repo`   | 4      | a source repository is recorded (curated or chain identity)                                                                                       |
+| `has_candidate_api` | 4      | a community-flagged candidate surface of an operational kind exists (unverified — does not imply callable)                                        |
+| `has_public_docs`   | 3      | a documentation link is recorded, even without a captured schema (distinct from `documented`)                                                     |
 
 `auth_clarity` intentionally treats "auth required, schemes known" as **clear** —
-it does not penalize an honestly auth-gated API.
+it does not penalize an honestly auth-gated API. The three low-weight components
+added in `readiness_version: 2` (#356) carry **no** dependency on a callable API,
+so the large API-less tail stops cliffing at one score and becomes a ranked
+curation pipeline; they cannot, combined, lift an API-less subnet above ~21.
+
+## Readiness tier (`readiness.readiness_tier`)
+
+A categorical gradient derived purely from the components (so it stays stable if
+weights are re-tuned), for filtering/sorting the tail without thresholding the
+score:
+
+| Tier            | When                                                              |
+| --------------- | ----------------------------------------------------------------- |
+| `buildable`     | `has_callable_api` — a verified callable surface exists           |
+| `emerging`      | no callable API, but `has_candidate_api` or `has_public_docs`     |
+| `identity-only` | neither of the above, but `has_source_repo` or `active_lifecycle` |
+| `dormant`       | none — no interface, no candidate, no docs, no repo, not active   |
 
 ## Re-weighting
 

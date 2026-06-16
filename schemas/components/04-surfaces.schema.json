@@ -685,10 +685,20 @@
       "IntegrationReadiness": {
         "type": "object",
         "description": "Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md.",
-        "required": ["score", "readiness_version", "components"],
+        "required": [
+          "score",
+          "readiness_tier",
+          "readiness_version",
+          "components"
+        ],
         "additionalProperties": false,
         "properties": {
           "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "readiness_tier": {
+            "type": "string",
+            "enum": ["buildable", "emerging", "identity-only", "dormant"],
+            "description": "Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score."
+          },
           "readiness_version": { "type": "integer", "minimum": 1 },
           "components": {
             "type": "object",
@@ -699,7 +709,10 @@
               "auth_clarity": { "type": "boolean" },
               "callable_now": { "type": "boolean" },
               "active_lifecycle": { "type": "boolean" },
-              "profile_complete": { "type": "boolean" }
+              "profile_complete": { "type": "boolean" },
+              "has_source_repo": { "type": "boolean" },
+              "has_public_docs": { "type": "boolean" },
+              "has_candidate_api": { "type": "boolean" }
             }
           }
         }

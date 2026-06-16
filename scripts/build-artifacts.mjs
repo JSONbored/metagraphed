@@ -649,7 +649,9 @@ const serviceKindsByNetuid = new Map(
     ].sort(),
   ]),
 );
-const READINESS_VERSION = 1;
+// v2 (#356): added readiness_tier + non-API low-weight components
+// (has_source_repo / has_public_docs / has_candidate_api).
+const READINESS_VERSION = 2;
 const readinessByNetuid = new Map(
   mergedSubnets.map((subnet) => [
     subnet.netuid,
@@ -658,6 +660,9 @@ const readinessByNetuid = new Map(
       lifecycle: subnet.lifecycle,
       completenessScore: profileArtifacts.byNetuid.get(subnet.netuid)
         ?.completeness_score,
+      sourceRepo: subnet.source_repo,
+      docsUrl: subnet.docs_url,
+      candidates: candidatesByNetuid.get(subnet.netuid),
     }),
   ]),
 );
@@ -1194,10 +1199,25 @@ function buildSubnetServices(netuid) {
 // up right now" dimension is intentionally separate (get_subnet_health / the
 // health overlay). Components are published so agents can re-weight to their own
 // needs. Rubric: docs/integration-readiness.md.
+// #356: a categorical readiness gradient that turns the API-less long tail into
+// a ranked curation pipeline instead of a single 0-15 cliff. Derived purely from
+// components (not the numeric score) so the tier stays stable if weights move.
+function readinessTier(components) {
+  if (components.has_callable_api) return "buildable";
+  if (components.has_candidate_api || components.has_public_docs)
+    return "emerging";
+  if (components.has_source_repo || components.active_lifecycle)
+    return "identity-only";
+  return "dormant";
+}
+
 function subnetIntegrationReadiness({
   services,
   lifecycle,
   completenessScore,
+  sourceRepo,
+  docsUrl,
+  candidates,
 }) {
   const callable = services.filter((service) => service.eligibility.callable);
   const components = {
@@ -1211,6 +1231,15 @@ function subnetIntegrationReadiness({
     callable_now: callable.length > 0,
     active_lifecycle: lifecycle === "active",
     profile_complete: (completenessScore ?? 0) >= 70,
+    // #356: low-weight, NON-API signals so the ~99 API-less subnets stop
+    // cliffing at one score and rank as a curation pipeline. has_public_docs is
+    // any docs link (distinct from `documented`, which needs a verified schema);
+    // has_candidate_api is an unverified community-flagged operational surface.
+    has_source_repo: Boolean(sourceRepo),
+    has_public_docs: Boolean(docsUrl),
+    has_candidate_api: (candidates ?? []).some((candidate) =>
+      OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
+    ),
   };
   const score = Math.min(
     100,
@@ -1219,9 +1248,19 @@ function subnetIntegrationReadiness({
       (components.auth_clarity ? 15 : 0) +
       (components.callable_now ? 15 : 0) +
       (components.active_lifecycle ? 10 : 0) +
-      (components.profile_complete ? 5 : 0),
+      (components.profile_complete ? 5 : 0) +
+      // Low-weight curation-pipeline signals (#356) — they spread the API-less
+      // tail without disturbing the API-led top (the sum still caps at 100).
+      (components.has_source_repo ? 4 : 0) +
+      (components.has_candidate_api ? 4 : 0) +
+      (components.has_public_docs ? 3 : 0),
   );
-  return { score, readiness_version: READINESS_VERSION, components };
+  return {
+    score,
+    readiness_tier: readinessTier(components),
+    readiness_version: READINESS_VERSION,
+    components,
+  };
 }
 
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
