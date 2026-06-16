@@ -79,5 +79,6 @@
       },
       "notes": "Public Actual GGUF model registry page. The page is browser-facing and served publicly; account-specific Actual docs redirect to login and are not listed as public docs."
     }
-  ]
+  ],
+  "contact": "subnet@actual.inc"
 }

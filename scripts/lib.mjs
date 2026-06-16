@@ -1001,6 +1001,37 @@ export function socialAccounts(additionalText, overlaySocial = null) {
   return Object.keys(out).length ? out : null;
 }
 
+// Taostats-survey follow-up: the operator's published support contact
+// (SubnetIdentitiesV3 `subnet_contact` — an email or URL). metagraphed otherwise
+// keeps only a `contact_present` boolean, dropping the value an integration dev
+// (or agent) needs to reach a team when an API breaks. Overlay-driven and
+// sanitized — never parsed from free chain text, so it can't carry injection;
+// display-only, never feeds completeness (the #343 flywheel gate). Returns a
+// bare email (lowercased) or a normalized public URL, else null.
+const CONTACT_JUNK_VALUES = new Set([
+  "deprecated",
+  "none",
+  "n/a",
+  "na",
+  "tbd",
+  "-",
+  "null",
+]);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export function subnetContact(overlayContact) {
+  if (typeof overlayContact !== "string") return null;
+  const value = overlayContact.trim();
+  if (!value || CONTACT_JUNK_VALUES.has(value.toLowerCase())) return null;
+  const email = /^mailto:/i.test(value) ? value.slice(7).trim() : value;
+  if (EMAIL_RE.test(email)) {
+    // Reject junk placeholders that happen to be well-formed (deprecated@…).
+    const local = email.slice(0, email.indexOf("@")).toLowerCase();
+    return CONTACT_JUNK_VALUES.has(local) ? null : email.toLowerCase();
+  }
+  const url = normalizePublicHttpUrl(value);
+  return url && !isPlaceholderIdentityUrl(url) ? url : null;
+}
+
 export function registrySurfaceKey(entry) {
   const normalizedUrl = normalizePublicUrl(entry?.url);
   return [

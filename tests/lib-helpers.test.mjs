@@ -22,6 +22,7 @@ import {
   isPlaceholderIdentityUrl,
   backfilledIdentityUrl,
   socialAccounts,
+  subnetContact,
   deriveAuthDetail,
   nativeContactHandle,
   nativeDisplayName,
@@ -1094,5 +1095,26 @@ describe("deriveAuthDetail (#746)", () => {
   test("ignores non-object scheme entries and unknown scheme types", () => {
     assert.equal(deriveAuthDetail({ a: null, b: "nope" }), null);
     assert.equal(deriveAuthDetail({ a: { type: "mutualTLS" } }), null);
+  });
+});
+
+describe("subnetContact", () => {
+  test("accepts a clean email (lowercased) or public URL", () => {
+    assert.equal(subnetContact("Support@Chutes.ai"), "support@chutes.ai");
+    assert.equal(subnetContact("mailto:hello@cacheon.ai"), "hello@cacheon.ai");
+    assert.equal(
+      subnetContact("https://chutes.ai/support"),
+      "https://chutes.ai/support",
+    );
+  });
+  test("rejects junk, malformed, and non-string values", () => {
+    assert.equal(subnetContact("deprecated"), null);
+    assert.equal(subnetContact("None"), null);
+    assert.equal(subnetContact("deprecated@gmail.com"), null); // junk local-part
+    assert.equal(subnetContact("not an email"), null);
+    assert.equal(subnetContact("http://127.0.0.1/x"), null); // not public
+    assert.equal(subnetContact(""), null);
+    assert.equal(subnetContact(null), null);
+    assert.equal(subnetContact(42), null);
   });
 });
