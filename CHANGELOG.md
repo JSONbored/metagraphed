@@ -19,6 +19,13 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.4.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.1...platform-v0.4.0) (2026-06-16)
+
+
+### Features
+
+* **mcp:** expose Resources + Prompts ([#742](https://github.com/JSONbored/metagraphed/issues/742)) ([#764](https://github.com/JSONbored/metagraphed/issues/764)) ([f9be7e1](https://github.com/JSONbored/metagraphed/commit/f9be7e1a1e2f74e5cdb6490a7e575cf1be8f4b25))
+
 ## [0.3.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.0...platform-v0.3.1) (2026-06-15)
 
 
