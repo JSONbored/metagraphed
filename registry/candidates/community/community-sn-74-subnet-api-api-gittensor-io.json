@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-74-subnet-api-api-gittensor-io",
+      "kind": "subnet-api",
+      "name": "Gittensor community subnet-api",
+      "netuid": 74,
+      "provider": "gittensor",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.gittensor.io/swagger",
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "state": "schema-valid",
+      "url": "https://api.gittensor.io/dash/repos"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jaso0n0818",
+    "submitted_by_url": "https://github.com/jaso0n0818"
+  }
+}
