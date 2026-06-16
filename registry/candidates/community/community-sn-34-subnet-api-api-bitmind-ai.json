@@ -14,10 +14,10 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://bitmind.ai/",
-      "source_urls": ["https://bitmind.ai/"],
+      "source_url": "https://api.bitmind.ai/openapi.json",
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://api.bitmind.ai/health"
+      "url": "https://api.bitmind.ai/api/v1/detections/stats"
     }
   ],
   "schema_version": 1,
