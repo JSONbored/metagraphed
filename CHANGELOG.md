@@ -19,6 +19,27 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.12.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.11.0...platform-v0.12.0) (2026-06-16)
+
+
+### Features
+
+* **registry:** enrich SN106 Nodexo — add source repository ([#882](https://github.com/JSONbored/metagraphed/issues/882)) ([1c2c1f0](https://github.com/JSONbored/metagraphed/commit/1c2c1f0fceabb20c34009feac3f06a40e8267575))
+* **registry:** enrich SN118 Ditto — add source repository ([#878](https://github.com/JSONbored/metagraphed/issues/878)) ([e43b393](https://github.com/JSONbored/metagraphed/commit/e43b393a5a17dce65a67c83e063cadc1115399f1))
+* **registry:** enrich SN14 Cacheon — add OpenAPI schema ([#884](https://github.com/JSONbored/metagraphed/issues/884)) ([24166f6](https://github.com/JSONbored/metagraphed/commit/24166f6deb9f5a4cd6281115f9874709901e3eda))
+* **registry:** enrich SN14 Cacheon — add public data artifact ([#885](https://github.com/JSONbored/metagraphed/issues/885)) ([55720e5](https://github.com/JSONbored/metagraphed/commit/55720e53a7611b38df1cb9f6849c7efdc081c872))
+* **registry:** enrich SN22 Desearch — add OpenAPI schema ([#891](https://github.com/JSONbored/metagraphed/issues/891)) ([a5e8a57](https://github.com/JSONbored/metagraphed/commit/a5e8a577476c6125dee568f40592cd81cf816948))
+* **registry:** enrich SN27 Nodexo — add source repository ([#879](https://github.com/JSONbored/metagraphed/issues/879)) ([f707d55](https://github.com/JSONbored/metagraphed/commit/f707d5547b68ab258db260b60c17c1ce77ab8cb0))
+* **registry:** enrich SN34 BitMind — add OpenAPI schema ([#886](https://github.com/JSONbored/metagraphed/issues/886)) ([02ca792](https://github.com/JSONbored/metagraphed/commit/02ca79241bbcd225b24c81fe831173d0dcdad50a))
+* **registry:** enrich SN34 BitMind — add public API endpoint ([#887](https://github.com/JSONbored/metagraphed/issues/887)) ([89a4da4](https://github.com/JSONbored/metagraphed/commit/89a4da4cb0971404d59ffc3818f40adb51f36c90))
+* **registry:** enrich SN34 BitMind — add public data artifact ([#892](https://github.com/JSONbored/metagraphed/issues/892)) ([e6c26c0](https://github.com/JSONbored/metagraphed/commit/e6c26c04afa89463e8b0d2d4f6a075caaea54aa5))
+* **registry:** enrich SN40 Chunking — add source repository ([#880](https://github.com/JSONbored/metagraphed/issues/880)) ([1a18003](https://github.com/JSONbored/metagraphed/commit/1a180036282b99f10649e565c3719c1e752002a3))
+* **registry:** enrich SN49 Nepher Robotics — add public data artifact ([#890](https://github.com/JSONbored/metagraphed/issues/890)) ([0c1bbdf](https://github.com/JSONbored/metagraphed/commit/0c1bbdfdd21b217c7fa0db0193b3441d91f8c902))
+* **registry:** enrich SN53 EfficientFrontier — add source repository ([#881](https://github.com/JSONbored/metagraphed/issues/881)) ([ca20a70](https://github.com/JSONbored/metagraphed/commit/ca20a70e64c7ae2c7b4bfb32f0dee3111a84d216))
+* **registry:** enrich SN56 Gradients — add public data artifact ([#893](https://github.com/JSONbored/metagraphed/issues/893)) ([d8bfd01](https://github.com/JSONbored/metagraphed/commit/d8bfd01e82689c73cfb182ef136e7ac95c35a7da))
+* **registry:** enrich SN6 Numinous — add public data artifact ([#888](https://github.com/JSONbored/metagraphed/issues/888)) ([81dace6](https://github.com/JSONbored/metagraphed/commit/81dace6bbfa23d41324c6d9af410b103cd180cee))
+* **subnets:** structured operator support contact (taostats survey) ([#889](https://github.com/JSONbored/metagraphed/issues/889)) ([bdd2f38](https://github.com/JSONbored/metagraphed/commit/bdd2f384278a08c8d3cab6abf20e3eaa2bfb0839))
+
 ## [0.11.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.10.0...platform-v0.11.0) (2026-06-16)
 
 
