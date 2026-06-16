@@ -145,8 +145,22 @@ describe("formatLeaderboards", () => {
       { netuid: 2, min_latency_ms: 120 },
     ],
     mostComplete: [
-      { netuid: 1, slug: "one", name: "One", completeness_score: 80 },
-      { netuid: 2, slug: "two", name: "Two", completeness_score: 95 },
+      {
+        netuid: 1,
+        slug: "one",
+        name: "One",
+        completeness_score: 80,
+        surface_count: 12,
+        operational_interface_count: 4,
+      },
+      {
+        netuid: 2,
+        slug: "two",
+        name: "Two",
+        completeness_score: 95,
+        surface_count: 6,
+        operational_interface_count: 1,
+      },
     ],
     growthRows: [
       { netuid: 1, delta: 5 },
@@ -165,8 +179,22 @@ describe("formatLeaderboards", () => {
     assert.equal(out.boards.healthiest[0].name, "One");
     assert.equal(out.boards["fastest-rpc"][0].netuid, 2); // lowest latency
     assert.equal(out.boards["most-complete"][0].netuid, 2); // 95
+    assert.equal(out.boards["most-enriched"][0].netuid, 1); // 12 surfaces > 6
+    assert.equal(out.boards["most-enriched"][0].surface_count, 12);
     assert.equal(out.boards["fastest-growing"][0].netuid, 1); // +5 only positive
     assert.equal(out.boards["fastest-growing"].length, 1);
+  });
+  test("most-enriched excludes zero-surface subnets", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      mostComplete: [
+        { netuid: 1, slug: "one", name: "One", surface_count: 3 },
+        { netuid: 9, slug: "nine", name: "Nine", surface_count: 0 },
+      ],
+      board: "most-enriched",
+    });
+    assert.equal(out.boards["most-enriched"].length, 1);
+    assert.equal(out.boards["most-enriched"][0].netuid, 1);
   });
   test("filters to a single board and respects limit cap", () => {
     const out = formatLeaderboards({

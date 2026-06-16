@@ -557,14 +557,15 @@ export const LEADERBOARD_BOARDS = [
   "healthiest",
   "fastest-rpc",
   "most-complete",
+  "most-enriched",
   "fastest-growing",
 ];
 
 // Assemble registry leaderboards from already-query-shaped inputs:
 // healthRows [{netuid, total, ok_count, avg_latency_ms}], rpcRows
 // [{netuid, min_latency_ms}], mostComplete [{netuid, slug, name,
-// completeness_score}], growthRows [{netuid, delta}]. `subnetMeta` is a
-// Map(netuid -> {slug, name}).
+// completeness_score, surface_count, operational_interface_count}], growthRows
+// [{netuid, delta}]. `subnetMeta` is a Map(netuid -> {slug, name}).
 export function formatLeaderboards({
   board,
   limit,
@@ -619,6 +620,26 @@ export function formatLeaderboards({
     .sort((a, b) => (b.completeness_score ?? -1) - (a.completeness_score ?? -1))
     .slice(0, cap);
 
+  // Enrichment depth: how much curation/discovery has fleshed out a subnet's
+  // surface area (the flywheel output), ranked by total surfaces then callable
+  // (operational) interface depth. Distinct from completeness (which weights
+  // identity + required kinds) and readiness (which weights live callability).
+  const enrichedBoard = (mostComplete || [])
+    .map((row) => ({
+      netuid: row.netuid,
+      slug: row.slug ?? null,
+      name: row.name ?? null,
+      surface_count: Number(row.surface_count) || 0,
+      operational_interface_count: Number(row.operational_interface_count) || 0,
+    }))
+    .filter((entry) => entry.surface_count > 0)
+    .sort(
+      (a, b) =>
+        b.surface_count - a.surface_count ||
+        b.operational_interface_count - a.operational_interface_count,
+    )
+    .slice(0, cap);
+
   const fastestGrowing = (growthRows || [])
     .map((row) => ({
       netuid: row.netuid,
@@ -636,6 +657,7 @@ export function formatLeaderboards({
     healthiest,
     "fastest-rpc": fastestRpc,
     "most-complete": completeBoard,
+    "most-enriched": enrichedBoard,
     "fastest-growing": fastestGrowing,
   };
   const boards = board ? { [board]: allBoards[board] || [] } : allBoards;

@@ -819,7 +819,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
@@ -1373,7 +1373,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+    "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
     "standard",
     ["registry", "analytics"],
     [
@@ -1385,6 +1385,7 @@ export const API_ROUTES = [
             "healthiest",
             "fastest-rpc",
             "most-complete",
+            "most-enriched",
             "fastest-growing",
           ],
         },

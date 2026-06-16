@@ -1555,6 +1555,9 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
       slug: profile.slug ?? null,
       name: profile.name ?? null,
       completeness_score: profile.completeness_score ?? null,
+      // Enrichment-depth signals for the most-enriched board (#753).
+      surface_count: profile.surface_count ?? 0,
+      operational_interface_count: profile.operational_interface_count ?? 0,
     });
   }
   const projection = { subnetMeta, mostComplete, builtAt: now };

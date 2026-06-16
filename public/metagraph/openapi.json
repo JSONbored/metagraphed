@@ -14733,6 +14733,7 @@
                 "healthiest",
                 "fastest-rpc",
                 "most-complete",
+                "most-enriched",
                 "fastest-growing"
               ],
               "type": "string"
@@ -14860,7 +14861,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+        "summary": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
         "tags": [
           "registry",
           "analytics"

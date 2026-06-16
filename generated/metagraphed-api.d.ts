@@ -470,7 +470,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards. */
+        /** Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards. */
         get: operations["registryLeaderboards"];
         put?: never;
         post?: never;
@@ -6918,7 +6918,7 @@ export interface operations {
     registryLeaderboards: {
         parameters: {
             query?: {
-                board?: "healthiest" | "fastest-rpc" | "most-complete" | "fastest-growing";
+                board?: "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing";
                 limit?: number;
             };
             header?: never;
