@@ -6,8 +6,10 @@ import {
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 import { ApiError } from "@/lib/metagraphed/client";
+import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { NativeOnlyNotice } from "./native-only-notice";
 
 export function ErrorState({
   error,
@@ -20,6 +22,12 @@ export function ErrorState({
   context?: string;
 }) {
   const isApi = error instanceof ApiError;
+  // #370: on a non-mainnet partition, `artifact_not_found` is expected — those
+  // networks are native-only, so most artifacts legitimately aren't published.
+  // Degrade to an informational notice instead of a red error card.
+  if (isApi && error.code === "artifact_not_found" && getNetworkPrefix() !== "") {
+    return <NativeOnlyNotice context={context} />;
+  }
   const message = (error as Error)?.message ?? "Unknown error";
   const url = isApi ? error.url : undefined;
   const status = isApi ? error.status : undefined;
