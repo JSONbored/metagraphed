@@ -15,14 +15,17 @@ concurrency:
   cancel-in-progress: true
 
 # The work splits across two parallel jobs that share a runner-free route
-# classification (the classify-validation-route composite action): `test` runs
-# the suite + coverage; `checks` runs build + lint + the ~20 contract / schema /
-# safety validations (and the light UGC submission path). They are independent —
-# no validation needs the tests, and the test suite needs no build step — so
-# running them on two runners makes the wall-clock max(test, checks) instead of
-# the sum (~30% faster than the old single job). Both short-circuit the heavy
-# path for a UGC submission (a single community candidate/provider file): the
-# test job becomes a no-op and checks runs only the submission preflight.
+# classification (the classify-validation-route composite action): `test` builds
+# then runs the suite + coverage; `checks` builds then runs lint + the ~20
+# contract / schema / safety validations (and the light UGC submission path).
+# They are independent — no validation needs the test results — so running them
+# on two runners makes the wall-clock max(test, checks) instead of the sum. Both
+# build: the suite's reader tests serve R2-only artifacts (registry-summary.json
+# etc.) that have NO committed fallback and only exist after npm run build, so a
+# fresh runner must stage them; the duplicate ~5s build runs in parallel. Both
+# short-circuit the heavy path for a UGC submission (a single community
+# candidate/provider file): the test job becomes a no-op and checks runs only
+# the submission preflight.
 jobs:
   test:
     name: test
@@ -47,6 +50,16 @@ jobs:
       - name: Install
         if: steps.route.outputs.mode == 'full'
         run: npm ci
+
+      # Stage artifacts before the suite: the reader tests serve R2-only
+      # artifacts that have NO committed fallback (dist/metagraph-r2/metagraph/*,
+      # e.g. registry-summary.json), which only exist after a build — exactly as
+      # the checks job and the old single job do.
+      - name: Build artifacts
+        if: steps.route.outputs.mode == 'full'
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
 
       - name: Test (with coverage gate)
         if: steps.route.outputs.mode == 'full'
