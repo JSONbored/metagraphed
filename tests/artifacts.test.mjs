@@ -1600,13 +1600,25 @@ test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
   const ditto = queue.queue.find((entry) => entry.netuid === 118);
 
   assert(ditto, "expected SN118 Ditto enrichment queue entry");
-  assert.equal(ditto.evidence_action, "submit-new-evidence");
-  assert.deepEqual(ditto.sample_target_candidate_ids, []);
-  assert.deepEqual(ditto.sample_live_candidate_ids, []);
-  assert.equal(
-    ditto.candidate_evidence_summary.live_kinds.includes("source-repo"),
-    false,
-  );
+  // SN118's maintainer-excluded source-repo candidates (ditto.json
+  // `baseline_excluded_surface_ids`) must never surface as enrichment targets —
+  // even when a separate, non-excluded community candidate legitimately exists
+  // (the flywheel keeps adding candidates; assert the exclusion, not emptiness).
+  for (const excluded of [
+    "sn-118-taomarketcap-source-repo",
+    "sn-118-tensorplex-source-repo-1",
+  ]) {
+    assert.equal(
+      ditto.sample_target_candidate_ids.includes(excluded),
+      false,
+      `excluded ${excluded} must not be an enrichment target`,
+    );
+    assert.equal(
+      ditto.sample_live_candidate_ids.includes(excluded),
+      false,
+      `excluded ${excluded} must not be a live candidate`,
+    );
+  }
 });
 
 test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
