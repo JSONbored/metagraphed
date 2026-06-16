@@ -19,6 +19,14 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.5.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.4.0...platform-v0.5.0) (2026-06-16)
+
+
+### Features
+
+* **api:** content feeds — RSS 2.0 / Atom 1.0 / JSON Feed 1.1 ([#741](https://github.com/JSONbored/metagraphed/issues/741)) ([#772](https://github.com/JSONbored/metagraphed/issues/772)) ([0872793](https://github.com/JSONbored/metagraphed/commit/087279378b1854c1e8d08a5fa367fb39ad13b65d))
+* **api:** embeddable SVG readiness badges ([#744](https://github.com/JSONbored/metagraphed/issues/744)) ([#774](https://github.com/JSONbored/metagraphed/issues/774)) ([e63501e](https://github.com/JSONbored/metagraphed/commit/e63501eb72728670c7230d48a78a9a008a3e8c57))
+
 ## [0.4.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.1...platform-v0.4.0) (2026-06-16)
 
 
