@@ -14,10 +14,10 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://cacheon.ai/docs/miners/api-contract",
-      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "source_url": "https://api.cacheon.ai/openapi.json",
+      "source_urls": ["https://api.cacheon.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://api.cacheon.ai/api/health"
+      "url": "https://api.cacheon.ai/api/status"
     }
   ],
   "schema_version": 1,
