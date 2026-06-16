@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import {
   loadCandidates,
@@ -33,10 +33,31 @@ if (!changedFilesPath) {
 const changedFiles = normalizeChangedFiles(
   await fs.readFile(changedFilesPath, "utf8"),
 );
-const directCandidateFile = changedFiles.find((file) =>
+// A delete-only direct submission REMOVES the candidate/provider file — it's absent from the working
+// tree. A removal is a registry DELETION, not a content submission to validate; reading the missing file
+// ENOENT-ed the whole preflight and false-failed maintainer cleanup #944. Drop removed direct files so a
+// pure removal routes as a normal/non-submission PR (and passes); the review gate + maintainer authorize
+// the deletion separately. (#candidate-deletion)
+// Use the broad community-dir prefix (matching classifyPrScope's touchedCommunity* check), not just the
+// strict DIRECT_*_PATTERN, so ANY removed candidate/provider file is recognized as a deletion.
+const isRemovedDirectFile = (file) =>
+  (file.startsWith("registry/candidates/community/") ||
+    file.startsWith("registry/providers/community/")) &&
+  file.endsWith(".json") &&
+  !existsSync(path.join(inputRoot, file));
+const removedDirectFiles = changedFiles.filter(isRemovedDirectFile);
+const effectiveChangedFiles = changedFiles.filter(
+  (file) => !isRemovedDirectFile(file),
+);
+if (removedDirectFiles.length > 0) {
+  console.log(
+    `Submission preflight: ${removedDirectFiles.length} removed direct file(s) treated as registry deletion(s): ${removedDirectFiles.join(", ")}`,
+  );
+}
+const directCandidateFile = effectiveChangedFiles.find((file) =>
   DIRECT_CANDIDATE_PATTERN.test(file),
 );
-const directProviderFile = changedFiles.find((file) =>
+const directProviderFile = effectiveChangedFiles.find((file) =>
   DIRECT_PROVIDER_PATTERN.test(file),
 );
 const candidateDocument = directCandidateFile
@@ -72,7 +93,7 @@ const existingProviders = directProviderFile
   : await loadProviders();
 
 const report = buildPrSubmissionReport({
-  changedFiles,
+  changedFiles: effectiveChangedFiles,
   candidateDocument,
   providerDocument,
   submitter,
