@@ -2955,6 +2955,11 @@ export interface components {
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
+            /**
+             * Format: date-time
+             * @description When the authoritative native chain snapshot backing this row was captured (the snapshot's captured_at). A display-only freshness floor for the list's 'last updated' column; the live per-surface probe time is overlaid on the detail/health routes, not here. Never feeds completeness/readiness/gaps (the #343 flywheel-preservation gate).
+             */
+            updated_at?: string | null;
             /** Format: uri */
             website_url?: string | null;
         };

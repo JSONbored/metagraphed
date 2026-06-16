@@ -377,6 +377,11 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     netuid: subnet.netuid,
     participant_count: subnet.participant_count,
     probed_surface_count: subnet.probed_surface_count,
+    // #640: display-only freshness floor for the list's "last updated" column —
+    // the native snapshot's captured_at (when authoritative chain data was
+    // captured). The per-surface live probe time is overlaid on detail/health,
+    // not here. Never feeds completeness/readiness/gaps (the #343 flywheel gate).
+    updated_at: nativeSnapshot.captured_at || null,
     registered_at_block: subnet.registered_at_block,
     slug: subnet.slug,
     source_repo: subnet.source_repo,
