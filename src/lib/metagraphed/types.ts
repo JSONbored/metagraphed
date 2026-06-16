@@ -85,6 +85,13 @@ export interface PrimaryAppSurface {
   url?: string;
 }
 
+/** Backend integration-readiness breakdown (data.profile.readiness). */
+export interface ReadinessSummary {
+  score?: number;
+  readiness_version?: number;
+  components?: Record<string, boolean>;
+}
+
 export interface SubnetProfile extends Subnet {
   // identity
   slug?: string;
@@ -109,6 +116,9 @@ export interface SubnetProfile extends Subnet {
   confidence?: string;
   completeness?: number; // 0..1
   completeness_score?: number; // 0..100
+  // readiness (the backend integration_readiness score + its component breakdown)
+  integration_readiness?: number; // 0..100
+  readiness?: ReadinessSummary;
   // counts
   surface_count?: number;
   endpoint_count?: number;

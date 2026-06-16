@@ -19,6 +19,7 @@ import type {
   HealthState,
   HealthSummary,
   PrimaryAppSurface,
+  ReadinessSummary,
   Provider,
   ProviderEndpointSummary,
   RpcPool,
@@ -437,6 +438,11 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     confidence: pickStr(profile.confidence as string),
     completeness: completenessRatio,
     completeness_score: score,
+    integration_readiness:
+      typeof profile.integration_readiness === "number"
+        ? (profile.integration_readiness as number)
+        : undefined,
+    readiness: profile.readiness as ReadinessSummary | undefined,
     // counts
     surface_count: (profile.surface_count as number) ?? (subnet.surface_count as number),
     surfaces_count: (profile.surface_count as number) ?? (subnet.surface_count as number),

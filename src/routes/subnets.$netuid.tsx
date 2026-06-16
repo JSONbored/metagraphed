@@ -24,6 +24,7 @@ import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs
 import { CoverageCard } from "@/components/metagraphed/coverage-card";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -271,6 +272,10 @@ function DetailSkeleton() {
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
   return (
     <>
+      {/* #369: readiness scorecard — the "can I build on this, where do I start?"
+          answer, up top before the endpoint/surface detail. */}
+      <ReadinessScorecard profile={profile} />
+
       <SectionAnchor
         id="endpoints-glance"
         title="Endpoints at a glance"
