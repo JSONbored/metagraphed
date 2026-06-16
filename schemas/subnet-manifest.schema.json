@@ -209,6 +209,37 @@
         "rate_limit_notes": {
           "type": "string"
         },
+        "rate_limit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requests", "window"],
+          "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+          "properties": {
+            "requests": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Permitted requests per window."
+            },
+            "window": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\"."
+            },
+            "burst": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Optional short-term burst allowance above the steady rate."
+            },
+            "scope": {
+              "enum": ["per-key", "per-ip", "global", "unknown"],
+              "description": "What the limit is counted against."
+            },
+            "cost_notes": {
+              "type": "string",
+              "description": "Notes on weighted/credit costs or tier differences."
+            }
+          }
+        },
         "probe": {
           "$ref": "#/$defs/probe"
         },

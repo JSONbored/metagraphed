@@ -835,6 +835,45 @@
           "public_safe": {
             "type": "boolean"
           },
+          "rate_limit": {
+            "additionalProperties": false,
+            "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+            "properties": {
+              "burst": {
+                "description": "Optional short-term burst allowance above the steady rate.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "cost_notes": {
+                "description": "Notes on weighted/credit costs or tier differences.",
+                "type": "string"
+              },
+              "requests": {
+                "description": "Permitted requests per window.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "scope": {
+                "description": "What the limit is counted against.",
+                "enum": [
+                  "per-key",
+                  "per-ip",
+                  "global",
+                  "unknown"
+                ]
+              },
+              "window": {
+                "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\".",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "requests",
+              "window"
+            ],
+            "type": "object"
+          },
           "rate_limit_notes": {
             "type": "string"
           },
@@ -8881,6 +8920,45 @@
                 "type": "boolean"
               }
             },
+            "type": "object"
+          },
+          "rate_limit": {
+            "additionalProperties": false,
+            "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+            "properties": {
+              "burst": {
+                "description": "Optional short-term burst allowance above the steady rate.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "cost_notes": {
+                "description": "Notes on weighted/credit costs or tier differences.",
+                "type": "string"
+              },
+              "requests": {
+                "description": "Permitted requests per window.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "scope": {
+                "description": "What the limit is counted against.",
+                "enum": [
+                  "per-key",
+                  "per-ip",
+                  "global",
+                  "unknown"
+                ]
+              },
+              "window": {
+                "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\".",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "requests",
+              "window"
+            ],
             "type": "object"
           },
           "rate_limit_notes": {

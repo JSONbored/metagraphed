@@ -73,11 +73,24 @@ The file must contain exactly one candidate:
       "auth_required": false,
       "public_safe": true,
       "rate_limit_notes": "",
+      "rate_limit": {
+        "requests": 60,
+        "window": "60s",
+        "scope": "per-ip"
+      },
       "review_notes": "Community-submitted public interface candidate."
     }
   ]
 }
 ```
+
+`rate_limit` is **optional** and integration-only — include it only when the
+provider documents concrete limits. `requests` + `window` are required when the
+object is present; `burst`, `scope` (`per-key` / `per-ip` / `global` /
+`unknown`), and `cost_notes` are optional. metagraphed never enforces the limit
+and it does not feed completeness — it's a machine-readable hint so agents and
+SDKs can pace their calls. Leave it off when you only have prose, and use
+`rate_limit_notes` for that.
 
 Provider profile review files must contain exactly one provider profile:
 

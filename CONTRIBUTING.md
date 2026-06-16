@@ -87,6 +87,8 @@ A clean accepted example to copy: [#87](https://github.com/JSONbored/metagraphed
 
 Prefer issues? Use the `interface-submission`, `profile-correction`, `endpoint-submission`, `provider-submission`, or `status-report` template — an approved issue opens the candidate PR for you. Full contract in [`docs/submission-gate.md`](docs/submission-gate.md).
 
+Callable surface with documented limits? Add an optional structured `rate_limit` — `{ requests, window, burst?, scope?, cost_notes? }` (`requests` + `window` required) — so agents and SDKs can pace calls. It's integration-only: metagraphed never enforces it and it doesn't feed completeness. See the example in [`docs/submission-gate.md`](docs/submission-gate.md).
+
 ## Pull requests
 
 - Short and focused, Conventional Commit-style titles.
