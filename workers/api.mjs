@@ -43,6 +43,7 @@ import {
   runHealthProber,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import { findSurface, verifySurface } from "../src/surface-verify.mjs";
 import {
   buildGlobalHealth,
   formatGlobalIncidents,
@@ -314,6 +315,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
   if (url.pathname === "/api/v1/rpc/usage") {
     return handleRpcUsage(request, env, url);
+  }
+
+  // #358: live "verify-now" for one catalogued surface — an action endpoint
+  // (modeled on the RPC proxy), so it lives outside the artifact-route contract.
+  const verifyMatch =
+    /^\/api\/v1\/surfaces\/([A-Za-z0-9][A-Za-z0-9:._-]*)\/verify$/.exec(
+      url.pathname,
+    );
+  if (verifyMatch) {
+    return handleSurfaceVerify(
+      request,
+      env,
+      decodeURIComponent(verifyMatch[1]),
+      ctx,
+    );
   }
 
   if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
@@ -1785,6 +1801,102 @@ async function handleRpcUsage(request, env, url) {
       data,
       meta: await analyticsMeta(env, "/metagraph/rpc/usage.json", null),
     },
+    "short",
+  );
+}
+
+async function verifyMeta(env) {
+  return {
+    artifact_path: null,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: null,
+    published_at: await publishedAt(env),
+    source: "live-probe",
+  };
+}
+
+// #358: live-probe one catalogued surface on demand. Safe by construction — the
+// URL always comes from operational-surfaces.json (already public_safe, the exact
+// URLs the 2-minute cron probes), never the caller. Gated by the RPC rate limiter
+// plus a 60s per-surface Cache-API entry so repeat calls can't fan out into real
+// outbound probes. An agent (or the verify_integration MCP tool) calls this to
+// confirm "callable right now" before wiring.
+async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const clientKey =
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-forwarded-for") ||
+      "anonymous";
+    const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
+    if (!success) {
+      return errorResponse(
+        "verify_rate_limited",
+        "Too many verify requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const catalog = await readArtifact(
+    env,
+    "/metagraph/operational-surfaces.json",
+  );
+  if (!catalog.ok) {
+    return errorResponse(
+      "surfaces_unavailable",
+      "The operational-surface catalog is unavailable.",
+      503,
+    );
+  }
+  const surface = findSurface(catalog.data?.surfaces, surfaceId);
+  if (!surface) {
+    return errorResponse(
+      "surface_not_found",
+      `No catalogued surface with id "${surfaceId}".`,
+      404,
+      { surface_id: surfaceId },
+    );
+  }
+
+  const cache = globalThis.caches?.default || null;
+  const cacheKey = cache
+    ? new Request(
+        `https://verify.metagraph.sh/${encodeURIComponent(surfaceId)}`,
+      )
+    : null;
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const cached = await hit.json();
+      return envelopeResponse(
+        request,
+        { data: { ...cached, from_cache: true }, meta: await verifyMeta(env) },
+        "short",
+      );
+    }
+  }
+
+  const result = await verifySurface(surface);
+  if (cache) {
+    const stored = new Response(JSON.stringify(result), {
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "public, s-maxage=60",
+      },
+    });
+    ctx?.waitUntil?.(cache.put(cacheKey, stored));
+  }
+  return envelopeResponse(
+    request,
+    { data: { ...result, from_cache: false }, meta: await verifyMeta(env) },
     "short",
   );
 }

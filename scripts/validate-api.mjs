@@ -549,6 +549,28 @@ assert.equal(
   "unsafe RPC methods must be blocked when proxy flag is enabled",
 );
 
+// #358: surface verify-now endpoint. A valid-format but unknown surface_id 404s
+// at lookup, before any outbound probe, so this exercises routing + the error
+// envelope without a network call. The probe/mapping path is covered by
+// tests/surface-verify.test.mjs.
+const verifyMissing = await handleRequest(
+  new Request(
+    "https://metagraph.sh/api/v1/surfaces/zzz-not-a-real-surface/verify",
+  ),
+  env,
+  {},
+);
+assert.equal(
+  verifyMissing.status,
+  404,
+  "verify on an unknown surface_id should 404 before probing",
+);
+assert.equal(
+  verifyMissing.headers.get("x-metagraph-error-code"),
+  "surface_not_found",
+  "verify 404 should carry the surface_not_found error code",
+);
+
 const r2Fallback = await handleRequest(
   new Request("https://metagraph.sh/api/v1/changelog"),
   {

@@ -14,6 +14,12 @@ import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import {
+  findSurface,
+  primarySurfaceForNetuid,
+  verifySurface,
+  SURFACE_ID_PATTERN,
+} from "./surface-verify.mjs";
+import {
   loadSubnetReliability,
   overlayCatalogDetail,
   overlayCatalogIndex,
@@ -1085,6 +1091,63 @@ export const MCP_TOOLS = [
       };
     },
   },
+  {
+    name: "verify_integration",
+    title: "Verify a surface is callable right now",
+    description:
+      'Live-probe a single catalogued surface (by surface_id) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        surface_id: {
+          type: "string",
+          description:
+            'Surface id to verify, e.g. "7:subnet-api:x" or "nodies-finney-rpc".',
+        },
+        netuid: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Alternatively, a subnet netuid — verifies that subnet's primary catalogued surface.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const catalog = await loadArtifactData(
+        ctx,
+        "/metagraph/operational-surfaces.json",
+      );
+      const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
+      let surface = null;
+      if (typeof args?.surface_id === "string" && args.surface_id) {
+        if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
+          throw toolError("invalid_params", "Invalid surface_id format.");
+        }
+        surface = findSurface(surfaces, args.surface_id);
+        if (!surface) {
+          throw toolError(
+            "not_found",
+            `No catalogued surface with id "${args.surface_id}".`,
+          );
+        }
+      } else if (Number.isInteger(args?.netuid)) {
+        surface = primarySurfaceForNetuid(surfaces, args.netuid);
+        if (!surface) {
+          throw toolError(
+            "not_found",
+            `Subnet ${args.netuid} has no catalogued operational surface to verify.`,
+          );
+        }
+      } else {
+        throw toolError(
+          "invalid_params",
+          "Provide either surface_id or netuid.",
+        );
+      }
+      return await verifySurface(surface);
+    },
+  },
 ];
 
 const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
@@ -1356,6 +1419,25 @@ const TOOL_OUTPUT_SCHEMAS = {
         slug: NULLABLE_STRING,
         url: NULLABLE_STRING,
       }),
+    },
+  },
+  verify_integration: {
+    type: "object",
+    additionalProperties: true,
+    required: ["surface_id", "status", "callable"],
+    properties: {
+      surface_id: { type: "string" },
+      netuid: NULLABLE_INT,
+      kind: { type: "string" },
+      url: { type: "string" },
+      provider: NULLABLE_STRING,
+      status: { type: "string" },
+      classification: NULLABLE_STRING,
+      callable: { type: "boolean" },
+      latency_ms: NULLABLE_INT,
+      status_code: NULLABLE_INT,
+      error: NULLABLE_STRING,
+      probed_at: NULLABLE_STRING,
     },
   },
 };
