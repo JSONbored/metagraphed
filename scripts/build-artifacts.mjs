@@ -1119,6 +1119,10 @@ function buildSubnetServices(netuid) {
         surface.auth_required || schema?.snapshot?.auth_required,
       );
       const authSchemes = schema?.snapshot?.auth_schemes || [];
+      // Structured per-surface auth detail (#746): a curated override on the
+      // surface wins; otherwise the value derived from the captured spec's
+      // securitySchemes. null when neither is present. Placeholders only.
+      const authDetail = surface.auth || schema?.snapshot?.auth_detail || null;
       return {
         surface_id: surface.id,
         kind: surface.kind,
@@ -1132,12 +1136,14 @@ function buildSubnetServices(netuid) {
         // credential (fixes Chutes etc. that declared apiKey yet showed false).
         auth_required: authRequired,
         auth_schemes: authSchemes,
-        // Copy-paste curl/Python/TS that GETs this surface, auth header
-        // pre-filled from the declared scheme (issue #351). Reporting-only.
+        auth: authDetail,
+        // Copy-paste curl/Python/TS that GETs this surface, auth header/param
+        // filled from the structured auth detail (issue #746, was #351 guess).
         snippets: generateServiceSnippets({
           base_url: surface.url,
           auth_required: authRequired,
           auth_schemes: authSchemes,
+          auth: authDetail,
         }),
         schema_url: surface.schema_url || null,
         schema_status: surface.schema_status || null,

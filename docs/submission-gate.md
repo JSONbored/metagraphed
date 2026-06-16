@@ -92,6 +92,8 @@ and it does not feed completeness — it's a machine-readable hint so agents and
 SDKs can pace their calls. Leave it off when you only have prose, and use
 `rate_limit_notes` for that.
 
+`auth` is the same idea for credentials — `{ scheme, location?, name?, value_format?, token_url?, scopes_note? }` (only `scheme` is required: `none` / `bearer` / `api-key` / `basic` / `oauth2` / `custom`). It is auto-derived from a captured OpenAPI's `securitySchemes`, so curate it only to override or when no spec is captured. It drives the copy-paste auth header/param in the generated snippets. **Placeholders only — never a real key or token.**
+
 Provider profile review files must contain exactly one provider profile:
 
 ```json

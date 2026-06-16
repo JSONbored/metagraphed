@@ -1214,6 +1214,30 @@ export interface components {
         /** @enum {unknown} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
         CandidateSurface: {
+            /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
+            auth?: {
+                /**
+                 * @description Where the credential is sent.
+                 * @enum {unknown}
+                 */
+                location?: "header" | "query" | "cookie";
+                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". */
+                name?: string;
+                /**
+                 * @description Credential scheme.
+                 * @enum {unknown}
+                 */
+                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "custom";
+                /** @description Note on required scopes or how to obtain a credential. */
+                scopes_note?: string;
+                /**
+                 * Format: uri
+                 * @description OAuth2/OIDC token or authorize endpoint, when the spec declares one.
+                 */
+                token_url?: string;
+                /** @description Placeholder showing the value shape, e.g. "Bearer <token>". Never a real secret. */
+                value_format?: string;
+            } | null;
             auth_required: boolean;
             /** @enum {unknown} */
             confidence?: "low" | "medium" | "high";
@@ -3189,6 +3213,30 @@ export interface components {
             schema_version: 1;
         };
         Surface: {
+            /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
+            auth?: {
+                /**
+                 * @description Where the credential is sent.
+                 * @enum {unknown}
+                 */
+                location?: "header" | "query" | "cookie";
+                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". */
+                name?: string;
+                /**
+                 * @description Credential scheme.
+                 * @enum {unknown}
+                 */
+                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "custom";
+                /** @description Note on required scopes or how to obtain a credential. */
+                scopes_note?: string;
+                /**
+                 * Format: uri
+                 * @description OAuth2/OIDC token or authorize endpoint, when the spec declares one.
+                 */
+                token_url?: string;
+                /** @description Placeholder showing the value shape, e.g. "Bearer <token>". Never a real secret. */
+                value_format?: string;
+            } | null;
             auth_required: boolean;
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];

@@ -240,6 +240,47 @@
             }
           }
         },
+        "auth": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["scheme"],
+          "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+          "properties": {
+            "scheme": {
+              "enum": [
+                "none",
+                "bearer",
+                "api-key",
+                "basic",
+                "oauth2",
+                "custom"
+              ],
+              "description": "Credential scheme."
+            },
+            "location": {
+              "enum": ["header", "query", "cookie"],
+              "description": "Where the credential is sent."
+            },
+            "name": {
+              "type": "string",
+              "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\"."
+            },
+            "value_format": {
+              "type": "string",
+              "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret."
+            },
+            "token_url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+              "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one."
+            },
+            "scopes_note": {
+              "type": "string",
+              "description": "Note on required scopes or how to obtain a credential."
+            }
+          }
+        },
         "probe": {
           "$ref": "#/$defs/probe"
         },
