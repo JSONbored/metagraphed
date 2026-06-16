@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/creativebuilds/sn77",
+    "id": "liquidity",
+    "kind": "subnet-team",
+    "name": "Liquidity",
+    "public_notes": "Subnet 77 (Liquidity) team profile — supply liquidity on external chains via unified routing. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+    "schema_version": 1,
+    "website_url": "https://sn77.xyz/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}

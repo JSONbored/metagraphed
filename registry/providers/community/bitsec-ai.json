@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/Bitsec-AI/sandbox",
+    "id": "bitsec-ai",
+    "kind": "subnet-team",
+    "name": "Bitsec.ai",
+    "public_notes": "Subnet 60 (Bitsec.ai) team profile — find and fix exploits in codebases. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+    "schema_version": 1,
+    "website_url": "https://bitsec.ai/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}
