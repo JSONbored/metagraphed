@@ -12,4 +12,12 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Force-enable the nitro deploy plugin. By default it only runs inside
+  // Lovable's CI ("No Lovable context detected — skipping nitro deploy
+  // plugin"), so every other builder — crucially Cloudflare Workers Builds —
+  // produced no dist/server/wrangler.json, and `wrangler deploy` failed with
+  // ENOENT. That broke production deploys: metagraph.sh kept serving a stale
+  // build while merged PRs never shipped. Forcing it on generates the
+  // cloudflare worker bundle + merged wrangler.json everywhere.
+  nitro: true,
 });

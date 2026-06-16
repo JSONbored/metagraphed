@@ -53,7 +53,7 @@ jobs:
       - name: Bundle size budget (client JS, gzipped)
         run: |
           BUDGET_KB=300
-          BYTES=$(find dist/client/assets -name '*.js' | sort | xargs cat | gzip -c | wc -c)
+          BYTES=$(find .output/public/assets -name '*.js' | sort | xargs cat | gzip -c | wc -c)
           KB=$(( (BYTES + 1023) / 1024 ))
           echo "Client JS (gzipped, concatenated): ${KB} KB / budget ${BUDGET_KB} KB"
           if [ "$KB" -gt "$BUDGET_KB" ]; then

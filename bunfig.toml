@@ -6,4 +6,11 @@ registry = "https://registry.npmjs.org"
 minimumReleaseAge = 86400
 # Each entry bypasses the 24h guard for one package — confirm with the user
 # before adding any.
-minimumReleaseAgeExcludes = ["@lovable.dev/vite-tanstack-config", "@lovable.dev/mcp-js"]
+minimumReleaseAgeExcludes = [
+  "@lovable.dev/vite-tanstack-config",
+  "@lovable.dev/mcp-js",
+  # Transitive dep of vite-tanstack-config@^2.4.0 (needs hmr-gate ^1.1.0); the
+  # only matching release was <24h old, blocking lockfile regen + every CF
+  # Workers Build. User-confirmed bypass (2026-06-16).
+  "@lovable.dev/vite-plugin-hmr-gate",
+]
