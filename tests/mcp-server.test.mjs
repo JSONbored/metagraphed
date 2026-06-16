@@ -405,6 +405,159 @@ describe("MCP prompts (#742)", () => {
   });
 });
 
+describe("MCP resources/prompts — branch coverage", () => {
+  test("resources/list paginates with a cursor over a large catalog", async () => {
+    const subnets = Array.from({ length: 130 }, (_, i) => ({
+      netuid: i,
+      name: `SN${i}`,
+    }));
+    const deps = makeDeps({ "/metagraph/subnets.json": { subnets } });
+    const page1 = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "resources/list" },
+      { deps },
+    );
+    assert.equal(page1.body.result.resources.length, 100);
+    assert.equal(typeof page1.body.result.nextCursor, "string");
+    const page2 = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "resources/list",
+        params: { cursor: page1.body.result.nextCursor },
+      },
+      { deps },
+    );
+    assert.ok(page2.body.result.resources.length > 0);
+    assert.equal(page2.body.result.nextCursor, undefined);
+  });
+
+  test("resources/list skips malformed index entries + uses fallbacks", async () => {
+    const deps = makeDeps({
+      // 1st subnet has no name (title fallback); 2nd has no netuid (skipped).
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 0 }, { name: "no-netuid" }],
+      },
+      // 1st provider's slug comes from id; 2nd has no slug (skipped).
+      "/metagraph/providers.json": {
+        providers: [{ id: "by-id" }, { name: "no-slug" }],
+      },
+      // schema ids: from id fallback, with content_type, and an empty (skipped).
+      "/metagraph/schemas/index.json": {
+        schemas: [
+          { id: "s1" },
+          { surface_id: "s2", content_type: "text/yaml" },
+          {},
+        ],
+      },
+    });
+    const res = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "resources/list" },
+      { deps },
+    );
+    const uris = res.body.result.resources.map((r) => r.uri);
+    assert.ok(uris.includes("metagraph://subnet/0"));
+    assert.ok(!uris.some((u) => u.includes("no-netuid")));
+    assert.ok(uris.includes("metagraph://provider/by-id"));
+    assert.ok(!uris.some((u) => u.includes("no-slug")));
+    assert.ok(uris.includes("metagraph://schema/s1"));
+    assert.ok(uris.includes("metagraph://schema/s2"));
+  });
+
+  test("resources/read returns provider + schema artifacts", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers/datura.json": { slug: "datura", subnets: [] },
+      "/metagraph/schemas/sn-6-openapi.json": {
+        surface_id: "sn-6-openapi",
+        openapi: "3.1.0",
+      },
+    });
+    const prov = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://provider/datura" },
+      },
+      { deps },
+    );
+    assert.deepEqual(JSON.parse(prov.body.result.contents[0].text), {
+      slug: "datura",
+      subnets: [],
+    });
+    const schema = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "resources/read",
+        params: { uri: "metagraph://schema/sn-6-openapi" },
+      },
+      { deps },
+    );
+    assert.equal(
+      JSON.parse(schema.body.result.contents[0].text).openapi,
+      "3.1.0",
+    );
+  });
+
+  test("resources/read rejects invalid provider/schema ids + non-string uri", async () => {
+    for (const uri of [
+      "metagraph://provider/has spaces",
+      "metagraph://schema/bad!id",
+    ]) {
+      const res = await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri },
+      });
+      assert.equal(res.body.error.code, -32602, `expected -32602 for ${uri}`);
+    }
+    const noUri = await rpc({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "resources/read",
+      params: {},
+    });
+    assert.equal(noUri.body.error.code, -32602);
+  });
+
+  test("prompts/get treats an empty-string required arg as missing", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "find_subnet_for_task", arguments: { task: "" } },
+    });
+    assert.equal(res.body.error.code, -32602);
+  });
+
+  test("prompts/get builds the find_subnet + check_health recipes", async () => {
+    const find = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: {
+        name: "find_subnet_for_task",
+        arguments: { task: "image generation" },
+      },
+    });
+    assert.match(
+      find.body.result.messages[0].content.text,
+      /find_subnet_for_task/,
+    );
+    const health = await rpc({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "prompts/get",
+      params: { name: "check_health_and_fallbacks", arguments: { netuid: 7 } },
+    });
+    assert.match(
+      health.body.result.messages[0].content.text,
+      /get_subnet_health/,
+    );
+  });
+});
+
 describe("MCP transport handling", () => {
   test("GET is rejected with 405 and an Allow header", async () => {
     const res = await rpc(null, { method: "GET" });
