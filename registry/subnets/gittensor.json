@@ -1,9 +1,5 @@
 {
-  "categories": [
-    "developer-tools",
-    "repositories",
-    "pilot"
-  ],
+  "categories": ["developer-tools", "repositories", "pilot"],
   "curation": {
     "gap_notes": [
       "No verified dashboard surface yet.",
@@ -135,9 +131,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.gittensor.io/register-repository.html"
-      ],
+      "source_urls": ["https://docs.gittensor.io/register-repository.html"],
       "url": "https://gittensor.io/repositories"
     },
     {
@@ -154,9 +148,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.gittensor.io/repository-hyperparameters"
-      ],
+      "source_urls": ["https://docs.gittensor.io/repository-hyperparameters"],
       "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json"
     },
     {
@@ -173,9 +165,7 @@
       },
       "provider": "gittensory",
       "public_safe": true,
-      "source_urls": [
-        "https://gittensory.aethereal.dev/"
-      ],
+      "source_urls": ["https://gittensory.aethereal.dev/"],
       "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
     },
     {

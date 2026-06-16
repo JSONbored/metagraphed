@@ -40,9 +40,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/TensorUSD/subnet"
-      ],
+      "source_urls": ["https://github.com/TensorUSD/subnet"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -80,9 +78,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/TensorUSD/subnet"
-      ],
+      "source_urls": ["https://github.com/TensorUSD/subnet"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

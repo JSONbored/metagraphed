@@ -39,9 +39,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/qbittensor-labs/enigma"
-      ],
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -59,9 +57,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/qbittensor-labs/enigma"
-      ],
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
