@@ -182,9 +182,22 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run validate
 
-      - name: Test (with coverage gate)
+      # Tests run in two phases so the read-only suite parallelizes (this was
+      # ~60% of the test wall-clock). `test:readers` runs every suite EXCEPT
+      # artifacts.test.mjs with --fileParallelism; `test:builders` runs
+      # artifacts.test.mjs alone, serial, because it execs the real
+      # build-artifacts.mjs into the shared public/metagraph + R2 trees and
+      # would race the readers under parallelism (see vitest.config.mjs).
+      # Separate processes ⇒ the builder never overlaps a reader. Readers run
+      # first and carry --coverage (the Codecov upload below reads
+      # ./coverage/lcov.info); builders add no in-process coverage (everything
+      # is subprocess-exec'd), so they need no upload.
+      - name: Test — readers (parallel, with coverage gate)
         if: steps.route.outputs.mode == 'full'
-        run: npm run test:coverage
+        run: npm run test:readers
+      - name: Test — artifact builders (serial)
+        if: steps.route.outputs.mode == 'full'
+        run: npm run test:builders
 
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a

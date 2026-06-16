@@ -21,6 +21,17 @@ export default defineConfig({
     // to a temp dir without a full input+output tree copy — serializing files
     // is the clean, low-risk fix. Per-file fork isolation is preserved; only
     // filesystem-race concurrency is removed.
+    //
+    // This serial default keeps the all-files entrypoints (`npm test`,
+    // `npm run test:coverage`) race-proof. CI splits the run for speed instead
+    // (this serialization was ~60% of the test wall-clock): `test:readers` runs
+    // every suite EXCEPT artifacts.test.mjs with --fileParallelism (the
+    // read-only suites are safe to parallelize — verified 5/5 green), and
+    // `test:builders` runs artifacts.test.mjs alone, serial. They are separate
+    // processes, so the builder never overlaps a reader. INVARIANT:
+    // artifacts.test.mjs is the ONLY suite that mutates the shared
+    // public/metagraph + R2 trees; any new suite that does the same must move
+    // to test:builders (and be excluded from test:readers) or it will race.
     fileParallelism: false,
     coverage: {
       provider: "v8",
