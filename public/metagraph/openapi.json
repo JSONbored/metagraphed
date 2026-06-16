@@ -1292,6 +1292,7 @@
         "type": "object"
       },
       "CoverageLevel": {
+        "description": "How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).",
         "enum": [
           "native-only",
           "manifested",
@@ -1383,6 +1384,7 @@
         "type": "object"
       },
       "CurationLevel": {
+        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
         "enum": [
           "native",
           "candidate-discovered",
@@ -3008,6 +3010,7 @@
         "type": "object"
       },
       "HealthStatus": {
+        "description": "Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).",
         "enum": [
           "ok",
           "degraded",
@@ -7533,6 +7536,7 @@
             "type": "integer"
           },
           "integration_readiness": {
+            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring.",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
@@ -7881,6 +7885,7 @@
             "type": "boolean"
           },
           "integration_readiness": {
+            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring.",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
@@ -9299,7 +9304,7 @@
     }
   },
   "info": {
-    "description": "Backend API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces.",
+    "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: prefix a path with `/testnet/` (mainnet is the default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
     "title": "Metagraphed API",
     "version": "2026-06-06.1"
   },
@@ -21788,9 +21793,10 @@
       }
     }
   },
+  "security": [],
   "servers": [
     {
-      "description": "Production",
+      "description": "Production (mainnet; prefix /testnet/ for testnet data)",
       "url": "https://api.metagraph.sh"
     }
   ],

@@ -1745,14 +1745,23 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
       title: "Metagraphed API",
       version: CONTRACT_VERSION,
       description:
-        "Backend API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces.",
+        "Public, read-only API over canonical Metagraphed registry artifacts for " +
+        "Bittensor subnet interfaces. **No authentication** — every operation is an " +
+        "unauthenticated GET. Responses use a stable JSON envelope " +
+        "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
+        "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
+        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
+        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production",
+        description: "Production (mainnet; prefix /testnet/ for testnet data)",
       },
     ],
+    // The API is intentionally public + unauthenticated; an empty top-level
+    // security requirement is the OpenAPI signal that no scheme applies (#743).
+    security: [],
     paths,
     components: {
       schemas: {
