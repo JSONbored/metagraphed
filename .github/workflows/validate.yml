@@ -30,14 +30,20 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
-          # Keep the global changed-files list unfiltered so PR routing and
-          # policy checks still see deletions. Only the submitted-artifact
-          # verifier receives a deletion-filtered list, because removing a
-          # public artifact (for example moving it to R2-only, ADR 0001) is not
-          # a submitted artifact.
+          # Diff against the MERGE-BASE (three-dot A...B), not the current base
+          # tip (two-dot A B). With fetch-depth:0 the merge-base is always
+          # available, so changed-files.txt is exactly THIS PR's changes:
+          # community/registry files that landed on main AFTER the branch point
+          # no longer show up as phantom deletions and mis-route a normal code PR
+          # into "ugc" mode (the recurring stale-base UGC-preflight false-positive
+          # that forced a rebase on every config/code PR during an active flywheel).
+          # Real deletions made BY the PR are still shown, so the deletion-aware
+          # policy checks keep working; submitted-artifact-files stays
+          # deletion-filtered (removing a public artifact — e.g. moving it R2-only
+          # per ADR 0001 — is not a submitted artifact).
           if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
-            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
-            git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" > submitted-artifact-files.txt
+            git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+            git diff --name-only --diff-filter=d "$BASE_SHA"..."$HEAD_SHA" > submitted-artifact-files.txt
           else
             git fetch origin "$BASE_REF"
             git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
