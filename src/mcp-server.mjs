@@ -1119,7 +1119,7 @@ export const MCP_TOOLS = [
         "/metagraph/operational-surfaces.json",
       );
       const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
-      let surface = null;
+      let surface;
       if (typeof args?.surface_id === "string" && args.surface_id) {
         if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
           throw toolError("invalid_params", "Invalid surface_id format.");
