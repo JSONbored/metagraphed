@@ -757,10 +757,13 @@ const enrichedProviders = providers.map((provider) => {
   // provider operates (display-only, never feeds completeness). Multi-subnet
   // providers stay logo-less — the UI resolves a favicon from website_url.
   const curatedLogoUrl = normalizePublicHttpUrl(provider.logo_url);
-  const logoUrl =
-    curatedLogoUrl ||
-    (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.logo_url : null) ||
-    null;
+  // #785: normalize the single-subnet fallback logo so a non-HTTP(S) subnet
+  // logo (e.g. ws://) never lands in the provider artifact and blocks publish.
+  const fallbackLogoUrl =
+    netuids.length === 1
+      ? normalizePublicHttpUrl(mergedByNetuid.get(netuids[0])?.logo_url)
+      : null;
+  const logoUrl = curatedLogoUrl || fallbackLogoUrl || null;
   // Structured social links (#745): a curated provider `social` override wins;
   // else a single-subnet provider borrows that subnet's social (mirrors the
   // logo_url borrow above). Display-only — never feeds completeness.
@@ -768,6 +771,8 @@ const enrichedProviders = providers.map((provider) => {
     socialAccounts(null, provider.social) ||
     (netuids.length === 1 ? mergedByNetuid.get(netuids[0])?.social : null) ||
     null;
+  // #786: drop the raw curated `social` before spreading so an unsanitized
+  // (possibly unsafe/private) value can never survive into the artifact.
   const safeProvider = { ...provider };
   delete safeProvider.social;
   return {
