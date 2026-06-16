@@ -19,6 +19,15 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.6.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.5.0...platform-v0.6.0) (2026-06-16)
+
+
+### Features
+
+* **data:** structured social accounts on provider profiles ([#745](https://github.com/JSONbored/metagraphed/issues/745)) ([#778](https://github.com/JSONbored/metagraphed/issues/778)) ([3be5c17](https://github.com/JSONbored/metagraphed/commit/3be5c175d66a118424254a365b69e7c389c9d1db))
+* **data:** structured social accounts on subnet index + detail ([#745](https://github.com/JSONbored/metagraphed/issues/745)) ([#777](https://github.com/JSONbored/metagraphed/issues/777)) ([41dd69c](https://github.com/JSONbored/metagraphed/commit/41dd69c5667787a6365840f59cbb6627afbfd589))
+* **openapi:** public-read security signal + field descriptions ([#743](https://github.com/JSONbored/metagraphed/issues/743)) ([#775](https://github.com/JSONbored/metagraphed/issues/775)) ([78ebe52](https://github.com/JSONbored/metagraphed/commit/78ebe52456ebb3bf273044bb2271cc2db0f0a826))
+
 ## [0.5.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.4.0...platform-v0.5.0) (2026-06-16)
 
 
