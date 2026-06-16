@@ -251,6 +251,71 @@ describe("submission-policy candidate schema shape branches", () => {
     );
   });
 
+  test("flags a non-object structured rate_limit (#788)", () => {
+    const result = validateCandidateForSubmission({
+      candidate: { ...baseCandidate, rate_limit: 42 },
+      document: validSubmissionDocument,
+      submitter: "jsonbored",
+      native,
+      providers,
+    });
+    assert.equal(
+      result.errors.some(
+        (error) => error.message === "candidate rate_limit must be an object",
+      ),
+      true,
+    );
+  });
+
+  test("flags every malformed field inside a structured rate_limit (#788)", () => {
+    const messagesFor = (rateLimit) =>
+      validateCandidateForSubmission({
+        candidate: { ...baseCandidate, rate_limit: rateLimit },
+        document: validSubmissionDocument,
+        submitter: "jsonbored",
+        native,
+        providers,
+      }).errors.map((error) => error.message);
+
+    // missing requests + window, unknown field, negative burst, bad scope,
+    // non-string cost_notes.
+    const a = messagesFor({
+      burst: -1,
+      scope: "sometimes",
+      cost_notes: 9,
+      nope: 1,
+    });
+    assert.ok(a.includes("candidate rate_limit.requests is required"));
+    assert.ok(a.includes("candidate rate_limit.window is required"));
+    assert.ok(a.includes("candidate rate_limit.nope is not allowed"));
+    assert.ok(
+      a.includes("candidate rate_limit.burst must be a non-negative integer"),
+    );
+    assert.ok(a.includes("candidate rate_limit.scope is unsupported"));
+    assert.ok(a.includes("candidate rate_limit.cost_notes must be a string"));
+
+    // negative requests + non-string window.
+    const b = messagesFor({ requests: -5, window: 7 });
+    assert.ok(
+      b.includes(
+        "candidate rate_limit.requests must be a non-negative integer",
+      ),
+    );
+    assert.ok(b.includes("candidate rate_limit.window is required"));
+
+    // a well-formed structured limit passes the rate_limit checks.
+    const c = messagesFor({
+      requests: 100,
+      window: "60s",
+      burst: 10,
+      scope: "per-key",
+      cost_notes: "5 credits per call",
+    });
+    assert.ok(
+      !c.some((message) => message.startsWith("candidate rate_limit.")),
+    );
+  });
+
   test("flags malformed verification metadata inside a verification object", () => {
     const result = validateCandidateForSubmission({
       candidate: {
