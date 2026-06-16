@@ -1223,6 +1223,22 @@ export interface components {
             netuid: number;
             provider: string;
             public_safe: boolean;
+            /** @description Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness. */
+            rate_limit?: {
+                /** @description Optional short-term burst allowance above the steady rate. */
+                burst?: number;
+                /** @description Notes on weighted/credit costs or tier differences. */
+                cost_notes?: string;
+                /** @description Permitted requests per window. */
+                requests: number;
+                /**
+                 * @description What the limit is counted against.
+                 * @enum {unknown}
+                 */
+                scope?: "per-key" | "per-ip" | "global" | "unknown";
+                /** @description Window the request budget applies to, e.g. "60s", "1m", "1h", "1d". */
+                window: string;
+            };
             rate_limit_notes?: string;
             review_notes?: string;
             /** @constant */
@@ -3194,6 +3210,22 @@ export interface components {
                 redirected?: boolean;
                 source_tier?: components["schemas"]["SourceTier"];
                 transient_failure?: boolean;
+            };
+            /** @description Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness. */
+            rate_limit?: {
+                /** @description Optional short-term burst allowance above the steady rate. */
+                burst?: number;
+                /** @description Notes on weighted/credit costs or tier differences. */
+                cost_notes?: string;
+                /** @description Permitted requests per window. */
+                requests: number;
+                /**
+                 * @description What the limit is counted against.
+                 * @enum {unknown}
+                 */
+                scope?: "per-key" | "per-ip" | "global" | "unknown";
+                /** @description Window the request budget applies to, e.g. "60s", "1m", "1h", "1d". */
+                window: string;
             };
             rate_limit_notes?: string;
             /** @enum {unknown} */

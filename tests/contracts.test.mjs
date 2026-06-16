@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
@@ -192,6 +194,67 @@ describe("public contract registry", () => {
       () => buildOpenApiArtifact("1970-01-01T00:00:00.000Z", null),
       /requires canonical component schemas/,
     );
+  });
+
+  test("#747 Surface accepts a structured rate_limit and rejects malformed ones", async () => {
+    const generatedAt = "1970-01-01T00:00:00.000Z";
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    const validate = ajv.compile({
+      $id: "https://metagraph.sh/test/surface-rate-limit.json",
+      components: openapi.components,
+      $ref: "#/components/schemas/Surface",
+    });
+    const base = {
+      id: "sn-1-test-api",
+      netuid: 1,
+      kind: "subnet-api",
+      url: "https://example.io/api",
+      provider: "tester",
+      auth_required: false,
+      authority: "official",
+      public_safe: true,
+    };
+
+    // A well-formed structured limit (and the optional fields) validates.
+    assert.equal(
+      validate({
+        ...base,
+        rate_limit: {
+          requests: 100,
+          window: "60s",
+          burst: 20,
+          scope: "per-key",
+          cost_notes: "Search calls cost 5 credits each.",
+        },
+      }),
+      true,
+      ajv.errorsText(validate.errors),
+    );
+    // requests + window are the minimum meaningful limit.
+    assert.equal(validate({ ...base, rate_limit: { scope: "per-ip" } }), false);
+    // scope is a closed enum.
+    assert.equal(
+      validate({
+        ...base,
+        rate_limit: { requests: 5, window: "1m", scope: "bogus" },
+      }),
+      false,
+    );
+    // the object is closed — no smuggling unknown keys.
+    assert.equal(
+      validate({
+        ...base,
+        rate_limit: { requests: 5, window: "1m", enforced: true },
+      }),
+      false,
+    );
+    // and it stays optional — a surface without it is still valid.
+    assert.equal(validate(base), true, ajv.errorsText(validate.errors));
   });
 
   test("keeps public API route payloads on typed artifact schemas", async () => {
