@@ -3,6 +3,8 @@
 // throw-on-error contract, timeout signal, RPC helper, and cursor pagination.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
+  createLruEtagCache,
+  createMetagraphedClient,
   MetagraphedError,
   metagraphedFetch,
   metagraphedPaginate,
@@ -200,5 +202,225 @@ describe("metagraphedRpc", () => {
     await expect(
       metagraphedRpc("finney", { method: "author_submitExtrinsic" }),
     ).rejects.toMatchObject({ status: 403, code: "rpc_method_blocked" });
+  });
+});
+
+describe("createMetagraphedClient", () => {
+  test("convenience methods build typed paths + queries", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ ok: true, data: { netuid: 7 }, meta: {} }),
+    );
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await client.getSubnet(7);
+    expect((fetchMock.mock.calls[0][0] as URL).toString()).toBe(
+      "https://api.metagraph.sh/api/v1/subnets/7",
+    );
+    await client.subnets({ limit: 5 } as never);
+    expect((fetchMock.mock.calls[1][0] as URL).searchParams.get("limit")).toBe(
+      "5",
+    );
+  });
+
+  test("does not retry by default — throws on the first 503", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ ok: false, error: { code: "x", message: "down" } }, 503),
+    );
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await expect(client.health()).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("retries opt-in on 429/5xx then resolves the success", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async () =>
+      ++call === 1
+        ? jsonResponse({ ok: false, error: { code: "x", message: "" } }, 429)
+        : jsonResponse({ ok: true, data: { netuid: 7 }, meta: {} }),
+    );
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      retry: { retries: 2, minDelayMs: 0 },
+    });
+    const out = await client.getSubnet(7);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect((out as { data: unknown }).data).toEqual({ netuid: 7 });
+  });
+
+  test("retries exhaust then throw the final error envelope", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        { ok: false, error: { code: "unavailable", message: "down" } },
+        503,
+      ),
+    );
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      retry: { retries: 2, minDelayMs: 0 },
+    });
+    await expect(client.health()).rejects.toMatchObject({
+      status: 503,
+      code: "unavailable",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3); // initial + 2 retries
+  });
+
+  test("backoff honors a Retry-After header", async () => {
+    vi.useFakeTimers();
+    try {
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      let call = 0;
+      const fetchMock = vi.fn(async () =>
+        ++call === 1
+          ? new Response("{}", {
+              status: 503,
+              headers: { "retry-after": "2" },
+            })
+          : jsonResponse({ ok: true, data: { up: true }, meta: {} }),
+      );
+      const client = createMetagraphedClient({
+        fetch: fetchMock as unknown as typeof fetch,
+        timeoutMs: 0,
+        retry: { retries: 1 },
+      });
+      const pending = client.health();
+      await vi.advanceTimersByTimeAsync(2000);
+      await pending;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("ETag caching sends If-None-Match and returns the cached body on 304", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
+      call += 1;
+      if (call === 1) {
+        return new Response(
+          JSON.stringify({ ok: true, data: { v: 1 }, meta: {} }),
+          { status: 200, headers: { etag: 'W/"abc"' } },
+        );
+      }
+      expect((init.headers as Record<string, string>)["if-none-match"]).toBe(
+        'W/"abc"',
+      );
+      return new Response(null, { status: 304 });
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      cache: true,
+    });
+    const first = await client.health();
+    const second = await client.health();
+    expect((first as { data: unknown }).data).toEqual({ v: 1 });
+    expect((second as { data: unknown }).data).toEqual({ v: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("fetchAll collects data rows across cursor pages", async () => {
+    const pages = [
+      {
+        ok: true,
+        data: [{ netuid: 1 }, { netuid: 2 }],
+        meta: { pagination: { next_cursor: "c2" } },
+      },
+      {
+        ok: true,
+        data: [{ netuid: 3 }],
+        meta: { pagination: { next_cursor: null } },
+      },
+    ];
+    let index = 0;
+    const fetchMock = vi.fn(async () => jsonResponse(pages[index++]));
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    const all = await client.fetchAll("/api/v1/subnets" as never);
+    expect(all).toEqual([{ netuid: 1 }, { netuid: 2 }, { netuid: 3 }]);
+    expect((fetchMock.mock.calls[1][0] as URL).searchParams.get("cursor")).toBe(
+      "c2",
+    );
+  });
+
+  test("retries transport errors (network/timeout) then resolves", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async () => {
+      call += 1;
+      if (call === 1) throw new TypeError("network down");
+      return jsonResponse({ ok: true, data: { up: true }, meta: {} });
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      retry: { retries: 2, minDelayMs: 0 },
+    });
+    const out = await client.health();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect((out as { data: unknown }).data).toEqual({ up: true });
+  });
+
+  test("rethrows a transport error after exhausting retries", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("ECONNRESET");
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      retry: { retries: 1, minDelayMs: 0 },
+    });
+    await expect(client.health()).rejects.toThrow("ECONNRESET");
+    expect(fetchMock).toHaveBeenCalledTimes(2); // initial + 1 retry
+  });
+
+  test("does not retry a caller-initiated abort", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn(async () => {
+      controller.abort();
+      throw new DOMException("aborted", "AbortError");
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      retry: { retries: 3, minDelayMs: 0 },
+    });
+    await expect(
+      client.health({ signal: controller.signal }),
+    ).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("re-issues unconditionally when a 304 has no cache entry", async () => {
+    const evicting = { get: () => undefined, set: () => {} };
+    let call = 0;
+    const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
+      call += 1;
+      if (call === 1) return new Response(null, { status: 304 });
+      expect(
+        (init.headers as Record<string, string>)["if-none-match"],
+      ).toBeUndefined();
+      return jsonResponse({ ok: true, data: { fresh: true }, meta: {} });
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      cache: evicting,
+    });
+    const out = await client.health();
+    expect((out as { data: unknown }).data).toEqual({ fresh: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("createLruEtagCache", () => {
+  test("evicts the least-recently-used entry beyond maxEntries", () => {
+    const cache = createLruEtagCache(2);
+    cache.set("a", { etag: "1", body: "A" });
+    cache.set("b", { etag: "2", body: "B" });
+    cache.get("a"); // touch -> "b" becomes least-recently-used
+    cache.set("c", { etag: "3", body: "C" }); // exceeds cap -> evict "b"
+    expect(cache.get("a")?.body).toBe("A");
+    expect(cache.get("b")).toBeUndefined();
+    expect(cache.get("c")?.body).toBe("C");
   });
 });
