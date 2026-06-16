@@ -163,6 +163,30 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
+  test("passes a delete-only candidate PR (removed file) instead of ENOENT-failing the preflight (#candidate-deletion)", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      // A candidate path absent from the working tree = a deletion. Before the fix the preflight ENOENT-ed
+      // reading the missing file (exit 1); now it treats the removal as a non-submission and passes.
+      writeFileSync(
+        changedFilesPath,
+        "registry/candidates/community/__removed-candidate__.json\n",
+      );
+      execFileSync(
+        process.execPath,
+        ["scripts/submission-pr.mjs", "--changed-files", changedFilesPath, "--out", outputPath, "--submitter", "JSONbored"],
+        { stdio: "pipe" },
+      ); // must NOT throw — exit 0
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, false);
+      assert.equal(report.state, "not-routed");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   test("routes mixed direct candidate PRs through the UGC gate", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
