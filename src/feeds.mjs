@@ -1,0 +1,412 @@
+// Public content feeds (#741) — RSS 2.0 / Atom 1.0 / JSON Feed 1.1 over data we
+// ALREADY compute (the 6h changelog deltas + reconstructed incident history), so
+// agents, readers, crawlers, and newsletters can subscribe to registry changes
+// and incidents. Worker-computed at request time from the served artifacts — no
+// new committed artifact, no new data collection. Read-only.
+//
+// Routes (all GET, content-negotiated):
+//   /api/v1/feeds/registry[.rss|.atom|.json]
+//   /api/v1/feeds/incidents[.rss|.atom|.json]
+//   /api/v1/feeds/subnets/{netuid}[.rss|.atom|.json]
+// Format precedence: explicit .rss/.atom/.json suffix > Accept header > JSON Feed.
+
+const SITE_URL = "https://metagraph.sh";
+const API_URL = "https://api.metagraph.sh";
+const FEED_MAX_ITEMS = 50;
+const FEED_CACHE_SECONDS = 600;
+
+const FEED_CONTENT_TYPES = {
+  json: "application/feed+json; charset=utf-8",
+  rss: "application/rss+xml; charset=utf-8",
+  atom: "application/atom+xml; charset=utf-8",
+};
+
+// ── text helpers ────────────────────────────────────────────────────────────
+
+// XML 1.0 doesn't allow most C0 control chars even when escaped; strip them. The
+// served artifacts are already build-sanitized (sanitizeChainText), so this is
+// defense-in-depth on the public surface, not the primary trust boundary.
+function stripControl(value) {
+  // Drop XML-illegal C0 control chars (keep tab/newline/CR) without a
+  // control-char regexp (eslint no-control-regex). Served data is already
+  // build-sanitized; this is defense-in-depth on the public surface.
+  let out = "";
+  for (const ch of String(value ?? "")) {
+    const code = ch.codePointAt(0);
+    if (code < 32 && code !== 9 && code !== 10 && code !== 13) continue;
+    out += ch;
+  }
+  return out;
+}
+
+function escapeXml(value) {
+  return stripControl(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function clamp(value, max = 500) {
+  const s = stripControl(value).trim();
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+// Accept an ISO string or epoch-ms; return a normalized ISO string or null.
+function toIso(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value).toISOString();
+  }
+  if (typeof value === "string") {
+    const t = Date.parse(value);
+    if (!Number.isNaN(t)) return new Date(t).toISOString();
+  }
+  return null;
+}
+
+function toRfc822(iso) {
+  return new Date(iso).toUTCString();
+}
+
+// ── item builders (from existing served artifacts) ──────────────────────────
+
+// Registry feed: the latest changelog window's subnet + artifact + coverage
+// changes. `netuid` (optional) filters to one subnet.
+function registryItems(changelog, netuid) {
+  const at = toIso(changelog?.generated_at) || new Date().toISOString();
+  const items = [];
+
+  // changelog.subnets is { added: [...], removed: [...], renamed: [...] }, each
+  // entry a netuid or { netuid, name }.
+  const subnets = changelog?.subnets || {};
+  for (const change of ["added", "removed", "renamed"]) {
+    for (const entry of subnets[change] || []) {
+      const n = typeof entry === "number" ? entry : entry?.netuid;
+      if (typeof n !== "number") continue;
+      if (netuid != null && n !== netuid) continue;
+      const name = typeof entry === "object" ? entry?.name : null;
+      items.push({
+        id: `registry:subnet:${n}:${change}:${at}`,
+        url: `${SITE_URL}/subnets/${n}`,
+        title: `Subnet ${n} ${change}${name ? ` — ${clamp(name, 80)}` : ""}`,
+        summary: clamp(`Subnet ${n} ${change} in the registry.`),
+        timestamp: at,
+        tags: ["registry", "subnet", change],
+      });
+    }
+  }
+
+  // Per-subnet feeds are subnet-scoped only; the global registry feed also lists
+  // artifact + coverage deltas. changelog.artifacts is { added, modified, removed }.
+  if (netuid == null) {
+    const artifacts = changelog?.artifacts || {};
+    const verb = { added: "Added", modified: "Updated", removed: "Removed" };
+    for (const change of ["added", "modified", "removed"]) {
+      for (const a of artifacts[change] || []) {
+        const path = a?.path || a?.artifact_path || a?.id;
+        if (!path) continue;
+        const cleanPath = String(path).replace(/^\/?(?:metagraph\/)?/, "");
+        items.push({
+          id: `registry:artifact:${change}:${path}:${at}`,
+          url: `${API_URL}/metagraph/${cleanPath}`,
+          title: `${verb[change]} ${clamp(path, 80)}`,
+          summary: clamp(`Artifact ${path} ${change}.`),
+          timestamp: at,
+          tags: ["registry", "artifact", change],
+        });
+      }
+    }
+    const cov = changelog?.summary?.coverage_delta;
+    const surfaceDelta = cov?.surface_count?.delta || 0;
+    const candidateDelta = cov?.candidate_count?.delta || 0;
+    if (surfaceDelta || candidateDelta) {
+      const sign = (n) => (n >= 0 ? `+${n}` : `${n}`);
+      items.push({
+        id: `registry:coverage:${at}`,
+        url: `${SITE_URL}/gaps`,
+        title: `Coverage updated: ${sign(surfaceDelta)} surfaces, ${sign(candidateDelta)} candidates`,
+        summary: clamp(
+          `Surfaces ${cov.surface_count?.before}→${cov.surface_count?.after}; ` +
+            `candidates ${cov.candidate_count?.before}→${cov.candidate_count?.after}.`,
+        ),
+        timestamp: at,
+        tags: ["registry", "coverage"],
+      });
+    }
+  }
+
+  return items;
+}
+
+// Incidents feed: each reconstructed incident from the served incidents artifact.
+// `netuid` (optional) filters to one subnet.
+function incidentItems(incidents, netuid) {
+  const items = [];
+  for (const surface of incidents?.surfaces || []) {
+    if (netuid != null && surface?.netuid !== netuid) continue;
+    for (const inc of surface?.incidents || []) {
+      const started = toIso(inc.started_at);
+      const ended = toIso(inc.ended_at);
+      const ongoing = !ended;
+      const minutes = Math.round((inc.duration_ms || 0) / 60000);
+      items.push({
+        id: `incident:${surface.surface_id}:${inc.started_at}`,
+        url: `${SITE_URL}/subnets/${surface.netuid}`,
+        title: `${ongoing ? "Ongoing" : "Resolved"} incident — ${clamp(surface.surface_id, 80)}`,
+        summary: clamp(
+          `Surface ${surface.surface_id} (sn${surface.netuid}) ` +
+            `${ongoing ? "is currently down" : `was down for ~${minutes}m`}` +
+            `${inc.failed_samples ? `, ${inc.failed_samples} failed probes` : ""}.`,
+        ),
+        timestamp: ended || started || new Date().toISOString(),
+        tags: [
+          "incident",
+          `sn${surface.netuid}`,
+          ongoing ? "ongoing" : "resolved",
+        ],
+      });
+    }
+  }
+  return items;
+}
+
+// ── serializers ─────────────────────────────────────────────────────────────
+
+function sortAndCap(items) {
+  return [...items]
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+    .slice(0, FEED_MAX_ITEMS);
+}
+
+function jsonFeed(meta, items) {
+  return `${JSON.stringify(
+    {
+      version: "https://jsonfeed.org/version/1.1",
+      title: meta.title,
+      home_page_url: meta.homeUrl,
+      feed_url: meta.feedUrl,
+      description: meta.description,
+      items: items.map((it) => ({
+        id: it.id,
+        url: it.url,
+        title: it.title,
+        content_text: it.summary,
+        date_published: it.timestamp,
+        tags: it.tags,
+      })),
+    },
+    null,
+    2,
+  )}\n`;
+}
+
+function rssFeed(meta, items) {
+  const body = items
+    .map((it) =>
+      [
+        "    <item>",
+        `      <guid isPermaLink="false">${escapeXml(it.id)}</guid>`,
+        `      <link>${escapeXml(it.url)}</link>`,
+        `      <title>${escapeXml(it.title)}</title>`,
+        `      <description>${escapeXml(it.summary)}</description>`,
+        `      <pubDate>${toRfc822(it.timestamp)}</pubDate>`,
+        ...(it.tags || []).map(
+          (t) => `      <category>${escapeXml(t)}</category>`,
+        ),
+        "    </item>",
+      ].join("\n"),
+    )
+    .join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
+    "  <channel>",
+    `    <title>${escapeXml(meta.title)}</title>`,
+    `    <link>${escapeXml(meta.homeUrl)}</link>`,
+    `    <atom:link href="${escapeXml(meta.feedUrl)}" rel="self" type="application/rss+xml"/>`,
+    `    <description>${escapeXml(meta.description)}</description>`,
+    `    <lastBuildDate>${toRfc822(meta.updated)}</lastBuildDate>`,
+    body,
+    "  </channel>",
+    "</rss>",
+    "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+function atomFeed(meta, items) {
+  const body = items
+    .map((it) =>
+      [
+        "  <entry>",
+        `    <id>urn:metagraphed:${escapeXml(it.id)}</id>`,
+        `    <title>${escapeXml(it.title)}</title>`,
+        `    <link href="${escapeXml(it.url)}"/>`,
+        `    <updated>${it.timestamp}</updated>`,
+        `    <summary>${escapeXml(it.summary)}</summary>`,
+        ...(it.tags || []).map((t) => `    <category term="${escapeXml(t)}"/>`),
+        "  </entry>",
+      ].join("\n"),
+    )
+    .join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<feed xmlns="http://www.w3.org/2005/Atom">',
+    `  <title>${escapeXml(meta.title)}</title>`,
+    `  <link href="${escapeXml(meta.homeUrl)}"/>`,
+    `  <link href="${escapeXml(meta.feedUrl)}" rel="self" type="application/atom+xml"/>`,
+    `  <id>${escapeXml(meta.feedUrl)}</id>`,
+    `  <updated>${meta.updated}</updated>`,
+    `  <subtitle>${escapeXml(meta.description)}</subtitle>`,
+    body,
+    "</feed>",
+    "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+const SERIALIZERS = { json: jsonFeed, rss: rssFeed, atom: atomFeed };
+
+// ── request handling ────────────────────────────────────────────────────────
+
+export function resolveFeedFormat(pathname, accept) {
+  if (pathname.endsWith(".rss")) return "rss";
+  if (pathname.endsWith(".atom")) return "atom";
+  if (pathname.endsWith(".json")) return "json";
+  const a = String(accept || "").toLowerCase();
+  if (a.includes("application/rss+xml")) return "rss";
+  if (a.includes("application/atom+xml")) return "atom";
+  return "json";
+}
+
+// Parse `/api/v1/feeds/...` into { kind, netuid } or null for an unknown feed.
+export function parseFeedPath(pathname) {
+  const rest = pathname
+    .replace(/^\/api\/v1\/feeds\/?/, "")
+    .replace(/\.(rss|atom|json)$/, "")
+    .replace(/\/$/, "");
+  if (rest === "registry") return { kind: "registry" };
+  if (rest === "incidents") return { kind: "incidents" };
+  const subnet = /^subnets\/(\d+)$/.exec(rest);
+  if (subnet) return { kind: "subnet", netuid: Number(subnet[1]) };
+  return null;
+}
+
+function feedError(code, message, status) {
+  return new Response(JSON.stringify({ ok: false, error: { code, message } }), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+async function readData(readArtifact, env, path) {
+  try {
+    const result = await readArtifact(env, path);
+    return result?.ok ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function handleFeedRequest(request, env, url, deps = {}) {
+  const readArtifact = deps.readArtifact;
+  const target = parseFeedPath(url.pathname);
+  if (!target || typeof readArtifact !== "function") {
+    return feedError(
+      "feed_not_found",
+      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/subnets/{netuid} (each as .rss/.atom/.json or via Accept).",
+      404,
+    );
+  }
+  const format = resolveFeedFormat(url.pathname, request.headers.get("accept"));
+
+  let items;
+  let title;
+  let description;
+  let homeUrl = SITE_URL;
+  let updatedSource;
+
+  if (target.kind === "registry") {
+    const changelog = await readData(
+      readArtifact,
+      env,
+      "/metagraph/changelog.json",
+    );
+    items = registryItems(changelog);
+    title = "metagraphed — registry changes";
+    description =
+      "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
+    updatedSource = changelog?.generated_at;
+  } else if (target.kind === "incidents") {
+    const incidents = await readData(
+      readArtifact,
+      env,
+      "/metagraph/incidents.json",
+    );
+    items = incidentItems(incidents);
+    title = "metagraphed — surface incidents";
+    description =
+      "Operational incidents across Bittensor subnet surfaces (probe-detected downtime).";
+    updatedSource = incidents?.observed_at;
+  } else {
+    const [changelog, incidents] = await Promise.all([
+      readData(readArtifact, env, "/metagraph/changelog.json"),
+      readData(readArtifact, env, "/metagraph/incidents.json"),
+    ]);
+    items = [
+      ...registryItems(changelog, target.netuid),
+      ...incidentItems(incidents, target.netuid),
+    ];
+    title = `metagraphed — subnet ${target.netuid} feed`;
+    description = `Registry changes and incidents for Bittensor subnet ${target.netuid}.`;
+    homeUrl = `${SITE_URL}/subnets/${target.netuid}`;
+    updatedSource = changelog?.generated_at;
+  }
+
+  items = sortAndCap(items);
+  const meta = {
+    title,
+    description,
+    homeUrl,
+    feedUrl: `${url.origin}${url.pathname}`,
+    updated:
+      items[0]?.timestamp || toIso(updatedSource) || new Date().toISOString(),
+  };
+
+  const body = SERIALIZERS[format](meta, items);
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers: {
+      "content-type": FEED_CONTENT_TYPES[format],
+      "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
+// RFC 8288 Link header value advertising the feeds for an entity endpoint, so a
+// crawler/agent on /api/v1/subnets or a subnet profile discovers them.
+export function feedLinkHeader(originUrl, netuid) {
+  const base =
+    netuid != null
+      ? `${originUrl}/api/v1/feeds/subnets/${netuid}`
+      : `${originUrl}/api/v1/feeds/registry`;
+  return (
+    `<${base}.json>; rel="alternate"; type="application/feed+json", ` +
+    `<${base}.rss>; rel="alternate"; type="application/rss+xml", ` +
+    `<${base}.atom>; rel="alternate"; type="application/atom+xml"`
+  );
+}
+
+// Exported for unit tests.
+export const __test = {
+  registryItems,
+  incidentItems,
+  jsonFeed,
+  rssFeed,
+  atomFeed,
+  escapeXml,
+};

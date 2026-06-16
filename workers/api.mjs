@@ -68,6 +68,7 @@ import {
   subnetBadgeStatus,
 } from "../src/health-serving.mjs";
 import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.mjs";
+import { handleFeedRequest, feedLinkHeader } from "../src/feeds.mjs";
 import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
@@ -242,6 +243,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         allow: "GET, HEAD, OPTIONS",
       },
     );
+  }
+
+  // Public content feeds (#741) — RSS 2.0 / Atom 1.0 / JSON Feed 1.1 over the
+  // changelog + incident data we already compute. GET-only (runs after the
+  // method gate); `/api/*` is run_worker_first so these never fall through to
+  // the static assets. Read-only, content-negotiated, edge-cached.
+  if (url.pathname.startsWith("/api/v1/feeds/")) {
+    return handleFeedRequest(request, env, url, { readArtifact });
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
@@ -3043,6 +3052,8 @@ const DISCOVERY_LINK_HEADER = [
   `<${DISCOVERY_LINK_BASE}/agent.md>; rel="service-doc"; type="text/markdown"`,
   `<${DISCOVERY_LINK_BASE}/health>; rel="status"; type="application/json"`,
   `<${DISCOVERY_LINK_BASE}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
+  // Content feeds (#741) — registry changes, content-negotiated (json/rss/atom).
+  feedLinkHeader(DISCOVERY_LINK_BASE),
 ].join(", ");
 
 const HOMEPAGE_HTML = `<!doctype html>
@@ -3058,6 +3069,8 @@ const HOMEPAGE_HTML = `<!doctype html>
 <link rel="service-doc" href="/agent.md" type="text/markdown">
 <link rel="status" href="/health" type="application/json">
 <link rel="describedby" href="/.well-known/mcp/server-card.json" type="application/json">
+<link rel="alternate" href="/api/v1/feeds/registry.rss" type="application/rss+xml" title="metagraphed registry changes">
+<link rel="alternate" href="/api/v1/feeds/registry.json" type="application/feed+json" title="metagraphed registry changes">
 </head>
 <body>
 <main>
@@ -3071,6 +3084,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
 <li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
 <li><a href="/.well-known/agent-tools/index.json">Agent tool specs</a> — paste-ready OpenAI + Anthropic tools</li>
+<li><a href="/api/v1/feeds/registry">Content feeds</a> — registry changes + incidents (RSS / Atom / JSON Feed)</li>
 <li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
 <li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
 </ul>
