@@ -40,7 +40,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://www.bitrecs.ai/"],
+      "source_urls": [
+        "https://www.bitrecs.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -58,7 +60,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://www.bitrecs.ai/"],
+      "source_urls": [
+        "https://www.bitrecs.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -88,5 +92,8 @@
       },
       "notes": "Official Bitrecs source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/cookingtao_"
+  }
 }

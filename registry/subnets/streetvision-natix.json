@@ -61,7 +61,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/natixnetwork/streetvision-subnet"],
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -79,7 +81,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/natixnetwork/streetvision-subnet"],
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -151,5 +155,8 @@
       },
       "notes": "Public NATIX Hugging Face organization linked from the StreetVision README."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/natixnetwork"
+  }
 }

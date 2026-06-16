@@ -39,7 +39,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/mobiusfund/investing"],
+      "source_urls": [
+        "https://github.com/mobiusfund/investing"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -97,7 +99,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/mobiusfund/investing"],
+      "source_urls": [
+        "https://github.com/mobiusfund/investing"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -106,5 +110,8 @@
       },
       "notes": "Official Investing source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/Investing88ai"
+  }
 }

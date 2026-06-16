@@ -67,7 +67,10 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://thesoma.ai/dashboard", "https://thesoma.ai/"],
+      "source_urls": [
+        "https://thesoma.ai/dashboard",
+        "https://thesoma.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -85,7 +88,10 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://thesoma.ai/mcp", "https://thesoma.ai/"],
+      "source_urls": [
+        "https://thesoma.ai/mcp",
+        "https://thesoma.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -103,7 +109,10 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://thesoma.ai/soma-access", "https://thesoma.ai/"],
+      "source_urls": [
+        "https://thesoma.ai/soma-access",
+        "https://thesoma.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -154,5 +163,8 @@
       },
       "notes": "Live alternate repository discovered through Tensorplex subnet docs. Kept as secondary evidence; DendriteHQ/SOMA remains the primary source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/somasubnet"
+  }
 }

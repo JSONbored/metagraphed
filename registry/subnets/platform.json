@@ -93,7 +93,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/PlatformNetwork/platform"],
+      "source_urls": [
+        "https://github.com/PlatformNetwork/platform"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -102,5 +104,8 @@
       },
       "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/platformnet"
+  }
 }
