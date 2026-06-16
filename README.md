@@ -66,6 +66,7 @@ curl https://api.metagraph.sh/api/v1/subnets
 | Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)                                                                                                    |
 | Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json)                                                                                          |
 | Content feeds         | [`/api/v1/feeds/registry`](https://api.metagraph.sh/api/v1/feeds/registry) — registry changes + incidents, as RSS / Atom / JSON Feed (per-subnet at `/api/v1/feeds/subnets/{netuid}`) |
+| Readiness badge       | `![metagraphed](https://api.metagraph.sh/api/v1/subnets/{netuid}/badge.svg)` — embeddable SVG (also `/providers/{slug}/badge.svg`)                                                    |
 
 ## This repo
 

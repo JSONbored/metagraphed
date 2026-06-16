@@ -69,6 +69,7 @@ import {
 } from "../src/health-serving.mjs";
 import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.mjs";
 import { handleFeedRequest, feedLinkHeader } from "../src/feeds.mjs";
+import { handleBadgeRequest } from "../src/badge.mjs";
 import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
@@ -251,6 +252,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // the static assets. Read-only, content-negotiated, edge-cached.
   if (url.pathname.startsWith("/api/v1/feeds/")) {
     return handleFeedRequest(request, env, url, { readArtifact });
+  }
+
+  // Embeddable SVG readiness badges (#744) — /api/v1/{subnets/{netuid}|
+  // providers/{slug}}/badge.svg. Worker-computed image, caught before the generic
+  // entity routing so `badge.svg` isn't resolved as an entity sub-resource.
+  if (
+    /^\/api\/v1\/(?:subnets|providers)\/[^/]+\/badge\.svg$/.test(url.pathname)
+  ) {
+    return handleBadgeRequest(request, env, url, { readArtifact });
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
