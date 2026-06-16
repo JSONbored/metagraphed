@@ -1,0 +1,20 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/score-technologies/turbovision",
+    "id": "score",
+    "kind": "subnet-team",
+    "name": "Score",
+    "public_notes": "Subnet 44 (Score) team profile — making every camera intelligent. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+    "schema_version": 1,
+    "social": {
+      "x": "https://x.com/webuildscore"
+    },
+    "website_url": "https://www.wearescore.com/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}
