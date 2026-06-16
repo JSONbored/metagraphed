@@ -17,7 +17,7 @@
       "source_url": "https://api.all-ways.io/swagger-json",
       "source_urls": ["https://api.all-ways.io/swagger-json"],
       "state": "schema-valid",
-      "url": "https://api.all-ways.io/miners/leaderboard"
+      "url": "https://api.all-ways.io/network/overview"
     }
   ],
   "schema_version": 1,
