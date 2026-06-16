@@ -19,6 +19,15 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.11.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.10.0...platform-v0.11.0) (2026-06-16)
+
+
+### Features
+
+* **readiness:** readiness_verified — a live-probe gate on the readiness score ([#357](https://github.com/JSONbored/metagraphed/issues/357)) ([#874](https://github.com/JSONbored/metagraphed/issues/874)) ([8a48aa6](https://github.com/JSONbored/metagraphed/commit/8a48aa6e9e22e8b6d1feb0d7308d12ae991fa916))
+* **registry:** add SN116 TaoLend source repository candidate ([#876](https://github.com/JSONbored/metagraphed/issues/876)) ([0f73e97](https://github.com/JSONbored/metagraphed/commit/0f73e97e556cba2a7cc99c801b83a682d7a80978))
+* **verify:** verify_integration — live probe-now for one catalogued surface ([#358](https://github.com/JSONbored/metagraphed/issues/358)) ([#877](https://github.com/JSONbored/metagraphed/issues/877)) ([5e44549](https://github.com/JSONbored/metagraphed/commit/5e4454910d33f125e70549f728e6560b6db4f53c))
+
 ## [0.10.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.9.0...platform-v0.10.0) (2026-06-16)
 
 
