@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   backfilledIdentityUrl,
   socialAccounts,
+  subnetContact,
   flattenSurfaces,
   loadCandidates,
   loadVerification,
@@ -798,6 +799,8 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
       nativeSubnet.chain_identity?.additional,
       overlay?.social,
     ),
+    // Mirror mergeSubnet's overlay-curated support contact.
+    contact: subnetContact(overlay?.contact),
   };
 }
 

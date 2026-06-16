@@ -7,6 +7,7 @@ import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
   backfilledIdentityUrl,
   socialAccounts,
+  subnetContact,
   buildSubnetLineageLinks,
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
@@ -362,6 +363,7 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     // subnet (mergeSubnet), passed through here so index + detail agree.
     // Display-only; never feeds completeness (the #343 flywheel gate).
     social: subnet.social,
+    contact: subnet.contact,
     docs_url: subnet.docs_url,
     first_party: surfaceTrust.official > 0,
     gap_count: subnet.gaps.missing_kinds.length,
@@ -2314,6 +2316,11 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
       nativeSubnet.chain_identity?.additional,
       overlay?.social,
     ),
+    // Taostats-survey follow-up: the operator's published support contact
+    // (SubnetIdentitiesV3 subnet_contact). Overlay-curated + sanitized,
+    // display-only — never feeds completeness (the #343 flywheel gate).
+    // metagraphed otherwise keeps only the contact_present boolean.
+    contact: subnetContact(overlay?.contact),
   };
 }
 

@@ -67,6 +67,10 @@
         "$ref": "#/$defs/link"
       }
     },
+    "contact": {
+      "type": "string",
+      "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) — sanitized at build via subnetContact. Display-only; never feeds completeness."
+    },
     "social": {
       "type": "object",
       "additionalProperties": false,

@@ -7283,6 +7283,13 @@
             },
             "type": "array"
           },
+          "contact": {
+            "description": "Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "coverage_level": {
             "$ref": "#/components/schemas/CoverageLevel"
           },
@@ -7636,6 +7643,13 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "contact": {
+            "description": "Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "contact_present": {
             "description": "On-chain SubnetIdentitiesV3 flag claiming a maintainer contact exists. Operator-controlled and orthogonal to discord/discord_url: a subnet may expose a Discord contact while this is false, or vice versa.",
@@ -18735,6 +18749,7 @@
                       "categories": [
                         "example"
                       ],
+                      "contact": "example",
                       "coverage_level": "native-only",
                       "curation": {
                         "level": "native",
@@ -21200,6 +21215,7 @@
                       "categories": [
                         "example"
                       ],
+                      "contact": "example",
                       "coverage_level": "native-only",
                       "curation": {
                         "level": "native",
