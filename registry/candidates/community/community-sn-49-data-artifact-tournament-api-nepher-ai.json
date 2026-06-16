@@ -17,7 +17,7 @@
       "source_url": "https://tournament-api.nepher.ai/openapi.json",
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+      "url": "https://tournament-api.nepher.ai/ready"
     }
   ],
   "schema_version": 1,
