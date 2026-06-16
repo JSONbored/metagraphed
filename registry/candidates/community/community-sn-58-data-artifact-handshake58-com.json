@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-58-data-artifact-handshake58-com",
+      "kind": "data-artifact",
+      "name": "Handshake58 validator provider registry",
+      "netuid": 58,
+      "provider": "handshake58",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://handshake58.com/.well-known/ai-plugin.json",
+      "source_urls": ["https://handshake58.com/.well-known/ai-plugin.json"],
+      "state": "schema-valid",
+      "url": "https://handshake58.com/api/validator/registry"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jaso0n0818",
+    "submitted_by_url": "https://github.com/jaso0n0818"
+  }
+}
