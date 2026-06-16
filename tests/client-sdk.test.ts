@@ -322,6 +322,35 @@ describe("createMetagraphedClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test("ETag caching isolates entries by headers that can vary representations", async () => {
+    const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
+      const headers = init.headers as Record<string, string>;
+      if (headers["x-tenant"] === "tenant-a") {
+        return new Response(
+          JSON.stringify({ ok: true, data: { secret: "tenant-a" }, meta: {} }),
+          { status: 200, headers: { etag: 'W/"tenant-a"' } },
+        );
+      }
+      expect(headers["if-none-match"]).toBeUndefined();
+      return new Response(
+        JSON.stringify({ ok: true, data: { secret: "tenant-b" }, meta: {} }),
+        { status: 200, headers: { etag: 'W/"tenant-b"' } },
+      );
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      cache: true,
+    });
+    const first = await client.health({ headers: { "x-tenant": "tenant-a" } });
+    const second = await client.health({ headers: { "x-tenant": "tenant-b" } });
+    expect((first as { data: unknown }).data).toEqual({
+      secret: "tenant-a",
+    });
+    expect((second as { data: unknown }).data).toEqual({
+      secret: "tenant-b",
+    });
+  });
+
   test("fetchAll collects data rows across cursor pages", async () => {
     const pages = [
       {

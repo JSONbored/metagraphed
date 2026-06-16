@@ -455,6 +455,34 @@ function buildRequestUrl(
   return url;
 }
 
+function mergeRequestHeaders(
+  clientHeaders: Record<string, string> | undefined,
+  requestHeaders: HeadersInit | undefined,
+): Record<string, string> {
+  const merged: Record<string, string> = { accept: "application/json" };
+  for (const [key, value] of Object.entries(clientHeaders || {})) {
+    merged[key.toLowerCase()] = value;
+  }
+  if (requestHeaders) {
+    new Headers(requestHeaders).forEach((value, key) => {
+      merged[key.toLowerCase()] = value;
+    });
+  }
+  return merged;
+}
+
+function buildEtagCacheKey(
+  url: URL,
+  requestHeaders: Record<string, string>,
+): string {
+  const headerKey = Object.entries(requestHeaders)
+    .filter(([key]) => key !== "if-none-match")
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => key + ":" + value)
+    .join("\n");
+  return url.toString() + "\n" + headerKey;
+}
+
 /**
  * A typed client with opt-in retries + ETag caching, ergonomic convenience
  * methods for the v1 collections, and fetchAll auto-pagination. Build one with
@@ -551,18 +579,11 @@ export function createMetagraphedClient(
       pathParams as Record<string, string | number> | undefined,
       query as Record<string, unknown> | undefined,
     );
-    // Cache key is the absolute URL. Safe today because every request sends the
-    // same Accept (application/json); if custom headers ever vary the response
-    // representation a header-aware key would be needed to avoid a stale hit.
-    const key = url.toString();
     let attempt = 0;
     let skipConditional = false;
     for (;;) {
-      const requestHeaders: Record<string, string> = {
-        accept: "application/json",
-        ...clientOptions.headers,
-        ...(headers as Record<string, string> | undefined),
-      };
+      const requestHeaders = mergeRequestHeaders(clientOptions.headers, headers);
+      const key = buildEtagCacheKey(url, requestHeaders);
       const cached = !skipConditional && store ? store.get(key) : undefined;
       if (cached) {
         requestHeaders["if-none-match"] = cached.etag;
