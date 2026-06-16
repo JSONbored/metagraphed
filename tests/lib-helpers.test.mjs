@@ -22,6 +22,7 @@ import {
   isPlaceholderIdentityUrl,
   backfilledIdentityUrl,
   socialAccounts,
+  deriveAuthDetail,
   nativeContactHandle,
   nativeDisplayName,
   nativeContactUrl,
@@ -246,15 +247,37 @@ describe("extractAuth", () => {
   test("flags auth from OpenAPI 3 securitySchemes", () => {
     assert.deepEqual(
       extractAuth({
-        components: { securitySchemes: { ApiKeyHeader: { type: "apiKey" } } },
+        components: {
+          securitySchemes: {
+            ApiKeyHeader: { type: "apiKey", in: "header", name: "X-API-Key" },
+          },
+        },
       }),
-      { auth_required: true, auth_schemes: ["apiKey"] },
+      {
+        auth_required: true,
+        auth_schemes: ["apiKey"],
+        auth_detail: {
+          scheme: "api-key",
+          location: "header",
+          name: "X-API-Key",
+          value_format: "<api-key>",
+        },
+      },
     );
   });
   test("flags auth from Swagger 2 securityDefinitions", () => {
     assert.deepEqual(
       extractAuth({ securityDefinitions: { oauth: { type: "oauth2" } } }),
-      { auth_required: true, auth_schemes: ["oauth2"] },
+      {
+        auth_required: true,
+        auth_schemes: ["oauth2"],
+        auth_detail: {
+          scheme: "oauth2",
+          location: "header",
+          name: "Authorization",
+          value_format: "Bearer <token>",
+        },
+      },
     );
   });
   test("dedupes + sorts scheme types", () => {
@@ -273,10 +296,12 @@ describe("extractAuth", () => {
     assert.deepEqual(extractAuth({ paths: {} }), {
       auth_required: false,
       auth_schemes: [],
+      auth_detail: null,
     });
     assert.deepEqual(extractAuth(null), {
       auth_required: false,
       auth_schemes: [],
+      auth_detail: null,
     });
   });
 });
@@ -933,5 +958,119 @@ describe("socialAccounts (#745)", () => {
       "x",
       "youtube",
     ]);
+  });
+});
+
+describe("deriveAuthDetail (#746)", () => {
+  test("apiKey scheme maps to the exact header/param name", () => {
+    assert.deepEqual(
+      deriveAuthDetail({
+        k: { type: "apiKey", in: "header", name: "X-API-Key" },
+      }),
+      {
+        scheme: "api-key",
+        location: "header",
+        name: "X-API-Key",
+        value_format: "<api-key>",
+      },
+    );
+    // query-located key keeps its location
+    assert.equal(
+      deriveAuthDetail({ k: { type: "apiKey", in: "query", name: "api_key" } })
+        .location,
+      "query",
+    );
+  });
+
+  test("http bearer and basic map to Authorization", () => {
+    assert.deepEqual(
+      deriveAuthDetail({ b: { type: "http", scheme: "bearer" } }),
+      {
+        scheme: "bearer",
+        location: "header",
+        name: "Authorization",
+        value_format: "Bearer <token>",
+      },
+    );
+    assert.equal(
+      deriveAuthDetail({ b: { type: "http", scheme: "basic" } }).value_format,
+      "Basic <base64(user:pass)>",
+    );
+  });
+
+  test("oauth2 pulls a junk-guarded token_url from flows", () => {
+    const out = deriveAuthDetail({
+      o: {
+        type: "oauth2",
+        flows: {
+          clientCredentials: { tokenUrl: "https://auth.example.com/token" },
+        },
+      },
+    });
+    assert.equal(out.scheme, "oauth2");
+    assert.equal(out.token_url, "https://auth.example.com/token");
+  });
+
+  test("drops an unsafe/placeholder token_url rather than surfacing it", () => {
+    const out = deriveAuthDetail({
+      o: {
+        type: "oauth2",
+        flows: { password: { tokenUrl: "http://127.0.0.1/token" } },
+      },
+    });
+    assert.equal(out.scheme, "oauth2");
+    assert.equal("token_url" in out, false);
+  });
+
+  test("prefers a concrete api-key/http scheme over oauth2", () => {
+    const out = deriveAuthDetail({
+      oauth: { type: "oauth2", flows: {} },
+      key: { type: "apiKey", in: "header", name: "X-Key" },
+    });
+    assert.equal(out.scheme, "api-key");
+    assert.equal(out.name, "X-Key");
+  });
+
+  test("returns null when no security scheme is declared", () => {
+    assert.equal(deriveAuthDetail({}), null);
+    assert.equal(deriveAuthDetail(null), null);
+    assert.equal(deriveAuthDetail(undefined), null);
+  });
+
+  test("resolves token_url from openIdConnect, authorizationUrl, and Swagger-2 shapes", () => {
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "openIdConnect",
+          openIdConnectUrl:
+            "https://idp.example.com/.well-known/openid-configuration",
+        },
+      }).token_url,
+      "https://idp.example.com/.well-known/openid-configuration",
+    );
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "oauth2",
+          flows: {
+            implicit: {
+              authorizationUrl: "https://auth.example.com/authorize",
+            },
+          },
+        },
+      }).token_url,
+      "https://auth.example.com/authorize",
+    );
+    assert.equal(
+      deriveAuthDetail({
+        o: { type: "oauth2", tokenUrl: "https://auth.example.com/token" },
+      }).token_url,
+      "https://auth.example.com/token",
+    );
+  });
+
+  test("ignores non-object scheme entries and unknown scheme types", () => {
+    assert.equal(deriveAuthDetail({ a: null, b: "nope" }), null);
+    assert.equal(deriveAuthDetail({ a: { type: "mutualTLS" } }), null);
   });
 });

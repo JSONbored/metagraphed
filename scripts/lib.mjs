@@ -1377,6 +1377,90 @@ export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
     .trimEnd()}…`;
 }
 
+// Pull a usable OAuth2/OIDC token (or authorize) endpoint out of a security
+// scheme, tolerating OpenAPI 3 `flows.*` and Swagger 2 top-level shapes.
+function oauthTokenUrl(scheme) {
+  if (typeof scheme.openIdConnectUrl === "string") {
+    return scheme.openIdConnectUrl;
+  }
+  const flows =
+    scheme.flows && typeof scheme.flows === "object" ? scheme.flows : {};
+  for (const flow of Object.values(flows)) {
+    if (flow && typeof flow.tokenUrl === "string") {
+      return flow.tokenUrl;
+    }
+    if (flow && typeof flow.authorizationUrl === "string") {
+      return flow.authorizationUrl;
+    }
+  }
+  if (typeof scheme.tokenUrl === "string") {
+    return scheme.tokenUrl;
+  }
+  if (typeof scheme.authorizationUrl === "string") {
+    return scheme.authorizationUrl;
+  }
+  return null;
+}
+
+// Map a captured OpenAPI/Swagger securitySchemes object to a single structured
+// auth hint a caller can act on (#746): the scheme + concrete header/param name
+// and a value PLACEHOLDER (never a real secret). Prefers a concrete api-key/http
+// scheme over oauth2 when several are declared. token_url is junk/SSRF-guarded.
+export function deriveAuthDetail(schemes) {
+  const entries = Object.values(schemes || {}).filter(
+    (scheme) => scheme && typeof scheme === "object",
+  );
+  if (!entries.length) {
+    return null;
+  }
+  const pick =
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "apikey") ||
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "http") ||
+    entries[0];
+  const type = String(pick.type || "").toLowerCase();
+  if (type === "apikey" && typeof pick.name === "string" && pick.name) {
+    const location = ["header", "query", "cookie"].includes(pick.in)
+      ? pick.in
+      : "header";
+    return {
+      scheme: "api-key",
+      location,
+      name: pick.name,
+      value_format: "<api-key>",
+    };
+  }
+  if (type === "http") {
+    if (String(pick.scheme || "").toLowerCase() === "basic") {
+      return {
+        scheme: "basic",
+        location: "header",
+        name: "Authorization",
+        value_format: "Basic <base64(user:pass)>",
+      };
+    }
+    return {
+      scheme: "bearer",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+  }
+  if (type === "oauth2" || type === "openidconnect") {
+    const detail = {
+      scheme: "oauth2",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+    const tokenUrl = normalizePublicHttpUrl(oauthTokenUrl(pick));
+    if (tokenUrl) {
+      detail.token_url = tokenUrl;
+    }
+    return detail;
+  }
+  return null;
+}
+
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
 // components.securitySchemes or Swagger 2 securityDefinitions. A spec that
 // declares any security scheme is treated as requiring auth — the fix for
@@ -1393,7 +1477,13 @@ export function extractAuth(spec) {
         .filter((type) => typeof type === "string"),
     ),
   ].sort();
-  return { auth_required: authSchemes.length > 0, auth_schemes: authSchemes };
+  return {
+    auth_required: authSchemes.length > 0,
+    auth_schemes: authSchemes,
+    // Structured, caller-actionable detail (#746): exact header/param + value
+    // placeholder. null when no scheme is declared.
+    auth_detail: deriveAuthDetail(schemes),
+  };
 }
 
 // Declared lifecycle, derived from canonical on-chain identity names (teams set

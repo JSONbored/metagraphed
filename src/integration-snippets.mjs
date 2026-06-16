@@ -6,9 +6,37 @@
 //
 // We snippet a GET of the surface URL itself (always a valid, documented entry
 // point regardless of surface kind); for subnet-api surfaces with a captured
-// schema the agent then reads it (get_api_schema) for specific endpoints. The
-// auth header is a best-effort placeholder from the declared scheme types — the
-// captured spec carries scheme TYPES, not header names, so we use conventions.
+// schema the agent then reads it (get_api_schema) for specific endpoints. Auth
+// uses the structured `auth` detail (#746) — the exact header/param name + a
+// value PLACEHOLDER derived from the spec's securitySchemes or curated — and
+// only falls back to a scheme-type guess when no structured detail is present.
+
+// Resolve the structured per-surface auth (#746) into a snippet-ready credential:
+// { location: "header"|"query", name, value-placeholder }. Returns null for no
+// auth or an unsafe placeholder (a placeholder must never break snippet quoting,
+// and is never a real secret).
+function authFromDetail(auth) {
+  if (!auth || typeof auth !== "object") return null;
+  const scheme = String(auth.scheme || "").toLowerCase();
+  if (scheme === "none") return null;
+  const location = auth.location === "query" ? "query" : "header";
+  const name =
+    typeof auth.name === "string" && auth.name
+      ? auth.name
+      : location === "query"
+        ? "api_key"
+        : "Authorization";
+  const value =
+    typeof auth.value_format === "string" && auth.value_format
+      ? auth.value_format
+      : scheme === "api-key"
+        ? "YOUR_API_KEY"
+        : scheme === "basic"
+          ? "Basic <base64(user:pass)>"
+          : "Bearer YOUR_API_KEY";
+  if (/['"`\\\n]/.test(name) || /['"`\\\n]/.test(value)) return null;
+  return { location, name, value };
+}
 
 function authHeaderForSchemes(schemes) {
   const types = new Set(
@@ -51,36 +79,52 @@ function isCredentialSafeUrl(url) {
 export function generateServiceSnippets(service) {
   const url = service?.base_url;
   if (!isSnippetSafeUrl(url)) return null;
-  const authHeader =
-    service?.auth_required && isCredentialSafeUrl(url)
-      ? authHeaderForSchemes(service?.auth_schemes)
-      : null;
+  // Prefer the structured auth detail; fall back to the scheme-type guess only
+  // when no structured detail is present at all. A structured detail is
+  // authoritative — including an explicit scheme:"none" (→ no credential). Auth
+  // is only ever attached over a credential-safe (https/wss) transport.
+  const hasStructuredAuth = service?.auth && typeof service.auth === "object";
+  const auth = !isCredentialSafeUrl(url)
+    ? null
+    : hasStructuredAuth
+      ? authFromDetail(service.auth)
+      : service?.auth_required
+        ? { location: "header", ...authHeaderForSchemes(service?.auth_schemes) }
+        : null;
 
-  const curl = authHeader
-    ? `curl -sS '${url}' \\\n  -H '${authHeader.name}: ${authHeader.value}'`
-    : `curl -sS '${url}'`;
+  // Header credentials go in the request headers; query credentials go on the URL.
+  const requestUrl =
+    auth?.location === "query"
+      ? `${url}${url.includes("?") ? "&" : "?"}${auth.name}=${auth.value}`
+      : url;
+  if (!isSnippetSafeUrl(requestUrl)) return null;
+  const header = auth?.location === "header" ? auth : null;
 
-  const pythonHeaders = authHeader
-    ? `, headers={"${authHeader.name}": "${authHeader.value}"}`
+  const curl = header
+    ? `curl -sS '${requestUrl}' \\\n  -H '${header.name}: ${header.value}'`
+    : `curl -sS '${requestUrl}'`;
+
+  const pythonHeaders = header
+    ? `, headers={"${header.name}": "${header.value}"}`
     : "";
   const python = [
     "import requests",
     "",
-    `resp = requests.get("${url}"${pythonHeaders})`,
+    `resp = requests.get("${requestUrl}"${pythonHeaders})`,
     "resp.raise_for_status()",
     "print(resp.json())",
   ].join("\n");
 
-  const typescript = authHeader
+  const typescript = header
     ? [
-        `const resp = await fetch("${url}", {`,
-        `  headers: { "${authHeader.name}": "${authHeader.value}" },`,
+        `const resp = await fetch("${requestUrl}", {`,
+        `  headers: { "${header.name}": "${header.value}" },`,
         "});",
         "if (!resp.ok) throw new Error(`HTTP ${resp.status}`);",
         "const data = await resp.json();",
       ].join("\n")
     : [
-        `const resp = await fetch("${url}");`,
+        `const resp = await fetch("${requestUrl}");`,
         "if (!resp.ok) throw new Error(`HTTP ${resp.status}`);",
         "const data = await resp.json();",
       ].join("\n");

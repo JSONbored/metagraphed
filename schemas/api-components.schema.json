@@ -792,6 +792,56 @@
       "CandidateSurface": {
         "additionalProperties": false,
         "properties": {
+          "auth": {
+            "additionalProperties": false,
+            "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+            "properties": {
+              "location": {
+                "description": "Where the credential is sent.",
+                "enum": [
+                  "header",
+                  "query",
+                  "cookie"
+                ]
+              },
+              "name": {
+                "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\".",
+                "type": "string"
+              },
+              "scheme": {
+                "description": "Credential scheme.",
+                "enum": [
+                  "none",
+                  "bearer",
+                  "api-key",
+                  "basic",
+                  "oauth2",
+                  "custom"
+                ]
+              },
+              "scopes_note": {
+                "description": "Note on required scopes or how to obtain a credential.",
+                "type": "string"
+              },
+              "token_url": {
+                "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one.",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "value_format": {
+                "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "auth_required": {
             "type": "boolean"
           },
@@ -8833,6 +8883,56 @@
       "Surface": {
         "additionalProperties": false,
         "properties": {
+          "auth": {
+            "additionalProperties": false,
+            "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+            "properties": {
+              "location": {
+                "description": "Where the credential is sent.",
+                "enum": [
+                  "header",
+                  "query",
+                  "cookie"
+                ]
+              },
+              "name": {
+                "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\".",
+                "type": "string"
+              },
+              "scheme": {
+                "description": "Credential scheme.",
+                "enum": [
+                  "none",
+                  "bearer",
+                  "api-key",
+                  "basic",
+                  "oauth2",
+                  "custom"
+                ]
+              },
+              "scopes_note": {
+                "description": "Note on required scopes or how to obtain a credential.",
+                "type": "string"
+              },
+              "token_url": {
+                "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one.",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+                "type": "string"
+              },
+              "value_format": {
+                "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "auth_required": {
             "type": "boolean"
           },
