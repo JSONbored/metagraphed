@@ -75,22 +75,22 @@
         "x": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Xx]\\.com|[Tt]witter\\.com)([:/?#]|$)"
         },
         "telegram": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Tt]\\.me|[Tt]elegram\\.me|[Tt]elegram\\.org)([:/?#]|$)"
         },
         "reddit": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?[Rr]eddit\\.com([:/?#]|$)"
         },
         "youtube": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Yy]outube\\.com|[Yy]outu\\.be)([:/?#]|$)"
         }
       }
     },

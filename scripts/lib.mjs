@@ -949,6 +949,14 @@ function socialHostKey(host) {
   return null;
 }
 
+function socialHostMatchesKey(url, key) {
+  try {
+    return socialHostKey(new URL(url).hostname) === key;
+  } catch {
+    return false;
+  }
+}
+
 // Resolve a subnet/provider's structured social links: a curated overlay
 // `social` object wins per platform; otherwise extract from the free-text
 // on-chain `additional` content (sanitized + junk-guarded via
@@ -985,7 +993,7 @@ export function socialAccounts(additionalText, overlaySocial = null) {
   ) {
     for (const key of SOCIAL_KEYS) {
       const curated = normalizePublicHttpUrl(overlaySocial[key]);
-      if (curated) {
+      if (curated && socialHostMatchesKey(curated, key)) {
         out[key] = curated;
       }
     }

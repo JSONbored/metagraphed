@@ -942,6 +942,24 @@ describe("socialAccounts (#745)", () => {
     );
   });
 
+  test("ignores curated overlays whose host does not match the platform key", () => {
+    assert.equal(
+      socialAccounts(null, { x: "https://attacker.example/phish" }),
+      null,
+    );
+    assert.deepEqual(
+      socialAccounts("https://x.com/from_chain", {
+        x: "https://attacker.example/phish",
+        telegram: "https://t.me/curated",
+      }),
+      { x: "https://x.com/from_chain", telegram: "https://t.me/curated" },
+    );
+    assert.equal(
+      socialAccounts(null, { telegram: "https://x.com/not_telegram" }),
+      null,
+    );
+  });
+
   test("returns null for empty / non-string input", () => {
     assert.equal(socialAccounts(""), null);
     assert.equal(socialAccounts("just words, no links"), null);
