@@ -43,6 +43,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
 - `/metagraph/coverage.json`: count parity and coverage levels.
+- `/metagraph/economics.json`: per-subnet validator/economic metrics (counts, stake, registration cost, alpha price, emission share).
 - `/metagraph/curation.json`: curation state for every active subnet.
 - `/metagraph/gaps.json`: missing public interface facets by subnet.
 - `/metagraph/verification/latest.json`: latest candidate verification results. R2-backed.
@@ -124,6 +125,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/providers/{slug}`: fetch per-provider detail.
 - `/api/v1/providers/{slug}/endpoints`: list endpoint resources for one provider or operator.
 - `/api/v1/coverage`: fetch registry coverage summary.
+- `/api/v1/economics`: list per-subnet validator/economic metrics, ordered by emission share.
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
 - `/api/v1/review/gaps`: fetch contributor-targeted subnet gap priorities.
