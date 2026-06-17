@@ -5,7 +5,7 @@
       "confidence": "medium",
       "id": "community-sn-74-data-artifact-api-gittensor-io",
       "kind": "data-artifact",
-      "name": "Gittensor network statistics dashboard API",
+      "name": "Gittensor community data-artifact",
       "netuid": 74,
       "provider": "gittensor",
       "public_safe": true,
@@ -14,15 +14,15 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://api.gittensor.io/swagger",
-      "source_urls": ["https://api.gittensor.io/swagger"],
+      "source_url": "https://api.gittensor.io/swagger-json",
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
       "state": "schema-valid",
-      "url": "https://api.gittensor.io/dash/stats"
+      "url": "https://api.gittensor.io/miners/leaderboard"
     }
   ],
   "schema_version": 1,
   "submission": {
-    "submitted_by": "oktofeesh1",
-    "submitted_by_url": "https://github.com/oktofeesh1"
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
   }
 }
