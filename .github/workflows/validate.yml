@@ -216,6 +216,10 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:docs
 
+      - name: Validate README subnet catalog (#1020)
+        if: steps.route.outputs.mode == 'full'
+        run: npm run validate:readme-catalog
+
       - name: Validate intake templates
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:intake

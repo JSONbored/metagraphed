@@ -56,6 +56,8 @@
     "contract:summary": "node scripts/contract-change-summary.mjs",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:readme-catalog": "node scripts/generate-registry-readme-section.mjs --check",
+    "readme:catalog": "node scripts/generate-registry-readme-section.mjs",
     "validate:adapters": "node scripts/validate-adapters.mjs",
     "assert:probe-health": "node scripts/assert-published-probe-health.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
