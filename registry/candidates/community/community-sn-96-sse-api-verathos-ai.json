@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-96-sse-api-verathos-ai",
+      "kind": "sse",
+      "name": "Verathos community sse",
+      "netuid": 96,
+      "provider": "verathos",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://verathos.ai/openapi.json",
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.verathos.ai/v1/streams"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
