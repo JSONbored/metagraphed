@@ -117,6 +117,56 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(out.summary.subnet_count, 1);
     assert.equal(out.summary.total_stake_tao, 0);
   });
+
+  test("orders equal emission shares by netuid and ignores non-numeric stake", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [
+        { netuid: 5, slug: "e", name: "E" },
+        { netuid: 2, slug: "b", name: "B" },
+      ],
+      economicsByNetuid: new Map([
+        // equal price → equal share → tiebreak on netuid; null stake → 0 in sum
+        [5, { alpha_price_tao: 0.5, total_stake_tao: null, validator_count: 1 }],
+        [2, { alpha_price_tao: 0.5, total_stake_tao: 40, validator_count: 1 }],
+      ]),
+      ...base,
+    });
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [2, 5],
+    );
+    assert.equal(out.subnets[0].emission_share, 0.5);
+    assert.equal(out.summary.total_stake_tao, 40);
+  });
+
+  test("emission_share is null for every subnet when no positive alpha price exists", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [
+        { netuid: 1, slug: "a", name: "A" },
+        { netuid: 2, slug: "b", name: "B" },
+      ],
+      // total alpha price is 0 → the price/Σprice guard yields null for all
+      economicsByNetuid: new Map([
+        [1, { alpha_price_tao: 0 }],
+        [2, { alpha_price_tao: null }],
+      ]),
+      ...base,
+    });
+    assert.equal(
+      out.subnets.every((s) => s.emission_share === null),
+      true,
+    );
+  });
+
+  test("defaults network and captured_at to null when omitted", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [{ netuid: 1, slug: "a", name: "A" }],
+      economicsByNetuid: new Map([[1, { alpha_price_tao: 0.1 }]]),
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(out.network, null);
+    assert.equal(out.captured_at, null);
+  });
 });
 
 describe("stripUrls", () => {
