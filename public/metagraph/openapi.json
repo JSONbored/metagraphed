@@ -9302,6 +9302,13 @@
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
+          "last_verified_at": {
+            "description": "Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -9413,6 +9420,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "stale": {
+            "description": "Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified.",
+            "type": "boolean"
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"

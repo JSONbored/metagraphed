@@ -198,6 +198,14 @@
             "type": "string",
             "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it."
           },
+          "last_verified_at": {
+            "type": ["string", "null"],
+            "description": "Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it."
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified."
+          },
           "name": {
             "type": "string"
           },

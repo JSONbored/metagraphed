@@ -3337,6 +3337,8 @@ export interface components {
             /** @description Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it. */
             key?: string;
             kind: components["schemas"]["SurfaceKind"];
+            /** @description Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it. */
+            last_verified_at?: string | null;
             name?: string;
             netuid: number;
             notes?: string;
@@ -3376,6 +3378,8 @@ export interface components {
             /** Format: uri */
             schema_url?: string;
             source_urls?: string[];
+            /** @description Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified. */
+            stale?: boolean;
             status?: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;

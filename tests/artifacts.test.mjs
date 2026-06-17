@@ -25,6 +25,7 @@ import {
   publicMetagraphRoot,
   r2StagingRoot,
   registrySurfaceKey,
+  isSurfaceStale,
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -959,6 +960,33 @@ test("public artifacts are internally consistent", () => {
   assert.equal(
     healthHistory.surfaces.every((surface) => !Object.hasOwn(surface, "url")),
     true,
+  );
+  // #1006: per-field provenance. Every served surface exposes last_verified_at
+  // (string|null) + a `stale` boolean, and `stale` is reproducible from the
+  // helper against the committed native-snapshot captured_at.
+  const surfaceNowMs = Date.parse(native.captured_at);
+  for (const surface of surfaces.surfaces) {
+    assert.ok(
+      surface.last_verified_at === null ||
+        typeof surface.last_verified_at === "string",
+      `surface ${surface.id} last_verified_at must be a string or null`,
+    );
+    assert.equal(
+      typeof surface.stale,
+      "boolean",
+      `surface ${surface.id} must carry a boolean stale flag`,
+    );
+    assert.equal(
+      surface.stale,
+      isSurfaceStale(surface.last_verified_at, surface.kind, surfaceNowMs),
+      `surface ${surface.id} stale flag must match the freshness helper`,
+    );
+  }
+  // The curation→surface verified_at join must actually populate timestamps, not
+  // leave every surface unverified (guard against a silent no-op).
+  assert.ok(
+    surfaces.surfaces.some((surface) => surface.last_verified_at !== null),
+    "expected at least one surface to carry a last_verified_at timestamp",
   );
   assert.equal(coverage.chain_subnet_count, native.subnets.length);
   assert.equal(coverage.curated_overlay_count, native.subnets.length);

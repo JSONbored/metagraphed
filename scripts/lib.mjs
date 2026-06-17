@@ -464,10 +464,69 @@ export function flattenSurfaces(subnets) {
         };
         // #1005: a stable identity decoupled from the hand-authored display id.
         flattened.key = surfaceStableKey(flattened);
+        // #1006: the as-of timestamp every served surface should carry. A
+        // per-surface verification wins; otherwise the subnet's curation
+        // verified_at (when a maintainer last vetted the overlay). null when
+        // neither exists — the agent then sees the surface is unverified.
+        flattened.last_verified_at =
+          surface.verification?.verified_at ??
+          subnet.curation?.verified_at ??
+          null;
         return flattened;
       }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// #1006: per-kind verification-freshness TTL (days). `last_verified_at` is the
+// curator's as-of; a surface is `stale` once it hasn't been re-verified within
+// its kind's window. Callable/operational surfaces drift fast (short window);
+// static identity surfaces are stable (long window). Any kind not listed uses
+// SURFACE_FRESHNESS_DEFAULT_TTL_DAYS. Fixed (not env-gated) so the build and the
+// validate reproduction compute byte-identical `stale` values.
+export const SURFACE_FRESHNESS_DEFAULT_TTL_DAYS = 90;
+export const SURFACE_FRESHNESS_TTL_DAYS = {
+  "subnet-api": 30,
+  openapi: 30,
+  sse: 30,
+  "data-artifact": 30,
+  "subtensor-rpc": 30,
+  "subtensor-wss": 30,
+  dashboard: 60,
+  website: 90,
+  docs: 90,
+  archive: 120,
+  example: 120,
+  sdk: 120,
+  "source-repo": 120,
+  "repo-registry": 120,
+};
+
+export function surfaceFreshnessTtlDays(kind) {
+  return SURFACE_FRESHNESS_TTL_DAYS[kind] ?? SURFACE_FRESHNESS_DEFAULT_TTL_DAYS;
+}
+
+// True when a surface's verification is older than its kind's TTL, measured
+// against `nowMs` (the dataset's native-snapshot captured_at, a committed +
+// deterministic reference — never wall-clock — so the flag is reproducible). A
+// surface with no last_verified_at is NOT stale: that's "unverified", a distinct
+// state the null timestamp already signals.
+export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
+  if (!lastVerifiedAt) return false;
+  const verifiedMs = Date.parse(lastVerifiedAt);
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
+}
+
+// Stamp the serve-time `stale` flag onto a flattened-surface list (the companion
+// to flattenSurfaces' static `last_verified_at`). Kept separate because `stale`
+// needs the `nowMs` reference flattenSurfaces does not carry; build + validate
+// both call this with the same captured_at so per-subnet artifacts reproduce.
+export function withSurfaceFreshness(surfaces, nowMs) {
+  return surfaces.map((surface) => ({
+    ...surface,
+    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
+  }));
 }
 
 // Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a

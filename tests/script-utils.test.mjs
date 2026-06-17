@@ -25,6 +25,10 @@ import {
   formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
+  isSurfaceStale,
+  surfaceFreshnessTtlDays,
+  withSurfaceFreshness,
+  SURFACE_FRESHNESS_DEFAULT_TTL_DAYS,
   isHtmlContentType,
   isJsonContentType,
   isUnsafeResolvedUrl,
@@ -1235,6 +1239,56 @@ describe("script utility contracts", () => {
       "7|docs|https://docs.all-ways.io/",
     );
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
+  });
+
+  test("surface freshness TTL + staleness flag (#1006)", () => {
+    // Per-kind TTL map with a default fallback for unlisted kinds.
+    assert.equal(surfaceFreshnessTtlDays("subnet-api"), 30);
+    assert.equal(surfaceFreshnessTtlDays("source-repo"), 120);
+    assert.equal(
+      surfaceFreshnessTtlDays("totally-unknown-kind"),
+      SURFACE_FRESHNESS_DEFAULT_TTL_DAYS,
+    );
+
+    const now = Date.parse("2026-06-14T00:00:00.000Z");
+    const daysAgo = (n) => new Date(now - n * 86_400_000).toISOString();
+
+    // Unverified surfaces are NOT stale — null is a distinct state the agent reads.
+    assert.equal(isSurfaceStale(null, "subnet-api", now), false);
+    assert.equal(isSurfaceStale(undefined, "docs", now), false);
+    // Unparseable inputs never throw and never flag stale.
+    assert.equal(isSurfaceStale("not-a-date", "docs", now), false);
+    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), false);
+    // Fresh: age below the kind TTL.
+    assert.equal(isSurfaceStale(daysAgo(10), "subnet-api", now), false);
+    // Boundary: exactly at the TTL is still fresh (strict greater-than).
+    assert.equal(isSurfaceStale(daysAgo(30), "subnet-api", now), false);
+    // Just over the TTL flips stale.
+    assert.equal(isSurfaceStale(daysAgo(31), "subnet-api", now), true);
+    // The window is per-kind: the same age is stale for a callable surface but
+    // fresh for a long-lived identity surface.
+    assert.equal(isSurfaceStale(daysAgo(45), "openapi", now), true);
+    assert.equal(isSurfaceStale(daysAgo(45), "source-repo", now), false);
+
+    // withSurfaceFreshness stamps `stale` from last_verified_at + kind, leaving
+    // the other surface fields intact.
+    const stamped = withSurfaceFreshness(
+      [
+        { id: "a", kind: "openapi", last_verified_at: daysAgo(45) },
+        { id: "b", kind: "source-repo", last_verified_at: daysAgo(45) },
+        { id: "c", kind: "docs", last_verified_at: null },
+      ],
+      now,
+    );
+    assert.deepEqual(
+      stamped.map((s) => [s.id, s.stale]),
+      [
+        ["a", true],
+        ["b", false],
+        ["c", false],
+      ],
+    );
+    assert.equal(stamped[0].kind, "openapi");
   });
 
   test("resolves hostnames before treating probe URLs as safe", async () => {

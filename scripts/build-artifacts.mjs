@@ -22,6 +22,7 @@ import {
   stripUrls,
   buildRpcEndpointArtifact,
   flattenSurfaces,
+  withSurfaceFreshness,
   formatLlmMarkdownText,
   hashJson,
   listJsonFilesRecursive,
@@ -115,7 +116,13 @@ const activeOverlayNetuids = new Set(
 const activeOverlays = overlays.filter((overlay) =>
   activeOverlayNetuids.has(overlay.netuid),
 );
-const surfaces = flattenSurfaces(activeOverlays);
+// #1006: stamp the per-surface `stale` flag against the committed native-snapshot
+// captured_at — a deterministic reference (never wall-clock), so the flag stays
+// reproducible across builds. `last_verified_at` is added inside flattenSurfaces.
+const surfaces = withSurfaceFreshness(
+  flattenSurfaces(activeOverlays),
+  Date.parse(nativeSnapshot.captured_at),
+);
 // #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
 // surface's (netuid | kind | normalized-url) identity is the same thing already
 // promoted to the registry — flag it `superseded_by` the surface (stamped onto

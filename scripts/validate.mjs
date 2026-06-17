@@ -6,6 +6,7 @@ import {
   socialAccounts,
   subnetContact,
   flattenSurfaces,
+  withSurfaceFreshness,
   loadCandidates,
   loadVerification,
   loadNativeSnapshot,
@@ -905,7 +906,13 @@ async function validateGeneratedArtifacts(
   const activeOverlays = overlays.filter((overlay) =>
     activeNetuids.has(overlay.netuid),
   );
-  const surfaces = flattenSurfaces(activeOverlays);
+  // #1006: mirror the build's per-surface freshness stamp (last_verified_at is
+  // added inside flattenSurfaces; `stale` is computed against the same committed
+  // captured_at) so the per-subnet detail artifact stays reproducible.
+  const surfaces = withSurfaceFreshness(
+    flattenSurfaces(activeOverlays),
+    Date.parse(nativeSnapshot.captured_at),
+  );
   // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate
   // sharing a curated surface's registrySurfaceKey is already promoted, so the
   // per-subnet detail artifact counts/lists only the non-superseded candidates.
