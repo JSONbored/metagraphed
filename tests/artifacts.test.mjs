@@ -988,6 +988,50 @@ test("public artifacts are internally consistent", () => {
     surfaces.surfaces.some((surface) => surface.last_verified_at !== null),
     "expected at least one surface to carry a last_verified_at timestamp",
   );
+  // #1008: code-examples entity. example-kind surfaces are indexed + surfaced in
+  // the agent-catalog (per-subnet `examples` + `example_count`); they also flow
+  // into every subnet's profile via supported_interface_kinds.
+  const exampleSurfaces = surfaces.surfaces.filter(
+    (surface) => surface.kind === "example",
+  );
+  assert.ok(
+    exampleSurfaces.length >= 5,
+    `expected >=5 example surfaces, got ${exampleSurfaces.length}`,
+  );
+  assert.equal(
+    exampleSurfaces.every((surface) => /^https?:\/\//.test(surface.url)),
+    true,
+    "example surfaces must carry an http(s) url",
+  );
+  // The agent-catalog index carries example_count, and the per-subnet detail
+  // lists the examples. SN64 (chutes) has both a callable service and an example.
+  assert.equal(
+    agentCatalog.subnets.every((entry) =>
+      Number.isInteger(entry.example_count),
+    ),
+    true,
+    "every agent-catalog index entry must carry an integer example_count",
+  );
+  const catalog64 = readArtifact("agent-catalog/64.json");
+  assert.ok(
+    catalog64.example_count >= 1 && catalog64.examples.length >= 1,
+    "SN64 agent-catalog must surface its example",
+  );
+  assert.equal(catalog64.examples.length, catalog64.example_count);
+  assert.equal(
+    catalog64.examples.every(
+      (example) => example.surface_id && /^https?:\/\//.test(example.url),
+    ),
+    true,
+    "agent-catalog examples must carry a surface_id + http(s) url",
+  );
+  // Examples reach the subnet profile through supported_interface_kinds.
+  const profile64 = readArtifact("profiles/64.json").profile;
+  assert.equal(
+    profile64.supported_interface_kinds.includes("example"),
+    true,
+    "a subnet with an example surface must list it in supported_interface_kinds",
+  );
   assert.equal(coverage.chain_subnet_count, native.subnets.length);
   assert.equal(coverage.curated_overlay_count, native.subnets.length);
   assert.equal(coverage.native_only_count, 0);

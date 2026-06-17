@@ -1383,11 +1383,28 @@ function subnetIntegrationReadiness({
 }
 
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
+// #1008: code-examples (quickstarts / SDK snippets) per subnet, projected from
+// the curated `example`-kind surfaces. They are reference material, not callable
+// services, so they ride alongside `services` in the catalog rather than inside
+// it (no snippets/health) — the per-subnet file lists them, the index carries a
+// count. Examples also flow into surfaces.json + the profile via supported_kinds.
+const exampleSurfacesByNetuid = groupByNetuid(
+  surfaces.filter((surface) => surface.kind === "example"),
+);
+const subnetExamples = (netuid) =>
+  (exampleSurfacesByNetuid.get(netuid) || []).map((surface) => ({
+    surface_id: surface.id,
+    name: surface.name,
+    url: surface.url,
+    provider: surface.provider || null,
+    authority: surface.authority || null,
+  }));
 const agentCatalogIndex = [];
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = servicesByNetuid.get(subnet.netuid) || [];
+  const examples = subnetExamples(subnet.netuid);
   // Reuse the readiness computed once above for the index/profile surfaces.
   const readiness = readinessByNetuid.get(subnet.netuid);
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
@@ -1404,6 +1421,8 @@ for (const subnet of mergedSubnets) {
     readiness,
     service_count: services.length,
     services,
+    example_count: examples.length,
+    examples,
   });
   if (services.length > 0) {
     const callable = services.filter((s) => s.eligibility.callable).length;
@@ -1427,6 +1446,7 @@ for (const subnet of mergedSubnets) {
       service_count: services.length,
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
+      example_count: examples.length,
       base_url: primary?.base_url ?? null,
       // Live-only: overlaid from KV/D1 on read; `unknown` when the store is cold.
       health: "unknown",

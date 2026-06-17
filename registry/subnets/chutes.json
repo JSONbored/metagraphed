@@ -278,6 +278,23 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/64"],
       "url": "https://taomarketcap.com/subnets/64"
+    },
+    {
+      "id": "sn-64-chutes-sdk-examples",
+      "name": "Chutes code examples",
+      "kind": "example",
+      "url": "https://github.com/chutesai/chutes/tree/main/examples",
+      "provider": "chutes",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/chutesai/chutes"],
+      "probe": {
+        "enabled": false,
+        "method": "HEAD",
+        "expect": "any"
+      },
+      "notes": "Official Chutes examples — model invocation quickstarts (Chroma, DeepSeek R1)."
     }
   ],
   "website_url": "https://chutes.ai/",

@@ -215,6 +215,23 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/96"],
       "url": "https://taomarketcap.com/subnets/96"
+    },
+    {
+      "id": "sn-96-verathos-examples",
+      "name": "Verathos code examples",
+      "kind": "example",
+      "url": "https://github.com/verathos-ai/verathos/tree/main/examples",
+      "provider": "verathos",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/verathos-ai/verathos"],
+      "probe": {
+        "enabled": false,
+        "method": "HEAD",
+        "expect": "any"
+      },
+      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts."
     }
   ],
   "website_url": "https://verathos.ai/"

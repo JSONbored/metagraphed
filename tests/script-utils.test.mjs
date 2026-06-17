@@ -25,6 +25,7 @@ import {
   formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
+  isLikelyExampleLink,
   isSurfaceStale,
   surfaceFreshnessTtlDays,
   withSurfaceFreshness,
@@ -1289,6 +1290,40 @@ describe("script utility contracts", () => {
       ],
     );
     assert.equal(stamped[0].kind, "openapi");
+  });
+
+  test("classifies code-example / quickstart links (#1008)", () => {
+    // The haystack is "<label> <hostname> <pathname>", lowercased.
+    assert.equal(
+      isLikelyExampleLink("code example github.com /repo/tree/main/examples"),
+      true,
+    );
+    assert.equal(isLikelyExampleLink("github.com /repo/example/foo.py"), true);
+    assert.equal(
+      isLikelyExampleLink("quickstart docs.example.io /quickstart"),
+      true,
+    );
+    assert.equal(
+      isLikelyExampleLink("getting started site /getting-started"),
+      true,
+    );
+    assert.equal(isLikelyExampleLink("tutorial site /tutorial/intro"), true);
+    assert.equal(
+      isLikelyExampleLink("notebook github.com /repo/demo.ipynb"),
+      true,
+    );
+    assert.equal(
+      isLikelyExampleLink("open in colab colab.research.google.com /drive/x"),
+      true,
+    );
+    // Non-example links (docs, api, generic) must not be mislabeled.
+    assert.equal(
+      isLikelyExampleLink("api docs.example.io /api/v1/health"),
+      false,
+    );
+    assert.equal(isLikelyExampleLink("documentation site /docs/intro"), false);
+    assert.equal(isLikelyExampleLink(""), false);
+    assert.equal(isLikelyExampleLink(undefined), false);
   });
 
   test("resolves hostnames before treating probe URLs as safe", async () => {

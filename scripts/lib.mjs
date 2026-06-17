@@ -1814,6 +1814,24 @@ export const README_KIND_LIMITS = {
   website: 1,
 };
 
+// #1008: detect a code-example / quickstart link from a normalized haystack
+// (`"<label> <hostname> <pathname>"`, lowercased). `/example` matches both
+// `/example/` and `/examples/`. Pure + exported so the discovery classifier and
+// its tests share one definition. Callers check this AHEAD of the generic
+// api/docs heuristics so an examples dir is not mis-bucketed.
+export function isLikelyExampleLink(haystack) {
+  if (typeof haystack !== "string") return false;
+  return (
+    haystack.includes("/example") ||
+    haystack.includes("quickstart") ||
+    haystack.includes("quick-start") ||
+    haystack.includes("getting-started") ||
+    haystack.includes("/tutorial") ||
+    haystack.includes(".ipynb") ||
+    haystack.includes("colab.research.google")
+  );
+}
+
 const GENERIC_README_REFERENCE_HOSTS = [
   "arxiv.org",
   "astral.sh",

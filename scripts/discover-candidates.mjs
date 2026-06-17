@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   buildTimestamp,
   isBrandImpersonationUrl,
+  isLikelyExampleLink,
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   loadNativeSnapshot,
@@ -1327,6 +1328,13 @@ function classifyDiscoveredLink(url, label, baseUrl) {
 
   if (haystack.includes("openapi") || haystack.includes("swagger")) {
     return { kind: "openapi", label: "OpenAPI surface" };
+  }
+  // #1008: code-examples — quickstarts, example dirs, SDK snippets, notebooks.
+  // Checked ahead of the generic api/docs heuristics so an `/examples/` path or a
+  // "quickstart" link is indexed as an example, not mis-bucketed as a docs/API
+  // surface. Shared predicate (isLikelyExampleLink) so the test pins the logic.
+  if (isLikelyExampleLink(haystack)) {
+    return { kind: "example", label: "code example" };
   }
   if (
     haystack.includes("leaderboard") ||
