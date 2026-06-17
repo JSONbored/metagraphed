@@ -11,7 +11,8 @@ dependencies.
 ## Install
 
 ```bash
-pip install metagraphed
+pip install metagraphed              # dependency-free sync client
+pip install 'metagraphed[async]'     # adds the async client (pulls httpx)
 ```
 
 ## Usage
@@ -69,6 +70,51 @@ for page in client.paginate("/api/v1/subnets", query={"limit": 100}):
 # Call the read-only Subtensor RPC proxy and get back the JSON-RPC result:
 info = metagraphed_rpc("finney", "system_health")
 ```
+
+### `fetch_all` + typed models
+
+```python
+from metagraphed import MetagraphedClient
+
+client = MetagraphedClient(retries=3)
+
+# Auto-paginate a list endpoint and collect every item (flattened data arrays):
+all_surfaces = client.fetch_all("/api/v1/surfaces")
+
+# Typed convenience methods — IDE autocomplete, while .raw keeps the full dict:
+for subnet in client.subnets():
+    print(subnet.netuid, subnet.name, subnet.integration_readiness)
+
+catalog = client.agent_catalog(7)  # -> AgentCatalogSubnet
+print(catalog.service_count, catalog.services)
+```
+
+`fetch` / `fetch_all` still return raw dicts; the models (`Subnet`, `Surface`,
+`Endpoint`, `Provider`, `AgentCatalogSubnet`) are opt-in and never lose data.
+
+### Async client (httpx)
+
+Install the extra (`pip install 'metagraphed[async]'`), then fetch many subnets
+concurrently — no hand-rolled threads:
+
+```python
+import asyncio
+from metagraphed import AsyncMetagraphedClient
+
+async def main():
+    async with AsyncMetagraphedClient(retries=3) as client:
+        subnets = await client.subnets()  # typed, auto-paginated
+        catalogs = await asyncio.gather(
+            *(client.agent_catalog(s.netuid) for s in subnets[:10])
+        )
+        for c in catalogs:
+            print(c.netuid, c.service_count)
+
+asyncio.run(main())
+```
+
+The async client mirrors the sync one (`fetch` / `paginate` / `fetch_all` /
+`rpc` + retries/backoff) and reuses a single connection pool.
 
 ## Versioning & stability
 

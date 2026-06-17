@@ -18,6 +18,12 @@ classifiers = [
   "Typing :: Typed",
 ]
 
+# The base package is dependency-free (stdlib only). The async client pulls
+# httpx behind this extra: `pip install 'metagraphed[async]'`.
+[project.optional-dependencies]
+async = ["httpx>=0.27"]
+test = ["httpx>=0.27"]
+
 [project.urls]
 Homepage = "https://metagraph.sh"
 Repository = "https://github.com/JSONbored/metagraphed"

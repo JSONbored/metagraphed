@@ -853,6 +853,37 @@ export function sanitizeFixtureBody(
   return walk(value, 0);
 }
 
+// Bounded reference to a captured live request/response fixture (#748). Gives an
+// agent reading a subnet's callable services enough to see the example REQUEST
+// (method + url) and the response shape (status + content_type) inline, plus
+// artifact_path to fetch the full sanitized body (GET
+// /metagraph/fixtures/{surface_id}.json, also the get_fixture MCP tool). The
+// body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
+// stays lean and the one already-sanitized copy is served from a single place.
+// Returns null when there is no fixture, so callers omit the field entirely.
+export function surfaceFixtureReference(surfaceId, fixture) {
+  if (!surfaceId || !fixture || typeof fixture !== "object") {
+    return null;
+  }
+  const request = fixture.request || {};
+  const response = fixture.response || {};
+  return {
+    captured_at: fixture.captured_at || null,
+    request: {
+      method: typeof request.method === "string" ? request.method : "GET",
+      url: typeof request.url === "string" ? request.url : null,
+    },
+    response: {
+      status: Number.isInteger(response.status) ? response.status : null,
+      content_type:
+        typeof response.content_type === "string"
+          ? response.content_type
+          : null,
+    },
+    artifact_path: `/metagraph/fixtures/${surfaceId}.json`,
+  };
+}
+
 export function normalizePublicUrl(value) {
   if (typeof value !== "string") {
     return null;

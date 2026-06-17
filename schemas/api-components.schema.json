@@ -217,6 +217,9 @@
                       "additionalProperties": true,
                       "type": "object"
                     },
+                    "fixture": {
+                      "$ref": "#/components/schemas/SurfaceFixtureReference"
+                    },
                     "health": {
                       "additionalProperties": true,
                       "type": "object"
@@ -9212,6 +9215,70 @@
           "auth_required",
           "authority",
           "public_safe"
+        ],
+        "type": "object"
+      },
+      "SurfaceFixtureReference": {
+        "additionalProperties": false,
+        "description": "Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool).",
+        "properties": {
+          "artifact_path": {
+            "description": "Public artifact path of the full sanitized fixture.",
+            "type": "string"
+          },
+          "captured_at": {
+            "description": "When the sample was captured.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "method": {
+                "type": "string"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "method",
+              "url"
+            ],
+            "type": "object"
+          },
+          "response": {
+            "additionalProperties": false,
+            "properties": {
+              "content_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "request",
+          "response",
+          "artifact_path"
         ],
         "type": "object"
       },

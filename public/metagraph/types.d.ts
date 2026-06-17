@@ -1051,6 +1051,7 @@ export interface components {
                 eligibility?: {
                     [key: string]: unknown;
                 };
+                fixture?: components["schemas"]["SurfaceFixtureReference"];
                 health?: {
                     [key: string]: unknown;
                 };
@@ -3323,6 +3324,24 @@ export interface components {
                 status_code?: number | null;
                 topics?: string[];
                 verified_at?: string;
+            };
+        };
+        /** @description Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool). */
+        SurfaceFixtureReference: {
+            /** @description Public artifact path of the full sanitized fixture. */
+            artifact_path: string;
+            /**
+             * Format: date-time
+             * @description When the sample was captured.
+             */
+            captured_at?: string | null;
+            request: {
+                method: string;
+                url: string | null;
+            };
+            response: {
+                content_type?: string | null;
+                status: number | null;
             };
         };
         /** @enum {unknown} */

@@ -14,7 +14,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from importlib.metadata import PackageNotFoundError, version as _package_version
-from typing import Any, Iterator, Mapping, Optional, Sequence
+from typing import Any, Iterator, List, Mapping, Optional, Sequence
+
+from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
 # Single source of truth = the package metadata (pyproject.toml `version`, which
 # release-please bumps); read it at runtime so the User-Agent can never disagree
@@ -207,6 +209,34 @@ def metagraphed_paginate(
             return
 
 
+def metagraphed_fetch_all(
+    path: str,
+    *,
+    base_url: str = DEFAULT_BASE_URL,
+    path_params: Optional[Mapping[str, Any]] = None,
+    query: Optional[Mapping[str, Any]] = None,
+    headers: Optional[Mapping[str, str]] = None,
+    timeout: float = 30.0,
+    retries: int = 0,
+) -> List[Any]:
+    """Follow pagination for a list endpoint and return every item — the
+    flattened ``data`` arrays across all pages."""
+    items: List[Any] = []
+    for page in metagraphed_paginate(
+        path,
+        base_url=base_url,
+        path_params=path_params,
+        query=query,
+        headers=headers,
+        timeout=timeout,
+        retries=retries,
+    ):
+        data = page.get("data") if isinstance(page, dict) else None
+        if isinstance(data, list):
+            items.extend(data)
+    return items
+
+
 def metagraphed_rpc(
     network: str,
     method: str,
@@ -343,3 +373,57 @@ class MetagraphedClient:
             timeout=self.timeout,
             request_id=request_id,
         )
+
+    def fetch_all(
+        self,
+        path: str,
+        *,
+        path_params: Optional[Mapping[str, Any]] = None,
+        query: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+    ) -> List[Any]:
+        """Follow pagination and return every item (flattened ``data`` arrays)."""
+        return metagraphed_fetch_all(
+            path,
+            base_url=self.base_url,
+            path_params=path_params,
+            query=query,
+            headers=headers,
+            timeout=self.timeout,
+            retries=self.retries,
+        )
+
+    # -- typed convenience methods (the raw-dict path stays via fetch/fetch_all) --
+
+    def subnets(self, **query: Any) -> List[Subnet]:
+        """Every subnet as a typed :class:`~metagraphed.models.Subnet`."""
+        return Subnet.list_from(
+            self.fetch_all("/api/v1/subnets", query=query or None)
+        )
+
+    def surfaces(self, **query: Any) -> List[Surface]:
+        """Every surface as a typed :class:`~metagraphed.models.Surface`."""
+        return Surface.list_from(
+            self.fetch_all("/api/v1/surfaces", query=query or None)
+        )
+
+    def endpoints(self, **query: Any) -> List[Endpoint]:
+        """Every endpoint as a typed :class:`~metagraphed.models.Endpoint`."""
+        return Endpoint.list_from(
+            self.fetch_all("/api/v1/endpoints", query=query or None)
+        )
+
+    def providers(self, **query: Any) -> List[Provider]:
+        """Every provider as a typed :class:`~metagraphed.models.Provider`."""
+        return Provider.list_from(
+            self.fetch_all("/api/v1/providers", query=query or None)
+        )
+
+    def agent_catalog(self, netuid: Any) -> AgentCatalogSubnet:
+        """One subnet's agent catalog as a typed
+        :class:`~metagraphed.models.AgentCatalogSubnet`."""
+        envelope = self.fetch(
+            "/api/v1/agent-catalog/{netuid}", path_params={"netuid": netuid}
+        )
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        return AgentCatalogSubnet.from_dict(data)

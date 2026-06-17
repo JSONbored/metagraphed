@@ -771,6 +771,41 @@
           }
         ]
       },
+      "SurfaceFixtureReference": {
+        "type": "object",
+        "description": "Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool).",
+        "required": ["request", "response", "artifact_path"],
+        "properties": {
+          "captured_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the sample was captured."
+          },
+          "request": {
+            "type": "object",
+            "required": ["method", "url"],
+            "properties": {
+              "method": { "type": "string" },
+              "url": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "response": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "type": ["integer", "null"] },
+              "content_type": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "artifact_path": {
+            "type": "string",
+            "description": "Public artifact path of the full sanitized fixture."
+          }
+        },
+        "additionalProperties": false
+      },
       "AgentCatalogSubnetArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -820,6 +855,9 @@
                     "eligibility": {
                       "type": "object",
                       "additionalProperties": true
+                    },
+                    "fixture": {
+                      "$ref": "#/components/schemas/SurfaceFixtureReference"
                     }
                   },
                   "additionalProperties": true

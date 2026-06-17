@@ -112,14 +112,28 @@ for (const workflow of workflows) {
     );
   }
   if (workflow === "validate.yml") {
+    // The routing diff lives in the classify-validation-route composite action
+    // (shared by the parallel test + checks jobs); the deletion-filtered
+    // verification is consumed back in this workflow.
+    const routeAction = await fs.readFile(
+      path.join(
+        repoRoot,
+        ".github/actions/classify-validation-route/action.yml",
+      ),
+      "utf8",
+    );
     check(
-      content.includes("git diff --name-only ") &&
-        content.includes("> changed-files.txt") &&
-        content.includes("--diff-filter=d") &&
-        content.includes("> submitted-artifact-files.txt") &&
-        content.includes("--changed-files submitted-artifact-files.txt"),
+      routeAction.includes("git diff --name-only ") &&
+        routeAction.includes("> changed-files.txt") &&
+        routeAction.includes("--diff-filter=d") &&
+        routeAction.includes("> submitted-artifact-files.txt"),
       workflow,
-      "validate workflow must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
+      "classify-validation-route action must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
+    );
+    check(
+      content.includes("--changed-files submitted-artifact-files.txt"),
+      workflow,
+      "validate workflow must verify submitted artifacts from the deletion-filtered list",
     );
   }
   if (workflow === "submission-gate.yml") {
