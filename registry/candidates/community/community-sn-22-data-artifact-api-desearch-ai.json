@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-22-data-artifact-api-desearch-ai",
+      "kind": "data-artifact",
+      "name": "Desearch community data-artifact",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.desearch.ai/openapi.json",
+      "source_urls": ["https://api.desearch.ai/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.desearch.ai/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
