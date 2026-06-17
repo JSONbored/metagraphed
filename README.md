@@ -1,6 +1,6 @@
 <div align="center">
 
-# Metagraphed
+<a href="https://metagraph.sh"><img src="https://raw.githubusercontent.com/JSONbored/metagraphed/main/public/brand/banner-readme-mint.png" alt="Metagraphed — Bittensor subnet operational layer · data hub · API" width="820"></a>
 
 ### Every subnet, metagraphed.
 
