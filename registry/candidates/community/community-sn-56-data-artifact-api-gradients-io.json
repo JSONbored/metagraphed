@@ -17,7 +17,7 @@
       "source_url": "https://api.gradients.io/docs",
       "source_urls": ["https://api.gradients.io/docs"],
       "state": "schema-valid",
-      "url": "https://api.gradients.io/v1/network/status"
+      "url": "https://api.gradients.io/v1/performance/weight-projection-static"
     }
   ],
   "schema_version": 1,
