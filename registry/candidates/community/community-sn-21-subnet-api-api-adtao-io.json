@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-21-subnet-api-api-adtao-io",
+      "kind": "subnet-api",
+      "name": "AdTAO community subnet-api",
+      "netuid": 21,
+      "provider": "adtao",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.adtao.io/openapi.json",
+      "source_urls": ["https://api.adtao.io/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.adtao.io/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
