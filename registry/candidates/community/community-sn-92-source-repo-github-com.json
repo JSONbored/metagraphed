@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-92-source-repo-github-com",
+      "kind": "source-repo",
+      "name": "wgmi community source-repo",
+      "netuid": 92,
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/tensorclaw/subnet-92",
+      "source_urls": ["https://github.com/tensorclaw/subnet-92"],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorclaw/subnet-92"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
