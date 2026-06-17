@@ -156,6 +156,21 @@ const HOMEPAGE_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>metagraphed API — Bittensor subnet operational registry</title>
 <meta name="description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0B1F1A">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="metagraphed">
+<meta property="og:title" content="metagraphed API — Bittensor subnet operational registry">
+<meta property="og:description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
+<meta property="og:url" content="https://${PRIMARY_DOMAIN}/">
+<meta property="og:image" content="https://${PRIMARY_DOMAIN}/brand/banner-og-social-mint.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Metagraphed — Bittensor subnet operational layer · data hub · API">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json">
 <link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
 <link rel="service-doc" href="/llms.txt" type="text/plain">
