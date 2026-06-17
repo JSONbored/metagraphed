@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-61-openapi-api-redteamsubnet-com",
+      "kind": "openapi",
+      "name": "RedTeam community openapi",
+      "netuid": 61,
+      "provider": "redteam",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://redteamsubnet.com/docs",
+      "source_urls": ["https://redteamsubnet.com/docs"],
+      "state": "schema-valid",
+      "url": "https://api.redteamsubnet.com/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
