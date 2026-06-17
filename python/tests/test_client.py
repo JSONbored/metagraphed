@@ -8,7 +8,10 @@ from unittest import mock
 from metagraphed import (
     MetagraphedClient,
     MetagraphedError,
+    Subnet,
+    Surface,
     metagraphed_fetch,
+    metagraphed_fetch_all,
     metagraphed_paginate,
     metagraphed_rpc,
 )
@@ -280,6 +283,52 @@ class ClientTest(unittest.TestCase):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_rpc("finney", "nope")
         self.assertIn("Method not found", str(ctx.exception))
+
+
+class FetchAllAndModelsTest(unittest.TestCase):
+    def _patch_pages(self, pages):
+        responses = iter(_FakeResponse(page) for page in pages)
+
+        def fake_urlopen(request, timeout=None):
+            return next(responses)
+
+        return mock.patch("urllib.request.urlopen", fake_urlopen)
+
+    def test_fetch_all_flattens_pages_following_cursor(self):
+        pages = [
+            {"data": [{"netuid": 1}], "meta": {"pagination": {"next_cursor": "c2"}}},
+            {"data": [{"netuid": 2}], "meta": {"pagination": {"next_cursor": None}}},
+        ]
+        with self._patch_pages(pages):
+            items = metagraphed_fetch_all("/api/v1/subnets")
+        self.assertEqual([item["netuid"] for item in items], [1, 2])
+
+    def test_subnets_convenience_returns_typed_models(self):
+        pages = [
+            {
+                "data": [{"netuid": 7, "name": "Allways", "categories": ["inference"]}],
+                "meta": {"pagination": {"next_cursor": None}},
+            }
+        ]
+        with self._patch_pages(pages):
+            subnets = MetagraphedClient().subnets()
+        self.assertIsInstance(subnets[0], Subnet)
+        self.assertEqual(subnets[0].netuid, 7)
+        self.assertEqual(subnets[0].name, "Allways")
+        self.assertEqual(subnets[0].categories, ["inference"])
+        self.assertEqual(subnets[0].raw["name"], "Allways")
+
+    def test_model_from_dict_ignores_unknown_and_keeps_raw(self):
+        surface = Surface.from_dict(
+            {"id": "x", "kind": "openapi", "unknown_field": 1}
+        )
+        self.assertEqual(surface.id, "x")
+        self.assertEqual(surface.kind, "openapi")
+        self.assertEqual(surface.raw["unknown_field"], 1)
+
+    def test_model_from_dict_tolerates_non_mapping(self):
+        self.assertEqual(Subnet.from_dict(None).raw, {})
+        self.assertIsNone(Subnet.from_dict(None).netuid)
 
 
 if __name__ == "__main__":
