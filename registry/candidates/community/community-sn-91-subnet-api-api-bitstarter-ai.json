@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-91-subnet-api-api-bitstarter-ai",
+      "kind": "subnet-api",
+      "name": "Bitstarter #1 community subnet-api",
+      "netuid": 91,
+      "provider": "bitstarter",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.bitstarter.ai/openapi.json",
+      "source_urls": ["https://api.bitstarter.ai/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.bitstarter.ai/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
