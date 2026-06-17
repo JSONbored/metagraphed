@@ -1108,6 +1108,74 @@ export function isHtmlContentType(value) {
     .includes("html");
 }
 
+// Conventional, read-only paths where a subnet or provider commonly exposes a
+// machine-readable OpenAPI 3.x (or legacy Swagger 2.0) document. Auto-discovery
+// (#1004) probes these on each known base origin to surface callable APIs the
+// registry can then validate, capture, and promote.
+export const OPENAPI_PROBE_PATHS = Object.freeze([
+  "/openapi.json",
+  "/swagger.json",
+  "/swagger/v1/swagger.json",
+  "/docs/openapi.json",
+  "/api/openapi.json",
+  "/api/v1/openapi.json",
+  "/v1/openapi.json",
+  "/.well-known/openapi.json",
+]);
+
+// Structural check that a parsed JSON value is a genuine OpenAPI/Swagger
+// document — not merely some JSON served at /openapi.json. Requires the version
+// marker plus the `info` and `paths` objects every spec carries, so a stray
+// config or error body never registers as a callable API. Pure + side-effect
+// free, so it is exhaustively unit-testable.
+export function isOpenApiDocument(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return false;
+  }
+  const version =
+    typeof body.openapi === "string"
+      ? body.openapi
+      : typeof body.swagger === "string"
+        ? body.swagger
+        : null;
+  // OpenAPI reports "3.x.y"; Swagger reports "2.0". Reject anything else.
+  if (!version || !/^[23]\.\d/.test(version)) {
+    return false;
+  }
+  const isPlainObject = (value) =>
+    Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  return isPlainObject(body.info) && isPlainObject(body.paths);
+}
+
+// Probe an ordered list of candidate spec paths on `origin`, returning the first
+// whose body is a valid OpenAPI/Swagger document as `{ url, document }`, or null
+// if none match. `fetcher(url)` owns all network + safety concerns (timeout,
+// body cap, private-IP/unsafe-URL block) and returns the parsed JSON body or
+// null; keeping it injectable leaves this orchestration pure and mock-driven in
+// tests. A fetcher that throws is treated as a miss for that path, so one bad
+// path never aborts the sweep.
+export async function probeOpenApiSpec(origin, paths, fetcher) {
+  let base;
+  try {
+    base = new URL(origin);
+  } catch {
+    return null;
+  }
+  for (const specPath of paths) {
+    const url = new URL(specPath, base).toString();
+    let body;
+    try {
+      body = await fetcher(url);
+    } catch {
+      continue;
+    }
+    if (isOpenApiDocument(body)) {
+      return { url, document: body };
+    }
+  }
+  return null;
+}
+
 export function buildTimestamp() {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
 }

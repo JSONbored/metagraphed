@@ -8,6 +8,8 @@ import {
   loadProviders,
   loadSubnets,
   nativeDisplayName,
+  OPENAPI_PROBE_PATHS,
+  probeOpenApiSpec,
   readJson,
   README_KIND_LIMITS,
   README_LINK_LIMIT,
@@ -53,6 +55,17 @@ const netuidsWithProjectDocs = new Set(
     )
     .map((overlay) => overlay.netuid),
 );
+// Subnets that already expose an `openapi` surface — nothing to auto-discover.
+const netuidsWithOpenapi = new Set(
+  existingOverlays
+    .filter((overlay) =>
+      (overlay.surfaces || []).some((surface) => surface.kind === "openapi"),
+    )
+    .map((overlay) => overlay.netuid),
+);
+// Body cap for an OpenAPI spec probe — generous enough for real specs while
+// bounding what a hostile path can stream back into the discovery process.
+const OPENAPI_SPEC_PROBE_MAX_BYTES = 2 * 1024 * 1024;
 const candidatesByKey = new Map();
 const candidateIds = new Set();
 const warnings = [];
@@ -68,6 +81,13 @@ await discoverUniversalTaoMarketCapDashboards();
 await discoverUniversalBackpropFinanceDashboards();
 await discoverUniversalTaostatsMetagraphDashboards();
 await discoverUniversalSubnetRadarDashboards();
+// OpenAPI auto-discovery probes already-known API/docs surfaces (local overlay
+// data) plus the discovered project websites, so it runs UNCONDITIONALLY —
+// independent of whether the flaky third-party index sources fell back to
+// restore mode — and before the website pass so a probe-confirmed spec wins the
+// de-dupe over the blind common-path guess (addCommonApiPathCandidates) for the
+// same URL. It is always freshly probed, so it is not part of the restore set.
+await discoverOpenApiSpecs();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
@@ -759,6 +779,115 @@ function addCommonApiPathCandidates(candidate, root) {
       review_notes:
         "Common read-only path discovered from a public project website root. Requires verification before promotion.",
     });
+  }
+}
+
+// #1004 — actively probe conventional OpenAPI/Swagger paths on each known base
+// origin and register an `openapi` candidate only when a path returns a VALID
+// spec document. Unlike the blind common-path guesses (addCommonApiPathCandidates),
+// these are confirmed by a safe, body-capped probe, so they enter at `medium`
+// confidence and feed the same verification + promotion + snapshot-openapi
+// pipeline as every other candidate.
+async function discoverOpenApiSpecs() {
+  await mapLimit(collectOpenApiBaseOrigins(), 8, async (target) => {
+    const match = await probeOpenApiSpec(
+      target.origin,
+      OPENAPI_PROBE_PATHS,
+      fetchOpenApiCandidate,
+    );
+    if (!match) {
+      return;
+    }
+    let hostSlug;
+    try {
+      hostSlug = slugify(new URL(target.origin).hostname);
+    } catch {
+      hostSlug = slugify(target.origin);
+    }
+    addCandidate({
+      id: `sn-${target.netuid}-openapi-probe-${hostSlug}`,
+      netuid: target.netuid,
+      name: `${displayNameForNetuid(target.netuid)} OpenAPI schema`,
+      kind: "openapi",
+      url: match.url,
+      source_url: target.origin,
+      source_type: "openapi-probe",
+      source_tier: "provider-claimed",
+      confidence: "medium",
+      provider: target.provider,
+      review_notes:
+        "OpenAPI/Swagger document confirmed by a safe probe (validated spec structure) at a conventional path. Requires maintainer review before promotion.",
+    });
+  });
+}
+
+// Distinct (netuid, provider, origin) base origins worth probing for a spec: the
+// project websites we have discovered plus any API/docs surfaces already known
+// for the subnet (specs frequently live on an `api.` subdomain, not the
+// marketing site). Subnets that already expose an `openapi` surface are skipped,
+// and a candidate with no resolvable provider is dropped (provider is required).
+function collectOpenApiBaseOrigins() {
+  const seen = new Set();
+  const targets = [];
+  const add = (netuid, provider, rawUrl) => {
+    if (netuid == null || !provider || netuidsWithOpenapi.has(netuid)) {
+      return;
+    }
+    const normalized = normalizePublicUrl(rawUrl);
+    if (!normalized) {
+      return;
+    }
+    let origin;
+    try {
+      const parsed = new URL(normalized);
+      if (isGenericHost(parsed.hostname)) {
+        return;
+      }
+      origin = parsed.origin;
+    } catch {
+      return;
+    }
+    const key = `${netuid}:${origin}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    targets.push({ netuid, provider, origin });
+  };
+
+  for (const candidate of candidatesByKey.values()) {
+    if (candidate.kind === "website") {
+      add(candidate.netuid, candidate.provider, candidate.url);
+    }
+  }
+  for (const overlay of existingOverlays) {
+    const provider = selectOverlayProvider(overlay);
+    for (const surface of overlay.surfaces || []) {
+      if (surface.kind === "subnet-api" || surface.kind === "docs") {
+        add(overlay.netuid, provider, surface.url);
+      }
+    }
+  }
+  return targets;
+}
+
+// Safe, body-capped JSON fetch for the spec probe: returns the parsed document
+// or null on any non-200, oversized, non-JSON, or unsafe/blocked response.
+// Delegates to fetchText, which enforces the timeout, byte cap, and
+// private-IP/unsafe-URL block (via fetchWithSafeRedirects).
+async function fetchOpenApiCandidate(url) {
+  const result = await fetchText(url, {
+    accept: "application/json",
+    maxBytes: OPENAPI_SPEC_PROBE_MAX_BYTES,
+    warn: false,
+  });
+  if (!result || result.status_code !== 200 || !result.text) {
+    return null;
+  }
+  try {
+    return JSON.parse(result.text);
+  } catch {
+    return null;
   }
 }
 
