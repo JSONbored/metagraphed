@@ -900,16 +900,25 @@ async function validateGeneratedArtifacts(
   const overlayByNetuid = new Map(
     overlays.map((overlay) => [overlay.netuid, overlay]),
   );
-  const candidatesByNetuid = Map.groupBy(
-    candidates,
-    (candidate) => candidate.netuid,
-  );
   const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const activeNetuids = new Set(nativeNetuids);
   const activeOverlays = overlays.filter((overlay) =>
     activeNetuids.has(overlay.netuid),
   );
   const surfaces = flattenSurfaces(activeOverlays);
+  // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate
+  // sharing a curated surface's registrySurfaceKey is already promoted, so the
+  // per-subnet detail artifact counts/lists only the non-superseded candidates.
+  const curatedSurfaceIdByRegistryKey = new Map(
+    surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+  );
+  const activeCandidatesByNetuid = Map.groupBy(
+    candidates.filter(
+      (candidate) =>
+        !curatedSurfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+    ),
+    (candidate) => candidate.netuid,
+  );
   const endpointsByNetuid = Map.groupBy(
     endpointsArtifact.endpoints || [],
     (endpoint) => endpoint.netuid,
@@ -925,7 +934,7 @@ async function validateGeneratedArtifacts(
           subnet: nativeSubnet,
         },
         overlayByNetuid.get(nativeSubnet.netuid),
-        candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+        activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
       ),
     ]),
   );
@@ -942,7 +951,8 @@ async function validateGeneratedArtifacts(
     const detailPath = artifactPath(`subnets/${subnet.netuid}.json`);
     try {
       const detailArtifact = await readJson(detailPath);
-      const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+      const subnetCandidates =
+        activeCandidatesByNetuid.get(subnet.netuid) || [];
       const subnetSurfaces = surfaces.filter(
         (surface) => surface.netuid === subnet.netuid,
       );

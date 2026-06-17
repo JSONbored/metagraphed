@@ -1039,6 +1039,106 @@ test("public artifacts are internally consistent", () => {
     candidates.candidates.some((candidate) => candidate.superseded_by),
     "expected at least one candidate to be superseded by a curated surface",
   );
+  // #1002 PR2: count propagation. A surface-superseded candidate is the curated
+  // surface already present in `surfaces`, so it must not be counted or listed as
+  // a distinct candidate. coverage keeps the raw registry totals (mirroring
+  // candidates.json), but every per-subnet count/list, profile, overview, and the
+  // enrichment/curation leaderboards drop the dupe.
+  const activeCandidates = candidates.candidates.filter(
+    (candidate) => !candidate.superseded_by,
+  );
+  const activeByNetuid = new Map();
+  for (const candidate of activeCandidates) {
+    activeByNetuid.set(
+      candidate.netuid,
+      (activeByNetuid.get(candidate.netuid) || 0) + 1,
+    );
+  }
+  const subnetNetuids = new Set(subnets.subnets.map((subnet) => subnet.netuid));
+  const perSubnetCandidateTotal = subnets.subnets.reduce(
+    (sum, subnet) => sum + subnet.candidate_count,
+    0,
+  );
+  assert.equal(
+    perSubnetCandidateTotal,
+    activeCandidates.filter((candidate) => subnetNetuids.has(candidate.netuid))
+      .length,
+    "per-subnet candidate_count must sum to the active (non-superseded) candidate count",
+  );
+  assert.ok(
+    perSubnetCandidateTotal < candidates.candidates.length,
+    "per-subnet candidate_count must exclude superseded candidates (dedup must fire)",
+  );
+  // coverage stays raw — its candidate_count mirrors the full candidates.json
+  // registry, so it is intentionally larger than the deduplicated per-subnet sum.
+  assert.ok(
+    coverage.candidate_count > perSubnetCandidateTotal,
+    "coverage.candidate_count (raw registry) must exceed the deduplicated per-subnet sum",
+  );
+  // Every subnet's index candidate_count equals its non-superseded candidate count.
+  for (const subnet of subnets.subnets) {
+    assert.equal(
+      subnet.candidate_count,
+      activeByNetuid.get(subnet.netuid) || 0,
+      `subnet ${subnet.netuid} candidate_count must equal its non-superseded candidate count`,
+    );
+  }
+  // Detail, profile, and overview agree on the deduplicated count and never
+  // re-list a candidate that collides with a curated surface. netuid 7 has
+  // superseded candidates, so this exercises the dedup, not a vacuous pass.
+  const subnetDetail7 = readArtifact("subnets/7.json");
+  const overview7 = readArtifact("overview/7.json");
+  const subnet7Index = subnets.subnets.find((subnet) => subnet.netuid === 7);
+  const rawCandidateCount7 = candidates.candidates.filter(
+    (candidate) => candidate.netuid === 7,
+  ).length;
+  assert.ok(
+    subnet7Index.candidate_count < rawCandidateCount7,
+    "netuid 7 candidate_count must drop its superseded candidates",
+  );
+  assert.equal(
+    subnetDetail7.candidate_surfaces.length,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(subnetDetail7.candidates.length, subnet7Index.candidate_count);
+  assert.equal(overview7.counts.candidates, subnet7Index.candidate_count);
+  assert.equal(
+    subnetProfile.profile.candidate_count,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(
+    subnetProfile.candidate_surfaces.length,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(
+    subnetProfile.candidate_surfaces.every(
+      (candidate) => !candidate.superseded_by,
+    ),
+    true,
+    "profile candidate_surfaces must exclude superseded candidates",
+  );
+  for (const candidate of subnetDetail7.candidate_surfaces) {
+    assert.equal(
+      surfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+      false,
+      `subnets/7 candidate_surfaces must exclude candidate ${candidate.id} colliding with a curated surface`,
+    );
+  }
+  // Leaderboards: the curation review counts the active candidates exactly; the
+  // enrichment queue never exceeds them (it further drops baseline-excluded ids).
+  for (const priority of reviewCuration.gap_priorities) {
+    assert.equal(
+      priority.candidate_count,
+      activeByNetuid.get(priority.netuid) || 0,
+      `curation review netuid ${priority.netuid} candidate_count must equal its non-superseded candidate count`,
+    );
+  }
+  for (const entry of enrichmentQueue.queue) {
+    assert.ok(
+      entry.candidate_count <= (activeByNetuid.get(entry.netuid) || 0),
+      `enrichment queue netuid ${entry.netuid} candidate_count must not exceed its non-superseded candidate count`,
+    );
+  }
   // #1007: corroboration — every candidate carries confirmed_by (distinct
   // discovery sources from source_urls); some are corroborated by 2+ sources.
   for (const candidate of candidates.candidates) {

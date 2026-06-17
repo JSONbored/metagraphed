@@ -109,14 +109,6 @@ const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),
 );
 const chainSubnets = nativeSnapshot.subnets;
-const candidatesByNetuid = groupByNetuid(candidates);
-const mergedSubnets = chainSubnets.map((nativeSubnet) =>
-  mergeSubnet(
-    nativeSubnet,
-    overlayByNetuid.get(nativeSubnet.netuid),
-    candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
-  ),
-);
 const activeOverlayNetuids = new Set(
   chainSubnets.map((subnet) => subnet.netuid),
 );
@@ -124,6 +116,37 @@ const activeOverlays = overlays.filter((overlay) =>
   activeOverlayNetuids.has(overlay.netuid),
 );
 const surfaces = flattenSurfaces(activeOverlays);
+// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
+// surface's (netuid | kind | normalized-url) identity is the same thing already
+// promoted to the registry — flag it `superseded_by` the surface (stamped onto
+// candidateIndex below) so it is neither queued for enrichment nor counted as a
+// separate, unverified duplicate. Computed here, ahead of the per-subnet counts,
+// so PR2's count propagation (candidate_count, coverage facets, per-subnet
+// candidate lists, the enrichment + curation leaderboards) excludes the dupe.
+// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
+const curatedSurfaceIdByRegistryKey = new Map(
+  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+);
+const supersededBySurfaceId = (candidate) =>
+  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
+// Raw grouping: registry-wide intake stats (coverage.candidate_count /
+// candidate_subnet_count) describe every candidate record, matching the full
+// candidates.json registry which retains superseded records (flagged).
+const candidatesByNetuid = groupByNetuid(candidates);
+// Dedup'd grouping: per-subnet candidate_count + candidate lists drop superseded
+// duplicates — a superseded candidate IS the curated surface already in
+// `surfaces`, so counting/listing it again is the "shown twice" bug (#1002).
+const activeCandidates = candidates.filter(
+  (candidate) => !supersededBySurfaceId(candidate),
+);
+const activeCandidatesByNetuid = groupByNetuid(activeCandidates);
+const mergedSubnets = chainSubnets.map((nativeSubnet) =>
+  mergeSubnet(
+    nativeSubnet,
+    overlayByNetuid.get(nativeSubnet.netuid),
+    activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+  ),
+);
 const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
@@ -460,7 +483,9 @@ const endpointIncidents = buildEndpointIncidentArtifact({
 const curationReview = buildCurationReview(
   mergedSubnets,
   surfaces,
-  candidates,
+  // #1002: the curation/adapter review leaderboard counts un-promoted candidates
+  // only — a surface-superseded candidate is already curated, not a review target.
+  activeCandidates,
   verification,
   reviewDecisions,
 );
@@ -575,16 +600,12 @@ const coverage = {
   ),
 };
 
-// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
-// surface's (netuid | kind | normalized-url) identity is the same thing already
-// promoted to the registry — flag it `superseded_by` the surface so it is not
-// presented or queued for enrichment as a separate, unverified duplicate.
-// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
-const curatedSurfaceIdByRegistryKey = new Map(
-  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
-);
-const supersededBySurfaceId = (candidate) =>
-  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
+// #1002: superseded_by is computed once above (curatedSurfaceIdByRegistryKey /
+// supersededBySurfaceId), ahead of the per-subnet counts; stamp it onto every
+// candidate here. The full candidates.json registry keeps superseded records,
+// flagged, for transparency + the dedup link; the *_active indexes below drop
+// them so per-subnet counts/lists, profiles, and the enrichment/curation
+// leaderboards present each (netuid, kind, url) exactly once.
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
@@ -608,9 +629,22 @@ const canonicalCandidateIndex = candidates.map((candidate) => ({
     nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
       ?.name || null,
 }));
+// Dedup'd projections of the candidate index (drop surface-superseded dupes) for
+// the per-subnet detail/profile candidate lists + the enrichment queue (#1002).
+const activeCandidateIndex = candidateIndex.filter(
+  (candidate) => !candidate.superseded_by,
+);
+const activeCanonicalCandidateIndex = canonicalCandidateIndex.filter(
+  (candidate) => !candidate.superseded_by,
+);
 
 const profileArtifacts = buildSubnetProfileArtifacts({
-  candidates: canonicalCandidateIndex,
+  // #1002: profile candidate_count + identity_evidence (promotion targeting) read
+  // only un-promoted candidates — a surface-superseded candidate is already a
+  // curated surface, so it neither inflates the count nor "needs promotion".
+  // completeness_score ignores candidates entirely, so the SN74 flywheel is
+  // untouched.
+  candidates: activeCanonicalCandidateIndex,
   endpoints: endpointResources.endpoints,
   healthSurfaces: healthArtifacts.latest.surfaces,
   nativeIdentitiesByNetuid: new Map(
@@ -692,6 +726,12 @@ const readinessByNetuid = new Map(
         ?.completeness_score,
       sourceRepo: subnet.source_repo,
       docsUrl: subnet.docs_url,
+      // Intentionally the raw grouping (not activeCandidatesByNetuid): readiness
+      // is a score, not a count. has_candidate_api credits that a community
+      // operational surface was flagged for this subnet; once it's promoted to a
+      // curated surface it's already captured by has_callable_api, so excluding
+      // the superseded candidate would only drop a redundant +4 from an
+      // already-more-ready subnet. Counts dedup (#1002); this score does not.
       candidates: candidatesByNetuid.get(subnet.netuid),
     }),
   ]),
@@ -707,7 +747,8 @@ for (const profile of profileArtifacts.profiles) {
   profile.readiness = readiness;
 }
 const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
-  candidates: canonicalCandidateIndex,
+  // #1002: the enrichment leaderboard counts un-promoted candidates only.
+  candidates: activeCanonicalCandidateIndex,
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
@@ -898,7 +939,10 @@ await writeJson(artifactFile("lineage.json"), {
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
 await fs.rm(r2ArtifactDir("profiles"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
-  const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+  // #1002: per-subnet candidate lists drop surface-superseded dupes so an agent
+  // sees each (netuid, kind, url) once — as a verified surface, not also as a
+  // candidate. The full candidates.json registry still carries the flagged dupe.
+  const subnetCandidates = activeCandidatesByNetuid.get(subnet.netuid) || [];
   const subnetSurfaces = surfaces.filter(
     (surface) => surface.netuid === subnet.netuid,
   );
@@ -922,7 +966,7 @@ for (const subnet of mergedSubnets) {
     generated_at: generatedAt,
     profile: profileArtifacts.byNetuid.get(subnet.netuid),
     subnet,
-    candidate_surfaces: candidateIndex.filter(
+    candidate_surfaces: activeCandidateIndex.filter(
       (candidate) => candidate.netuid === subnet.netuid,
     ),
     endpoints: subnetEndpoints,
@@ -1146,7 +1190,8 @@ const overviewGapPriorities = groupByNetuid(
   curationReview.gap_priorities || [],
 );
 const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
-const overviewCandidatesByNetuid = groupByNetuid(candidateIndex);
+// #1002: overview counts.candidates is a per-subnet count → exclude superseded.
+const overviewCandidatesByNetuid = groupByNetuid(activeCandidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
   const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
@@ -5741,11 +5786,17 @@ function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
     ).length * 8;
   const machineReviewPenalty =
     subnet.curation.review_state === "maintainer-reviewed" ? -25 : 20;
-  return (
+  // Floor at 0: priority_score is a non-negative ranking signal (schema requires
+  // >= 0). A maintainer-reviewed subnet with no high-value gaps and few candidates
+  // is already lowest priority — the maintainer-reviewed penalty must not push it
+  // negative. (Pre-#1002 this never tripped only because superseded duplicates
+  // inflated candidatesForSubnet.length above the penalty; the dedup exposed it.)
+  return Math.max(
+    0,
     highValueMissing.length * 12 +
-    candidatesForSubnet.length +
-    adapterBonus +
-    machineReviewPenalty
+      candidatesForSubnet.length +
+      adapterBonus +
+      machineReviewPenalty,
   );
 }
 
