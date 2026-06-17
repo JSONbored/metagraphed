@@ -13,7 +13,7 @@
   ],
   "source_repo": "https://github.com/macrocosm-os/mainframe",
   "dashboard_url": "https://taomarketcap.com/subnets/25",
-  "website_url": null,
+  "website_url": "https://macrocosmos.ai/sn25",
   "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted.",
   "curation": {
     "level": "maintainer-reviewed",
@@ -41,7 +41,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/mainframe"],
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
