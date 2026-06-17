@@ -209,6 +209,7 @@ const RPC_CALLS = [
 const SURFACES = [
   {
     surface_id: "sn7-api",
+    surface_key: "srf-sn7apikey000000",
     netuid: 7,
     kind: "subnet-api",
     url: "https://api.example.dev",
@@ -222,6 +223,7 @@ const SURFACES = [
   },
   {
     surface_id: "opentensor-finney-rpc",
+    surface_key: "srf-rootrpckey00000",
     netuid: 0,
     kind: "subtensor-rpc",
     url: "https://entrypoint-finney.opentensor.ai",
@@ -285,6 +287,15 @@ describe("runHealthProber", () => {
     // One batch with 4 statements (2 surfaces × {check insert, status upsert}).
     assert.equal(db.calls.batches.length, 1);
     assert.equal(db.calls.batches[0].length, 4);
+
+    // #1005: both the append-only time-series and the latest-row upsert carry the
+    // stable surface_key (binds[1]) so D1 history re-keys onto the rename-stable
+    // identity. surface_checks binds: [surface_id, surface_key, netuid, ...].
+    const checkInsert = db.calls.batches[0].find(
+      (s) =>
+        /INSERT INTO surface_checks/.test(s.sql) && s.binds[0] === "sn7-api",
+    );
+    assert.equal(checkInsert.binds[1], "srf-sn7apikey000000");
 
     const current = kv.json(KV_HEALTH_CURRENT);
     assert.equal(current.summary.surface_count, 2);
@@ -401,9 +412,11 @@ describe("runHealthProber", () => {
       /INSERT INTO surface_status/.test(s.sql),
     );
     const apiUpsert = upserts.find((s) => s.binds[0] === "sn7-api");
-    // binds: [surface_id, netuid, kind, url, provider, status, classification,
-    //         latency_ms, status_code, last_checked, last_ok, consec, updated_at]
-    assert.equal(apiUpsert.binds[11], 3);
+    // binds: [surface_id, surface_key, netuid, kind, url, provider, status,
+    //   classification, latency_ms, status_code, last_checked, last_ok, consec,
+    //   updated_at] — #1005 added surface_key at index 1, shifting the rest by 1.
+    assert.equal(apiUpsert.binds[1], "srf-sn7apikey000000");
+    assert.equal(apiUpsert.binds[12], 3);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {

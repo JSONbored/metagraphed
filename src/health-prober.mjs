@@ -400,6 +400,8 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     const consecutiveFailures = ok ? 0 : (prior?.consecutive_failures ?? 0) + 1;
     return {
       surface_id: surface.surface_id,
+      // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.
+      surface_key: surface.surface_key ?? null,
       netuid: surface.netuid,
       kind: surface.kind,
       provider: surface.provider || null,
@@ -437,14 +439,20 @@ async function persistToD1(db, probed, runAt) {
   try {
     const checkStmt = db.prepare(
       `INSERT INTO surface_checks
-       (surface_id, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (surface_id, surface_key, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    // #1005: surface_key is written alongside surface_id and back-filled onto the
+    // existing latest row via the ON CONFLICT(surface_id) UPDATE — so once every
+    // surface has been probed once post-migration, surface_status carries the
+    // stable key the serving cutover (PR3) joins on. Conflict target stays
+    // surface_id (unchanged behavior); PR3 owns the key-based read path.
     const statusStmt = db.prepare(
       `INSERT INTO surface_status
-       (surface_id, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (surface_id, surface_key, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(surface_id) DO UPDATE SET
+         surface_key=excluded.surface_key,
          netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
@@ -457,6 +465,7 @@ async function persistToD1(db, probed, runAt) {
       statements.push(
         checkStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.status,
@@ -468,6 +477,7 @@ async function persistToD1(db, probed, runAt) {
         ),
         statusStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.url,
@@ -598,10 +608,13 @@ export async function rollupDailyUptime(env, overrides = {}) {
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
   const stmt = db.prepare(
     `INSERT INTO surface_uptime_daily
-       (surface_id, netuid, day, samples, ok_count, uptime_ratio,
+       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
         avg_latency_ms, status, updated_at)
      SELECT
        surface_id,
+       -- #1005: surface_key is functionally dependent on surface_id within the
+       -- raw checks, so MAX() picks it deterministically per group.
+       MAX(surface_key) AS surface_key,
        netuid,
        ? AS day,
        COUNT(*) AS samples,
@@ -618,6 +631,7 @@ export async function rollupDailyUptime(env, overrides = {}) {
      WHERE checked_at >= ? AND checked_at < ?
      GROUP BY surface_id, netuid
      ON CONFLICT(surface_id, day) DO UPDATE SET
+       surface_key = excluded.surface_key,
        netuid = excluded.netuid,
        samples = excluded.samples,
        ok_count = excluded.ok_count,

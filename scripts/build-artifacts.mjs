@@ -2238,6 +2238,11 @@ const operationalSurfaces = surfaces
   )
   .map((surface) => ({
     surface_id: surface.id,
+    // #1005: the stable identity (srf-<hash of netuid|kind|url>) the prober
+    // re-keys D1 health history onto, so a display-name/slug rename no longer
+    // orphans the surface's probe history. The hand-authored surface_id stays
+    // for back-compat + display.
+    surface_key: surface.key,
     netuid: surface.netuid,
     subnet_slug: surface.subnet_slug,
     subnet_name: surface.subnet_name,
