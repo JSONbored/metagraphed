@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-4-openapi-api-targon-com",
+      "kind": "openapi",
+      "name": "Targon community openapi",
+      "netuid": 4,
+      "provider": "targon",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://targon.com/",
+      "source_urls": ["https://targon.com/"],
+      "state": "schema-valid",
+      "url": "https://api.targon.com/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
