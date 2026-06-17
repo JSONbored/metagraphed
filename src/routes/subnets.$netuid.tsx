@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -27,6 +27,7 @@ import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
+import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -34,10 +35,17 @@ import {
   subnetEndpointsQuery,
   subnetHealthQuery,
   subnetCandidatesQuery,
+  fixturesIndexQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import type { Endpoint, Surface, Candidate, SubnetProfile } from "@/lib/metagraphed/types";
+import type {
+  Endpoint,
+  Surface,
+  Candidate,
+  SubnetProfile,
+  FixtureIndexEntry,
+} from "@/lib/metagraphed/types";
 
 type SearchParams = {
   tab?: string;
@@ -660,6 +668,16 @@ function SchemasPanel({ netuid }: { netuid: number }) {
 
 function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }) {
   const { data } = useSuspenseQuery(subnetSurfacesQuery(netuid));
+  // #748: join surfaces with the fixtures index so a card can show a real
+  // captured request/response sample. The index fetch is skipped in the compact
+  // overview preview (fixtures render only in the full Surfaces tab).
+  const { data: fixturesRes } = useQuery({
+    ...fixturesIndexQuery(),
+    enabled: !compact,
+  });
+  const fixtureMap = new Map<string, FixtureIndexEntry>(
+    (fixturesRes?.data ?? []).map((f) => [f.surface_id, f]),
+  );
   const meta = data.meta;
   const rows = (data.data ?? []) as Surface[];
   if (rows.length === 0)
@@ -723,6 +741,9 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
                     <TimeAgo at={s.updated_at} />
                   </span>
                 </div>
+                {!compact && fixtureMap.has(s.id) ? (
+                  <SurfaceFixture surfaceId={s.id} entry={fixtureMap.get(s.id)!} />
+                ) : null}
               </li>
             ))}
           </ul>

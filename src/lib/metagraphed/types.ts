@@ -155,6 +155,27 @@ export interface Surface {
   [key: string]: unknown;
 }
 
+// Captured request/response fixtures (#748). The index lists which surfaces
+// carry a sanitized sample; the detail is the full sanitized request/response.
+export interface FixtureIndexEntry {
+  surface_id: string;
+  netuid?: number;
+  subnet_slug?: string | null;
+  kind?: string;
+  captured_at?: string | null;
+  response_status?: number | null;
+}
+
+export interface Fixture {
+  surface_id?: string;
+  netuid?: number;
+  kind?: string;
+  captured_at?: string | null;
+  request?: { method?: string; url?: string | null };
+  response?: { status?: number | null; content_type?: string | null; body?: unknown };
+  [key: string]: unknown;
+}
+
 export interface Endpoint {
   id: string;
   netuid?: number;

@@ -11,6 +11,8 @@ import type {
   Endpoint,
   EndpointIncident,
   EvidenceItem,
+  Fixture,
+  FixtureIndexEntry,
   Freshness,
   Gap,
   GlobalIncident,
@@ -492,6 +494,24 @@ export const subnetSurfacesQuery = (netuid: number) =>
       return { ...res, data: res.data.map(normalizeSurface) } as ApiResult<Surface[]>;
     },
     staleTime: STALE_MED,
+  });
+
+// #748: which surfaces carry a captured request/response sample (index), and
+// the full sanitized sample for one surface (detail, fetched lazily on expand).
+export const fixturesIndexQuery = () =>
+  queryOptions({
+    queryKey: k("fixtures-index"),
+    queryFn: async ({ signal }) =>
+      fetchList<FixtureIndexEntry>("/api/v1/fixtures", "fixtures", undefined, signal),
+    staleTime: STALE_LONG,
+  });
+
+export const fixtureDetailQuery = (surfaceId: string) =>
+  queryOptions({
+    queryKey: k("fixture-detail", surfaceId),
+    queryFn: async ({ signal }) =>
+      apiFetch<Fixture>(`/metagraph/fixtures/${surfaceId}.json`, { signal }),
+    staleTime: STALE_LONG,
   });
 
 export const subnetEndpointsQuery = (netuid: number) =>
