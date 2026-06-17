@@ -5693,6 +5693,13 @@ async function walkIfExists(dirPath, onFile) {
     throw error;
   }
   for (const entry of entries) {
+    // #1028: skip hidden files (macOS .DS_Store, AppleDouble ._*). They are not
+    // artifacts and their bytes vary, which polluted r2-manifest size/digest
+    // sums non-deterministically. Hidden directories (e.g. .well-known) are
+    // still walked — they hold real artifacts.
+    if (entry.isFile() && entry.name.startsWith(".")) {
+      continue;
+    }
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
       await walkIfExists(entryPath, onFile);

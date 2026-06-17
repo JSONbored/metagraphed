@@ -105,6 +105,12 @@ async function walk(dirPath, onFile) {
   }
 
   for (const entry of entries) {
+    // #1028: skip hidden files (macOS .DS_Store, AppleDouble ._*) — not
+    // artifacts; their bytes vary and would pollute size sums. Hidden
+    // directories (e.g. .well-known) still hold real artifacts, so walk them.
+    if (entry.isFile() && entry.name.startsWith(".")) {
+      continue;
+    }
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
       await walk(entryPath, onFile);
