@@ -68,6 +68,7 @@ import {
   listPromptDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
+import { buildChangelog } from "./changelog.mjs";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
@@ -2043,7 +2044,12 @@ const currentArtifactDigests = await collectArtifactDigests({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+// subnets/coverage are R2-only (#1003), so there is no committed baseline at
+// build time — previousSubnets/previousCoverage resolve to null and this emits
+// an EMPTY placeholder changelog. The real "since last publish" diff is computed
+// by scripts/build-changelog.mjs at publish time against the previous R2 publish.
 const changelogArtifact = buildChangelog({
+  contractVersion,
   currentArtifacts: currentArtifactDigests,
   currentCoverage: coverage,
   currentSubnets: { subnets: subnetIndex },
@@ -5393,132 +5399,6 @@ function sourceSnapshot(id, kind, sourcePath, value, recordCount, capturedAt) {
     captured_at: capturedAt || null,
     record_count: recordCount,
     hash: hashJson(value),
-  };
-}
-
-function buildChangelog({
-  currentArtifacts,
-  currentCoverage,
-  currentSubnets,
-  generatedAt: timestamp,
-  previousArtifacts,
-  previousCoverage,
-  previousSubnets,
-}) {
-  const previousMap = new Map(
-    previousArtifacts.map((artifact) => [artifact.path, artifact]),
-  );
-  const currentMap = new Map(
-    currentArtifacts.map((artifact) => [artifact.path, artifact]),
-  );
-  const addedArtifacts = currentArtifacts.filter(
-    (artifact) => !previousMap.has(artifact.path),
-  );
-  const removedArtifacts = previousArtifacts.filter(
-    (artifact) => !currentMap.has(artifact.path),
-  );
-  const modifiedArtifacts = currentArtifacts.filter((artifact) => {
-    const previous = previousMap.get(artifact.path);
-    return previous && previous.hash !== artifact.hash;
-  });
-
-  const subnetChanges = diffSubnets(
-    previousSubnets?.subnets || [],
-    currentSubnets.subnets || [],
-  );
-  const coverageDelta = previousCoverage
-    ? {
-        candidate_count: delta(
-          previousCoverage.candidate_count,
-          currentCoverage.candidate_count,
-        ),
-        curated_overlay_count: delta(
-          previousCoverage.curated_overlay_count,
-          currentCoverage.curated_overlay_count,
-        ),
-        native_only_count: delta(
-          previousCoverage.native_only_count,
-          currentCoverage.native_only_count,
-        ),
-        provider_count: null,
-        surface_count: delta(
-          previousCoverage.surface_count,
-          currentCoverage.surface_count,
-        ),
-      }
-    : null;
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: timestamp,
-    source: "generated-artifact-diff",
-    notes: [
-      "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
-      "Long-term historical runs are expected to live in R2 under versioned prefixes.",
-    ],
-    summary: {
-      artifact_added_count: addedArtifacts.length,
-      artifact_modified_count: modifiedArtifacts.length,
-      artifact_removed_count: removedArtifacts.length,
-      netuid_added_count: subnetChanges.added.length,
-      netuid_removed_count: subnetChanges.removed.length,
-      netuid_renamed_count: subnetChanges.renamed.length,
-      coverage_delta: coverageDelta,
-    },
-    artifacts: {
-      added: addedArtifacts.slice(0, 250),
-      modified: modifiedArtifacts.slice(0, 250),
-      removed: removedArtifacts.slice(0, 250),
-    },
-    subnets: subnetChanges,
-  };
-}
-
-function diffSubnets(previousSubnets, currentSubnets) {
-  const previousByNetuid = new Map(
-    previousSubnets.map((subnet) => [subnet.netuid, subnet]),
-  );
-  const currentByNetuid = new Map(
-    currentSubnets.map((subnet) => [subnet.netuid, subnet]),
-  );
-  const added = currentSubnets
-    .filter((subnet) => !previousByNetuid.has(subnet.netuid))
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      name: subnet.name,
-      slug: subnet.slug,
-    }));
-  const removed = previousSubnets
-    .filter((subnet) => !currentByNetuid.has(subnet.netuid))
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      name: subnet.name,
-      slug: subnet.slug,
-    }));
-  const renamed = currentSubnets
-    .filter(
-      (subnet) =>
-        previousByNetuid.has(subnet.netuid) &&
-        previousByNetuid.get(subnet.netuid).name !== subnet.name,
-    )
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      before: previousByNetuid.get(subnet.netuid).name,
-      after: subnet.name,
-    }));
-
-  return { added, removed, renamed };
-}
-
-function delta(before, after) {
-  if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return null;
-  }
-  return {
-    before,
-    after,
-    delta: after - before,
   };
 }
 

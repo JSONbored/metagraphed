@@ -86,6 +86,13 @@ const R2_ONLY_PATTERNS = [
   /^agent-resources\.json$/,
   /^lineage\.json$/,
   /^operational-surfaces\.json$/,
+  // The live-data seeds (#1003): the chain-snapshot subnet index + the coverage
+  // rollup. Non-reproducible (live-enriched), so they drove the bulk-refresh
+  // reproducibility wall (#998). Now R2-only; the changelog's "since last
+  // publish" diff is computed at publish time against the previous R2 publish
+  // (scripts/build-changelog.mjs), not a committed baseline.
+  /^subnets\.json$/,
+  /^coverage\.json$/,
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
@@ -123,26 +130,18 @@ const DUAL_PATTERNS = [
   /^build-summary\.json$/,
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
-  /^coverage\.json$/,
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
-  // subnets.json + coverage.json remain committed only as the changelog's diff
-  // baseline; they move to R2-only once that baseline is repointed to the last
-  // R2 publish (#1003 step 2).
-  /^subnets\.json$/,
   /^types\.d\.ts$/,
 ];
 
-// Dual-tier artifacts (committed + mirrored to R2) whose SERVING should prefer
-// the fresh R2 copy over the committed baseline. subnets/coverage carry
-// per-publish data (native_snapshot_captured_at, coverage counts) that the 6h
-// refresh advances, but the committed copy only changes on a code push — so the
-// default ASSETS-first dual resolution would pin them to a stale snapshot. They
-// serve R2-first, falling back to the committed copy when R2 is cold
-// (local/dev/CI). They remain committed only as the changelog diff baseline and
-// move fully to R2-only in #1003 step 2 (agent-catalog/agent-resources, the
-// other former entries, are now plain R2-only).
-const R2_PREFERRED_DUAL_PATTERNS = [/^coverage\.json$/, /^subnets\.json$/];
+// R2-preferred dual artifacts: now EMPTY. subnets/coverage were the last
+// members; they moved to plain R2-only (#1003), so no committed artifact needs
+// R2-first serving anymore — the only remaining dual artifacts are the
+// reproducible contract, which is correct to serve ASSETS-first. Kept as an
+// (empty) extension point and for the exported isR2PreferredDualArtifactPath()
+// contract.
+const R2_PREFERRED_DUAL_PATTERNS = [];
 
 export function isR2PreferredDualArtifactPath(artifactPath = "") {
   const normalized = artifactRelativePath(artifactPath);

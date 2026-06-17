@@ -1300,7 +1300,7 @@ export interface components {
                 artifact_removed_count: number;
                 coverage_delta: {
                     [key: string]: components["schemas"]["CoverageDelta"] | null;
-                };
+                } | null;
                 netuid_added_count: number;
                 netuid_removed_count: number;
                 netuid_renamed_count: number;

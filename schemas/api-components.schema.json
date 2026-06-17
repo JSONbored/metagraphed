@@ -1074,7 +1074,10 @@
                         }
                       ]
                     },
-                    "type": "object"
+                    "type": [
+                      "object",
+                      "null"
+                    ]
                   },
                   "netuid_added_count": {
                     "minimum": 0,
