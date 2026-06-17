@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-12-subnet-api-api-computehorde-io",
+      "kind": "subnet-api",
+      "name": "Compute Horde community subnet-api",
+      "netuid": 12,
+      "provider": "compute-horde",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.computehorde.io/openapi.json",
+      "source_urls": ["https://api.computehorde.io/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.computehorde.io/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
