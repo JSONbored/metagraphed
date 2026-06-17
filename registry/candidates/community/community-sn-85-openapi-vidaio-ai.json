@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-85-openapi-vidaio-ai",
+      "kind": "openapi",
+      "name": "Vidaio community openapi",
+      "netuid": 85,
+      "provider": "vidaio",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://vidaio.ai/",
+      "source_urls": ["https://vidaio.ai/"],
+      "state": "schema-valid",
+      "url": "https://vidaio.ai/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
