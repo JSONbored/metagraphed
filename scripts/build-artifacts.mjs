@@ -47,6 +47,7 @@ import {
   slugify,
   staleOperationalKinds,
   subnetLifecycle,
+  surfaceFixtureReference,
   writeJson,
 } from "./lib.mjs";
 import {
@@ -1142,6 +1143,13 @@ function buildSubnetServices(netuid) {
       // surface wins; otherwise the value derived from the captured spec's
       // securitySchemes. null when neither is present. Placeholders only.
       const authDetail = surface.auth || schema?.snapshot?.auth_detail || null;
+      // Captured live request/response sample for this surface (#748): a bounded
+      // reference (request + response shape + link to the full sanitized body),
+      // the natural companion to the call snippet. Present only when captured.
+      const fixtureRef = surfaceFixtureReference(
+        surface.id,
+        capturedFixtures.get(surface.id),
+      );
       return {
         surface_id: surface.id,
         kind: surface.kind,
@@ -1164,6 +1172,7 @@ function buildSubnetServices(netuid) {
           auth_schemes: authSchemes,
           auth: authDetail,
         }),
+        ...(fixtureRef ? { fixture: fixtureRef } : {}),
         schema_url: surface.schema_url || null,
         schema_status: surface.schema_status || null,
         schema_artifact: schema?.path || null,

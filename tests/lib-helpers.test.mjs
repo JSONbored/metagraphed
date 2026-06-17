@@ -33,6 +33,7 @@ import {
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
   sanitizeFixtureBody,
+  surfaceFixtureReference,
   writeJson,
 } from "../scripts/lib.mjs";
 
@@ -1116,5 +1117,57 @@ describe("subnetContact", () => {
     assert.equal(subnetContact(""), null);
     assert.equal(subnetContact(null), null);
     assert.equal(subnetContact(42), null);
+  });
+});
+
+describe("surfaceFixtureReference (#748)", () => {
+  const fixture = {
+    schema_version: 1,
+    surface_id: "allways-api-health",
+    netuid: 7,
+    kind: "subnet-api",
+    captured_at: "2026-06-16T12:00:00.000Z",
+    request: { method: "GET", url: "https://api.all-ways.io/health" },
+    response: {
+      status: 200,
+      content_type: "application/json",
+      body: { ok: true },
+    },
+  };
+
+  test("projects a bounded reference and links the full fixture artifact", () => {
+    const ref = surfaceFixtureReference("allways-api-health", fixture);
+    assert.deepEqual(ref, {
+      captured_at: "2026-06-16T12:00:00.000Z",
+      request: { method: "GET", url: "https://api.all-ways.io/health" },
+      response: { status: 200, content_type: "application/json" },
+      artifact_path: "/metagraph/fixtures/allways-api-health.json",
+    });
+  });
+
+  test("never inlines the response body (kept lean; body stays at artifact_path)", () => {
+    const ref = surfaceFixtureReference("allways-api-health", fixture);
+    assert.equal("body" in ref.response, false);
+    assert.equal(JSON.stringify(ref).includes('"ok"'), false);
+  });
+
+  test("defaults method to GET and tolerates missing optional fields", () => {
+    const ref = surfaceFixtureReference("sn-9-x", {
+      request: { url: "https://x.example/api" },
+      response: { status: 204 },
+    });
+    assert.equal(ref.request.method, "GET");
+    assert.equal(ref.captured_at, null);
+    assert.equal(ref.response.content_type, null);
+    assert.equal(ref.response.status, 204);
+    assert.equal(ref.artifact_path, "/metagraph/fixtures/sn-9-x.json");
+  });
+
+  test("returns null when there is no fixture or no surface id", () => {
+    assert.equal(surfaceFixtureReference("sn-9-x", null), null);
+    assert.equal(surfaceFixtureReference("sn-9-x", undefined), null);
+    assert.equal(surfaceFixtureReference("sn-9-x", "nope"), null);
+    assert.equal(surfaceFixtureReference("", fixture), null);
+    assert.equal(surfaceFixtureReference(null, fixture), null);
   });
 });
