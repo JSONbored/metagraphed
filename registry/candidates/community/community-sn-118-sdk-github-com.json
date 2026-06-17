@@ -14,10 +14,10 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://heyditto.ai/docs/mcp-server",
-      "source_urls": ["https://heyditto.ai/docs/mcp-server"],
+      "source_url": "https://heyditto.ai/docs",
+      "source_urls": ["https://heyditto.ai/docs"],
       "state": "schema-valid",
-      "url": "https://github.com/ditto-assistant/ditto-mcp"
+      "url": "https://github.com/ditto-assistant/ditto-hermes"
     }
   ],
   "schema_version": 1,
