@@ -14,8 +14,8 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://api.bitmind.ai/openapi.json",
-      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "source_url": "https://bitmind.ai/docs",
+      "source_urls": ["https://bitmind.ai/docs"],
       "state": "schema-valid",
       "url": "https://api.bitmind.ai/openapi.json"
     }
