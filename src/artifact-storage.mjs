@@ -77,6 +77,15 @@ const R2_ONLY_PATTERNS = [
   // dist/, served from R2; its diff baseline is still the committed subnets/
   // coverage seeds (unchanged), and dispatch-webhooks reads it tier-aware.
   /^changelog\.json$/,
+  // Agent-facing data indexes moved out of git (#1003, ADR-0006 end state): the
+  // capability catalog, the AI-resources index, the cross-network lineage map,
+  // and the cron prober's operational-surfaces list. All live-data/registry-
+  // derived and served tier-aware from R2; only the reproducible contract
+  // (openapi/types/contracts/api-index/schemas-index) stays committed.
+  /^agent-catalog\.json$/,
+  /^agent-resources\.json$/,
+  /^lineage\.json$/,
+  /^operational-surfaces\.json$/,
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
@@ -115,44 +124,25 @@ const DUAL_PATTERNS = [
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^coverage\.json$/,
-  // Operational-surfaces list: low-churn (changes only when the registry gains
-  // operational surfaces), read by the Worker cron prober at runtime via ASSETS.
-  // Committed + mirrored to R2 like the other small contract digests.
-  /^operational-surfaces\.json$/,
-  // Compact agent-catalog index (the per-subnet detail is R2-only above). Small,
-  // agent-facing; committed + mirrored so it's always available to MCP/agents.
-  /^agent-catalog\.json$/,
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
-  // subnets.json (124 KB) stays committed: the changelog diffs it against the
-  // committed HEAD version to produce the "what changed between publishes" feed.
+  // subnets.json + coverage.json remain committed only as the changelog's diff
+  // baseline; they move to R2-only once that baseline is repointed to the last
+  // R2 publish (#1003 step 2).
   /^subnets\.json$/,
-  // Cross-network lineage map (issue #353): small (~6 KB), agent-facing, low
-  // churn (changes only with chain identities); committed + mirrored like the
-  // other small contract digests.
-  /^lineage\.json$/,
-  // AI-resources index: the copyable agent + MCP + skill + APIs in one machine
-  // index; small, agent-facing, committed + mirrored.
-  /^agent-resources\.json$/,
   /^types\.d\.ts$/,
 ];
 
 // Dual-tier artifacts (committed + mirrored to R2) whose SERVING should prefer
-// the fresh R2 copy over the committed baseline. They carry per-publish data
-// (native_snapshot_captured_at, coverage counts, the callable-surface set) that
-// the 6h refresh advances, but the committed copy only changes on a code push —
-// so the default ASSETS-first dual resolution pins them to a stale snapshot. We
-// keep them committed (cold-start + the changelog diff / ci-verify read the
-// committed baseline) but serve R2-first, falling back to the committed copy
-// when R2 is cold (local/dev/CI). agent-catalog/agent-resources are included so
-// the MCP discovery tools (find_subnets_by_capability, find_subnet_for_task,
-// get_agent_catalog) reflect the refreshed callable set, not the frozen index.
-const R2_PREFERRED_DUAL_PATTERNS = [
-  /^coverage\.json$/,
-  /^subnets\.json$/,
-  /^agent-catalog\.json$/,
-  /^agent-resources\.json$/,
-];
+// the fresh R2 copy over the committed baseline. subnets/coverage carry
+// per-publish data (native_snapshot_captured_at, coverage counts) that the 6h
+// refresh advances, but the committed copy only changes on a code push — so the
+// default ASSETS-first dual resolution would pin them to a stale snapshot. They
+// serve R2-first, falling back to the committed copy when R2 is cold
+// (local/dev/CI). They remain committed only as the changelog diff baseline and
+// move fully to R2-only in #1003 step 2 (agent-catalog/agent-resources, the
+// other former entries, are now plain R2-only).
+const R2_PREFERRED_DUAL_PATTERNS = [/^coverage\.json$/, /^subnets\.json$/];
 
 export function isR2PreferredDualArtifactPath(artifactPath = "") {
   const normalized = artifactRelativePath(artifactPath);

@@ -16,10 +16,13 @@ const openapi = await readJson(
 );
 
 describe("committed cold-start seed gate", () => {
-  it("derives the DUAL-tier committed routes (incl. agent-catalog)", () => {
+  it("derives the DUAL-tier committed routes (only the contract stays committed)", () => {
     const paths = committedSeedRoutes().map((route) => route.path);
     expect(paths.length).toBeGreaterThan(0);
-    expect(paths).toContain("/api/v1/agent-catalog");
+    // The reproducible contract stays committed; live-data indexes (incl.
+    // agent-catalog) moved to R2-only (#1003), so they leave the seed set.
+    expect(paths).toContain("/api/v1");
+    expect(paths).not.toContain("/api/v1/agent-catalog");
     // Per-subnet detail is R2-only and must NOT be in scope (it 404s pre-build).
     expect(paths.every((p) => !p.includes("{"))).toBe(true);
   });
@@ -31,27 +34,25 @@ describe("committed cold-start seed gate", () => {
     expect(errors).toEqual([]);
   });
 
-  it("flags a stale agent-catalog seed missing readiness_tier", async () => {
-    // Build a deliberately-stale agent-catalog (readiness_tier stripped) and
-    // serve it from BOTH tiers the Worker may read (ASSETS + R2 archive), so the
-    // injection is robust to the R2-preferred-dual serving order. Every other
-    // path passes through to the real committed seed.
+  it("flags a committed contract seed that no longer matches the schema", async () => {
+    // Serve a deliberately-broken api-index — a route entry missing its required
+    // `id` — so the /api/v1 response fails the (strict) ApiRoute schema.
+    // api-index.json is a committed (dual) contract artifact served ASSETS-first,
+    // so overriding ASSETS for that one path injects the drift; every other path
+    // passes through to the real committed seed.
     const fresh = await readJson(
-      path.join(repoRoot, "public/metagraph/agent-catalog.json"),
+      path.join(repoRoot, "public/metagraph/api-index.json"),
     );
     const stale = structuredClone(fresh);
-    for (const subnet of stale.subnets ?? []) {
-      if (subnet.readiness) delete subnet.readiness.readiness_tier;
-    }
-    const isAgentCatalog = (value) =>
-      String(value).endsWith("agent-catalog.json");
+    if (stale.routes?.[0]) delete stale.routes[0].id;
+    const isApiIndex = (value) => String(value).endsWith("api-index.json");
 
     const base = createLocalArtifactEnv();
     const env = {
       ...base,
       ASSETS: {
         async fetch(request) {
-          if (isAgentCatalog(new URL(request.url).pathname)) {
+          if (isApiIndex(new URL(request.url).pathname)) {
             return new Response(JSON.stringify(stale), {
               status: 200,
               headers: { "content-type": "application/json" },
@@ -60,26 +61,11 @@ describe("committed cold-start seed gate", () => {
           return base.ASSETS.fetch(request);
         },
       },
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          if (isAgentCatalog(key)) {
-            return {
-              async json() {
-                return stale;
-              },
-              async text() {
-                return JSON.stringify(stale);
-              },
-            };
-          }
-          return base.METAGRAPH_ARCHIVE.get(key);
-        },
-      },
     };
 
     const { errors } = await runCommittedSeedGate({ env, openapi });
     const joined = errors.join("\n");
-    expect(joined).toMatch(/agent-catalog/);
-    expect(joined).toMatch(/readiness_tier/);
+    expect(joined).toMatch(/\/api\/v1\b/);
+    expect(joined).toMatch(/id/);
   });
 });
