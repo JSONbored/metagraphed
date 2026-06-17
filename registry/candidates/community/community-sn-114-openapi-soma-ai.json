@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-114-openapi-soma-ai",
+      "kind": "openapi",
+      "name": "SOMA community openapi",
+      "netuid": 114,
+      "provider": "soma",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://soma.ai/",
+      "source_urls": ["https://soma.ai/"],
+      "state": "schema-valid",
+      "url": "https://soma.ai/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
