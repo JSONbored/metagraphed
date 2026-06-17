@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-5-openapi-api-hone-training",
+      "kind": "openapi",
+      "name": "Hone community openapi",
+      "netuid": 5,
+      "provider": "hone",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://www.hone.training/",
+      "source_urls": ["https://www.hone.training/"],
+      "state": "schema-valid",
+      "url": "https://api.hone.training/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
