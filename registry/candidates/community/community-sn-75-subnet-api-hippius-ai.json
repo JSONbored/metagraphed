@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-75-subnet-api-hippius-ai",
+      "kind": "subnet-api",
+      "name": "Hippius community subnet-api",
+      "netuid": 75,
+      "provider": "hippius",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://hippius.ai/openapi.json",
+      "source_urls": ["https://hippius.ai/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://hippius.ai/api/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
