@@ -1,6 +1,6 @@
 {
-  "callable_service_count": 69,
-  "content_hash": "bfe3954f14c0485504a710a260d1d14f60bece781894d8885ba5b98ae2dba22a",
+  "callable_service_count": 71,
+  "content_hash": "14da2a33d6fbc95d5f842d9eef73f33e4f56cd532313c1735c2d03708a33a9d5",
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "published_at": null,
@@ -32,9 +32,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 100
       },
       "service_count": 4,
@@ -66,9 +70,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 100
       },
       "service_count": 13,
@@ -94,7 +102,7 @@
       ],
       "completeness_score": 70,
       "health": "unknown",
-      "integration_readiness": 75,
+      "integration_readiness": 86,
       "name": "Cacheon",
       "netuid": 14,
       "readiness": {
@@ -104,10 +112,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 75
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 86
       },
       "service_count": 1,
       "service_kinds": [
@@ -133,7 +145,7 @@
       ],
       "completeness_score": 85,
       "health": "unknown",
-      "integration_readiness": 85,
+      "integration_readiness": 96,
       "name": "Desearch",
       "netuid": 22,
       "readiness": {
@@ -143,10 +155,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 85
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 96
       },
       "service_count": 3,
       "service_kinds": [
@@ -169,7 +185,7 @@
       ],
       "completeness_score": 70,
       "health": "unknown",
-      "integration_readiness": 75,
+      "integration_readiness": 83,
       "name": "Trishool",
       "netuid": 23,
       "readiness": {
@@ -179,10 +195,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 75
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 83
       },
       "service_count": 1,
       "service_kinds": [
@@ -206,7 +226,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "Quasar",
       "netuid": 24,
       "readiness": {
@@ -216,10 +236,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 3,
       "service_kinds": [
@@ -243,7 +267,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 77,
       "name": "Coldint",
       "netuid": 29,
       "readiness": {
@@ -253,10 +277,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": false,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 77
       },
       "service_count": 1,
       "service_kinds": [
@@ -280,7 +308,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "ReadyAI",
       "netuid": 33,
       "readiness": {
@@ -290,10 +318,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 2,
       "service_kinds": [
@@ -310,7 +342,7 @@
       ],
       "completeness_score": 65,
       "health": "unknown",
-      "integration_readiness": 95,
+      "integration_readiness": 100,
       "name": "Zipcode",
       "netuid": 46,
       "readiness": {
@@ -320,10 +352,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 95
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 100
       },
       "service_count": 1,
       "service_kinds": [
@@ -344,7 +380,7 @@
       ],
       "completeness_score": 48,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 78,
       "name": "EvolAI",
       "netuid": 47,
       "readiness": {
@@ -354,10 +390,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 78
       },
       "service_count": 1,
       "service_kinds": [
@@ -383,7 +423,7 @@
       ],
       "completeness_score": 85,
       "health": "unknown",
-      "integration_readiness": 85,
+      "integration_readiness": 96,
       "name": "Nepher Robotics",
       "netuid": 49,
       "readiness": {
@@ -393,10 +433,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 85
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 96
       },
       "service_count": 2,
       "service_kinds": [
@@ -414,7 +458,7 @@
       ],
       "completeness_score": 65,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "lium.io",
       "netuid": 51,
       "readiness": {
@@ -424,10 +468,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -461,9 +509,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 100
       },
       "service_count": 5,
@@ -491,7 +543,7 @@
       ],
       "completeness_score": 85,
       "health": "unknown",
-      "integration_readiness": 90,
+      "integration_readiness": 100,
       "name": "Handshake58",
       "netuid": 58,
       "readiness": {
@@ -501,10 +553,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 90
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 100
       },
       "service_count": 4,
       "service_kinds": [
@@ -522,7 +578,7 @@
       ],
       "completeness_score": 65,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "Babelbit",
       "netuid": 59,
       "readiness": {
@@ -532,10 +588,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -570,9 +630,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 100
       },
       "service_count": 4,
@@ -600,7 +664,7 @@
       ],
       "completeness_score": 70,
       "health": "unknown",
-      "integration_readiness": 75,
+      "integration_readiness": 86,
       "name": "ninja",
       "netuid": 66,
       "readiness": {
@@ -610,10 +674,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 75
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 86
       },
       "service_count": 1,
       "service_kinds": [
@@ -630,7 +698,7 @@
       ],
       "completeness_score": 58,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "NOVA",
       "netuid": 68,
       "readiness": {
@@ -640,10 +708,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -660,7 +732,7 @@
       ],
       "completeness_score": 58,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "NexisGen",
       "netuid": 70,
       "readiness": {
@@ -670,10 +742,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -698,7 +774,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "StreetVision by NATIX",
       "netuid": 72,
       "readiness": {
@@ -708,10 +784,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -722,34 +802,39 @@
     },
     {
       "base_url": "https://api.gittensor.io/swagger-json",
-      "callable_count": 2,
+      "callable_count": 4,
       "categories": [
         "baseline-augmented",
         "developer-tools",
         "pilot",
         "repositories"
       ],
-      "completeness_score": 83,
+      "completeness_score": 98,
       "health": "unknown",
-      "integration_readiness": 100,
+      "integration_readiness": 96,
       "name": "Gittensor",
       "netuid": 74,
       "readiness": {
         "components": {
           "active_lifecycle": true,
-          "auth_clarity": true,
+          "auth_clarity": false,
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 100
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 96
       },
-      "service_count": 2,
+      "service_count": 4,
       "service_kinds": [
         "data-artifact",
-        "openapi"
+        "openapi",
+        "subnet-api"
       ],
       "slug": "gittensor",
       "subnet_type": "application"
@@ -766,7 +851,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "MVTRX",
       "netuid": 79,
       "readiness": {
@@ -776,10 +861,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -803,7 +892,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 78,
       "name": "Investing",
       "netuid": 88,
       "readiness": {
@@ -813,10 +902,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 78
       },
       "service_count": 1,
       "service_kinds": [
@@ -848,9 +941,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": false,
+          "has_public_docs": false,
+          "has_source_repo": false,
           "profile_complete": false
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 95
       },
       "service_count": 1,
@@ -873,7 +970,7 @@
       ],
       "completeness_score": 48,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 78,
       "name": "Actual",
       "netuid": 95,
       "readiness": {
@@ -883,10 +980,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 78
       },
       "service_count": 1,
       "service_kinds": [
@@ -922,9 +1023,13 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
         "score": 100
       },
       "service_count": 2,
@@ -943,7 +1048,7 @@
       ],
       "completeness_score": 65,
       "health": "unknown",
-      "integration_readiness": 95,
+      "integration_readiness": 100,
       "name": "Albedo",
       "netuid": 97,
       "readiness": {
@@ -953,10 +1058,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 95
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 100
       },
       "service_count": 1,
       "service_kinds": [
@@ -973,7 +1082,7 @@
       ],
       "completeness_score": 65,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "Minos",
       "netuid": 107,
       "readiness": {
@@ -983,10 +1092,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
@@ -1007,7 +1120,7 @@
       ],
       "completeness_score": 48,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 74,
       "name": "Academia",
       "netuid": 109,
       "readiness": {
@@ -1017,10 +1130,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": false,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 74
       },
       "service_count": 1,
       "service_kinds": [
@@ -1042,7 +1159,7 @@
       ],
       "completeness_score": 93,
       "health": "unknown",
-      "integration_readiness": 85,
+      "integration_readiness": 96,
       "name": "Green Compute",
       "netuid": 110,
       "readiness": {
@@ -1052,10 +1169,14 @@
           "callable_now": true,
           "documented": true,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": true
         },
-        "readiness_version": 1,
-        "score": 85
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 96
       },
       "service_count": 5,
       "service_kinds": [
@@ -1079,7 +1200,7 @@
       ],
       "completeness_score": 63,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 78,
       "name": "SOMA",
       "netuid": 114,
       "readiness": {
@@ -1089,10 +1210,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": false,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 78
       },
       "service_count": 1,
       "service_kinds": [
@@ -1114,7 +1239,7 @@
       ],
       "completeness_score": 48,
       "health": "unknown",
-      "integration_readiness": 70,
+      "integration_readiness": 81,
       "name": "Ditto",
       "netuid": 118,
       "readiness": {
@@ -1124,10 +1249,14 @@
           "callable_now": true,
           "documented": false,
           "has_callable_api": true,
+          "has_candidate_api": true,
+          "has_public_docs": true,
+          "has_source_repo": true,
           "profile_complete": false
         },
-        "readiness_version": 1,
-        "score": 70
+        "readiness_tier": "buildable",
+        "readiness_version": 2,
+        "score": 81
       },
       "service_count": 1,
       "service_kinds": [
