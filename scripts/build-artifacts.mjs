@@ -267,11 +267,19 @@ const mergedByNetuid = new Map(
 const lineageApprovals = await readOptionalJson(
   path.join(repoRoot, "registry/lineage.json"),
 );
+const lineageBrokenLinks = [];
 const lineageLinks = buildSubnetLineageLinks(
   chainSubnets,
   testnetSubnets,
   lineageApprovals?.links || [],
+  lineageBrokenLinks,
 );
+if (lineageBrokenLinks.length > 0) {
+  // #1012: don't silently drop — warn + surface in lineage.json.broken_links.
+  console.warn(
+    `lineage: ${lineageBrokenLinks.length} approved link(s) reference a missing/invalid netuid — surfaced in lineage.json broken_links instead of silently dropped: ${JSON.stringify(lineageBrokenLinks)}`,
+  );
+}
 const lineageEntries = lineageLinks.map((link) => ({
   mainnet_netuid: link.source_netuid,
   mainnet_name: mergedByNetuid.get(link.source_netuid)?.name || null,
@@ -859,6 +867,10 @@ await writeJson(artifactFile("lineage.json"), {
   matched_by_counts: countBy(lineageEntries, (entry) => entry.matched_by),
   testnet_only_count: testnetSubnets.length - matchedTestnetNetuids.size,
   links: lineageEntries,
+  // #1012: approved links that reference a netuid no longer present on its
+  // network (or a malformed approval) — surfaced, not silently dropped.
+  broken_link_count: lineageBrokenLinks.length,
+  broken_links: lineageBrokenLinks,
 });
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });

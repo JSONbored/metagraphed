@@ -1612,6 +1612,32 @@
                 "additionalProperties": { "type": "integer", "minimum": 0 }
               },
               "testnet_only_count": { "type": "integer", "minimum": 0 },
+              "broken_link_count": { "type": "integer", "minimum": 0 },
+              "broken_links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["source_netuid", "target_netuid", "reason"],
+                  "properties": {
+                    "source_netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "target_netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "reason": {
+                      "enum": [
+                        "invalid-approval",
+                        "source-netuid-missing",
+                        "target-netuid-missing"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "links": {
                 "type": "array",
                 "items": {

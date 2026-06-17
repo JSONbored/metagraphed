@@ -1933,6 +1933,13 @@ export interface components {
             [key: string]: unknown;
         };
         LineageArtifact: components["schemas"]["ArtifactBase"] & ({
+            broken_link_count?: number;
+            broken_links?: {
+                /** @enum {unknown} */
+                reason: "invalid-approval" | "source-netuid-missing" | "target-netuid-missing";
+                source_netuid: number | null;
+                target_netuid: number | null;
+            }[];
             graduated_subnet_count?: number;
             link_count: number;
             links: ({
@@ -6206,6 +6213,14 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "broken_link_count": 1,
+                     *         "broken_links": [
+                     *           {
+                     *             "reason": "invalid-approval",
+                     *             "source_netuid": 7,
+                     *             "target_netuid": 7
+                     *           }
+                     *         ],
                      *         "contract_version": "2026-06-06.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "graduated_subnet_count": 1,

@@ -3612,6 +3612,45 @@
           {
             "additionalProperties": true,
             "properties": {
+              "broken_link_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "broken_links": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "reason": {
+                      "enum": [
+                        "invalid-approval",
+                        "source-netuid-missing",
+                        "target-netuid-missing"
+                      ]
+                    },
+                    "source_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "target_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source_netuid",
+                    "target_netuid",
+                    "reason"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "graduated_subnet_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -13642,6 +13681,14 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "broken_link_count": 1,
+                    "broken_links": [
+                      {
+                        "reason": "invalid-approval",
+                        "source_netuid": 7,
+                        "target_netuid": 7
+                      }
+                    ],
                     "contract_version": "2026-06-06.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
                     "graduated_subnet_count": 1,

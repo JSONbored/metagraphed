@@ -1250,6 +1250,7 @@ export function buildSubnetLineageLinks(
   sourceSubnets,
   targetSubnets,
   approvedLinks = [],
+  brokenLinks = [],
 ) {
   const sourcesByNetuid = new Map(
     (sourceSubnets || []).map((source) => [source.netuid, source]),
@@ -1267,11 +1268,26 @@ export function buildSubnetLineageLinks(
       !Number.isInteger(targetNetuid) ||
       !LINEAGE_MATCH_TYPES.has(approval?.matched_by)
     ) {
+      // #1012: don't silently drop — record the malformed approval so it's fixable.
+      brokenLinks.push({
+        source_netuid: Number.isInteger(sourceNetuid) ? sourceNetuid : null,
+        target_netuid: Number.isInteger(targetNetuid) ? targetNetuid : null,
+        reason: "invalid-approval",
+      });
       continue;
     }
     const source = sourcesByNetuid.get(sourceNetuid);
     const target = targetsByNetuid.get(targetNetuid);
-    if (!source || !target) continue;
+    if (!source || !target) {
+      // #1012: an approval referencing a netuid that no longer exists on its
+      // network — surface it instead of silently dropping the lineage link.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: !source ? "source-netuid-missing" : "target-netuid-missing",
+      });
+      continue;
+    }
     const key = `${sourceNetuid}:${targetNetuid}`;
     if (seen.has(key)) continue;
     seen.add(key);

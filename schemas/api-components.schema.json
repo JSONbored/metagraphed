@@ -3590,6 +3590,45 @@
           {
             "additionalProperties": true,
             "properties": {
+              "broken_link_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "broken_links": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "reason": {
+                      "enum": [
+                        "invalid-approval",
+                        "source-netuid-missing",
+                        "target-netuid-missing"
+                      ]
+                    },
+                    "source_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "target_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source_netuid",
+                    "target_netuid",
+                    "reason"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "graduated_subnet_count": {
                 "minimum": 0,
                 "type": "integer"
