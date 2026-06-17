@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-56-openapi-api-gradients-io",
+      "kind": "openapi",
+      "name": "Gradients community openapi",
+      "netuid": 56,
+      "provider": "gradients",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.gradients.io/docs",
+      "source_urls": ["https://api.gradients.io/docs"],
+      "state": "schema-valid",
+      "url": "https://api.gradients.io/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
