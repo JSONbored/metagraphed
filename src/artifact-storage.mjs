@@ -82,6 +82,13 @@ const R2_ONLY_PATTERNS = [
   /^review\/enrichment-queue\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
+  // Per-subnet completeness scores + gaps (#1010): build-generated, large
+  // (350 KB–1 MB), high-churn — R2-only like its review/ siblings above. It was
+  // mis-tiered as git (committed) only because it was absent from BOTH pattern
+  // lists, so the reproducibility gate treated its rebuild as an unexpected
+  // committed change and rejected the refresh (#998 v1). Now R2-only: built to
+  // dist/ + served from R2, never committed.
+  /^review\/profile-completeness\.json$/,
   /^schema-drift\.json$/,
   /^search\.json$/,
   /^surfaces\.json$/,
