@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-113-subnet-api-api-tensorusd-com",
+      "kind": "subnet-api",
+      "name": "TensorUSD community subnet-api",
+      "netuid": 113,
+      "provider": "tensorusd",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.tensorusd.com/openapi.json",
+      "source_urls": ["https://api.tensorusd.com/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.tensorusd.com/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
