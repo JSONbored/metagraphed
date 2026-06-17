@@ -39,6 +39,7 @@ import {
   normalizePublicUrl,
   publishedAt,
   readJson,
+  registrySurfaceKey,
   clusterDomainFromUrl,
   redactCredentialedUrls,
   sanitizeOpenApiDocument,
@@ -572,8 +573,19 @@ const coverage = {
   ),
 };
 
+// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
+// surface's (netuid | kind | normalized-url) identity is the same thing already
+// promoted to the registry — flag it `superseded_by` the surface so it is not
+// presented or queued for enrichment as a separate, unverified duplicate.
+// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
+const curatedSurfaceIdByRegistryKey = new Map(
+  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+);
+const supersededBySurfaceId = (candidate) =>
+  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
+  superseded_by: supersededBySurfaceId(candidate),
   verification:
     fullVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -583,6 +595,7 @@ const candidateIndex = candidates.map((candidate) => ({
 }));
 const canonicalCandidateIndex = candidates.map((candidate) => ({
   ...candidate,
+  superseded_by: supersededBySurfaceId(candidate),
   verification:
     canonicalVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -698,8 +711,12 @@ const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
 });
 const enrichmentQueue = enrichmentArtifacts.queueArtifact;
 
-const reviewQueue = candidateIndex.filter((candidate) =>
-  ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
+const reviewQueue = candidateIndex.filter(
+  (candidate) =>
+    // #1002: a candidate already covered by a curated surface is not a review
+    // target — it is the same surface, already verified.
+    !candidate.superseded_by &&
+    ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
 );
 
 const curationIndex = mergedSubnets.map((subnet) => ({

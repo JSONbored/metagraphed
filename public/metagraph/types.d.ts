@@ -1275,6 +1275,8 @@ export interface components {
             source_urls?: string[];
             state: components["schemas"]["CandidateState"];
             subnet_name?: string | null;
+            /** @description When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface. */
+            superseded_by?: string | null;
             /** Format: uri */
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
