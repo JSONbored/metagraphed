@@ -50,6 +50,7 @@ import {
   registrySurfaceKey,
   repoRoot,
   isReviewableReadmeLink,
+  sanitizeFixtureBody,
   selectReviewableReadmeLinks,
   sha256Hex,
   slugify,
@@ -1324,6 +1325,32 @@ describe("script utility contracts", () => {
     assert.equal(isLikelyExampleLink("documentation site /docs/intro"), false);
     assert.equal(isLikelyExampleLink(""), false);
     assert.equal(isLikelyExampleLink(undefined), false);
+  });
+
+  test("sanitizeFixtureBody redacts private/loopback URLs in captured bodies", () => {
+    // A captured OpenAPI spec can carry dev servers (localhost / private IPs) the
+    // publish public-safety scan rejects; the fixture sanitizer must strip them.
+    const out = sanitizeFixtureBody({
+      openapi: "3.0.0",
+      servers: [
+        { url: "https://api.example.com" },
+        { url: "http://10.0.0.5:8000" },
+        { url: "http://localhost:3000/v1" },
+        { url: "http://192.168.1.4/api" },
+      ],
+      note: "callbacks hit http://127.0.0.1:9000/cb internally",
+    });
+    const json = JSON.stringify(out);
+    assert.equal(
+      /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/i.test(
+        json,
+      ),
+      false,
+      "no private/loopback URL may survive in a captured fixture body",
+    );
+    // Public server URLs are preserved.
+    assert.equal(out.servers[0].url, "https://api.example.com");
+    assert.equal(out.servers[1].url, "[redacted-unsafe-url]");
   });
 
   test("resolves hostnames before treating probe URLs as safe", async () => {

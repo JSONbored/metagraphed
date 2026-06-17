@@ -898,7 +898,11 @@ export function sanitizeFixtureBody(
   const walk = (node, depth) => {
     if (depth > maxDepth) return "[truncated: max depth]";
     if (typeof node === "string") {
-      const redacted = redactCredentialedUrl(node);
+      // Redact credentials AND private/loopback URLs. A captured spec can carry a
+      // servers[].url pointing at localhost / 10.x / 192.168.x (operators leave
+      // dev servers in their public OpenAPI); the publish public-safety scan
+      // rejects those, so mirror the schema-snapshot sanitizer here too.
+      const redacted = sanitizeSchemaText(redactCredentialedUrl(node));
       return redacted.length > maxString
         ? `${redacted.slice(0, maxString)}…[truncated]`
         : redacted;
