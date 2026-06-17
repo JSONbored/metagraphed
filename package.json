@@ -44,6 +44,7 @@
     "scan:public-safety": "node scripts/scan-public-safety.mjs",
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "validate:api": "node scripts/validate-api.mjs",
+    "validate:committed-seed": "node scripts/validate-committed-seed.mjs",
     "validate:mcp": "node scripts/validate-mcp.mjs",
     "validate:ai": "node scripts/validate-ai-routes.mjs",
     "validate:openapi": "node scripts/validate-openapi.mjs",

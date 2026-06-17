@@ -138,6 +138,7 @@ jobs:
           npm run validate:schema-enums
           npm run validate:openapi-examples
           npm run validate:generated-client
+          npm run validate:committed-seed
 
       - name: Build artifacts
         if: steps.route.outputs.mode == 'full'
