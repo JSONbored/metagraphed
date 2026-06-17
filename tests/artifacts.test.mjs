@@ -1039,6 +1039,20 @@ test("public artifacts are internally consistent", () => {
     candidates.candidates.some((candidate) => candidate.superseded_by),
     "expected at least one candidate to be superseded by a curated surface",
   );
+  // #1007: corroboration — every candidate carries confirmed_by (distinct
+  // discovery sources from source_urls); some are corroborated by 2+ sources.
+  for (const candidate of candidates.candidates) {
+    assert.ok(
+      Array.isArray(candidate.confirmed_by),
+      `candidate ${candidate.id} confirmed_by must be an array`,
+    );
+  }
+  assert.ok(
+    candidates.candidates.some(
+      (candidate) => (candidate.confirmed_by || []).length >= 2,
+    ),
+    "expected at least one candidate corroborated by 2+ distinct sources",
+  );
   // #1009: economics entity — per-subnet validator/economic rows + summary.
   assert.ok(Array.isArray(economics.subnets), "economics.subnets is an array");
   assert.equal(

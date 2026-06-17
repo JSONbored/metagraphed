@@ -41,6 +41,7 @@ import {
   publishedAt,
   readJson,
   registrySurfaceKey,
+  corroboratingSources,
   clusterDomainFromUrl,
   redactCredentialedUrls,
   sanitizeOpenApiDocument,
@@ -587,6 +588,8 @@ const supersededBySurfaceId = (candidate) =>
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
+  // #1007: distinct discovery sources that corroborate this candidate.
+  confirmed_by: corroboratingSources(candidate),
   verification:
     fullVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -597,6 +600,7 @@ const candidateIndex = candidates.map((candidate) => ({
 const canonicalCandidateIndex = candidates.map((candidate) => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
+  confirmed_by: corroboratingSources(candidate),
   verification:
     canonicalVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),

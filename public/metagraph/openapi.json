@@ -869,6 +869,13 @@
               "high"
             ]
           },
+          "confirmed_by": {
+            "description": "Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "id": {
             "type": "string"
           },

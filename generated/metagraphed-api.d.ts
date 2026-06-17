@@ -1259,6 +1259,8 @@ export interface components {
             auth_required: boolean;
             /** @enum {unknown} */
             confidence?: "low" | "medium" | "high";
+            /** @description Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one. */
+            confirmed_by?: string[];
             id: string;
             kind: components["schemas"]["SurfaceKind"];
             name: string;

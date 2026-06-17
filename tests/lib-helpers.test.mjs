@@ -33,6 +33,7 @@ import {
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
   buildEconomicsArtifact,
+  corroboratingSources,
   surfaceStableKey,
   sanitizeFixtureBody,
   surfaceFixtureReference,
@@ -169,6 +170,52 @@ describe("buildEconomicsArtifact", () => {
     });
     assert.equal(out.network, null);
     assert.equal(out.captured_at, null);
+  });
+});
+
+describe("corroboratingSources", () => {
+  test("returns sorted distinct source domains (2+ = corroboration)", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/1",
+          "https://github.com/macrocosm-os/apex",
+        ],
+      }),
+      ["github.com", "taomarketcap.com"],
+    );
+  });
+
+  test("folds api./docs. subdomains of one site into a single source", () => {
+    // two URLs on the same site are NOT independent corroboration
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/v1/subnets/1",
+          "https://docs.taomarketcap.com/subnet/1",
+        ],
+      }),
+      ["taomarketcap.com"],
+    );
+  });
+
+  test("drops unparseable URLs and dedupes", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "not-a-url",
+          "https://github.com/a",
+          "https://github.com/b",
+        ],
+      }),
+      ["github.com"],
+    );
+  });
+
+  test("returns [] when source_urls is missing or not an array", () => {
+    assert.deepEqual(corroboratingSources({}), []);
+    assert.deepEqual(corroboratingSources({ source_urls: null }), []);
+    assert.deepEqual(corroboratingSources(null), []);
   });
 });
 

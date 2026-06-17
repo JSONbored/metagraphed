@@ -1529,6 +1529,20 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// #1007: the distinct discovery sources (clustered domains) that independently
+// surfaced a candidate, from its source_urls. 2+ distinct sources is strong
+// corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
+// trustworthy than a single-source one — and feeds a `confirmed_by` field plus a
+// verification-score bonus (scoreCandidate). Pure + deterministic (sorted,
+// deduped); clusterDomainFromUrl folds api./docs. subdomains into one source so
+// two URLs on the same site never read as independent corroboration.
+export function corroboratingSources(candidate) {
+  const urls = Array.isArray(candidate?.source_urls)
+    ? candidate.source_urls
+    : [];
+  return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
+}
+
 // Build a fallback "what does it do" blurb from curated provider notes when a
 // subnet has no chain/overlay description (issue #346). Sanitized + truncated to
 // a word boundary. This populates a SEPARATE derived_description field — it never
