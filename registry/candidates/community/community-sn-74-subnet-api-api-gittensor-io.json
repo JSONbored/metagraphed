@@ -14,15 +14,15 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://api.gittensor.io/swagger",
-      "source_urls": ["https://api.gittensor.io/swagger"],
+      "source_url": "https://api.gittensor.io/swagger-json",
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
       "state": "schema-valid",
-      "url": "https://api.gittensor.io/dash/repos"
+      "url": "https://api.gittensor.io/miners"
     }
   ],
   "schema_version": 1,
   "submission": {
-    "submitted_by": "jaso0n0818",
-    "submitted_by_url": "https://github.com/jaso0n0818"
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
   }
 }
