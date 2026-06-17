@@ -827,6 +827,9 @@ for (const provider of enrichedProviders) {
 
 await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,
+  // Stamp the build's contract version so the Worker can flag serve-time drift
+  // when this artifact lags a contract deploy (#1001).
+  contract_version: contractVersion,
   generated_at: generatedAt,
   network: nativeSnapshot.network,
   source: nativeSnapshot.source,
@@ -845,6 +848,7 @@ const matchedTestnetNetuids = new Set(
 );
 await writeJson(artifactFile("lineage.json"), {
   schema_version: 1,
+  contract_version: contractVersion,
   generated_at: generatedAt,
   published_at: publishedAt(),
   source_network: "mainnet",
@@ -1077,6 +1081,7 @@ coverage.completeness = buildCompletenessSummary(
   profileArtifacts.profiles,
   subnetIndex,
 );
+coverage.contract_version = contractVersion;
 await writeJson(artifactFile("coverage.json"), coverage);
 // Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
 // curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
@@ -1677,6 +1682,7 @@ const agentResourcesContent = {
 };
 await writeJson(artifactFile("agent-resources.json"), {
   schema_version: 1,
+  contract_version: contractVersion,
   generated_at: generatedAt,
   published_at: publishedAt(),
   content_hash: hashJson(agentResourcesContent),

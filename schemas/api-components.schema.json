@@ -4472,6 +4472,25 @@
           },
           "source": {
             "type": "string"
+          },
+          "stale_contract": {
+            "additionalProperties": false,
+            "description": "Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring.",
+            "properties": {
+              "built_under": {
+                "description": "Contract version the served artifact was built under.",
+                "type": "string"
+              },
+              "live": {
+                "description": "Current (live) contract version the Worker is running.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "built_under",
+              "live"
+            ],
+            "type": "object"
           }
         },
         "required": [

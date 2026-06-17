@@ -15,6 +15,7 @@ import {
   withTimeout,
 } from "./storage.mjs";
 import {
+  contractStaleness,
   contractVersion,
   dataResponse,
   envelopeResponse,
@@ -980,6 +981,22 @@ async function handleApiRequest(
     ? baseData?.health_source || "live-cron-prober"
     : artifact.source;
 
+  // Serve-time contract drift (#1001): when serving a STORED artifact (not a
+  // live overlay) that was built under an older contract than the live one, the
+  // body may predate a schema change. Surface it on meta + the
+  // x-metagraph-stale-contract header (in envelopeResponse) + a warn log so the
+  // otherwise-silent drift is observable.
+  const staleContract = live
+    ? null
+    : contractStaleness(env, artifact.data?.contract_version);
+  if (staleContract) {
+    logEvent(env, "warn", "stale_contract_served", {
+      artifact_path: artifactPath,
+      built_under: staleContract.built_under,
+      live: staleContract.live,
+    });
+  }
+
   const transformed = applyQueryFilters(
     baseData,
     url,
@@ -1024,6 +1041,7 @@ async function handleApiRequest(
         generated_at: baseData?.generated_at || null,
         published_at: pub,
         source: baseSource,
+        ...(staleContract ? { stale_contract: staleContract } : {}),
         ...(baseData?.operational_observed_at
           ? { operational_observed_at: baseData.operational_observed_at }
           : {}),
