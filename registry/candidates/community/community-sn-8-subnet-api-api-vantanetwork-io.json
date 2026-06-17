@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-8-subnet-api-api-vantanetwork-io",
+      "kind": "subnet-api",
+      "name": "Vanta community subnet-api",
+      "netuid": 8,
+      "provider": "vanta",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://www.vantanetwork.io/",
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "state": "schema-valid",
+      "url": "https://api.vantanetwork.io/v1/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
