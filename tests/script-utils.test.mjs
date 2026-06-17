@@ -640,15 +640,28 @@ describe("script utility contracts", () => {
       isR2PreferredDualArtifactPath("/metagraph/subnets.json"),
       true,
     );
-    // The agent-catalog/agent-resources discovery indexes are R2-preferred too so
-    // MCP discovery reflects the refreshed callable set.
+    // The agent-catalog/agent-resources/lineage/operational-surfaces indexes
+    // moved to plain R2-only (#1003, ADR-0006) — live-data/registry-derived
+    // indexes, not the committed contract, so they're R2-only and NOT dual.
     assert.equal(
-      isR2PreferredDualArtifactPath("/metagraph/agent-catalog.json"),
-      true,
+      artifactStorageTierForRelativePath("agent-catalog.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
-      isR2PreferredDualArtifactPath("/metagraph/agent-resources.json"),
-      true,
+      isR2PreferredDualArtifactPath("/metagraph/agent-catalog.json"),
+      false,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("agent-resources.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("lineage.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("operational-surfaces.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
     );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
     assert.equal(
