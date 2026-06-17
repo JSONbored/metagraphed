@@ -17,7 +17,7 @@
       "source_url": "https://api.bitmind.ai/openapi.json",
       "source_urls": ["https://api.bitmind.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://api.bitmind.ai/health"
+      "url": "https://api.bitmind.ai/v1/models"
     }
   ],
   "schema_version": 1,
