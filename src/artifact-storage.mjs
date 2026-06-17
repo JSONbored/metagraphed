@@ -68,8 +68,15 @@ const R2_ONLY_PATTERNS = [
   // live enrichment, built to dist/, served from R2 + edge cache, never
   // committed. ~4.3 MB of per-refresh churn eliminated. Their readers are
   // tier-aware (artifactFilePath / kv-publish) or tolerate a null (sync-summary).
-  // (The small digests build-summary/changelog/r2-manifest and subnets/coverage
-  // stay dual — they feed the changelog/ci-verify against a committed baseline.)
+  // (build-summary/r2-manifest and subnets/coverage stay dual — they feed
+  // ci-verify/publish against a committed baseline.)
+  // changelog.json (#1003): a diff-against-self "what changed since last publish"
+  // feed. Committing it made bulk seed-refreshes non-reproducible (#998 v2) —
+  // its content is a diff of the (live-enriched, non-deterministic) data seeds,
+  // so a fresh rebuild never matched the committed copy. Now R2-only: built to
+  // dist/, served from R2; its diff baseline is still the committed subnets/
+  // coverage seeds (unchanged), and dispatch-webhooks reads it tier-aware.
+  /^changelog\.json$/,
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
@@ -99,11 +106,12 @@ const R2_ONLY_PATTERNS = [
 // API/schema changes — exactly what belongs in version control.
 const DUAL_PATTERNS = [
   /^api-index\.json$/,
-  // Small digests with hardcoded public-path readers (ci-verify, validate,
-  // tests). Kept committed for now (~18 KB total); routing them to R2 is a
-  // follow-up. The ~5 MB of high-churn data artifacts are R2-only above.
+  // Small publish-control digests with hardcoded public-path readers (ci-verify,
+  // kv-publish, cloudflare-verify). Kept committed for now (~12 KB); routing them
+  // to R2 too is the remaining ADR-0006 follow-up (#1003). changelog.json already
+  // moved to R2-only above — it's a diff-against-self feed with no committed
+  // consumer.
   /^build-summary\.json$/,
-  /^changelog\.json$/,
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^coverage\.json$/,

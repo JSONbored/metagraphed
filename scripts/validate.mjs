@@ -1279,11 +1279,14 @@ async function validateGeneratedArtifacts(
     r2ManifestArtifact.bucket_binding === "METAGRAPH_ARCHIVE",
     "R2 manifest: unexpected bucket binding",
   );
+  // changelog.json moved to R2-only (#1003): it's uploaded with the other
+  // r2-tier artifacts via the FULL manifest and intentionally excluded from the
+  // compact (committed cold-start) manifest, which only carries dual-tier paths.
   assert(
-    r2ManifestArtifact.artifacts.some(
+    !r2ManifestArtifact.artifacts.some(
       (artifact) => artifact.path === "/metagraph/changelog.json",
     ),
-    "R2 manifest: changelog must be uploaded",
+    "R2 manifest (compact): changelog is r2-tier and must be excluded",
   );
   assert(
     r2ManifestArtifact.required_artifact_paths?.includes(

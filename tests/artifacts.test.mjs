@@ -27,9 +27,12 @@ import {
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
+// The committed digests the forged-build tests snapshot + restore (so a forged
+// rebuild never dirties version-controlled files). changelog.json is no longer
+// here: it moved to R2-only (#1003), so it lives in dist/ (gitignored, freely
+// regenerated) and needs no preservation.
 const SUPPORT_ARTIFACT_PATHS = [
   "public/metagraph/build-summary.json",
-  "public/metagraph/changelog.json",
   "public/metagraph/r2-manifest.json",
 ];
 
