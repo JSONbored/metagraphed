@@ -54,14 +54,14 @@
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -159,7 +159,7 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -173,7 +173,7 @@
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -187,7 +187,7 @@
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -383,14 +383,14 @@
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -460,7 +460,7 @@
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -502,7 +502,7 @@
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     }
   ],
   "base_path": "/api/v1",
@@ -3445,7 +3445,7 @@
     {
       "artifact_path": "/metagraph/registry/leaderboards.json",
       "cache": "standard",
-      "description": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+      "description": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
       "id": "registry-leaderboards",
       "method": "GET",
       "path": "/api/v1/registry/leaderboards",
@@ -3460,6 +3460,7 @@
               "healthiest",
               "fastest-rpc",
               "most-complete",
+              "most-enriched",
               "fastest-growing"
             ],
             "type": "string"

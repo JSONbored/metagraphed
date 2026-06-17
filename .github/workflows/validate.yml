@@ -158,6 +158,32 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run r2:manifest
 
+      # #1025: committed derived artifacts under public/ must match a fresh
+      # build. The validators above run AFTER `npm run build`, so they only ever
+      # see freshly-rebuilt files — never the committed-stale ones — and
+      # ci-verify is diff-scoped, so a source-only PR never re-checks untouched
+      # derived files. This gate closes that silent-drift hole: a full rebuild
+      # has just run (build + r2:manifest), so any working-tree change here means
+      # a committed artifact was left stale. The deterministic derived artifacts
+      # use a fixed reproducible `generated_at` placeholder; the R2-only dist/
+      # tree is gitignored and excluded automatically.
+      #
+      # r2-manifest.json is excluded: its `*_artifact_size_bytes` totals sum the
+      # R2-only artifacts, whose byte sizes vary slightly build-to-build, so it
+      # is inherently non-deterministic. It is publish infrastructure regenerated
+      # on every publish (and by the r2:manifest step above), so its committed
+      # copy is a best-effort lockfile, not a served/contract surface.
+      - name: Verify committed derived artifacts are fresh
+        if: steps.route.outputs.mode == 'full'
+        run: |
+          if ! git diff --quiet -- public/ ':(exclude)public/metagraph/r2-manifest.json'; then
+            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed them). Run 'npm run build' and commit the result."
+            git diff --name-only -- public/ ':(exclude)public/metagraph/r2-manifest.json'
+            git diff --stat -- public/ ':(exclude)public/metagraph/r2-manifest.json'
+            exit 1
+          fi
+          echo "All committed derived artifacts under public/ match a fresh build."
+
       - name: Validate JSON schemas
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:schemas
