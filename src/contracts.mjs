@@ -667,6 +667,12 @@ export const PUBLIC_ARTIFACTS = [
     "CoverageArtifact",
   ),
   artifact(
+    "economics",
+    "/metagraph/economics.json",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+    "EconomicsArtifact",
+  ),
+  artifact(
     "registry-summary",
     "/metagraph/registry-summary.json",
     "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
@@ -1148,6 +1154,15 @@ export const API_ROUTES = [
     "Fetch registry coverage summary.",
     "standard",
     ["registry"],
+  ),
+  route(
+    "economics",
+    "GET",
+    "/api/v1/economics",
+    "/metagraph/economics.json",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+    "standard",
+    ["subnets"],
   ),
   route(
     "registry-summary",

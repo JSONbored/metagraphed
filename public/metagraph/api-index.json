@@ -163,6 +163,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "economics",
+      "path": "/metagraph/economics.json",
+      "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
       "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
@@ -1769,6 +1776,18 @@
       "id": "coverage",
       "method": "GET",
       "path": "/api/v1/coverage",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/economics.json",
+      "cache": "standard",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+      "id": "economics",
+      "method": "GET",
+      "path": "/api/v1/economics",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

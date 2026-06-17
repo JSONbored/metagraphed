@@ -93,6 +93,10 @@ const R2_ONLY_PATTERNS = [
   // (scripts/build-changelog.mjs), not a committed baseline.
   /^subnets\.json$/,
   /^coverage\.json$/,
+  // #1009: per-subnet validator/economic entity. Pure chain-state (stake,
+  // emission share, registration cost) that changes every block — republished
+  // each sync, never a committed seed.
+  /^economics\.json$/,
   // Build STATS digest (#1003): machine-derived counts/sizes/inventory — not
   // infra-critical (nothing requires it committed); served at /api/v1/build from
   // R2. (r2-manifest.json stays committed as publish infrastructure — the

@@ -1866,6 +1866,80 @@ export function slugify(value) {
     .replace(/-{2,}/g, "-");
 }
 
+// #1009: per-subnet validator + economic entity, derived from the chain
+// snapshot's `economics` block (validator/miner counts, stake, registration
+// cost, alpha price). dTAO emission is price-weighted, so each subnet's
+// emission_share is its alpha price as a fraction of the network total across
+// every subnet that reports one — computed here rather than read from the
+// now-zeroed on-chain subnet_emission field. Pure + side-effect free so it is
+// fully unit-testable; subnets with no economics block are omitted (graceful
+// when the snapshot predates the economics fetcher).
+export function buildEconomicsArtifact({
+  subnets,
+  economicsByNetuid,
+  generatedAt,
+  network = null,
+  capturedAt = null,
+}) {
+  const numericOrZero = (value) => (typeof value === "number" ? value : 0);
+  const round = (value, places) => {
+    const factor = 10 ** places;
+    return Math.round(value * factor) / factor;
+  };
+  const withEconomics = subnets
+    .map((subnet) => ({
+      subnet,
+      economics: economicsByNetuid.get(subnet.netuid) || null,
+    }))
+    .filter((entry) => entry.economics);
+  const totalAlphaPrice = withEconomics.reduce(
+    (sum, { economics }) => sum + numericOrZero(economics.alpha_price_tao),
+    0,
+  );
+  const rows = withEconomics.map(({ subnet, economics }) => {
+    const price =
+      typeof economics.alpha_price_tao === "number"
+        ? economics.alpha_price_tao
+        : null;
+    const emissionShare =
+      price != null && totalAlphaPrice > 0
+        ? round(price / totalAlphaPrice, 6)
+        : null;
+    return {
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      ...economics,
+      emission_share: emissionShare,
+    };
+  });
+  // Highest emission share first (the "top subnets by emission" view); stable
+  // tiebreak on netuid so the order is deterministic.
+  rows.sort(
+    (a, b) =>
+      (b.emission_share ?? -1) - (a.emission_share ?? -1) ||
+      a.netuid - b.netuid,
+  );
+  const sumField = (field) =>
+    rows.reduce((sum, row) => sum + numericOrZero(row[field]), 0);
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    network,
+    captured_at: capturedAt,
+    summary: {
+      subnet_count: subnets.length,
+      with_economics_count: rows.length,
+      total_stake_tao: round(sumField("total_stake_tao"), 9),
+      total_validators: sumField("validator_count"),
+      total_miners: sumField("miner_count"),
+      registration_open_count: rows.filter((row) => row.registration_allowed)
+        .length,
+    },
+    subnets: rows,
+  };
+}
+
 export function buildRpcEndpointArtifact({
   surfaces,
   healthSurfaces = [],

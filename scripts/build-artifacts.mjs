@@ -9,6 +9,7 @@ import {
   socialAccounts,
   subnetContact,
   buildSubnetLineageLinks,
+  buildEconomicsArtifact,
   buildEndpointResourceArtifact,
   buildEvidenceSubjectNetuidIndex,
   buildEndpointPoolArtifact,
@@ -1113,6 +1114,22 @@ coverage.completeness = buildCompletenessSummary(
 );
 coverage.contract_version = contractVersion;
 await writeJson(artifactFile("coverage.json"), coverage);
+// #1009: per-subnet validator + economic entity (counts, stake, registration
+// cost, alpha price, derived emission share) from the chain snapshot's
+// economics block. R2-only — it changes every block and is republished each
+// sync. Graceful when the snapshot predates the economics fetcher (empty rows).
+const economicsByNetuid = new Map(
+  chainSubnets.map((subnet) => [subnet.netuid, subnet.economics || null]),
+);
+const economics = buildEconomicsArtifact({
+  subnets: mergedSubnets,
+  economicsByNetuid,
+  generatedAt,
+  network: nativeSnapshot.network,
+  capturedAt: nativeSnapshot.captured_at,
+});
+economics.contract_version = contractVersion;
+await writeJson(artifactFile("economics.json"), economics);
 // Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
 // curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
 const overviewCurationByNetuid = new Map(

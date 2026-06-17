@@ -457,6 +457,7 @@ test("public artifacts are internally consistent", () => {
   const subnetProfile = readArtifact("profiles/7.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
   const coverage = readArtifact("coverage.json");
+  const economics = readArtifact("economics.json");
   const contracts = readArtifact("contracts.json");
   const apiIndex = readArtifact("api-index.json");
   const changelog = readArtifact("changelog.json");
@@ -1037,6 +1038,47 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     candidates.candidates.some((candidate) => candidate.superseded_by),
     "expected at least one candidate to be superseded by a curated surface",
+  );
+  // #1009: economics entity — per-subnet validator/economic rows + summary.
+  assert.ok(Array.isArray(economics.subnets), "economics.subnets is an array");
+  assert.equal(
+    economics.subnets.length,
+    economics.summary.with_economics_count,
+    "economics summary count matches the rows",
+  );
+  assert.ok(
+    economics.subnets.length > 0,
+    "expected economics rows from the chain snapshot",
+  );
+  for (const row of economics.subnets) {
+    assert.equal(typeof row.netuid, "number");
+    assert.equal(typeof row.validator_count, "number");
+    assert.equal(typeof row.miner_count, "number");
+    assert.ok(
+      row.emission_share === null ||
+        (row.emission_share >= 0 && row.emission_share <= 1),
+      `emission_share in [0,1] or null for SN${row.netuid}`,
+    );
+  }
+  // Rows are ordered by emission share, highest first.
+  assert.equal(
+    economics.subnets.every(
+      (row, i) =>
+        i === 0 ||
+        (row.emission_share ?? -1) <=
+          (economics.subnets[i - 1].emission_share ?? -1),
+    ),
+    true,
+    "economics rows ordered by emission_share desc",
+  );
+  // Price-weighted shares sum to ~1 across all priced subnets.
+  const economicsShareSum = economics.subnets.reduce(
+    (sum, row) => sum + (row.emission_share || 0),
+    0,
+  );
+  assert.ok(
+    Math.abs(economicsShareSum - 1) < 0.001,
+    `emission_share sums to ~1 (got ${economicsShareSum})`,
   );
   assert.equal(contracts.primary_domain, "api.metagraph.sh");
   assert.equal(contracts.status_domain, null);

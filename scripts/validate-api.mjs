@@ -218,6 +218,23 @@ const checks = [
       assert.equal(Number.isInteger(body.data.chain_subnet_count), true),
   ],
   [
+    "/api/v1/economics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(Number.isInteger(body.data.summary.total_validators), true);
+      // Rows are ordered by emission share, highest first.
+      assert.equal(
+        body.data.subnets.every(
+          (row, i) =>
+            i === 0 ||
+            (row.emission_share ?? -1) <=
+              (body.data.subnets[i - 1].emission_share ?? -1),
+        ),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/curation?coverage_level=probed",
     (body) =>
       assert.equal(

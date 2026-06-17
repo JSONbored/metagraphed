@@ -1171,6 +1171,99 @@
           }
         ]
       },
+      "SubnetEconomics": {
+        "type": "object",
+        "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "max_uids",
+          "validator_count",
+          "max_validators",
+          "miner_count",
+          "registration_allowed",
+          "registration_cost_tao",
+          "alpha_price_tao",
+          "total_stake_tao",
+          "max_stake_tao",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
+          "owner_hotkey",
+          "owner_coldkey",
+          "emission_share"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "max_uids": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "max_validators": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "registration_allowed": { "type": "boolean" },
+          "registration_cost_tao": { "type": ["number", "null"] },
+          "alpha_price_tao": { "type": ["number", "null"] },
+          "total_stake_tao": { "type": ["number", "null"] },
+          "max_stake_tao": { "type": ["number", "null"] },
+          "tao_in_pool_tao": { "type": ["number", "null"] },
+          "alpha_in_pool": { "type": ["number", "null"] },
+          "alpha_out_pool": { "type": ["number", "null"] },
+          "subnet_volume_tao": { "type": ["number", "null"] },
+          "owner_hotkey": { "type": ["string", "null"] },
+          "owner_coldkey": { "type": ["string", "null"] },
+          "emission_share": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price."
+          }
+        },
+        "additionalProperties": false
+      },
+      "EconomicsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["network", "captured_at", "summary", "subnets"],
+            "properties": {
+              "network": { "type": ["string", "null"] },
+              "captured_at": { "type": ["string", "null"] },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "subnet_count",
+                  "with_economics_count",
+                  "total_stake_tao",
+                  "total_validators",
+                  "total_miners",
+                  "registration_open_count"
+                ],
+                "properties": {
+                  "subnet_count": { "type": "integer", "minimum": 0 },
+                  "with_economics_count": { "type": "integer", "minimum": 0 },
+                  "total_stake_tao": { "type": "number", "minimum": 0 },
+                  "total_validators": { "type": "integer", "minimum": 0 },
+                  "total_miners": { "type": "integer", "minimum": 0 },
+                  "registration_open_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "subnets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubnetEconomics"
+                }
+              }
+            }
+          }
+        ]
+      },
       "CoverageArtifact": {
         "allOf": [
           {

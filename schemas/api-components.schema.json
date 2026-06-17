@@ -1519,6 +1519,80 @@
         ],
         "type": "object"
       },
+      "EconomicsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "properties": {
+              "captured_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "network": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subnets": {
+                "items": {
+                  "$ref": "#/components/schemas/SubnetEconomics"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "registration_open_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "total_miners": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "total_stake_tao": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "total_validators": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "with_economics_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "subnet_count",
+                  "with_economics_count",
+                  "total_stake_tao",
+                  "total_validators",
+                  "total_miners",
+                  "registration_open_count"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "network",
+              "captured_at",
+              "summary",
+              "subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "EndpointIncident": {
         "additionalProperties": false,
         "properties": {
@@ -7595,6 +7669,132 @@
             "type": "object"
           }
         ]
+      },
+      "SubnetEconomics": {
+        "additionalProperties": false,
+        "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
+        "properties": {
+          "alpha_in_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_out_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_share": {
+            "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_uids": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_validators": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "owner_coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner_hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_allowed": {
+            "type": "boolean"
+          },
+          "registration_cost_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subnet_volume_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tao_in_pool_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "max_uids",
+          "validator_count",
+          "max_validators",
+          "miner_count",
+          "registration_allowed",
+          "registration_cost_tao",
+          "alpha_price_tao",
+          "total_stake_tao",
+          "max_stake_tao",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
+          "owner_hotkey",
+          "owner_coldkey",
+          "emission_share"
+        ],
+        "type": "object"
       },
       "SubnetEndpointsArtifact": {
         "allOf": [

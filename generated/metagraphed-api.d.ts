@@ -191,6 +191,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/economics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. */
+        get: operations["economics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/endpoint-incidents": {
         parameters: {
             query?: never;
@@ -1417,6 +1434,19 @@ export interface components {
             reviewed_at?: string | null;
             source_count?: number;
             verified_at?: string | null;
+        };
+        EconomicsArtifact: components["schemas"]["ArtifactBase"] & {
+            captured_at: string | null;
+            network: string | null;
+            subnets: components["schemas"]["SubnetEconomics"][];
+            summary: {
+                registration_open_count: number;
+                subnet_count: number;
+                total_miners: number;
+                total_stake_tao: number;
+                total_validators: number;
+                with_economics_count: number;
+            };
         };
         EndpointIncident: {
             classification: components["schemas"]["Classification"];
@@ -2899,6 +2929,29 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses. */
+        SubnetEconomics: {
+            alpha_in_pool: number | null;
+            alpha_out_pool: number | null;
+            alpha_price_tao: number | null;
+            /** @description Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price. */
+            emission_share: number | null;
+            max_stake_tao: number | null;
+            max_uids: number;
+            max_validators: number;
+            miner_count: number;
+            name: string;
+            netuid: number;
+            owner_coldkey: string | null;
+            owner_hotkey: string | null;
+            registration_allowed: boolean;
+            registration_cost_tao: number | null;
+            slug: string;
+            subnet_volume_tao: number | null;
+            tao_in_pool_tao: number | null;
+            total_stake_tao: number | null;
+            validator_count: number;
+        };
         SubnetEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["EndpointResource"][];
             name?: string;
@@ -4808,6 +4861,141 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CurationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    economics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "network": "example",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "alpha_in_pool": 0.5,
+                     *             "alpha_out_pool": 0.5,
+                     *             "alpha_price_tao": 0.5,
+                     *             "emission_share": 0.5,
+                     *             "max_stake_tao": 0.5,
+                     *             "max_uids": 1,
+                     *             "max_validators": 1,
+                     *             "miner_count": 1,
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "owner_coldkey": "example",
+                     *             "owner_hotkey": "example",
+                     *             "registration_allowed": false,
+                     *             "registration_cost_tao": 0.5,
+                     *             "slug": "example-subnet",
+                     *             "subnet_volume_tao": 0.5,
+                     *             "tao_in_pool_tao": 0.5,
+                     *             "total_stake_tao": 0.5,
+                     *             "validator_count": 1
+                     *           }
+                     *         ],
+                     *         "summary": {
+                     *           "registration_open_count": 1,
+                     *           "subnet_count": 1,
+                     *           "total_miners": 1,
+                     *           "total_stake_tao": 0.5,
+                     *           "total_validators": 1,
+                     *           "with_economics_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EconomicsArtifact"];
                     };
                 };
             };

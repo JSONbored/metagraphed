@@ -1533,6 +1533,80 @@
         ],
         "type": "object"
       },
+      "EconomicsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "properties": {
+              "captured_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "network": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subnets": {
+                "items": {
+                  "$ref": "#/components/schemas/SubnetEconomics"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "registration_open_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "total_miners": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "total_stake_tao": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "total_validators": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "with_economics_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "subnet_count",
+                  "with_economics_count",
+                  "total_stake_tao",
+                  "total_validators",
+                  "total_miners",
+                  "registration_open_count"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "network",
+              "captured_at",
+              "summary",
+              "subnets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "EndpointIncident": {
         "additionalProperties": false,
         "properties": {
@@ -7618,6 +7692,132 @@
           }
         ]
       },
+      "SubnetEconomics": {
+        "additionalProperties": false,
+        "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
+        "properties": {
+          "alpha_in_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_out_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_share": {
+            "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_uids": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_validators": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "owner_coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner_hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_allowed": {
+            "type": "boolean"
+          },
+          "registration_cost_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subnet_volume_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tao_in_pool_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "max_uids",
+          "validator_count",
+          "max_validators",
+          "miner_count",
+          "registration_allowed",
+          "registration_cost_tao",
+          "alpha_price_tao",
+          "total_stake_tao",
+          "max_stake_tao",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
+          "owner_hotkey",
+          "owner_coldkey",
+          "emission_share"
+        ],
+        "type": "object"
+      },
       "SubnetEndpointsArtifact": {
         "allOf": [
           {
@@ -11519,6 +11719,159 @@
         "summary": "Fetch curation states by subnet.",
         "tags": [
           "registry"
+        ]
+      }
+    },
+    "/api/v1/economics": {
+      "get": {
+        "operationId": "economics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "network": "example",
+                    "notes": "Example description.",
+                    "schema_version": 1,
+                    "subnets": [
+                      {
+                        "alpha_in_pool": 0.5,
+                        "alpha_out_pool": 0.5,
+                        "alpha_price_tao": 0.5,
+                        "emission_share": 0.5,
+                        "max_stake_tao": 0.5,
+                        "max_uids": 1,
+                        "max_validators": 1,
+                        "miner_count": 1,
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "owner_coldkey": "example",
+                        "owner_hotkey": "example",
+                        "registration_allowed": false,
+                        "registration_cost_tao": 0.5,
+                        "slug": "example-subnet",
+                        "subnet_volume_tao": 0.5,
+                        "tao_in_pool_tao": 0.5,
+                        "total_stake_tao": 0.5,
+                        "validator_count": 1
+                      }
+                    ],
+                    "summary": {
+                      "registration_open_count": 1,
+                      "subnet_count": 1,
+                      "total_miners": 1,
+                      "total_stake_tao": 0.5,
+                      "total_validators": 1,
+                      "with_economics_count": 1
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EconomicsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+        "tags": [
+          "subnets"
         ]
       }
     },
