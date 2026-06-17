@@ -52,9 +52,7 @@
       "auth_required": false,
       "authority": "provider-claimed",
       "public_safe": true,
-      "source_urls": [
-        "https://actual.inc/"
-      ],
+      "source_urls": ["https://actual.inc/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -72,10 +70,7 @@
       "auth_required": false,
       "authority": "provider-claimed",
       "public_safe": true,
-      "source_urls": [
-        "https://actual.inc/",
-        "https://models.actual.inc/"
-      ],
+      "source_urls": ["https://actual.inc/", "https://models.actual.inc/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

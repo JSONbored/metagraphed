@@ -39,9 +39,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/backend-developers-ltd/InfiniteHash"
-      ],
+      "source_urls": ["https://github.com/backend-developers-ltd/InfiniteHash"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

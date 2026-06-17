@@ -15,9 +15,7 @@
   "website_url": "https://www.signalplus.com/",
   "dashboard_url": "https://t.signalplus.com/mining",
   "source_repo": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
-  "baseline_excluded_surface_ids": [
-    "sn-53-taomarketcap-source-repo"
-  ],
+  "baseline_excluded_surface_ids": ["sn-53-taomarketcap-source-repo"],
   "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. The previously discovered EfficientFrontier source repository currently returns 404 and is not promoted.",
   "curation": {
     "level": "maintainer-reviewed",

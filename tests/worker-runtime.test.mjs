@@ -1278,9 +1278,13 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        // identity_promotion is a transient, drainable queue — once every
+        // subnet's source-repo identity is curated it is legitimately empty
+        // (as the SN20/53/89/95… enrichment did). Assert the filter only ever
+        // returns matching profiles, not that any remain.
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
         (body) =>
-          body.data.profiles.length > 0 &&
+          Array.isArray(body.data.profiles) &&
           body.data.profiles.every((profile) =>
             profile.identity_promotion_kinds.includes("source-repo"),
           ),

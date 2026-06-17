@@ -4,10 +4,7 @@
   "name": "eni",
   "slug": "eni",
   "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed"
-  ],
+  "categories": ["baseline-curated", "identity-reviewed"],
   "source_repo": "https://github.com/tag101-ai/tag101",
   "website_url": "http://tag101.ai/",
   "docs_url": null,
