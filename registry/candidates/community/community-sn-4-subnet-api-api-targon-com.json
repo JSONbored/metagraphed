@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-4-subnet-api-api-targon-com",
+      "kind": "subnet-api",
+      "name": "Targon community subnet-api",
+      "netuid": 4,
+      "provider": "targon",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.targon.com/openapi.json",
+      "source_urls": ["https://api.targon.com/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.targon.com/health"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}
