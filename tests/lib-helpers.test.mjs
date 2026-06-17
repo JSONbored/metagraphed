@@ -126,7 +126,10 @@ describe("buildEconomicsArtifact", () => {
       ],
       economicsByNetuid: new Map([
         // equal price → equal share → tiebreak on netuid; null stake → 0 in sum
-        [5, { alpha_price_tao: 0.5, total_stake_tao: null, validator_count: 1 }],
+        [
+          5,
+          { alpha_price_tao: 0.5, total_stake_tao: null, validator_count: 1 },
+        ],
         [2, { alpha_price_tao: 0.5, total_stake_tao: 40, validator_count: 1 }],
       ]),
       ...base,
