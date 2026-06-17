@@ -35,9 +35,8 @@ const MAX_DISPATCH_SUBSCRIPTIONS = 128;
 // changelog.json is R2-only (#1003) — resolve via the tier-aware path so this
 // reads the freshly-built dist/ copy in the publish flow (was public/).
 const changelog = await readJson(artifactFilePath("changelog.json"));
-const buildSummary = await readJson(
-  path.join(repoRoot, "public/metagraph/build-summary.json"),
-);
+// build-summary.json is R2-only (#1003) — tier-aware read (dist/).
+const buildSummary = await readJson(artifactFilePath("build-summary.json"));
 const pointer = {
   published_at: buildSummary.published_at || null,
   contract_version:

@@ -18,7 +18,8 @@ import {
 
 const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
-const summaryPath = path.join(outputRoot, "build-summary.json");
+// build-summary.json is R2-only (#1003) — read/write it in the R2 staging tier.
+const summaryPath = path.join(r2OutputRoot, "build-summary.json");
 const existing = JSON.parse(await fs.readFile(summaryPath, "utf8"));
 const artifacts = await collectArtifactSizes({
   publicRoot: outputRoot,

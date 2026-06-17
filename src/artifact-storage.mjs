@@ -93,6 +93,11 @@ const R2_ONLY_PATTERNS = [
   // (scripts/build-changelog.mjs), not a committed baseline.
   /^subnets\.json$/,
   /^coverage\.json$/,
+  // Build STATS digest (#1003): machine-derived counts/sizes/inventory — not
+  // infra-critical (nothing requires it committed); served at /api/v1/build from
+  // R2. (r2-manifest.json stays committed as publish infrastructure — the
+  // upload/kv/verify pipeline reads it like a lockfile.)
+  /^build-summary\.json$/,
   /^curation\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
@@ -122,12 +127,11 @@ const R2_ONLY_PATTERNS = [
 // API/schema changes — exactly what belongs in version control.
 const DUAL_PATTERNS = [
   /^api-index\.json$/,
-  // Small publish-control digests with hardcoded public-path readers (ci-verify,
-  // kv-publish, cloudflare-verify). Kept committed for now (~12 KB); routing them
-  // to R2 too is the remaining ADR-0006 follow-up (#1003). changelog.json already
-  // moved to R2-only above — it's a diff-against-self feed with no committed
-  // consumer.
-  /^build-summary\.json$/,
+  // r2-manifest.json: the publish MANIFEST (what's in R2 + per-artifact hashes),
+  // read by the upload/kv/verify pipeline — kept committed as publish
+  // infrastructure (like a lockfile). build-summary (build stats) + changelog
+  // moved to R2-only (#1003); only the reproducible contract + this manifest
+  // remain committed.
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^openapi\.json$/,
