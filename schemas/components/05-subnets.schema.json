@@ -470,6 +470,10 @@
           "id": {
             "type": "string"
           },
+          "key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames."
+          },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },

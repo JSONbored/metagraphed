@@ -455,14 +455,28 @@ export async function loadDetailedVerification() {
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
-      subnet.surfaces.map((surface) => ({
-        ...surface,
-        netuid: subnet.netuid,
-        subnet_slug: subnet.slug,
-        subnet_name: subnet.name,
-      })),
+      subnet.surfaces.map((surface) => {
+        const flattened = {
+          ...surface,
+          netuid: subnet.netuid,
+          subnet_slug: subnet.slug,
+          subnet_name: subnet.name,
+        };
+        // #1005: a stable identity decoupled from the hand-authored display id.
+        flattened.key = surfaceStableKey(flattened);
+        return flattened;
+      }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
+// surface keeps the same `key` across display-name/slug renames (the `id` is
+// author-controlled and changes on rename, which orphans D1 history + breaks the
+// derived endpoint link). PR1 surfaces this `key`; later PRs re-key D1 history +
+// endpoint links onto it. A URL change is intentionally a new identity.
+export function surfaceStableKey(entry) {
+  return `srf-${sha256Hex(registrySurfaceKey(entry)).slice(0, 16)}`;
 }
 
 export function stableStringify(value) {

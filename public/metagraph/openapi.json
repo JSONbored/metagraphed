@@ -8823,6 +8823,10 @@
           "id": {
             "type": "string"
           },
+          "key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames.",
+            "type": "string"
+          },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
@@ -9075,6 +9079,10 @@
             "$ref": "#/components/schemas/Classification"
           },
           "id": {
+            "type": "string"
+          },
+          "key": {
+            "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it.",
             "type": "string"
           },
           "kind": {

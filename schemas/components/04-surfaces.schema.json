@@ -194,6 +194,10 @@
           "id": {
             "type": "string"
           },
+          "key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it."
+          },
           "name": {
             "type": "string"
           },

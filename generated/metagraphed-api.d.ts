@@ -3187,6 +3187,8 @@ export interface components {
         });
         SubnetProfileSurfaceSummary: {
             id: string;
+            /** @description Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames. */
+            key?: string;
             kind: components["schemas"]["SurfaceKind"];
             name: string;
             provider: string;
@@ -3275,6 +3277,8 @@ export interface components {
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
             id: string;
+            /** @description Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it. */
+            key?: string;
             kind: components["schemas"]["SurfaceKind"];
             name?: string;
             netuid: number;
