@@ -32,6 +32,7 @@ import {
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
+  surfaceStableKey,
   sanitizeFixtureBody,
   surfaceFixtureReference,
   writeJson,
@@ -661,9 +662,100 @@ describe("buildSubnetLineageLinks", () => {
     );
   });
 
+  test("#1012: surfaces broken approvals instead of silently dropping them", () => {
+    const mainnet = [
+      sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
+    ];
+    const testnet = [
+      sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
+    ];
+    const broken = [];
+    const links = buildSubnetLineageLinks(
+      mainnet,
+      testnet,
+      [
+        { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 999, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 383, matched_by: "unreviewed" },
+      ],
+      broken,
+    );
+    // The valid link is still returned …
+    assert.deepEqual(links, [
+      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+    ]);
+    // … and the missing-netuid + invalid-match approvals are surfaced, not dropped.
+    assert.equal(broken.length, 2);
+    assert.deepEqual(broken.map((entry) => entry.reason).sort(), [
+      "invalid-approval",
+      "target-netuid-missing",
+    ]);
+    assert.deepEqual(
+      broken.find((entry) => entry.reason === "target-netuid-missing"),
+      {
+        source_netuid: 24,
+        target_netuid: 999,
+        reason: "target-netuid-missing",
+      },
+    );
+  });
+
   test("returns [] for empty inputs", () => {
     assert.deepEqual(buildSubnetLineageLinks([], []), []);
     assert.deepEqual(buildSubnetLineageLinks(undefined, undefined), []);
+  });
+});
+
+describe("surfaceStableKey (#1005)", () => {
+  test("is stable across display-name/slug renames (same netuid|kind|url)", () => {
+    const before = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+      id: "sn-7-old-slug-openapi",
+      name: "Old Name",
+    });
+    const afterRename = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+      id: "sn-7-new-slug-openapi",
+      name: "New Name",
+    });
+    assert.equal(before, afterRename);
+    assert.match(before, /^srf-[0-9a-f]{16}$/);
+  });
+
+  test("changes when the url, kind, or netuid changes (a different identity)", () => {
+    const base = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+    });
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 7,
+        kind: "openapi",
+        url: "https://api.other.io/openapi.json",
+      }),
+    );
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 8,
+        kind: "openapi",
+        url: "https://api.example.io/openapi.json",
+      }),
+    );
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 7,
+        kind: "subnet-api",
+        url: "https://api.example.io/openapi.json",
+      }),
+    );
   });
 });
 

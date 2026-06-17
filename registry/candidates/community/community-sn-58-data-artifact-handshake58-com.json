@@ -17,7 +17,7 @@
       "source_url": "https://handshake58.com/openapi.json",
       "source_urls": ["https://handshake58.com/openapi.json"],
       "state": "schema-valid",
-      "url": "https://handshake58.com/api/mcp/providers"
+      "url": "https://handshake58.com/api/skills"
     }
   ],
   "schema_version": 1,

@@ -13,9 +13,9 @@ const write = args.has("--write");
 const manifest = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
-const buildSummary = await readJson(
-  path.join(repoRoot, "public/metagraph/build-summary.json"),
-);
+// build-summary.json is R2-only (#1003); resolve via artifactFilePath (dist/).
+// r2-manifest.json stays committed (publish infra), read from public/ above.
+const buildSummary = await readJson(artifactFilePath("build-summary.json"));
 // Tier-aware: freshness.json is R2-only (ADR 0001), so resolve it through
 // artifactFilePath (dist/) rather than a hardcoded public/ path.
 const freshness = await readJson(artifactFilePath("freshness.json"));

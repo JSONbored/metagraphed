@@ -14,7 +14,7 @@
   "website_url": "https://heyditto.ai/",
   "docs_url": "https://heyditto.ai/docs/",
   "dashboard_url": "https://assistant.heyditto.ai/",
-  "source_repo": null,
+  "source_repo": "https://github.com/orgs/ditto-assistant/repositories",
   "baseline_excluded_surface_ids": [
     "sn-118-taomarketcap-source-repo",
     "sn-118-taomarketcap-website",

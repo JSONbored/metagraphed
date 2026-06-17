@@ -455,14 +455,28 @@ export async function loadDetailedVerification() {
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
-      subnet.surfaces.map((surface) => ({
-        ...surface,
-        netuid: subnet.netuid,
-        subnet_slug: subnet.slug,
-        subnet_name: subnet.name,
-      })),
+      subnet.surfaces.map((surface) => {
+        const flattened = {
+          ...surface,
+          netuid: subnet.netuid,
+          subnet_slug: subnet.slug,
+          subnet_name: subnet.name,
+        };
+        // #1005: a stable identity decoupled from the hand-authored display id.
+        flattened.key = surfaceStableKey(flattened);
+        return flattened;
+      }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
+// surface keeps the same `key` across display-name/slug renames (the `id` is
+// author-controlled and changes on rename, which orphans D1 history + breaks the
+// derived endpoint link). PR1 surfaces this `key`; later PRs re-key D1 history +
+// endpoint links onto it. A URL change is intentionally a new identity.
+export function surfaceStableKey(entry) {
+  return `srf-${sha256Hex(registrySurfaceKey(entry)).slice(0, 16)}`;
 }
 
 export function stableStringify(value) {
@@ -1250,6 +1264,7 @@ export function buildSubnetLineageLinks(
   sourceSubnets,
   targetSubnets,
   approvedLinks = [],
+  brokenLinks = [],
 ) {
   const sourcesByNetuid = new Map(
     (sourceSubnets || []).map((source) => [source.netuid, source]),
@@ -1267,11 +1282,26 @@ export function buildSubnetLineageLinks(
       !Number.isInteger(targetNetuid) ||
       !LINEAGE_MATCH_TYPES.has(approval?.matched_by)
     ) {
+      // #1012: don't silently drop — record the malformed approval so it's fixable.
+      brokenLinks.push({
+        source_netuid: Number.isInteger(sourceNetuid) ? sourceNetuid : null,
+        target_netuid: Number.isInteger(targetNetuid) ? targetNetuid : null,
+        reason: "invalid-approval",
+      });
       continue;
     }
     const source = sourcesByNetuid.get(sourceNetuid);
     const target = targetsByNetuid.get(targetNetuid);
-    if (!source || !target) continue;
+    if (!source || !target) {
+      // #1012: an approval referencing a netuid that no longer exists on its
+      // network — surface it instead of silently dropping the lineage link.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: !source ? "source-netuid-missing" : "target-netuid-missing",
+      });
+      continue;
+    }
     const key = `${sourceNetuid}:${targetNetuid}`;
     if (seen.has(key)) continue;
     seen.add(key);

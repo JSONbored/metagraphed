@@ -630,25 +630,47 @@ describe("script utility contracts", () => {
       true,
     );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
-    // R2-preferred dual artifacts: committed (for changelog/ci-verify) but served
-    // R2-first so per-publish fields aren't pinned to the committed snapshot.
+    // subnets/coverage moved to plain R2-only (#1003) — no committed copy, so
+    // they are NOT R2-preferred-dual (that set is now empty). The changelog
+    // diffs them against the previous R2 publish at publish time.
+    assert.equal(
+      artifactStorageTierForRelativePath("coverage.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
     assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
-      true,
+      false,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("subnets.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/subnets.json"),
-      true,
+      false,
     );
-    // The agent-catalog/agent-resources discovery indexes are R2-preferred too so
-    // MCP discovery reflects the refreshed callable set.
+    // The agent-catalog/agent-resources/lineage/operational-surfaces indexes
+    // moved to plain R2-only (#1003, ADR-0006) — live-data/registry-derived
+    // indexes, not the committed contract, so they're R2-only and NOT dual.
+    assert.equal(
+      artifactStorageTierForRelativePath("agent-catalog.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
     assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/agent-catalog.json"),
-      true,
+      false,
     );
     assert.equal(
-      isR2PreferredDualArtifactPath("/metagraph/agent-resources.json"),
-      true,
+      artifactStorageTierForRelativePath("agent-resources.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("lineage.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("operational-surfaces.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
     );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
     assert.equal(

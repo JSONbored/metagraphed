@@ -5,7 +5,7 @@
   "slug": "satori",
   "status": "active",
   "categories": ["baseline-curated", "identity-reviewed", "virtual-world"],
-  "source_repo": null,
+  "source_repo": "https://github.com/Satori119/Satori",
   "website_url": null,
   "docs_url": null,
   "dashboard_url": null,

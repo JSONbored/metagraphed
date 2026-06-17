@@ -1275,6 +1275,8 @@ export interface components {
             source_urls?: string[];
             state: components["schemas"]["CandidateState"];
             subnet_name?: string | null;
+            /** @description When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface. */
+            superseded_by?: string | null;
             /** Format: uri */
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
@@ -1300,7 +1302,7 @@ export interface components {
                 artifact_removed_count: number;
                 coverage_delta: {
                     [key: string]: components["schemas"]["CoverageDelta"] | null;
-                };
+                } | null;
                 netuid_added_count: number;
                 netuid_removed_count: number;
                 netuid_renamed_count: number;
@@ -1933,6 +1935,13 @@ export interface components {
             [key: string]: unknown;
         };
         LineageArtifact: components["schemas"]["ArtifactBase"] & ({
+            broken_link_count?: number;
+            broken_links?: {
+                /** @enum {unknown} */
+                reason: "invalid-approval" | "source-netuid-missing" | "target-netuid-missing";
+                source_netuid: number | null;
+                target_netuid: number | null;
+            }[];
             graduated_subnet_count?: number;
             link_count: number;
             links: ({
@@ -2196,6 +2205,13 @@ export interface components {
              */
             published_at?: string | null;
             source?: string;
+            /** @description Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring. */
+            stale_contract?: {
+                /** @description Contract version the served artifact was built under. */
+                built_under: string;
+                /** @description Current (live) contract version the Worker is running. */
+                live: string;
+            };
         } & {
             [key: string]: unknown;
         };
@@ -3173,6 +3189,8 @@ export interface components {
         });
         SubnetProfileSurfaceSummary: {
             id: string;
+            /** @description Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames. */
+            key?: string;
             kind: components["schemas"]["SurfaceKind"];
             name: string;
             provider: string;
@@ -3261,6 +3279,8 @@ export interface components {
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
             id: string;
+            /** @description Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it. */
+            key?: string;
             kind: components["schemas"]["SurfaceKind"];
             name?: string;
             netuid: number;
@@ -3531,7 +3551,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -3638,7 +3662,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -3745,7 +3773,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -3869,7 +3901,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -3996,7 +4032,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4110,7 +4150,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4232,7 +4276,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4362,7 +4410,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4475,7 +4527,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4606,7 +4662,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4736,7 +4796,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -4880,7 +4944,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5043,7 +5111,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5192,7 +5264,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5308,7 +5384,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5414,7 +5494,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5546,7 +5630,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5672,7 +5760,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5791,7 +5883,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -5920,7 +6016,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6038,7 +6138,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6115,6 +6219,14 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "broken_link_count": 1,
+                     *         "broken_links": [
+                     *           {
+                     *             "reason": "invalid-approval",
+                     *             "source_netuid": 7,
+                     *             "target_netuid": 7
+                     *           }
+                     *         ],
                      *         "contract_version": "2026-06-06.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "graduated_subnet_count": 1,
@@ -6152,7 +6264,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6254,7 +6370,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6504,7 +6624,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6620,7 +6744,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6743,7 +6871,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -6899,7 +7031,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7005,7 +7141,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7124,7 +7264,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7272,7 +7416,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7424,7 +7572,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7625,7 +7777,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7839,7 +7995,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -7962,7 +8122,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8152,7 +8316,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8285,7 +8453,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8441,7 +8613,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8566,7 +8742,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8673,7 +8853,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8789,7 +8973,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -8910,7 +9098,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9032,7 +9224,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9163,7 +9359,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9414,7 +9614,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9537,7 +9741,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9690,7 +9898,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -9808,7 +10020,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10007,7 +10223,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10143,7 +10363,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10263,7 +10487,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10373,7 +10601,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10487,7 +10719,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -10776,7 +11012,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -11143,7 +11383,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -11262,7 +11506,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -11369,7 +11617,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -11498,7 +11750,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1
@@ -11616,7 +11872,11 @@ export interface operations {
                      *           "total": 1
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
                      *       },
                      *       "ok": true,
                      *       "schema_version": 1

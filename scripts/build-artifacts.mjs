@@ -39,6 +39,7 @@ import {
   normalizePublicUrl,
   publishedAt,
   readJson,
+  registrySurfaceKey,
   clusterDomainFromUrl,
   redactCredentialedUrls,
   sanitizeOpenApiDocument,
@@ -68,6 +69,7 @@ import {
   listPromptDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
+import { buildChangelog } from "./changelog.mjs";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
@@ -266,11 +268,19 @@ const mergedByNetuid = new Map(
 const lineageApprovals = await readOptionalJson(
   path.join(repoRoot, "registry/lineage.json"),
 );
+const lineageBrokenLinks = [];
 const lineageLinks = buildSubnetLineageLinks(
   chainSubnets,
   testnetSubnets,
   lineageApprovals?.links || [],
+  lineageBrokenLinks,
 );
+if (lineageBrokenLinks.length > 0) {
+  // #1012: don't silently drop — warn + surface in lineage.json.broken_links.
+  console.warn(
+    `lineage: ${lineageBrokenLinks.length} approved link(s) reference a missing/invalid netuid — surfaced in lineage.json broken_links instead of silently dropped: ${JSON.stringify(lineageBrokenLinks)}`,
+  );
+}
 const lineageEntries = lineageLinks.map((link) => ({
   mainnet_netuid: link.source_netuid,
   mainnet_name: mergedByNetuid.get(link.source_netuid)?.name || null,
@@ -563,8 +573,19 @@ const coverage = {
   ),
 };
 
+// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
+// surface's (netuid | kind | normalized-url) identity is the same thing already
+// promoted to the registry — flag it `superseded_by` the surface so it is not
+// presented or queued for enrichment as a separate, unverified duplicate.
+// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
+const curatedSurfaceIdByRegistryKey = new Map(
+  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+);
+const supersededBySurfaceId = (candidate) =>
+  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
+  superseded_by: supersededBySurfaceId(candidate),
   verification:
     fullVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -574,6 +595,7 @@ const candidateIndex = candidates.map((candidate) => ({
 }));
 const canonicalCandidateIndex = candidates.map((candidate) => ({
   ...candidate,
+  superseded_by: supersededBySurfaceId(candidate),
   verification:
     canonicalVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -689,8 +711,12 @@ const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
 });
 const enrichmentQueue = enrichmentArtifacts.queueArtifact;
 
-const reviewQueue = candidateIndex.filter((candidate) =>
-  ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
+const reviewQueue = candidateIndex.filter(
+  (candidate) =>
+    // #1002: a candidate already covered by a curated surface is not a review
+    // target — it is the same surface, already verified.
+    !candidate.superseded_by &&
+    ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
 );
 
 const curationIndex = mergedSubnets.map((subnet) => ({
@@ -827,6 +853,9 @@ for (const provider of enrichedProviders) {
 
 await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,
+  // Stamp the build's contract version so the Worker can flag serve-time drift
+  // when this artifact lags a contract deploy (#1001).
+  contract_version: contractVersion,
   generated_at: generatedAt,
   network: nativeSnapshot.network,
   source: nativeSnapshot.source,
@@ -845,6 +874,7 @@ const matchedTestnetNetuids = new Set(
 );
 await writeJson(artifactFile("lineage.json"), {
   schema_version: 1,
+  contract_version: contractVersion,
   generated_at: generatedAt,
   published_at: publishedAt(),
   source_network: "mainnet",
@@ -854,6 +884,10 @@ await writeJson(artifactFile("lineage.json"), {
   matched_by_counts: countBy(lineageEntries, (entry) => entry.matched_by),
   testnet_only_count: testnetSubnets.length - matchedTestnetNetuids.size,
   links: lineageEntries,
+  // #1012: approved links that reference a netuid no longer present on its
+  // network (or a malformed approval) — surfaced, not silently dropped.
+  broken_link_count: lineageBrokenLinks.length,
+  broken_links: lineageBrokenLinks,
 });
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
@@ -1077,6 +1111,7 @@ coverage.completeness = buildCompletenessSummary(
   profileArtifacts.profiles,
   subnetIndex,
 );
+coverage.contract_version = contractVersion;
 await writeJson(artifactFile("coverage.json"), coverage);
 // Per-subnet overview (R2-tier): one call composes a subnet's profile + health +
 // curation + gaps + counts so the UI renders a subnet page without 6 round-trips.
@@ -1677,6 +1712,7 @@ const agentResourcesContent = {
 };
 await writeJson(artifactFile("agent-resources.json"), {
   schema_version: 1,
+  contract_version: contractVersion,
   generated_at: generatedAt,
   published_at: publishedAt(),
   content_hash: hashJson(agentResourcesContent),
@@ -2037,7 +2073,12 @@ const currentArtifactDigests = await collectArtifactDigests({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+// subnets/coverage are R2-only (#1003), so there is no committed baseline at
+// build time — previousSubnets/previousCoverage resolve to null and this emits
+// an EMPTY placeholder changelog. The real "since last publish" diff is computed
+// by scripts/build-changelog.mjs at publish time against the previous R2 publish.
 const changelogArtifact = buildChangelog({
+  contractVersion,
   currentArtifacts: currentArtifactDigests,
   currentCoverage: coverage,
   currentSubnets: { subnets: subnetIndex },
@@ -5390,132 +5431,6 @@ function sourceSnapshot(id, kind, sourcePath, value, recordCount, capturedAt) {
   };
 }
 
-function buildChangelog({
-  currentArtifacts,
-  currentCoverage,
-  currentSubnets,
-  generatedAt: timestamp,
-  previousArtifacts,
-  previousCoverage,
-  previousSubnets,
-}) {
-  const previousMap = new Map(
-    previousArtifacts.map((artifact) => [artifact.path, artifact]),
-  );
-  const currentMap = new Map(
-    currentArtifacts.map((artifact) => [artifact.path, artifact]),
-  );
-  const addedArtifacts = currentArtifacts.filter(
-    (artifact) => !previousMap.has(artifact.path),
-  );
-  const removedArtifacts = previousArtifacts.filter(
-    (artifact) => !currentMap.has(artifact.path),
-  );
-  const modifiedArtifacts = currentArtifacts.filter((artifact) => {
-    const previous = previousMap.get(artifact.path);
-    return previous && previous.hash !== artifact.hash;
-  });
-
-  const subnetChanges = diffSubnets(
-    previousSubnets?.subnets || [],
-    currentSubnets.subnets || [],
-  );
-  const coverageDelta = previousCoverage
-    ? {
-        candidate_count: delta(
-          previousCoverage.candidate_count,
-          currentCoverage.candidate_count,
-        ),
-        curated_overlay_count: delta(
-          previousCoverage.curated_overlay_count,
-          currentCoverage.curated_overlay_count,
-        ),
-        native_only_count: delta(
-          previousCoverage.native_only_count,
-          currentCoverage.native_only_count,
-        ),
-        provider_count: null,
-        surface_count: delta(
-          previousCoverage.surface_count,
-          currentCoverage.surface_count,
-        ),
-      }
-    : null;
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: timestamp,
-    source: "generated-artifact-diff",
-    notes: [
-      "This changelog compares the latest generated artifacts against the previous checked-in public artifact state before the build.",
-      "Long-term historical runs are expected to live in R2 under versioned prefixes.",
-    ],
-    summary: {
-      artifact_added_count: addedArtifacts.length,
-      artifact_modified_count: modifiedArtifacts.length,
-      artifact_removed_count: removedArtifacts.length,
-      netuid_added_count: subnetChanges.added.length,
-      netuid_removed_count: subnetChanges.removed.length,
-      netuid_renamed_count: subnetChanges.renamed.length,
-      coverage_delta: coverageDelta,
-    },
-    artifacts: {
-      added: addedArtifacts.slice(0, 250),
-      modified: modifiedArtifacts.slice(0, 250),
-      removed: removedArtifacts.slice(0, 250),
-    },
-    subnets: subnetChanges,
-  };
-}
-
-function diffSubnets(previousSubnets, currentSubnets) {
-  const previousByNetuid = new Map(
-    previousSubnets.map((subnet) => [subnet.netuid, subnet]),
-  );
-  const currentByNetuid = new Map(
-    currentSubnets.map((subnet) => [subnet.netuid, subnet]),
-  );
-  const added = currentSubnets
-    .filter((subnet) => !previousByNetuid.has(subnet.netuid))
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      name: subnet.name,
-      slug: subnet.slug,
-    }));
-  const removed = previousSubnets
-    .filter((subnet) => !currentByNetuid.has(subnet.netuid))
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      name: subnet.name,
-      slug: subnet.slug,
-    }));
-  const renamed = currentSubnets
-    .filter(
-      (subnet) =>
-        previousByNetuid.has(subnet.netuid) &&
-        previousByNetuid.get(subnet.netuid).name !== subnet.name,
-    )
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      before: previousByNetuid.get(subnet.netuid).name,
-      after: subnet.name,
-    }));
-
-  return { added, removed, renamed };
-}
-
-function delta(before, after) {
-  if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return null;
-  }
-  return {
-    before,
-    after,
-    delta: after - before,
-  };
-}
-
 function artifactFile(relativePath) {
   const tier = artifactStorageTierForRelativePath(relativePath);
   const root = tier === "r2" ? r2OutputRoot : outputRoot;
@@ -5778,6 +5693,13 @@ async function walkIfExists(dirPath, onFile) {
     throw error;
   }
   for (const entry of entries) {
+    // #1028: skip hidden files (macOS .DS_Store, AppleDouble ._*). They are not
+    // artifacts and their bytes vary, which polluted r2-manifest size/digest
+    // sums non-deterministically. Hidden directories (e.g. .well-known) are
+    // still walked — they hold real artifacts.
+    if (entry.isFile() && entry.name.startsWith(".")) {
+      continue;
+    }
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
       await walkIfExists(entryPath, onFile);

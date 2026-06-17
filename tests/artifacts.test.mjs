@@ -24,14 +24,15 @@ import {
   deriveDomainTags,
   publicMetagraphRoot,
   r2StagingRoot,
+  registrySurfaceKey,
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
-const SUPPORT_ARTIFACT_PATHS = [
-  "public/metagraph/build-summary.json",
-  "public/metagraph/changelog.json",
-  "public/metagraph/r2-manifest.json",
-];
+// The committed digests the forged-build tests snapshot + restore (so a forged
+// rebuild never dirties version-controlled files). Only r2-manifest.json stays
+// committed (publish infra); changelog + build-summary moved to R2-only (#1003)
+// — they live in dist/ (gitignored, freely regenerated) and need no preservation.
+const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
 
 function runNode(script) {
   execFileSync(process.execPath, [script], {
@@ -998,6 +999,45 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(reviewQueue.count, reviewQueue.candidates.length);
+  // #1002: candidate ↔ curated-surface dedup. Every candidate carries a
+  // superseded_by field; when set it points to the curated surface that shares
+  // its (netuid, kind, normalized-url) identity, and such candidates are
+  // excluded from the review/enrichment queue so duplicates are not re-targeted.
+  const surfaceIdByRegistryKey = new Map(
+    surfaces.surfaces.map((surface) => [
+      registrySurfaceKey(surface),
+      surface.id,
+    ]),
+  );
+  for (const candidate of candidates.candidates) {
+    assert.ok(
+      "superseded_by" in candidate,
+      `candidate ${candidate.id} is missing the superseded_by field`,
+    );
+    if (candidate.superseded_by) {
+      assert.equal(
+        candidate.superseded_by,
+        surfaceIdByRegistryKey.get(registrySurfaceKey(candidate)),
+        `candidate ${candidate.id} superseded_by must equal the curated surface sharing its identity`,
+      );
+    } else {
+      assert.equal(
+        surfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+        false,
+        `candidate ${candidate.id} has no superseded_by yet a curated surface shares its identity`,
+      );
+    }
+  }
+  assert.equal(
+    reviewQueue.candidates.some((candidate) => candidate.superseded_by),
+    false,
+    "review queue must not contain candidates superseded by a curated surface",
+  );
+  // Guard against a no-op: the dedup must actually fire on real registry data.
+  assert.ok(
+    candidates.candidates.some((candidate) => candidate.superseded_by),
+    "expected at least one candidate to be superseded by a curated surface",
+  );
   assert.equal(contracts.primary_domain, "api.metagraph.sh");
   assert.equal(contracts.status_domain, null);
   assert.equal(

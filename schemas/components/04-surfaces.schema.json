@@ -194,6 +194,10 @@
           "id": {
             "type": "string"
           },
+          "key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it."
+          },
           "name": {
             "type": "string"
           },
@@ -570,6 +574,10 @@
           },
           "subnet_name": {
             "type": ["string", "null"]
+          },
+          "superseded_by": {
+            "type": ["string", "null"],
+            "description": "When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface."
           },
           "verification": {
             "oneOf": [

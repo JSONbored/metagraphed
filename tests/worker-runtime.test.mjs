@@ -324,25 +324,20 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).endpoints[0].id, "local-fallback");
   });
 
-  test("serves coverage/subnets R2-first with a committed-asset fallback", async () => {
-    const committed = {
-      schema_version: 1,
-      generated_at: "1970-01-01T00:00:00.000Z",
-      native_snapshot_captured_at: "2026-06-14T09:03:28.000Z",
-    };
+  test("serves coverage/subnets from R2 (R2-only, no committed copy)", async () => {
     const fresh = {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
       native_snapshot_captured_at: "2026-06-14T14:06:28.000Z",
     };
 
-    // R2 warm → the fresh published copy wins over the stale committed asset.
+    // subnets/coverage are R2-only (#1003): R2 warm → the published copy serves.
     const warm = await handleRequest(
       new Request("https://metagraph.sh/metagraph/coverage.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -365,13 +360,15 @@ describe("Worker runtime", () => {
       "2026-06-14T14:06:28.000Z",
     );
 
-    // R2 cold → fall back to the committed baseline (local/dev/CI).
+    // R2 cold → 404. There is no committed copy to fall back to anymore, and the
+    // static-asset fallback is opt-in (METAGRAPH_ALLOW_R2_STATIC_FALLBACK),
+    // covered by the local-mode test above.
     const cold = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -382,11 +379,7 @@ describe("Worker runtime", () => {
       },
       {},
     );
-    assert.equal(cold.status, 200);
-    assert.equal(
-      cold.headers.get("x-metagraph-artifact-source"),
-      "static-assets",
-    );
+    assert.equal(cold.status, 404);
   });
 
   test("serves metagraph latest as an R2-backed raw artifact", async () => {
@@ -1285,9 +1278,13 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        // identity_promotion is a transient, drainable queue — once every
+        // subnet's source-repo identity is curated it is legitimately empty
+        // (as the SN20/53/89/95… enrichment did). Assert the filter only ever
+        // returns matching profiles, not that any remain.
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
         (body) =>
-          body.data.profiles.length > 0 &&
+          Array.isArray(body.data.profiles) &&
           body.data.profiles.every((profile) =>
             profile.identity_promotion_kinds.includes("source-repo"),
           ),

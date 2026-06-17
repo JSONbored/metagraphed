@@ -6,13 +6,15 @@ import {
   artifactRelativePath,
   isGeneratedPublicArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
+import { artifactFilePath } from "./lib.mjs";
 
 function main() {
   const changedFilesPath = valueAfter("--changed-files") || "changed-files.txt";
   const artifactRoot = valueAfter("--artifact-root") || "public/metagraph";
 
   const GENERATED_PUBLIC_ARTIFACTS = new Set([
-    "public/metagraph/build-summary.json",
+    // build-summary.json moved to R2-only (#1003); only r2-manifest + types.d.ts
+    // remain committed generated artifacts.
     "public/metagraph/r2-manifest.json",
     "public/metagraph/types.d.ts",
   ]);
@@ -144,8 +146,9 @@ function gitDiffsFromHead(file) {
 
 function loadIndexedArtifacts(rootPath) {
   const artifactPaths = new Set();
+  // build-summary.json is R2-only (#1003) — read its index from the staging tier.
   for (const artifact of readJsonArtifact(
-    path.join(rootPath, "build-summary.json"),
+    artifactFilePath("build-summary.json"),
   ).artifacts || []) {
     const relativePath = artifactRelativePath(artifact.path || "");
     if (relativePath) {

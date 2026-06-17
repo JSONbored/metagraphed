@@ -257,6 +257,18 @@ jobs:
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
 
+      # Compute the real "what changed since last publish" changelog by diffing
+      # the staged build against the previous R2 publish — BEFORE r2:upload
+      # overwrites latest/. The build emits only an empty placeholder (subnets/
+      # coverage are R2-only, #1003); this fills it in. Best-effort: it never
+      # fails the publish (a stale changelog for one run is recoverable).
+      - name: Compute publish changelog (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run changelog:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Upload artifact history to R2
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run r2:upload

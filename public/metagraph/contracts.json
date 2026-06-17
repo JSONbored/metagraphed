@@ -70,7 +70,7 @@
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -79,7 +79,7 @@
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -205,7 +205,7 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -223,7 +223,7 @@
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -241,7 +241,7 @@
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -435,7 +435,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
@@ -493,7 +493,7 @@
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -502,7 +502,7 @@
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -592,7 +592,7 @@
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -646,7 +646,7 @@
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     }
   ],
   "base_path": "/metagraph",

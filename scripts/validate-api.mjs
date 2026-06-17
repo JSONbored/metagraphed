@@ -271,9 +271,12 @@ const checks = [
     },
   ],
   [
+    // identity_promotion is a drainable queue — once every subnet's source-repo
+    // identity is curated it is legitimately empty. Assert the filter only ever
+    // returns matching profiles, not that any remain.
     "/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
     (body) => {
-      assert.equal(body.data.profiles.length > 0, true);
+      assert.equal(Array.isArray(body.data.profiles), true);
       assert.equal(
         body.data.profiles.every((profile) =>
           profile.identity_promotion_kinds.includes("source-repo"),

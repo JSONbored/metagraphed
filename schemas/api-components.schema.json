@@ -948,6 +948,13 @@
               "null"
             ]
           },
+          "superseded_by": {
+            "description": "When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "url": {
             "format": "uri",
             "type": "string"
@@ -1074,7 +1081,10 @@
                         }
                       ]
                     },
-                    "type": "object"
+                    "type": [
+                      "object",
+                      "null"
+                    ]
                   },
                   "netuid_added_count": {
                     "minimum": 0,
@@ -3587,6 +3597,45 @@
           {
             "additionalProperties": true,
             "properties": {
+              "broken_link_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "broken_links": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "reason": {
+                      "enum": [
+                        "invalid-approval",
+                        "source-netuid-missing",
+                        "target-netuid-missing"
+                      ]
+                    },
+                    "source_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "target_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source_netuid",
+                    "target_netuid",
+                    "reason"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "graduated_subnet_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -4472,6 +4521,25 @@
           },
           "source": {
             "type": "string"
+          },
+          "stale_contract": {
+            "additionalProperties": false,
+            "description": "Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring.",
+            "properties": {
+              "built_under": {
+                "description": "Contract version the served artifact was built under.",
+                "type": "string"
+              },
+              "live": {
+                "description": "Current (live) contract version the Worker is running.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "built_under",
+              "live"
+            ],
+            "type": "object"
           }
         },
         "required": [
@@ -8740,6 +8808,10 @@
           "id": {
             "type": "string"
           },
+          "key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames.",
+            "type": "string"
+          },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
@@ -8992,6 +9064,10 @@
             "$ref": "#/components/schemas/Classification"
           },
           "id": {
+            "type": "string"
+          },
+          "key": {
+            "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it.",
             "type": "string"
           },
           "kind": {
