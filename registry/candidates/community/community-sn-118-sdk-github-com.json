@@ -14,10 +14,12 @@
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
-      "source_url": "https://heyditto.ai/docs/mcp-server",
-      "source_urls": ["https://heyditto.ai/docs/mcp-server"],
+      "source_url": "https://github.com/Geniepod/genie-claw/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Geniepod/genie-claw/blob/main/README.md"
+      ],
       "state": "schema-valid",
-      "url": "https://github.com/ditto-assistant/ditto-mcp"
+      "url": "https://github.com/Geniepod/genie-claw"
     }
   ],
   "schema_version": 1,
