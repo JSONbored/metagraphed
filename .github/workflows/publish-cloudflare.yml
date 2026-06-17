@@ -269,6 +269,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # changelog:publish overwrote the staged changelog.json with the real diff,
+      # but the r2-manifest still records the build-time PLACEHOLDER changelog's
+      # hash — so r2:upload's per-artifact verification fails ("local artifact
+      # hash mismatch for /metagraph/changelog.json"). Re-stamp the manifest from
+      # the now-final staged artifacts before upload. Gated identically (dry-runs
+      # skip changelog:publish, so the manifest already matches the placeholder).
+      - name: Re-stamp R2 manifest after changelog
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run r2:manifest
+
       - name: Upload artifact history to R2
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run r2:upload
