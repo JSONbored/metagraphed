@@ -283,6 +283,13 @@ each with `agent_readiness.status`, `agent_readiness.blocker_level`,
 `agent_readiness.blockers[]`, and `agent_readiness.missing_fields[]`. Use those
 fields when the user asks why a subnet is not agent-ready yet.
 
+When a service has a schema, `schema_artifact` points at the captured contract
+and `schema_source` explains how it was attached. `surface-id` and `schema-url`
+matches are exact. `same-origin-openapi` means Metagraphed found a captured
+OpenAPI surface for the same subnet and origin; inspect the schema artifact
+before generating endpoint-specific request bodies. For MCP, pass
+`schema_source.surface_id` to `get_api_schema` when it is present.
+
 ## Agent loop
 
 Use this loop for integration tasks:

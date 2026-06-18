@@ -689,6 +689,27 @@ const overviewSurfacesByNetuid = groupByNetuid(surfaces);
 const agentSchemaBySurfaceId = new Map(
   (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
 );
+const agentSchemaEntries = (schemaIndexArtifact.schemas || []).filter(
+  (entry) => entry.status === "captured" && entry.path,
+);
+const agentSchemaByUrl = new Map();
+const agentSchemasByNetuidOrigin = new Map();
+for (const entry of agentSchemaEntries) {
+  for (const url of [
+    entry.schema_url,
+    entry.url,
+    entry.snapshot?.surface_url,
+  ]) {
+    if (url && !agentSchemaByUrl.has(url)) agentSchemaByUrl.set(url, entry);
+  }
+  for (const origin of schemaOriginKeys(entry)) {
+    const key = `${entry.netuid}|${origin}`;
+    if (!agentSchemasByNetuidOrigin.has(key)) {
+      agentSchemasByNetuidOrigin.set(key, []);
+    }
+    agentSchemasByNetuidOrigin.get(key).push(entry);
+  }
+}
 const agentEndpointBySurfaceId = new Map(
   endpointResources.endpoints
     .filter((endpoint) => endpoint.surface_id)
@@ -1248,6 +1269,80 @@ for (const subnet of mergedSubnets) {
 // AGENT_SERVICE_KINDS + agentSchemaBySurfaceId + agentEndpointBySurfaceId are
 // declared earlier (service-resolution indices, alongside integration readiness)
 // and reused here.
+function urlOrigin(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function schemaOriginKeys(entry) {
+  return [
+    ...new Set(
+      [entry.schema_url, entry.url, entry.snapshot?.surface_url]
+        .map((value) => (value ? urlOrigin(value) : null))
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function firstDeterministicSchemaEntry(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+  const bySchemaUrl = new Map();
+  for (const entry of entries) {
+    const key = entry.schema_url || entry.path;
+    if (!bySchemaUrl.has(key)) bySchemaUrl.set(key, []);
+    bySchemaUrl.get(key).push(entry);
+  }
+  if (bySchemaUrl.size !== 1) return null;
+  return [...entries].sort((a, b) =>
+    String(a.surface_id).localeCompare(String(b.surface_id)),
+  )[0];
+}
+
+function resolveAgentServiceSchema(surface) {
+  const direct = agentSchemaBySurfaceId.get(surface.id);
+  if (direct) return { entry: direct, match: "surface-id" };
+
+  if (surface.schema_url) {
+    const exactUrl = agentSchemaByUrl.get(surface.schema_url);
+    if (exactUrl) return { entry: exactUrl, match: "schema-url" };
+  }
+
+  // A curated `not-captured` status is an explicit maintainer classification.
+  // Do not override it with same-origin projection.
+  if (surface.schema_status === "not-captured") {
+    return { entry: null, match: null };
+  }
+
+  if (surface.kind !== "subnet-api") {
+    return { entry: null, match: null };
+  }
+
+  const origin = urlOrigin(surface.url);
+  if (!origin) return { entry: null, match: null };
+  const sameOrigin = firstDeterministicSchemaEntry(
+    agentSchemasByNetuidOrigin.get(`${surface.netuid}|${origin}`),
+  );
+  if (sameOrigin) return { entry: sameOrigin, match: "same-origin-openapi" };
+  return { entry: null, match: null };
+}
+
+function serviceSchemaSource(schemaResolution) {
+  const schema = schemaResolution?.entry || null;
+  if (!schema) return null;
+  return {
+    surface_id: schema.surface_id,
+    match: schemaResolution.match,
+    url: schema.schema_url || schema.url || null,
+    artifact: schema.path || null,
+    status: schema.status || null,
+    observed_at: schema.snapshot?.observed_at || null,
+    hash: schema.hash || null,
+  };
+}
+
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
@@ -1255,7 +1350,8 @@ function buildSubnetServices(netuid) {
     )
     .map((surface) => {
       const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;
-      const schema = agentSchemaBySurfaceId.get(surface.id) || null;
+      const schemaResolution = resolveAgentServiceSchema(surface);
+      const schema = schemaResolution.entry || null;
       const classification = endpoint?.classification || null;
       const authRequired = Boolean(
         surface.auth_required || schema?.snapshot?.auth_required,
@@ -1295,9 +1391,11 @@ function buildSubnetServices(netuid) {
           auth: authDetail,
         }),
         ...(fixtureRef ? { fixture: fixtureRef } : {}),
-        schema_url: surface.schema_url || null,
-        schema_status: surface.schema_status || null,
+        schema_url: surface.schema_url || schema?.schema_url || null,
+        schema_status:
+          surface.schema_status || (schema ? "machine-readable" : null),
         schema_artifact: schema?.path || null,
+        schema_source: serviceSchemaSource(schemaResolution),
         // Live-only: status/latency/last_ok are overlaid from KV/D1 on read.
         // No build-time status is stored — cold reads report `unknown`.
         // (`classification` stays a structural input to eligibility below, but

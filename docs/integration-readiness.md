@@ -94,6 +94,24 @@ Common blocker codes:
 | `missing-source-repo`        | no public source repository is recorded                                  |
 | `profile-incomplete`         | the subnet profile is below the completeness threshold                   |
 
+## Schema projection (`schema_source`)
+
+Agent-catalog services expose `schema_artifact` when Metagraphed has a captured
+machine-readable schema for the service. The schema can be linked three ways:
+
+| Match type            | Meaning                                                                |
+| --------------------- | ---------------------------------------------------------------------- |
+| `surface-id`          | the service row is itself the captured schema/OpenAPI surface          |
+| `schema-url`          | the service row declares the same machine-readable `schema_url`        |
+| `same-origin-openapi` | a captured OpenAPI surface for the same subnet and origin is available |
+
+`schema_source` carries the source surface id, schema URL, artifact path,
+capture status, observed timestamp, and content hash. Agents should prefer
+exact `surface-id` and `schema-url` matches for endpoint-specific code
+generation. Treat `same-origin-openapi` as a strong pointer to the canonical
+API contract, then inspect the schema artifact before claiming a specific path
+or request shape is supported.
+
 ## Live verification (`readiness.readiness_verified`)
 
 The numeric `score` is deliberately build-time and deterministic, so

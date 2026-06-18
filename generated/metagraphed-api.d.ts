@@ -1113,6 +1113,7 @@ export interface components {
                 kind: string;
                 provider?: string | null;
                 schema_artifact?: string | null;
+                schema_source?: components["schemas"]["AgentServiceSchemaSource"] | null;
                 schema_status?: string | null;
                 schema_url?: string | null;
                 surface_id: string;
@@ -1191,6 +1192,26 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Source metadata for the schema artifact associated with an agent-catalog service. */
+        AgentServiceSchemaSource: {
+            /** @description Metagraphed schema artifact path. */
+            artifact: string | null;
+            /** @description Content hash for the captured schema artifact. */
+            hash: string | null;
+            /**
+             * @description How the callable service was linked to the schema artifact.
+             * @enum {string}
+             */
+            match: "surface-id" | "schema-url" | "same-origin-openapi";
+            /** @description When the schema snapshot was observed, if available. */
+            observed_at: string | null;
+            /** @description Schema capture status from the schema index. */
+            status: string | null;
+            /** @description Schema/OpenAPI surface that supplied the artifact. */
+            surface_id: string;
+            /** @description Machine-readable schema URL, when known. */
+            url: string | null;
+        };
         ApiIndexArtifact: components["schemas"]["ArtifactBase"] & ({
             artifact_contracts: components["schemas"]["ArtifactContractEntry"][];
             /** @constant */

@@ -313,6 +313,16 @@
                         "null"
                       ]
                     },
+                    "schema_source": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AgentServiceSchemaSource"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "schema_status": {
                       "type": [
                         "string",
@@ -571,6 +581,70 @@
             "type": "object"
           }
         ]
+      },
+      "AgentServiceSchemaSource": {
+        "additionalProperties": false,
+        "description": "Source metadata for the schema artifact associated with an agent-catalog service.",
+        "properties": {
+          "artifact": {
+            "description": "Metagraphed schema artifact path.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hash": {
+            "description": "Content hash for the captured schema artifact.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match": {
+            "description": "How the callable service was linked to the schema artifact.",
+            "enum": [
+              "surface-id",
+              "schema-url",
+              "same-origin-openapi"
+            ],
+            "type": "string"
+          },
+          "observed_at": {
+            "description": "When the schema snapshot was observed, if available.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "Schema capture status from the schema index.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surface_id": {
+            "description": "Schema/OpenAPI surface that supplied the artifact.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Machine-readable schema URL, when known.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "surface_id",
+          "match",
+          "url",
+          "artifact",
+          "status",
+          "observed_at",
+          "hash"
+        ],
+        "type": "object"
       },
       "ApiIndexArtifact": {
         "allOf": [

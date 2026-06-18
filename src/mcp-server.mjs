@@ -688,7 +688,8 @@ export const MCP_TOOLS = [
     title: "Get a surface's API schema",
     description:
       "Fetch the captured OpenAPI/Swagger schema for a subnet surface by its " +
-      "surface_id (from list_subnet_apis). Returns a sanitized full spec " +
+      "schema surface_id (from list_subnet_apis service.schema_source.surface_id " +
+      "when present, otherwise the service surface_id). Returns a sanitized full spec " +
       "under `document` (paths, components, securitySchemes) plus capture " +
       "metadata (auth_required, auth_schemes, drift_status). Use it to " +
       "generate a typed client or understand endpoints; prefer the curated " +
@@ -1062,7 +1063,9 @@ export const MCP_TOOLS = [
         schema: s.schema_artifact
           ? {
               available: true,
-              fetch_with: `get_api_schema with surface_id ${s.surface_id}`,
+              fetch_with: `get_api_schema with surface_id ${
+                s.schema_source?.surface_id || s.surface_id
+              }`,
               schema_url: s.schema_url || null,
             }
           : { available: false, schema_url: s.schema_url || null },

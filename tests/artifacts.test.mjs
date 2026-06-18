@@ -800,6 +800,86 @@ test("public artifacts are internally consistent", () => {
     catalog31.agent_readiness.missing_fields.includes("surfaces"),
     "per-subnet detail must expose blocker missing_fields",
   );
+  const callableAgentServices = agentCatalog.subnets.flatMap((subnet) =>
+    readArtifact(`agent-catalog/${subnet.netuid}.json`).services.filter(
+      (service) => service.eligibility?.callable,
+    ),
+  );
+  const callableWithoutSchema = callableAgentServices.filter(
+    (service) => !service.schema_artifact,
+  );
+  assert.equal(
+    callableAgentServices.length,
+    71,
+    "agent-catalog callable-service count must stay deterministic",
+  );
+  assert.equal(
+    callableWithoutSchema.length,
+    33,
+    "schema projection should reduce callable services without schema artifacts",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "subnet-api")
+      .length,
+    8,
+    "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "sse").length,
+    1,
+    "SSE streams should not inherit same-origin OpenAPI schemas implicitly",
+  );
+  const serviceById = (catalog, surfaceId) =>
+    catalog.services.find((service) => service.surface_id === surfaceId);
+  const catalog7 = readArtifact("agent-catalog/7.json");
+  const allwaysHealth = serviceById(catalog7, "allways-api-health");
+  assert.equal(
+    allwaysHealth.schema_artifact,
+    "/metagraph/schemas/allways-swagger.json",
+    "SN7 endpoint rows should inherit the same-origin captured OpenAPI artifact",
+  );
+  assert.equal(allwaysHealth.schema_source.match, "same-origin-openapi");
+  assert.equal(
+    allwaysHealth.schema_source.url,
+    "https://api.all-ways.io/swagger-json",
+  );
+  const allwaysSse = serviceById(catalog7, "allways-sse");
+  assert.equal(
+    allwaysSse.schema_artifact,
+    null,
+    "SSE streams require an explicit schema match",
+  );
+  const catalog56 = readArtifact("agent-catalog/56.json");
+  const gradientsPerformance = serviceById(
+    catalog56,
+    "sn-56-gradients-last-boss-battle",
+  );
+  assert.equal(
+    gradientsPerformance.schema_source.match,
+    "schema-url",
+    "SN56 endpoint rows with schema_url should resolve by exact schema URL",
+  );
+  const catalog110 = readArtifact("agent-catalog/110.json");
+  const greenComputeChat = serviceById(
+    catalog110,
+    "sn-110-green-compute-chat-completions-api",
+  );
+  assert.equal(
+    greenComputeChat.schema_source.match,
+    "same-origin-openapi",
+    "SN110 endpoint rows should resolve through same-origin OpenAPI",
+  );
+  const catalog64ForSchemas = readArtifact("agent-catalog/64.json");
+  const chutesPricing = serviceById(
+    catalog64ForSchemas,
+    "sn-64-chutes-pricing-api",
+  );
+  assert.equal(
+    chutesPricing.schema_artifact,
+    null,
+    "explicit not-captured schema statuses must not be overridden",
+  );
+  assert.equal(chutesPricing.schema_status, "not-captured");
 
   // Cross-network lineage (issue #353): mainnet ↔ testnet mapping, with the
   // profile's lineage reconciled against the standalone artifact.
