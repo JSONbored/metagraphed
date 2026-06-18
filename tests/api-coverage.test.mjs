@@ -539,6 +539,18 @@ describe("invalid query handling", () => {
     assert.equal((await res.json()).meta.parameter, "order");
   });
 
+  test("400 invalid_query for an unsupported projected field", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?fields=netuid,not_a_field"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "fields");
+  });
+
   test("paginates with cursor + limit and reports next_cursor", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?limit=2&cursor=0&sort=netuid"),

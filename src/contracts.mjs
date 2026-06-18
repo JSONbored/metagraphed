@@ -128,6 +128,10 @@ export const QUERY_ENUMS = {
 
 const integerSchema = { type: "integer", minimum: 0 };
 const textSchema = { type: "string" };
+const fieldListSchema = {
+  type: "string",
+  pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+};
 
 export const API_QUERY_COLLECTIONS = {
   candidates: queryCollection("candidates", {
@@ -1983,6 +1987,10 @@ function listQuery(collection, options = {}) {
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      {
+        name: "fields",
+        schema: fieldListSchema,
+      },
       {
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 1000 },

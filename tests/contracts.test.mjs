@@ -120,6 +120,12 @@ describe("public contract registry", () => {
     );
     assert.equal(
       apiIndex.routes
+        .find((route) => route.id === "subnets")
+        .query_parameters.some((parameter) => parameter.name === "fields"),
+      true,
+    );
+    assert.equal(
+      apiIndex.routes
         .find((route) => route.id === "subnet-surfaces")
         .query_parameters.some((parameter) => parameter.name === "netuid"),
       false,
@@ -141,6 +147,11 @@ describe("public contract registry", () => {
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
+    assert.equal(
+      subnetParameters.find((parameter) => parameter.name === "fields").schema
+        .pattern,
+      "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+    );
     assert.deepEqual(
       subnetParameters.find((parameter) => parameter.name === "sort").schema
         .enum,

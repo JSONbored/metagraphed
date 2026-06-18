@@ -5,6 +5,8 @@
 // `applyQueryFilters` is the single public entry; the rest are internal helpers.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 
+const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 export function applyQueryFilters(
   data,
   url,
@@ -73,6 +75,10 @@ function applyListTransform(data, params, config) {
     return { error: queryError };
   }
   const key = config.data_key;
+  const projection = parseProjection(params, data[key], key);
+  if (projection.error) {
+    return { error: projection.error };
+  }
   const filterKeys = Object.keys(config.filters);
   const filtered = filterRows(
     searchRows(data[key], params, config.search_keys),
@@ -86,7 +92,7 @@ function applyListTransform(data, params, config) {
   return {
     data: {
       ...data,
-      [key]: paginated.rows,
+      [key]: projectRows(paginated.rows, projection.fields),
     },
     meta: {
       pagination: {
@@ -99,6 +105,9 @@ function applyListTransform(data, params, config) {
         sort: paginated.sort,
         order: paginated.order,
       },
+      ...(projection.fields
+        ? { projection: { fields: projection.fields } }
+        : {}),
     },
   };
 }
@@ -222,6 +231,61 @@ function validateListQuery(params, config) {
   }
 
   return null;
+}
+
+function parseProjection(params, rows, dataKey) {
+  if (!params.has("fields")) {
+    return { fields: null };
+  }
+  const requested = params.get("fields").split(",");
+  if (
+    requested.length === 0 ||
+    requested.some((field) => !FIELD_NAME_PATTERN.test(field))
+  ) {
+    return {
+      error: {
+        parameter: "fields",
+        message:
+          "fields must be a comma-separated list of row field names, e.g. netuid,name,slug.",
+      },
+    };
+  }
+
+  const knownFields = new Set(
+    rows.flatMap((row) =>
+      row && typeof row === "object" && !Array.isArray(row)
+        ? Object.keys(row)
+        : [],
+    ),
+  );
+  const fields = [...new Set(requested)];
+  const unknown = fields.filter((field) => !knownFields.has(field));
+  if (unknown.length > 0) {
+    return {
+      error: {
+        parameter: "fields",
+        message: `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${dataKey}: ${unknown.join(", ")}.`,
+      },
+    };
+  }
+
+  return { fields };
+}
+
+function projectRows(rows, fields) {
+  if (!fields) {
+    return rows;
+  }
+  return rows.map((row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return row;
+    }
+    return Object.fromEntries(
+      fields
+        .filter((field) => Object.hasOwn(row, field))
+        .map((field) => [field, row[field]]),
+    );
+  });
 }
 
 function integerParam(value) {

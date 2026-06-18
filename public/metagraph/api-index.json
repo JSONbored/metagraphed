@@ -663,6 +663,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -802,6 +809,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -948,6 +962,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1025,6 +1046,13 @@
         {
           "name": "provider",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1170,6 +1198,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1308,6 +1343,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1417,6 +1459,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1515,6 +1564,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1598,6 +1654,13 @@
               "provider-claimed",
               "registry-observed"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1747,6 +1810,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1867,6 +1937,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2004,6 +2081,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2088,6 +2172,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2168,6 +2259,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2239,6 +2337,13 @@
         {
           "name": "review_state",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2375,6 +2480,13 @@
               "placeholder",
               "empty"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2523,6 +2635,13 @@
               "generic-openapi-or-custom",
               "stream-adapter"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2737,6 +2856,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2886,6 +3012,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3128,6 +3261,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3204,6 +3344,13 @@
               "failed",
               "unknown"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3335,6 +3482,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3450,6 +3604,13 @@
               "unsupported",
               "unsafe"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3702,6 +3863,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3753,6 +3921,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3820,6 +3995,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3964,6 +4146,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -4047,6 +4236,13 @@
               "subtensor-wss",
               "archive"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -4175,6 +4371,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -4278,6 +4481,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },

@@ -4597,6 +4597,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -5110,6 +5111,7 @@ export interface operations {
                 agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
                 blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
@@ -5301,6 +5303,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
@@ -5574,6 +5577,7 @@ export interface operations {
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
                 state?: "active" | "resolved";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
@@ -5719,6 +5723,7 @@ export interface operations {
             query?: {
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -5891,6 +5896,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -6039,6 +6045,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -6419,6 +6426,7 @@ export interface operations {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
@@ -6548,6 +6556,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
@@ -6674,6 +6683,7 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -7287,6 +7297,7 @@ export interface operations {
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
@@ -7537,6 +7548,7 @@ export interface operations {
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "authority" | "id" | "kind" | "name";
@@ -7787,6 +7799,7 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -8181,6 +8194,7 @@ export interface operations {
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
@@ -8333,6 +8347,7 @@ export interface operations {
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
@@ -8495,6 +8510,7 @@ export interface operations {
                 review_state?: string;
                 manual_review_required?: "true" | "false";
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
@@ -8702,6 +8718,7 @@ export interface operations {
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
@@ -8909,6 +8926,7 @@ export interface operations {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -9039,6 +9057,7 @@ export interface operations {
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 native_name_quality?: "chain" | "placeholder" | "empty";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
@@ -9234,6 +9253,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -9774,6 +9794,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "kind" | "netuid" | "slug" | "title";
@@ -10019,6 +10040,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "id" | "kind" | "path" | "record_count";
@@ -10151,6 +10173,7 @@ export interface operations {
                 domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
                 status?: "active" | "inactive";
                 subnet_type?: "root" | "application";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
@@ -10538,6 +10561,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -10668,6 +10692,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -10821,6 +10846,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -10944,6 +10970,7 @@ export interface operations {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -11149,6 +11176,7 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -12308,6 +12336,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -12676,6 +12705,7 @@ export interface operations {
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                fields?: string;
                 limit?: number;
                 cursor?: number;
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";

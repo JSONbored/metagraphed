@@ -550,6 +550,7 @@ describe("Worker runtime", () => {
       ["/api/v1/subnets?cursor=nope", "cursor"],
       ["/api/v1/subnets?order=sideways", "order"],
       ["/api/v1/subnets?sort=nope", "sort"],
+      ["/api/v1/subnets?fields=netuid,nope", "fields"],
       ["/api/v1/subnets?netuid=nope", "netuid"],
       ["/api/v1/subnets?subnet_type=nope", "subnet_type"],
     ];
@@ -578,6 +579,29 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.pagination.collection, "subnets");
     assert.equal(body.meta.pagination.limit, 1);
     assert.equal(body.meta.pagination.sort, "netuid");
+  });
+
+  test("projects list rows with ?fields while preserving pagination and filters", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/subnets?domain=inference&fields=netuid,name,slug&limit=2&sort=netuid",
+      ),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.pagination.collection, "subnets");
+    assert.ok(body.meta.pagination.returned > 0);
+    assert.ok(body.meta.pagination.returned <= 2);
+    assert.deepEqual(body.meta.projection.fields, ["netuid", "name", "slug"]);
+    assert.equal(body.data.subnets.length, body.meta.pagination.returned);
+    assert.deepEqual(Object.keys(body.data.subnets[0]).sort(), [
+      "name",
+      "netuid",
+      "slug",
+    ]);
+    assert.equal("categories" in body.data.subnets[0], false);
   });
 
   test("returns deterministic API errors", async () => {
@@ -1362,6 +1386,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?cursor=-1",
       "https://metagraph.sh/api/v1/subnets?order=sideways",
       "https://metagraph.sh/api/v1/subnets?sort=unknown_field",
+      "https://metagraph.sh/api/v1/subnets?fields=netuid,unknown_field",
       "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
