@@ -125,17 +125,26 @@ export function canonicalArtifactJson(artifactPath, value) {
     // The committed compact manifest is a publish lockfile, but its full/R2-only
     // byte totals can vary slightly across otherwise-equivalent rebuilds. Keep
     // the dual artifact entries strict while ignoring the known unstable R2
-    // aggregate byte counters.
-    delete normalized.full_artifact_size_bytes;
+    // aggregate byte counters only when they are valid byte totals; otherwise
+    // committed public manifest tampering must remain visible to the verifier.
+    if (isValidByteTotal(normalized.full_artifact_size_bytes)) {
+      delete normalized.full_artifact_size_bytes;
+    }
     if (
       normalized.storage_tier_size_bytes &&
       typeof normalized.storage_tier_size_bytes === "object" &&
       !Array.isArray(normalized.storage_tier_size_bytes)
     ) {
-      delete normalized.storage_tier_size_bytes.r2;
+      if (isValidByteTotal(normalized.storage_tier_size_bytes.r2)) {
+        delete normalized.storage_tier_size_bytes.r2;
+      }
     }
   }
   return JSON.stringify(normalized);
+}
+
+function isValidByteTotal(value) {
+  return Number.isSafeInteger(value) && value >= 0;
 }
 
 function normalizeForComparison(value) {
