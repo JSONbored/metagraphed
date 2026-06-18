@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-42-subnet-api-data-gopher-ai-com",
+      "kind": "subnet-api",
+      "name": "Gopher community subnet-api",
+      "netuid": 42,
+      "provider": "gopher",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://developers.gopher-ai.com/docs/data/intro",
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/data/intro",
+        "https://github.com/gopher-lab/sn42-datasets"
+      ],
+      "state": "schema-valid",
+      "url": "https://data.gopher-ai.com/api"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "prakashiitp",
+    "submitted_by_url": "https://github.com/prakashiitp"
+  }
+}
