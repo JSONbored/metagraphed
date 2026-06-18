@@ -31,6 +31,8 @@ import type {
   Subnet,
   SubnetProfile,
   Surface,
+  SurfaceLatencyPercentiles,
+  SurfaceSla,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -553,6 +555,36 @@ export const subnetHealthQuery = (netuid: number) =>
       const summary = (d.summary as Record<string, unknown> | undefined) ?? {};
       const merged = normalizeHealthBlock({ ...d, ...summary });
       return { data: merged, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// #1114: per-surface latency distribution (p50/p95/p99) over a 7d/30d window,
+// computed live from D1.
+export const subnetHealthPercentilesQuery = (netuid: number, window = "7d") =>
+  queryOptions({
+    queryKey: k("subnet-health-percentiles", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ surfaces?: SurfaceLatencyPercentiles[] }>(
+        `/api/v1/subnets/${netuid}/health/percentiles`,
+        { params: { window }, signal },
+      );
+      return { data: res.data?.surfaces ?? [], meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// #1114: per-surface SLA (uptime ratio) + reconstructed downtime incidents over
+// a 7d/30d window, computed live from D1.
+export const subnetHealthIncidentsQuery = (netuid: number, window = "7d") =>
+  queryOptions({
+    queryKey: k("subnet-health-incidents", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ surfaces?: SurfaceSla[] }>(
+        `/api/v1/subnets/${netuid}/health/incidents`,
+        { params: { window }, signal },
+      );
+      return { data: res.data?.surfaces ?? [], meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
   });

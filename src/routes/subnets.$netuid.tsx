@@ -29,6 +29,7 @@ import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
+import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -327,6 +328,16 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
             <SchemaDriftSummary netuid={netuid} compact />
           </Suspense>
         </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* #1114: per-surface reliability — uptime SLA + latency percentiles, live from D1. */}
+      <SectionAnchor
+        id="reliability"
+        title="Reliability"
+        subtitle="Per-surface uptime SLA and latency percentiles (p50/p95/p99) over 7d/30d."
+        info="Live from the 2-minute health prober's D1 history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
+      >
+        <ReliabilityPanel netuid={netuid} />
       </SectionAnchor>
 
       {(profile?.missing_kinds?.length ?? 0) > 0 || (profile?.gap_notes?.length ?? 0) > 0 ? (

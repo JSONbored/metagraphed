@@ -464,3 +464,31 @@ export interface VerifyResult {
   verified_at?: string;
   from_cache?: boolean;
 }
+
+/** Per-surface latency distribution from /subnets/{n}/health/percentiles. */
+export interface SurfaceLatencyPercentiles {
+  surface_id: string;
+  samples?: number;
+  latency_ms?: {
+    p50?: number;
+    p95?: number;
+    p99?: number;
+    avg?: number;
+    min?: number;
+    max?: number;
+  };
+}
+
+/** Per-surface SLA + reconstructed downtime from /subnets/{n}/health/incidents. */
+export interface SurfaceSla {
+  surface_id: string;
+  samples?: number;
+  uptime_ratio?: number;
+  incident_count?: number;
+  downtime_ms?: number;
+  incidents?: Array<{
+    started_at?: number;
+    ended_at?: number | null;
+    [key: string]: unknown;
+  }>;
+}
