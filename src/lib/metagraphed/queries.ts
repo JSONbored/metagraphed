@@ -29,6 +29,7 @@ import type {
   RpcUsage,
   SchemaInfo,
   Subnet,
+  SubnetEconomics,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -199,6 +200,20 @@ export const lineageQuery = () =>
       return { data: { ...d, links } as Lineage, meta: res.meta, url: res.url };
     },
     staleTime: STALE_LONG,
+  });
+
+// #1112: per-subnet on-chain economics. One artifact carries all subnets, so
+// fetch once (shared cache) and the consumer finds its netuid.
+export const economicsQuery = () =>
+  queryOptions({
+    queryKey: k("economics"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ subnets?: SubnetEconomics[] }>("/api/v1/economics", {
+        signal,
+      });
+      return { data: res.data?.subnets ?? [], meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
   });
 
 export const freshnessQuery = () =>

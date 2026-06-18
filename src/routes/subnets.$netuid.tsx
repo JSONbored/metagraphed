@@ -31,6 +31,7 @@ import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { GrowthSection, UptimeHistorySection } from "@/components/metagraphed/growth-uptime";
+import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -291,6 +292,16 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       {/* #1113: cross-network lineage — renders only when this subnet is paired
           with a testnet/mainnet counterpart. */}
       <SubnetLineageSection netuid={netuid} />
+
+      {/* #1112: on-chain economics (emission, stake, validators, volume). */}
+      <SectionAnchor
+        id="economics"
+        title="Economics"
+        subtitle="On-chain emission share, stake, validators, and market data."
+        info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
+      >
+        <EconomicsPanel netuid={netuid} />
+      </SectionAnchor>
 
       <SectionAnchor
         id="endpoints-glance"

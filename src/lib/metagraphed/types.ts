@@ -548,3 +548,22 @@ export interface Uptime {
   reliability?: ReliabilityGrade;
   surfaces: SurfaceUptime[];
 }
+
+/** Per-subnet on-chain economics from /api/v1/economics. */
+export interface SubnetEconomics {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  emission_share?: number;
+  alpha_price_tao?: number;
+  validator_count?: number;
+  max_validators?: number;
+  miner_count?: number;
+  max_uids?: number;
+  total_stake_tao?: number;
+  max_stake_tao?: number;
+  subnet_volume_tao?: number;
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
+  [key: string]: unknown;
+}
