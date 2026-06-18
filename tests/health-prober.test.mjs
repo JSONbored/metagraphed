@@ -124,7 +124,7 @@ function makeDb({ priorStatus = [] } = {}) {
     binds,
     async all() {
       calls.selects.push({ sql, binds });
-      if (/FROM surface_status WHERE surface_id IN/.test(sql)) {
+      if (/FROM surface_status/.test(sql)) {
         return { results: priorStatus };
       }
       return { results: [] };
@@ -258,7 +258,12 @@ describe("runHealthProber", () => {
   test("writes D1 batch + the three KV snapshots with correct shapes", async () => {
     const db = makeDb({
       priorStatus: [
-        { surface_id: "sn7-api", last_ok: 1000, consecutive_failures: 2 },
+        {
+          surface_id: "sn7-api-old",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
       ],
     });
     const kv = makeKv();
@@ -291,6 +296,16 @@ describe("runHealthProber", () => {
     // #1005: both the append-only time-series and the latest-row upsert carry the
     // stable surface_key (binds[1]) so D1 history re-keys onto the rename-stable
     // identity. surface_checks binds: [surface_id, surface_key, netuid, ...].
+    assert.match(
+      db.calls.selects[0].sql,
+      /WHERE surface_key IN \(\?,\?\)\s+OR surface_id IN \(\?,\?\)/,
+    );
+    assert.deepEqual(db.calls.selects[0].binds, [
+      "srf-sn7apikey000000",
+      "srf-rootrpckey00000",
+      "sn7-api",
+      "opentensor-finney-rpc",
+    ]);
     const checkInsert = db.calls.batches[0].find(
       (s) =>
         /INSERT INTO surface_checks/.test(s.sql) && s.binds[0] === "sn7-api",
@@ -392,7 +407,12 @@ describe("runHealthProber", () => {
   test("bumps consecutive_failures from prior state for the breaker", async () => {
     const db = makeDb({
       priorStatus: [
-        { surface_id: "sn7-api", last_ok: 1000, consecutive_failures: 2 },
+        {
+          surface_id: "sn7-api-before-rename",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
       ],
     });
     await runHealthProber(
@@ -415,6 +435,10 @@ describe("runHealthProber", () => {
     // binds: [surface_id, surface_key, netuid, kind, url, provider, status,
     //   classification, latency_ms, status_code, last_checked, last_ok, consec,
     //   updated_at] — #1005 added surface_key at index 1, shifting the rest by 1.
+    assert.match(
+      apiUpsert.sql,
+      /ON CONFLICT\(surface_key\) WHERE surface_key IS NOT NULL/,
+    );
     assert.equal(apiUpsert.binds[1], "srf-sn7apikey000000");
     assert.equal(apiUpsert.binds[12], 3);
   });
@@ -1342,7 +1366,14 @@ describe("rollupDailyUptime (durable daily history)", () => {
     const stmts = db.calls.batches[0];
     assert.equal(stmts.length, 2);
     assert.match(stmts[0].sql, /INSERT INTO surface_uptime_daily/);
-    assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\)/);
+    assert.match(
+      stmts[0].sql,
+      /GROUP BY COALESCE\(surface_key, surface_id\), netuid/,
+    );
+    assert.match(
+      stmts[0].sql,
+      /ON CONFLICT\(surface_key, day\) WHERE surface_key IS NOT NULL/,
+    );
     // binds: [day, updated_at, dayStart, dayEnd]
     assert.deepEqual(stmts[0].binds, [
       "2026-06-13",

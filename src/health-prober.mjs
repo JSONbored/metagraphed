@@ -360,15 +360,22 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   const priorStatus = new Map();
   if (db) {
     try {
+      const keys = surfaces.map((s) => s.surface_key || s.surface_id);
       const ids = surfaces.map((s) => s.surface_id);
-      const placeholders = ids.map(() => "?").join(",");
+      const keyPlaceholders = keys.map(() => "?").join(",");
+      const idPlaceholders = ids.map(() => "?").join(",");
       const { results } = await db
         .prepare(
-          `SELECT surface_id, last_ok, consecutive_failures FROM surface_status WHERE surface_id IN (${placeholders})`,
+          `SELECT surface_id, surface_key, last_ok, consecutive_failures
+           FROM surface_status
+           WHERE surface_key IN (${keyPlaceholders})
+              OR surface_id IN (${idPlaceholders})`,
         )
-        .bind(...ids)
+        .bind(...keys, ...ids)
         .all();
-      for (const row of results || []) priorStatus.set(row.surface_id, row);
+      for (const row of results || []) {
+        priorStatus.set(row.surface_key || row.surface_id, row);
+      }
     } catch {
       // First run / cold table — treat all as having no prior state.
     }
@@ -401,7 +408,8 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       };
     }
     const ok = base.status === "ok";
-    const prior = priorStatus.get(surface.surface_id);
+    const stableLookupKey = surface.surface_key || surface.surface_id;
+    const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
     const consecutiveFailures = ok ? 0 : (prior?.consecutive_failures ?? 0) + 1;
     return {
@@ -448,17 +456,15 @@ async function persistToD1(db, probed, runAt) {
        (surface_id, surface_key, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    // #1005: surface_key is written alongside surface_id and back-filled onto the
-    // existing latest row via the ON CONFLICT(surface_id) UPDATE — so once every
-    // surface has been probed once post-migration, surface_status carries the
-    // stable key the serving cutover (PR3) joins on. Conflict target stays
-    // surface_id (unchanged behavior); PR3 owns the key-based read path.
+    // #1005: surface_status now keys latest rows on surface_key, so a display
+    // id/slug rename updates the alias in-place instead of creating a new latest
+    // row and resetting breaker continuity.
     const statusStmt = db.prepare(
       `INSERT INTO surface_status
        (surface_id, surface_key, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(surface_id) DO UPDATE SET
-         surface_key=excluded.surface_key,
+       ON CONFLICT(surface_key) WHERE surface_key IS NOT NULL DO UPDATE SET
+         surface_id=excluded.surface_id,
          netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
@@ -617,10 +623,8 @@ export async function rollupDailyUptime(env, overrides = {}) {
        (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
         avg_latency_ms, status, updated_at)
      SELECT
-       surface_id,
-       -- #1005: surface_key is functionally dependent on surface_id within the
-       -- raw checks, so MAX() picks it deterministically per group.
-       MAX(surface_key) AS surface_key,
+       MAX(surface_id) AS surface_id,
+       COALESCE(surface_key, surface_id) AS surface_key,
        netuid,
        ? AS day,
        COUNT(*) AS samples,
@@ -635,9 +639,9 @@ export async function rollupDailyUptime(env, overrides = {}) {
        ? AS updated_at
      FROM surface_checks
      WHERE checked_at >= ? AND checked_at < ?
-     GROUP BY surface_id, netuid
-     ON CONFLICT(surface_id, day) DO UPDATE SET
-       surface_key = excluded.surface_key,
+     GROUP BY COALESCE(surface_key, surface_id), netuid
+     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
+       surface_id = excluded.surface_id,
        netuid = excluded.netuid,
        samples = excluded.samples,
        ok_count = excluded.ok_count,
