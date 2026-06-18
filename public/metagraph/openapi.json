@@ -1836,6 +1836,10 @@
           "surface_id": {
             "type": "string"
           },
+          "surface_key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url for the affected surface.",
+            "type": "string"
+          },
           "user_reported": {
             "type": "boolean"
           }
@@ -1844,6 +1848,7 @@
           "id",
           "endpoint_id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -2217,6 +2222,10 @@
           "surface_id": {
             "type": "string"
           },
+          "surface_key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links.",
+            "type": "string"
+          },
           "url": {
             "format": "uri",
             "type": "string"
@@ -2225,6 +2234,7 @@
         "required": [
           "id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -6706,6 +6716,14 @@
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
+          },
+          "surface_id": {
+            "description": "Human-readable surface alias retained for display/back-compat.",
+            "type": "string"
+          },
+          "surface_key": {
+            "description": "Stable surface identity (#1005) when the pool endpoint came from a catalogued surface.",
+            "type": "string"
           },
           "url": {
             "format": "uri",
@@ -12227,6 +12245,7 @@
                         "state": "active",
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "user_reported": false
                       }
                     ],
@@ -12777,6 +12796,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -15581,6 +15601,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -19741,6 +19762,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -20371,6 +20393,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -22104,6 +22127,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],

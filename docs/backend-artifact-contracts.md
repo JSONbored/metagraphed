@@ -36,8 +36,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/profiles/{netuid}.json`: per-subnet public-safe profile detail. R2-backed.
 - `/metagraph/surfaces.json`: curated public surfaces only.
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
-- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
-- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed.
+- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery. R2-backed.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
@@ -66,8 +66,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers. R2-backed.
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
+- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing; pool entries include `surface_id` and `surface_key` when backed by catalogued surfaces.
+- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures; incidents include the human `surface_id` alias plus stable `surface_key`.
 - `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
 - `/metagraph/agent-catalog.json`: compact index of subnets exposing callable services for AI agents (per subnet: service kinds + callable count). Committed.
 - `/metagraph/agent-catalog/{netuid}.json`: per-subnet agent capability catalog — each callable service with base URL, auth, machine-readable schema, and build-time health/eligibility. R2-backed.

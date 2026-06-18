@@ -1520,6 +1520,8 @@ export interface components {
             subnet_name?: string;
             subnet_slug?: string;
             surface_id: string;
+            /** @description Stable surface identity (#1005): hash of netuid|kind|url for the affected surface. */
+            surface_key: string;
             user_reported: boolean;
         };
         EndpointIncidentsArtifact: components["schemas"]["ArtifactBase"] & ({
@@ -1603,6 +1605,8 @@ export interface components {
             subnet_name?: string;
             subnet_slug?: string;
             surface_id: string;
+            /** @description Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links. */
+            surface_key: string;
             /** Format: uri */
             url: string;
         };
@@ -2697,6 +2701,10 @@ export interface components {
             score: number;
             score_reasons?: components["schemas"]["EndpointScoreReason"][];
             status: components["schemas"]["HealthStatus"];
+            /** @description Human-readable surface alias retained for display/back-compat. */
+            surface_id?: string;
+            /** @description Stable surface identity (#1005) when the pool endpoint came from a catalogued surface. */
+            surface_key?: string;
             /** Format: uri */
             url: string;
         };
@@ -5158,6 +5166,7 @@ export interface operations {
                      *             "state": "active",
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "user_reported": false
                      *           }
                      *         ],
@@ -5476,6 +5485,7 @@ export interface operations {
                      *             "score": 100,
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
@@ -7361,6 +7371,7 @@ export interface operations {
                      *             "score": 100,
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
@@ -9877,6 +9888,7 @@ export interface operations {
                      *             "score": 100,
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
@@ -10240,6 +10252,7 @@ export interface operations {
                      *             "score": 100,
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
@@ -11515,6 +11528,7 @@ export interface operations {
                      *             "score": 100,
                      *             "status": "ok",
                      *             "surface_id": "example",
+                     *             "surface_key": "example",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],

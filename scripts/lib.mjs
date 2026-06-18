@@ -2212,6 +2212,7 @@ export function buildEndpointResourceArtifact({
     healthSurfaces.map((surface) => [surface.surface_id, surface]),
   );
   const endpoints = surfaces.map((surface) => {
+    const surfaceKey = surface.key || surfaceStableKey(surface);
     const health = healthBySurface.get(surface.id) || {};
     const monitored = surface.probe?.enabled === true && surface.public_safe;
     const healthMeta = endpointHealthMetadata({
@@ -2229,8 +2230,9 @@ export function buildEndpointResourceArtifact({
     });
 
     return {
-      id: `endpoint-${surface.id}`,
+      id: `endpoint-${surfaceKey}`,
       surface_id: surface.id,
+      surface_key: surfaceKey,
       netuid: surface.netuid,
       subnet_slug: surface.subnet_slug,
       subnet_name: surface.subnet_name,
@@ -2425,6 +2427,8 @@ function endpointPool(id, kind, endpoints) {
     endpoints: poolEndpoints.map((endpoint) => ({
       archive_support: endpoint.archive_support,
       id: endpoint.id,
+      surface_id: endpoint.surface_id,
+      surface_key: endpoint.surface_key,
       kind: endpoint.kind,
       layer: endpoint.layer || endpointLayer(endpoint.kind),
       health_source: endpoint.health_source || "missing-probe",
@@ -2477,6 +2481,7 @@ export function buildEndpointIncidentArtifact({
         id: `incident-${endpoint.id}`,
         endpoint_id: endpoint.id,
         surface_id: endpoint.surface_id,
+        surface_key: endpoint.surface_key,
         netuid: endpoint.netuid,
         subnet_slug: endpoint.subnet_slug,
         subnet_name: endpoint.subnet_name,
