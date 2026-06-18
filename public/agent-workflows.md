@@ -290,6 +290,14 @@ plus a `ranked_queue` of concrete enrichment actions. Use `top_gaps[]` and
 maintainer review, or is hard-blocked. Do not infer live uptime from this
 artifact; use health routes for that.
 
+MCP clients can call the same queue directly:
+
+```bash
+curl -sS 'https://api.metagraph.sh/mcp' \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_enrichment_targets","arguments":{"gap_code":"missing-fixture","limit":5}}}'
+```
+
 When a service has a schema, `schema_artifact` points at the captured contract
 and `schema_source` explains how it was attached. `surface-id` and `schema-url`
 matches are exact. `same-origin-openapi` means Metagraphed found a captured

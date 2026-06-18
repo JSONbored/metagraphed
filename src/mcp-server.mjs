@@ -109,6 +109,8 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
+  "fixtures, examples, provenance, and candidate-review gaps. " +
   "For goal-shaped flows, find_subnet_for_task turns a plain-language task into " +
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. All data is public and " +
@@ -338,6 +340,89 @@ function queryTerms(query) {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((term) => term.length > 0);
+}
+
+const COVERAGE_DEPTH_TIERS = [
+  "agent-ready",
+  "machine-usable",
+  "candidate-review",
+  "needs-evidence",
+  "hard-blocked",
+  "missing-interface",
+];
+const COVERAGE_DEPTH_SEVERITIES = ["hard", "missing-data", "needs-review"];
+
+function optionalEnum(args, key, allowed) {
+  const value = args?.[key];
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be one of: ${allowed.join(", ")}.`,
+    );
+  }
+  return value;
+}
+
+function optionalGapCode(args) {
+  const value = args?.gap_code;
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !/^[a-z0-9-]+$/.test(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `gap_code` must be a stable lowercase gap code.",
+    );
+  }
+  return value;
+}
+
+function coverageDepthTarget(row, rank = null) {
+  return {
+    rank,
+    netuid: row.netuid,
+    slug: row.slug,
+    name: row.name,
+    tier: row.tier,
+    score: row.score,
+    priority_score: row.priority_score,
+    agent_status: row.agent_status,
+    blocker_level: row.blocker_level,
+    top_gap_codes: row.top_gap_codes || [],
+    top_gaps: (row.top_gaps || []).map((gap) => ({
+      code: gap.code,
+      severity: gap.severity,
+      field: gap.field,
+      next_action: gap.next_action,
+    })),
+    recommended_next_action: row.recommended_next_action || null,
+    dimensions: {
+      callable_service_count: row.dimensions?.callable_service_count ?? 0,
+      service_kinds: row.dimensions?.service_kinds || [],
+      schema_service_count: row.dimensions?.schema_service_count ?? 0,
+      schema_missing_count: row.dimensions?.schema_missing_count ?? 0,
+      fixture_available_count: row.dimensions?.fixture_available_count ?? 0,
+      fixture_status_counts: row.dimensions?.fixture_status_counts || {},
+      example_count: row.dimensions?.example_count ?? 0,
+      sdk_count: row.dimensions?.sdk_count ?? 0,
+      candidate_operational_count:
+        row.dimensions?.candidate_operational_count ?? 0,
+      official_surface_count: row.dimensions?.official_surface_count ?? 0,
+      provider_claimed_surface_count:
+        row.dimensions?.provider_claimed_surface_count ?? 0,
+    },
+  };
+}
+
+function coverageDepthMatches(row, { tier, severity, gapCode }) {
+  if (tier && row.tier !== tier) return false;
+  if (gapCode && !(row.top_gap_codes || []).includes(gapCode)) return false;
+  if (
+    severity &&
+    !(row.top_gaps || []).some((gap) => gap.severity === severity)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -875,6 +960,109 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "list_enrichment_targets",
+    title: "List ranked enrichment targets",
+    description:
+      "Fetch the coverage-depth scorecard's ranked enrichment targets: which " +
+      "subnets need schema, fixture, example/SDK, provenance, candidate-review, " +
+      "or hard-blocker follow-up next. Use this for curation/work-planning, not " +
+      "live uptime; call get_subnet_health for current health.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: "Max targets to return (1-50, default 10).",
+          minimum: 1,
+          maximum: 50,
+        },
+        tier: {
+          type: "string",
+          enum: COVERAGE_DEPTH_TIERS,
+          description:
+            "Optional coverage-depth tier filter, e.g. machine-usable.",
+        },
+        severity: {
+          type: "string",
+          enum: COVERAGE_DEPTH_SEVERITIES,
+          description:
+            "Optional gap severity filter: missing-data, needs-review, or hard.",
+        },
+        gap_code: {
+          type: "string",
+          description:
+            "Optional stable gap code filter, e.g. missing-fixture or missing-schema.",
+          pattern: "^[a-z0-9-]+$",
+        },
+        netuid: {
+          type: "integer",
+          description:
+            "Optional subnet netuid. When present, returns that subnet's scorecard row instead of only ranked-queue entries.",
+          minimum: 0,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const limit = clampLimit(args?.limit, 10, 50);
+      const tier = optionalEnum(args, "tier", COVERAGE_DEPTH_TIERS);
+      const severity = optionalEnum(
+        args,
+        "severity",
+        COVERAGE_DEPTH_SEVERITIES,
+      );
+      const gapCode = optionalGapCode(args);
+      const netuid =
+        args?.netuid === undefined || args?.netuid === null
+          ? null
+          : requireNetuid(args);
+      const scorecard = await loadArtifactData(
+        ctx,
+        "/metagraph/coverage-depth.json",
+      );
+      const rows = Array.isArray(scorecard.rows) ? scorecard.rows : [];
+      const rowsByNetuid = new Map(rows.map((row) => [row.netuid, row]));
+      const queue = Array.isArray(scorecard.ranked_queue)
+        ? scorecard.ranked_queue
+        : [];
+      let candidates;
+      if (netuid !== null) {
+        const row = rowsByNetuid.get(netuid);
+        if (!row) {
+          throw toolError(
+            "not_found",
+            `No coverage-depth scorecard row exists for netuid ${netuid}.`,
+          );
+        }
+        candidates = [{ row, rank: null }];
+      } else {
+        candidates = queue
+          .map((entry) => ({
+            row: rowsByNetuid.get(entry.netuid) || entry,
+            rank: entry.rank ?? null,
+          }))
+          .filter((entry) => Number.isInteger(entry.row?.netuid));
+      }
+      const filters = { tier, severity, gap_code: gapCode, netuid };
+      const targets = candidates
+        .filter(({ row }) =>
+          coverageDepthMatches(row, { tier, severity, gapCode }),
+        )
+        .slice(0, limit)
+        .map(({ row, rank }) => coverageDepthTarget(row, rank));
+      return {
+        generated_at: scorecard.generated_at || null,
+        coverage_depth_version: scorecard.coverage_depth_version || null,
+        total_rows: rows.length,
+        queue_count: queue.length,
+        returned: targets.length,
+        filters,
+        targets,
+        note: "Coverage depth is deterministic build-time prioritization, not live uptime. Use get_subnet_health for current operational status.",
+      };
+    },
+  },
+  {
     name: "semantic_search",
     title: "Semantic search across the registry",
     description:
@@ -1391,6 +1579,35 @@ const TOOL_OUTPUT_SCHEMAS = {
       generated_at: NULLABLE_STRING,
     },
   },
+  list_enrichment_targets: {
+    type: "object",
+    additionalProperties: true,
+    required: ["total_rows", "queue_count", "returned", "targets"],
+    properties: {
+      generated_at: NULLABLE_STRING,
+      coverage_depth_version: ANY,
+      total_rows: { type: "integer" },
+      queue_count: { type: "integer" },
+      returned: { type: "integer" },
+      filters: { type: "object" },
+      note: { type: "string" },
+      targets: objectItems({
+        rank: NULLABLE_INT,
+        netuid: { type: "integer" },
+        slug: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        tier: { type: "string" },
+        score: { type: "integer" },
+        priority_score: { type: "integer" },
+        agent_status: { type: "string" },
+        blocker_level: { type: "string" },
+        top_gap_codes: { type: "array" },
+        top_gaps: { type: "array", items: { type: "object" } },
+        recommended_next_action: NULLABLE_STRING,
+        dimensions: { type: "object" },
+      }),
+    },
+  },
   find_subnet_for_task: {
     type: "object",
     additionalProperties: true,
@@ -1561,6 +1778,15 @@ const FIXED_RESOURCES = [
       "Every subnet with a callable service, with capabilities + base URLs.",
     mimeType: "application/json",
     artifact: "/metagraph/agent-catalog.json",
+  },
+  {
+    uri: "metagraph://registry/coverage-depth",
+    name: "coverage-depth",
+    title: "Coverage depth scorecard",
+    description:
+      "Per-subnet machine-usable coverage depth rows and ranked enrichment queue.",
+    mimeType: "application/json",
+    artifact: "/metagraph/coverage-depth.json",
   },
   {
     uri: "metagraph://registry/schemas",
