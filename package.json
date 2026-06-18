@@ -104,6 +104,9 @@
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs",
     "endpoint:ops:brief": "node scripts/endpoint-ops-brief.mjs"
   },
+  "dependencies": {
+    "workers-og": "^0.0.27"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.8",

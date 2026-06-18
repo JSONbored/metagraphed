@@ -76,6 +76,7 @@ import {
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
+import { handleOgImage } from "../src/og-image.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -262,6 +263,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     /^\/api\/v1\/(?:subnets|providers)\/[^/]+\/badge\.svg$/.test(url.pathname)
   ) {
     return handleBadgeRequest(request, env, url, { readArtifact });
+  }
+
+  // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
+  // link-unfurl. Worker-computed PNG with live registry counts; workers-og's
+  // wasm is lazy-loaded inside the handler so this never weighs on other routes.
+  if (url.pathname === "/og.png" || url.pathname === "/og") {
+    return handleOgImage(request, env, url, { readArtifact });
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
