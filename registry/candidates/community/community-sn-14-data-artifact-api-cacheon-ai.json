@@ -17,7 +17,7 @@
       "source_url": "https://cacheon.ai/docs/miners/api-contract",
       "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
       "state": "schema-valid",
-      "url": "https://api.cacheon.ai/api/container-logs"
+      "url": "https://api.cacheon.ai/api/evaluations"
     }
   ],
   "schema_version": 1,
