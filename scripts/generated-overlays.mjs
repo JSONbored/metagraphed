@@ -7,6 +7,7 @@ import {
   listJsonFiles,
   loadCandidates,
   loadNativeSnapshot,
+  loadProviders,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -17,6 +18,11 @@ import {
   stableStringify,
   writeJson,
 } from "./lib.mjs";
+import {
+  ownerTokensMatch,
+  providerIdentityTokens,
+  urlOwnerTokens,
+} from "./submission-policy.mjs";
 
 export const generatedOverlayDirectory = path.join(
   repoRoot,
@@ -48,6 +54,7 @@ export async function generateBaselineOverlaySet(options = {}) {
   const candidates = options.candidates || (await loadCandidates());
   const verification =
     options.verification || (await loadVerification({ preferDetailed: false }));
+  const providers = options.providers || (await loadProviders());
   const manualOverlays =
     options.manualOverlays || (await loadManualSubnetOverlays());
   const existingGeneratedOverlays =
@@ -63,6 +70,9 @@ export async function generateBaselineOverlaySet(options = {}) {
   const verificationByCandidate = new Map(
     (verification.results || []).map((result) => [result.candidate_id, result]),
   );
+  const providersById = new Map(
+    providers.map((provider) => [provider.id, provider]),
+  );
   const candidatesByNetuid = groupByNetuid(candidates);
   const generatedOverlays = [];
   const manualBaselineOverlays = [];
@@ -72,6 +82,7 @@ export async function generateBaselineOverlaySet(options = {}) {
       candidatesByNetuid,
       existingGeneratedByNetuid,
       nativeSubnet,
+      providersById,
       verificationByCandidate,
     });
     if (manualNetuids.has(nativeSubnet.netuid)) {
@@ -99,6 +110,7 @@ export async function generateBaselineOverlaySet(options = {}) {
     manualOverlays: augmentedManualOverlays,
     nativeSnapshot,
     summary,
+    providers,
     verification,
   };
 }
@@ -241,6 +253,7 @@ function buildGeneratedOverlay({
   candidatesByNetuid,
   existingGeneratedByNetuid,
   nativeSubnet,
+  providersById,
   verificationByCandidate,
 }) {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
@@ -250,7 +263,7 @@ function buildGeneratedOverlay({
       verification: verificationByCandidate.get(candidate.id),
     }))
     .filter(({ candidate, verification }) =>
-      isPromotable(candidate, verification),
+      isPromotable(candidate, verification, providersById),
     )
     .map(({ candidate, verification }) =>
       promoteCandidate(candidate, verification),
@@ -307,7 +320,15 @@ function buildGeneratedOverlay({
   };
 }
 
-function isPromotable(candidate, verification) {
+const OWNER_SENSITIVE_KINDS = new Set([
+  "source-repo",
+  "website",
+  "subnet-api",
+  "openapi",
+  "sse",
+]);
+
+function isPromotable(candidate, verification, providersById = new Map()) {
   if (
     !verification ||
     !["live", "redirected"].includes(verification.classification)
@@ -321,6 +342,17 @@ function isPromotable(candidate, verification) {
     verification.private_redirect_blocked
   ) {
     return false;
+  }
+  if (candidate.state && candidate.state !== "schema-valid") {
+    return false;
+  }
+  if (isCommunityOwnerSensitiveCandidate(candidate)) {
+    const providerRecord = providersById.get(candidate.provider);
+    const identityTokens = providerIdentityTokens(providerRecord);
+    const claimTokens = urlOwnerTokens(candidate.url);
+    if (!ownerTokensMatch(claimTokens, identityTokens)) {
+      return false;
+    }
   }
   if (isGenericToolingSurface(candidate)) {
     return false;
@@ -338,6 +370,14 @@ function isPromotable(candidate, verification) {
     return isJsonContentType(verification.content_type);
   }
   return true;
+}
+
+function isCommunityOwnerSensitiveCandidate(candidate) {
+  return (
+    OWNER_SENSITIVE_KINDS.has(candidate.kind) &&
+    (candidate.source_type === "community-pr-intake" ||
+      candidate.source_tier === "community-docs")
+  );
 }
 
 function isGenericToolingSurface(candidate) {
