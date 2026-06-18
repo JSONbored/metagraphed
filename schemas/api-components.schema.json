@@ -9699,6 +9699,102 @@
         ],
         "type": "object"
       },
+      "SurfaceAliasesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "aliases": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "current_id": {
+                      "type": "string"
+                    },
+                    "deprecated_id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "surface_key": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "deprecated_id",
+                    "surface_key",
+                    "current_id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source": {
+                "const": "generated-surface-rename-aliases"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "carried_alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "current_surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "new_alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "previous_surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "alias_count",
+                  "carried_alias_count",
+                  "new_alias_count",
+                  "previous_surface_count",
+                  "current_surface_count"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "source",
+              "summary",
+              "aliases"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "SurfaceFixtureReference": {
         "additionalProperties": false,
         "description": "Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool).",

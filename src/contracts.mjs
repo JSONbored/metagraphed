@@ -619,6 +619,12 @@ export const PUBLIC_ARTIFACTS = [
     "SurfacesArtifact",
   ),
   artifact(
+    "surface-aliases",
+    "/metagraph/surface-aliases.json",
+    "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+    "SurfaceAliasesArtifact",
+  ),
+  artifact(
     "surfaces-subnet",
     "/metagraph/surfaces/{netuid}.json",
     "Curated public interface surfaces for one subnet.",

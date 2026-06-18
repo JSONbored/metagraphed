@@ -628,6 +628,57 @@
       "SubnetSurfacesArtifact": {
         "$ref": "#/components/schemas/SurfacesArtifact"
       },
+      "SurfaceAliasesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["source", "summary", "aliases"],
+            "properties": {
+              "source": {
+                "const": "generated-surface-rename-aliases"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "alias_count",
+                  "carried_alias_count",
+                  "new_alias_count",
+                  "previous_surface_count",
+                  "current_surface_count"
+                ],
+                "properties": {
+                  "alias_count": { "type": "integer", "minimum": 0 },
+                  "carried_alias_count": { "type": "integer", "minimum": 0 },
+                  "new_alias_count": { "type": "integer", "minimum": 0 },
+                  "previous_surface_count": { "type": "integer", "minimum": 0 },
+                  "current_surface_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["deprecated_id", "surface_key", "current_id"],
+                  "properties": {
+                    "deprecated_id": { "type": "string" },
+                    "surface_key": { "type": "string" },
+                    "current_id": { "type": "string" },
+                    "netuid": { "type": ["integer", "null"], "minimum": 0 },
+                    "kind": { "type": ["string", "null"] },
+                    "url": { "type": ["string", "null"] }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
       "CandidatesArtifact": {
         "allOf": [
           {

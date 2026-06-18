@@ -124,6 +124,7 @@ const R2_ONLY_PATTERNS = [
   /^review\/profile-completeness\.json$/,
   /^schema-drift\.json$/,
   /^search\.json$/,
+  /^surface-aliases\.json$/,
   /^surfaces\.json$/,
 ];
 

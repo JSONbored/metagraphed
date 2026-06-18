@@ -138,6 +138,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Curated public interface surfaces for one subnet.",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",

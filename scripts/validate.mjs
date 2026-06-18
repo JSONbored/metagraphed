@@ -1144,6 +1144,7 @@ async function validateGeneratedArtifacts(
   for (const expectedArtifact of [
     "changelog",
     "source-snapshots",
+    "surface-aliases",
     "rpc-pools",
     "r2-manifest",
     "type-definitions",

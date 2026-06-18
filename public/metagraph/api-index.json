@@ -107,6 +107,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",

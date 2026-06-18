@@ -679,6 +679,10 @@ describe("script utility contracts", () => {
       artifactStorageTierForRelativePath("operational-surfaces.json"),
       ARTIFACT_STORAGE_TIERS.r2,
     );
+    assert.equal(
+      artifactStorageTierForRelativePath("surface-aliases.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
     assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/contracts.json"),

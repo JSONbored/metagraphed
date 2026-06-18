@@ -52,6 +52,7 @@ import {
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
+import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
 import {
   buildGlobalHealth,
   formatBulkTrends,
@@ -1906,11 +1907,17 @@ async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
       503,
     );
   }
-  const surface = findSurface(catalog.data?.surfaces, surfaceId);
+  let surface = findSurface(catalog.data?.surfaces, surfaceId);
+  if (!surface) {
+    const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
+    if (aliases.ok) {
+      surface = findSurface(catalog.data?.surfaces, surfaceId, aliases.data);
+    }
+  }
   if (!surface) {
     return errorResponse(
       "surface_not_found",
-      `No catalogued surface with id or key "${surfaceId}".`,
+      `No catalogued surface with id, key, or deprecated id "${surfaceId}".`,
       404,
       { surface_id: surfaceId },
     );

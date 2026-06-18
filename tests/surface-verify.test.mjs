@@ -49,6 +49,18 @@ describe("surface-verify core (#358)", () => {
   test("findSurface matches by surface_id", () => {
     assert.equal(findSurface(surfaces, "7:subnet-api:x")?.url, "https://x");
     assert.equal(findSurface(surfaces, "srf-subnetapix0000")?.url, "https://x");
+    assert.equal(
+      findSurface(surfaces, "7:subnet-api:old", {
+        aliases: [
+          {
+            deprecated_id: "7:subnet-api:old",
+            surface_key: "srf-subnetapix0000",
+            current_id: "7:subnet-api:x",
+          },
+        ],
+      })?.url,
+      "https://x",
+    );
     assert.equal(findSurface(surfaces, "nope"), null);
     assert.equal(findSurface(null, "x"), null);
     assert.equal(findSurface(surfaces, 7), null);
@@ -245,6 +257,60 @@ describe("surface verify-now endpoint (#358)", () => {
     });
   });
 
+  test("accepts deprecated surface_id aliases from the alias artifact", async () => {
+    const deprecatedId = "sn-6-numinous-api-health-before-rename";
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (key === "latest/operational-surfaces.json") {
+            return {
+              async json() {
+                return {
+                  surfaces: [
+                    {
+                      surface_id: SURFACE_ID,
+                      surface_key: SURFACE_KEY,
+                      netuid: 6,
+                      kind: "subnet-api",
+                      url: "https://api.numinouslabs.io/health",
+                      provider: "numinous",
+                      auth_required: false,
+                      probe: { method: "GET", expect: "json" },
+                    },
+                  ],
+                };
+              },
+            };
+          }
+          if (key === "latest/surface-aliases.json") {
+            return {
+              async json() {
+                return {
+                  aliases: [
+                    {
+                      deprecated_id: deprecatedId,
+                      surface_key: SURFACE_KEY,
+                      current_id: SURFACE_ID,
+                    },
+                  ],
+                };
+              },
+            };
+          }
+          return null;
+        },
+      },
+    });
+
+    await withGlobals({ fetchImpl: okFetch }, async () => {
+      const res = await handleRequest(req(deprecatedId), env, {});
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.surface_id, SURFACE_ID);
+      assert.equal(body.data.surface_key, SURFACE_KEY);
+    });
+  });
+
   test("blocks catalogued hostnames that resolve to private addresses", async () => {
     let surfaceFetches = 0;
     await withGlobals(
@@ -297,10 +363,26 @@ describe("verify_integration MCP tool (#358)", () => {
     ],
   };
   const deps = {
-    readArtifact: async (_e, path) =>
-      path === "/metagraph/operational-surfaces.json"
-        ? { ok: true, data: CATALOG }
-        : { ok: false, status: 404 },
+    readArtifact: async (_e, path) => {
+      if (path === "/metagraph/operational-surfaces.json") {
+        return { ok: true, data: CATALOG };
+      }
+      if (path === "/metagraph/surface-aliases.json") {
+        return {
+          ok: true,
+          data: {
+            aliases: [
+              {
+                deprecated_id: "x:api:old",
+                surface_key: "srf-xapi100000000",
+                current_id: "x:api:1",
+              },
+            ],
+          },
+        };
+      }
+      return { ok: false, status: 404 };
+    },
   };
   const call = async (args) => {
     const of = globalThis.fetch;
@@ -338,6 +420,9 @@ describe("verify_integration MCP tool (#358)", () => {
     assert.equal(byKey.isError, false);
     assert.equal(byKey.structuredContent.surface_id, "x:api:1");
     assert.equal(byKey.structuredContent.surface_key, "srf-xapi100000000");
+    const byAlias = await call({ surface_id: "x:api:old" });
+    assert.equal(byAlias.isError, false);
+    assert.equal(byAlias.structuredContent.surface_id, "x:api:1");
     const byNetuid = await call({ netuid: 5 });
     assert.equal(byNetuid.structuredContent.surface_id, "x:api:1");
   });

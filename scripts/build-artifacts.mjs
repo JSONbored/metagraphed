@@ -74,6 +74,10 @@ import {
 import { buildDatasetExports } from "./datasets.mjs";
 import { buildChangelog } from "./changelog.mjs";
 import {
+  buildSurfaceAliasArtifact,
+  SURFACE_ALIASES_RELATIVE_PATH,
+} from "../src/surface-aliases.mjs";
+import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
 } from "./artifact-budgets.mjs";
@@ -999,6 +1003,16 @@ await writeJson(artifactFile("surfaces.json"), {
     "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
   surfaces,
 });
+await writeJson(
+  artifactFile(SURFACE_ALIASES_RELATIVE_PATH),
+  buildSurfaceAliasArtifact({
+    contractVersion,
+    currentSurfaces: surfaces,
+    generatedAt,
+    previousAliases: null,
+    previousSurfaces: null,
+  }),
+);
 await fs.rm(r2ArtifactDir("surfaces"), {
   recursive: true,
   force: true,

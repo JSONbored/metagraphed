@@ -3464,6 +3464,27 @@ export interface components {
                 verified_at?: string;
             };
         };
+        SurfaceAliasesArtifact: components["schemas"]["ArtifactBase"] & ({
+            aliases: {
+                current_id: string;
+                deprecated_id: string;
+                kind?: string | null;
+                netuid?: number | null;
+                surface_key: string;
+                url?: string | null;
+            }[];
+            /** @constant */
+            source: "generated-surface-rename-aliases";
+            summary: {
+                alias_count: number;
+                carried_alias_count: number;
+                current_surface_count: number;
+                new_alias_count: number;
+                previous_surface_count: number;
+            };
+        } & {
+            [key: string]: unknown;
+        });
         /** @description Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool). */
         SurfaceFixtureReference: {
             /** @description Public artifact path of the full sanitized fixture. */

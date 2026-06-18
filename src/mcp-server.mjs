@@ -23,6 +23,7 @@ import {
   verifySurface,
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
+import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
 import {
   loadSubnetReliability,
   overlayCatalogDetail,
@@ -1099,14 +1100,14 @@ export const MCP_TOOLS = [
     name: "verify_integration",
     title: "Verify a surface is callable right now",
     description:
-      'Live-probe a single catalogued surface (by surface_id or stable surface_key) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
+      'Live-probe a single catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
     inputSchema: {
       type: "object",
       properties: {
         surface_id: {
           type: "string",
           description:
-            'Surface id or stable surface_key to verify, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
+            'Surface id, stable surface_key, or deprecated surface_id alias to verify, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
         },
         netuid: {
           type: "integer",
@@ -1130,9 +1131,16 @@ export const MCP_TOOLS = [
         }
         surface = findSurface(surfaces, args.surface_id);
         if (!surface) {
+          const aliases = await loadArtifactData(
+            ctx,
+            SURFACE_ALIASES_PATH,
+          ).catch(() => null);
+          surface = findSurface(surfaces, args.surface_id, aliases);
+        }
+        if (!surface) {
           throw toolError(
             "not_found",
-            `No catalogued surface with id or key "${args.surface_id}".`,
+            `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
           );
         }
       } else if (Number.isInteger(args?.netuid)) {
