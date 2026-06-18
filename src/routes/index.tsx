@@ -23,6 +23,8 @@ import {
   healthQuery,
   subnetsQuery,
   adapterQuery,
+  endpointsQuery,
+  providersQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -432,6 +434,20 @@ function TrackedGrid() {
   const coverage = useQuery(coverageQuery()).data?.data as
     | Record<string, number | undefined>
     | undefined;
+  // Endpoint/provider totals are not in /api/v1/coverage — read from their own
+  // list endpoints. Use limit=1 for endpoints (1197 items) to get only the
+  // pagination meta; providers are small enough to load in full (cached for /providers).
+  const endpointsResult = useQuery({ ...endpointsQuery({ limit: 1 }), retry: 0 });
+  const providersResult = useQuery({ ...providersQuery(), retry: 0 });
+  const endpointsTotal =
+    endpointsResult.data?.meta.pagination?.total ??
+    endpointsResult.data?.meta.total ??
+    endpointsResult.data?.data.length;
+  const providersTotal =
+    providersResult.data?.meta.pagination?.total ??
+    providersResult.data?.meta.total ??
+    providersResult.data?.data.length;
+
   const items: Array<{ label: string; to: string; value: number | undefined; desc: string }> = [
     {
       label: "Subnets",
@@ -448,13 +464,13 @@ function TrackedGrid() {
     {
       label: "Endpoints",
       to: "/endpoints",
-      value: coverage?.endpoints_total,
+      value: endpointsTotal,
       desc: "Tracked endpoint resources including root RPC pools.",
     },
     {
       label: "Providers",
       to: "/providers",
-      value: coverage?.providers_total,
+      value: providersTotal,
       desc: "Subnet teams and infrastructure operators.",
     },
   ];

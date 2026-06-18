@@ -158,7 +158,7 @@ function ProviderMiniProfile({ slug }: { slug: string }) {
       </div>
       {p.notes ? <p className="text-[11px] text-ink-muted line-clamp-3">{p.notes}</p> : null}
       <dl className="grid grid-cols-3 gap-2 pt-1">
-        <Mini label="Surfaces" value={String(p.surfaces_count ?? sum?.endpoint_count ?? "—")} />
+        <Mini label="Surfaces" value={String(p.surfaces_count ?? "—")} />
         <Mini label="Endpoints" value={String(p.endpoints_count ?? sum?.endpoint_count ?? "—")} />
         <Mini label="Authority" value={p.authority ?? "—"} />
       </dl>

@@ -1162,6 +1162,13 @@ function normalizeProviderListItem(raw: unknown): Provider {
     // Curated/backfilled provider logo → BrandIcon's iconUrl (mirrors subnets).
     icon_url: (r.icon_url as Provider["icon_url"]) ?? (r.logo_url as string),
     notes: pickStr(r.notes, r.public_notes),
+    // API returns snake_case singular (endpoint_count / surface_count / subnet_count).
+    // Normalize to the plural _count fields used by all consumers.
+    endpoints_count:
+      (r.endpoint_count as number | undefined) ?? (r.endpoints_count as number | undefined),
+    surfaces_count:
+      (r.surface_count as number | undefined) ?? (r.surfaces_count as number | undefined),
+    subnet_count: r.subnet_count as number | undefined,
   } as Provider;
 }
 
@@ -1248,7 +1255,14 @@ function normalizeProvider(raw: unknown, slug: string): Provider {
     docs,
     notes: pickStr(inner.notes),
     endpoint_summary: summary as ProviderEndpointSummary | undefined,
-    endpoints_count: summary?.endpoint_count as number | undefined,
+    // Normalize singular API field names (endpoint_count / surface_count) to
+    // plural _count fields so all consumers use the same key regardless of
+    // whether the data came from the list or detail endpoint.
+    endpoints_count:
+      (inner.endpoint_count as number | undefined) ??
+      (summary?.endpoint_count as number | undefined),
+    surfaces_count:
+      (inner.surface_count as number | undefined) ?? (inner.surfaces_count as number | undefined),
     generated_at: pickStr(root.generated_at as string, inner.generated_at as string),
     ...inner,
     icon_url: (inner.icon_url as Provider["icon_url"]) ?? (inner.logo_url as string),

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { subnetsQuery } from "@/lib/metagraphed/queries";
+import { subnetsQuery, subnetHealthMapQuery } from "@/lib/metagraphed/queries";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -21,6 +21,9 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
     retry: 0,
     placeholderData: (p) => p,
   });
+  // subnetsQuery health is always "unknown" (list endpoint only carries chain
+  // status). Join with the probe-health map from /api/v1/health for real colors.
+  const healthMap = useQuery({ ...subnetHealthMapQuery(), retry: 0 }).data?.data ?? {};
 
   if (isPending) {
     return (
@@ -50,7 +53,7 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
       aria-label={`${subs.length} active subnets, tinted by health`}
     >
       {subs.map((s, i) => {
-        const health = (s.health ?? "unknown") as string;
+        const health = (healthMap[s.netuid]?.health ?? s.health ?? "unknown") as string;
         const tone = HEALTH_TONE[health] ?? HEALTH_TONE.unknown;
         return (
           <Tooltip key={s.netuid} delayDuration={120}>
