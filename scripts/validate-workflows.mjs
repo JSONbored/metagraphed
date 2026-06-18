@@ -131,6 +131,25 @@ for (const workflow of workflows) {
       "classify-validation-route action must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
     );
     check(
+      content.includes("Checkout trusted validation router") &&
+        content.includes("path: .ci-trusted") &&
+        content.includes(
+          "ref: ${{ github.event.pull_request.base.sha || github.sha }}",
+        ) &&
+        content.includes(
+          "uses: ./.ci-trusted/.github/actions/classify-validation-route",
+        ),
+      workflow,
+      "validate workflow must run the validation router from trusted base code",
+    );
+    check(
+      routeAction.includes(
+        "${{ github.action_path }}/../../../scripts/classify-validation-route.py",
+      ),
+      workflow,
+      "classify-validation-route action must execute its own trusted classifier script",
+    );
+    check(
       content.includes("--changed-files submitted-artifact-files.txt"),
       workflow,
       "validate workflow must verify submitted artifacts from the deletion-filtered list",

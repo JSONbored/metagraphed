@@ -53,4 +53,4 @@ runs:
     - name: Classify validation route
       id: route
       shell: bash
-      run: python3 scripts/classify-validation-route.py
+      run: python3 "${{ github.action_path }}/../../../scripts/classify-validation-route.py"
