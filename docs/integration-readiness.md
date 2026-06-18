@@ -78,6 +78,33 @@ The blocker model is not a second score. It is a deterministic explanation of
 the same readiness facts, shaped for agents and UI filters. Use it when a subnet
 is absent from the callable subset and the user asks why.
 
+## Coverage depth scorecard
+
+`GET /api/v1/coverage-depth` publishes the registry-wide prioritization view.
+It is generated from the same public-safe build data as `agent-catalog`,
+`fixtures.json`, schema snapshots, profiles, candidates, and surface authority.
+
+Use it when the question is "what should we enrich next and why?". It provides:
+
+- `summary`: row counts, tier counts, blocker-level counts, severity counts,
+  and gap-code counts.
+- `rows[]`: one row per subnet, sorted by `netuid`, with a deterministic
+  `score`, `tier`, `dimensions`, `top_gaps`, and `recommended_next_action`.
+- `ranked_queue[]`: the highest-priority actionable rows, sorted by
+  `priority_score`, then lower score, then `netuid`.
+
+The scorecard intentionally separates three classes of work:
+
+- `missing-data`: data we should add or explicitly mark absent, such as schemas,
+  fixtures, examples, docs, source repos, or profile fields.
+- `needs-review`: evidence exists, but a maintainer needs to verify authority or
+  promote a candidate surface.
+- `hard`: the subnet should not be recommended for application integration in
+  its current state, such as root/base-layer-only or inactive lifecycle.
+
+The score is deterministic and build-time only. Live up/down remains the health
+overlay and should not be inferred from `coverage-depth`.
+
 Common blocker codes:
 
 | Code                         | Meaning                                                                  |

@@ -645,6 +645,10 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
+      artifactStorageTierForRelativePath("coverage-depth.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
       false,
     );

@@ -1417,6 +1417,294 @@
           }
         ]
       },
+      "CoverageDepthArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "coverage_depth_version",
+              "subnet_count",
+              "summary",
+              "scoring",
+              "rows",
+              "ranked_queue"
+            ],
+            "properties": {
+              "coverage_depth_version": { "type": "integer", "minimum": 1 },
+              "subnet_count": { "type": "integer", "minimum": 0 },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "row_count",
+                  "agent_ready_count",
+                  "callable_subnet_count",
+                  "blocked_subnet_count",
+                  "queue_count",
+                  "average_score",
+                  "tier_counts",
+                  "blocker_level_counts",
+                  "severity_counts",
+                  "gap_code_counts"
+                ],
+                "properties": {
+                  "row_count": { "type": "integer", "minimum": 0 },
+                  "agent_ready_count": { "type": "integer", "minimum": 0 },
+                  "callable_subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "blocked_subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "queue_count": { "type": "integer", "minimum": 0 },
+                  "average_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "tier_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "blocker_level_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "severity_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "gap_code_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "scoring": {
+                "type": "object",
+                "required": ["methodology", "weights"],
+                "properties": {
+                  "methodology": { "type": "string" },
+                  "weights": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthRow"
+                }
+              },
+              "ranked_queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthQueueEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CoverageDepthRow": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "score",
+          "tier",
+          "priority_score",
+          "agent_status",
+          "blocker_level",
+          "readiness_score",
+          "dimensions",
+          "top_gaps",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "subnet_type": { "type": ["string", "null"] },
+          "curation_level": { "type": ["string", "null"] },
+          "profile_level": { "type": ["string", "null"] },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ]
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "agent_status": {
+            "type": "string",
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ]
+          },
+          "blocker_level": {
+            "type": "string",
+            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
+          },
+          "readiness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completeness_score": { "type": ["number", "null"] },
+          "dimensions": {
+            "type": "object",
+            "required": [
+              "surface_count",
+              "official_surface_count",
+              "registry_observed_surface_count",
+              "provider_claimed_surface_count",
+              "service_count",
+              "callable_service_count",
+              "service_kinds",
+              "schema_service_count",
+              "schema_missing_count",
+              "fixture_available_count",
+              "fixture_status_counts",
+              "example_count",
+              "sdk_count",
+              "candidate_count",
+              "candidate_operational_count",
+              "data_artifact_count",
+              "source_repo_present",
+              "docs_url_present"
+            ],
+            "properties": {
+              "surface_count": { "type": "integer", "minimum": 0 },
+              "official_surface_count": { "type": "integer", "minimum": 0 },
+              "registry_observed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "provider_claimed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "service_count": { "type": "integer", "minimum": 0 },
+              "callable_service_count": { "type": "integer", "minimum": 0 },
+              "service_kinds": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "schema_service_count": { "type": "integer", "minimum": 0 },
+              "schema_missing_count": { "type": "integer", "minimum": 0 },
+              "fixture_available_count": { "type": "integer", "minimum": 0 },
+              "fixture_status_counts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "example_count": { "type": "integer", "minimum": 0 },
+              "sdk_count": { "type": "integer", "minimum": 0 },
+              "candidate_count": { "type": "integer", "minimum": 0 },
+              "candidate_operational_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data_artifact_count": { "type": "integer", "minimum": 0 },
+              "source_repo_present": { "type": "boolean" },
+              "docs_url_present": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          },
+          "top_gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            }
+          },
+          "top_gap_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommended_next_action": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "CoverageDepthQueueEntry": {
+        "type": "object",
+        "required": [
+          "rank",
+          "netuid",
+          "slug",
+          "name",
+          "tier",
+          "score",
+          "priority_score",
+          "severity",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "tier": { "type": "string" },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["hard", "missing-data", "needs-review"]
+          },
+          "top_gap_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommended_next_action": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
       "CoverageDelta": {
         "type": "object",
         "required": ["after", "before", "delta"],

@@ -89,6 +89,7 @@ Candidates are never treated as verified surfaces. They must pass verification a
 
 Generated artifacts expose review state through:
 
+- `/metagraph/coverage-depth.json`
 - `/metagraph/review/curation.json`
 - `/metagraph/review/gap-priorities.json`
 - `/metagraph/review/adapter-candidates.json`

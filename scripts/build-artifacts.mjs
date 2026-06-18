@@ -1788,6 +1788,404 @@ function summarizeAgentReadinessBlockers(blockedSubnets) {
   };
 }
 
+const COVERAGE_DEPTH_VERSION = 1;
+const COVERAGE_DEPTH_WEIGHTS = {
+  callable_service: 25,
+  schema_availability: 15,
+  fixture_state: 10,
+  examples_or_sdk: 10,
+  provenance: 15,
+  readiness_blockers: 15,
+  profile_completeness: 10,
+};
+const COVERAGE_DEPTH_QUEUE_LIMIT = 100;
+const COVERAGE_DEPTH_SEVERITY_RANK = {
+  hard: 0,
+  "needs-review": 1,
+  "missing-data": 2,
+};
+
+function coverageDepthTier({ agentReadiness, dimensions, gaps, score }) {
+  if (agentReadiness?.blocker_level === "hard-blocked") {
+    return "hard-blocked";
+  }
+  if (
+    dimensions.callable_service_count > 0 &&
+    agentReadiness?.blocker_level === "none" &&
+    gaps.length === 0 &&
+    score >= 80
+  ) {
+    return "agent-ready";
+  }
+  if (dimensions.callable_service_count > 0) {
+    return "machine-usable";
+  }
+  if (
+    agentReadiness?.status === "candidate" ||
+    dimensions.candidate_operational_count > 0
+  ) {
+    return "candidate-review";
+  }
+  if (agentReadiness?.status === "needs-evidence") {
+    return "needs-evidence";
+  }
+  return "missing-interface";
+}
+
+function addCoverageDepthGap(gaps, seenCodes, gap) {
+  if (seenCodes.has(gap.code)) return;
+  seenCodes.add(gap.code);
+  gaps.push(gap);
+}
+
+function sortCoverageDepthGaps(gaps) {
+  return [...gaps].sort((a, b) => {
+    const severityDelta =
+      (COVERAGE_DEPTH_SEVERITY_RANK[a.severity] ?? 9) -
+      (COVERAGE_DEPTH_SEVERITY_RANK[b.severity] ?? 9);
+    if (severityDelta !== 0) return severityDelta;
+    return a.code.localeCompare(b.code);
+  });
+}
+
+function scoreCoverageDepthDimensions({
+  dimensions,
+  agentReadiness,
+  completenessScore,
+}) {
+  const callableCoverage =
+    dimensions.callable_service_count > 0
+      ? 1
+      : dimensions.candidate_operational_count > 0
+        ? 0.3
+        : 0;
+  const schemaCoverage =
+    dimensions.callable_service_count > 0
+      ? dimensions.schema_service_count / dimensions.callable_service_count
+      : 0;
+  const explicitFixtureAbsenceCount = Object.values(
+    dimensions.fixture_status_counts,
+  ).reduce((sum, count) => sum + count, 0);
+  const fixtureCoverage =
+    dimensions.callable_service_count > 0
+      ? dimensions.fixture_available_count > 0
+        ? dimensions.fixture_available_count / dimensions.callable_service_count
+        : explicitFixtureAbsenceCount > 0
+          ? 0.4
+          : 0
+      : 0;
+  const exampleSdkCoverage =
+    dimensions.example_count + dimensions.sdk_count > 0 ? 1 : 0;
+  const provenanceCoverage =
+    dimensions.official_surface_count > 0
+      ? 1
+      : dimensions.provider_claimed_surface_count > 0
+        ? 0.6
+        : dimensions.registry_observed_surface_count > 0
+          ? 0.35
+          : 0;
+  const readinessCoverage =
+    agentReadiness?.blocker_level === "none"
+      ? 1
+      : agentReadiness?.blocker_level === "missing-data"
+        ? 0.65
+        : agentReadiness?.blocker_level === "needs-review"
+          ? 0.45
+          : 0;
+  const profileCoverage = Math.max(
+    0,
+    Math.min(1, Number(completenessScore || 0) / 100),
+  );
+
+  return Math.round(
+    COVERAGE_DEPTH_WEIGHTS.callable_service * callableCoverage +
+      COVERAGE_DEPTH_WEIGHTS.schema_availability * schemaCoverage +
+      COVERAGE_DEPTH_WEIGHTS.fixture_state * fixtureCoverage +
+      COVERAGE_DEPTH_WEIGHTS.examples_or_sdk * exampleSdkCoverage +
+      COVERAGE_DEPTH_WEIGHTS.provenance * provenanceCoverage +
+      COVERAGE_DEPTH_WEIGHTS.readiness_blockers * readinessCoverage +
+      COVERAGE_DEPTH_WEIGHTS.profile_completeness * profileCoverage,
+  );
+}
+
+function coverageDepthPriorityScore({ row, gaps }) {
+  const actionableGaps = gaps.filter((gap) => gap.severity !== "hard");
+  if (row.subnet_type === "root" || actionableGaps.length === 0) {
+    return 0;
+  }
+  const severityWeight = actionableGaps.reduce((sum, gap) => {
+    if (gap.severity === "needs-review") return sum + 18;
+    return sum + 12;
+  }, 0);
+  const base =
+    row.dimensions.callable_service_count > 0
+      ? 42
+      : row.dimensions.candidate_operational_count > 0
+        ? 30
+        : 14;
+  const deficitWeight = Math.round((100 - row.score) * 0.25);
+  const reviewWeight = row.curation_level === "maintainer-reviewed" ? 0 : 6;
+  const hardBlockerPenalty = row.blocker_level === "hard-blocked" ? 35 : 0;
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      base +
+        Math.min(32, severityWeight) +
+        deficitWeight +
+        reviewWeight -
+        hardBlockerPenalty,
+    ),
+  );
+}
+
+function buildCoverageDepthArtifact({
+  subnets,
+  profileByNetuid,
+  surfacesByNetuid,
+  servicesByNetuid,
+  candidatesByNetuid,
+  readinessByNetuid,
+  agentReadinessByNetuid,
+  examplesByNetuid,
+  generatedAt,
+  contractVersion,
+}) {
+  const rows = subnets
+    .map((subnet) => {
+      const profile = profileByNetuid.get(subnet.netuid) || null;
+      const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
+      const services = servicesByNetuid.get(subnet.netuid) || [];
+      const callableServices = services.filter(
+        (service) => service.eligibility?.callable,
+      );
+      const candidatesForSubnet = candidatesByNetuid.get(subnet.netuid) || [];
+      const agentReadiness = agentReadinessByNetuid.get(subnet.netuid) || {
+        status: "blocked",
+        blocker_level: "missing-data",
+        blockers: [],
+        missing_fields: [],
+      };
+      const readiness = readinessByNetuid.get(subnet.netuid) || {
+        score: 0,
+      };
+      const examples = examplesByNetuid.get(subnet.netuid) || [];
+      const sdkCount = subnetSurfaces.filter(
+        (surface) => surface.kind === "sdk",
+      ).length;
+      const fixtureStatusCounts = countBy(
+        callableServices,
+        (service) => service.fixture_status?.status || "missing",
+      );
+      const dimensions = {
+        surface_count: subnetSurfaces.length,
+        official_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "official",
+        ).length,
+        registry_observed_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "registry-observed",
+        ).length,
+        provider_claimed_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "provider-claimed",
+        ).length,
+        service_count: services.length,
+        callable_service_count: callableServices.length,
+        service_kinds: [
+          ...new Set(callableServices.map((service) => service.kind)),
+        ].sort(),
+        schema_service_count: callableServices.filter(
+          (service) => service.schema_artifact,
+        ).length,
+        schema_missing_count: callableServices.filter(
+          (service) => !service.schema_artifact,
+        ).length,
+        fixture_available_count: callableServices.filter(
+          (service) => service.fixture_status?.status === "available",
+        ).length,
+        fixture_status_counts: fixtureStatusCounts,
+        example_count: examples.length,
+        sdk_count: sdkCount,
+        candidate_count: candidatesForSubnet.length,
+        candidate_operational_count: candidatesForSubnet.filter((candidate) =>
+          OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
+        ).length,
+        data_artifact_count: callableServices.filter(
+          (service) => service.kind === "data-artifact",
+        ).length,
+        source_repo_present: Boolean(subnet.source_repo),
+        docs_url_present: Boolean(subnet.docs_url),
+      };
+      const score = scoreCoverageDepthDimensions({
+        dimensions,
+        agentReadiness,
+        completenessScore: profile?.completeness_score,
+      });
+      const gaps = [];
+      const seenGapCodes = new Set();
+      for (const blocker of agentReadiness.blockers || []) {
+        addCoverageDepthGap(gaps, seenGapCodes, blocker);
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.schema_missing_count > 0 &&
+        dimensions.schema_service_count > 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "partial-schema-coverage",
+          severity: "missing-data",
+          message:
+            "Some callable services have captured schemas, but at least one callable service is still schema-less.",
+          field: "schemas",
+          next_action:
+            "Capture or explicitly mark schema absence for the remaining callable services.",
+        });
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.fixture_available_count === 0 &&
+        ((dimensions.fixture_status_counts.missing || 0) > 0 ||
+          (dimensions.fixture_status_counts["capture-failed"] || 0) > 0)
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-fixture",
+          severity: "missing-data",
+          message:
+            "Callable services exist, but no sanitized request/response fixture is available.",
+          field: "fixtures",
+          next_action:
+            "Run fixture capture in write mode or document why the callable surface cannot publish a public sample.",
+        });
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.example_count + dimensions.sdk_count === 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-example-or-sdk",
+          severity: "missing-data",
+          message:
+            "Callable services exist, but no example or SDK surface is recorded.",
+          field: "examples",
+          next_action:
+            "Add an official quickstart, SDK, or minimal code example for this subnet.",
+        });
+      }
+      if (
+        dimensions.surface_count > 0 &&
+        dimensions.official_surface_count === 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-official-provenance",
+          severity: "needs-review",
+          message:
+            "Surfaces are catalogued, but none are marked operator-official.",
+          field: "authority",
+          next_action:
+            "Verify whether any recorded surface is first-party, or add official evidence.",
+        });
+      }
+      const sortedGaps = sortCoverageDepthGaps(gaps);
+      const row = {
+        netuid: subnet.netuid,
+        slug: subnet.slug,
+        name: subnet.name,
+        subnet_type: profile?.subnet_type || subnet.subnet_type || null,
+        curation_level: profile?.curation_level || null,
+        profile_level: profile?.profile_level || null,
+        score,
+        tier: coverageDepthTier({
+          agentReadiness,
+          dimensions,
+          gaps: sortedGaps,
+          score,
+        }),
+        priority_score: 0,
+        agent_status: agentReadiness.status,
+        blocker_level: agentReadiness.blocker_level,
+        readiness_score: readiness.score,
+        completeness_score: profile?.completeness_score ?? null,
+        dimensions,
+        top_gaps: sortedGaps.slice(0, 6),
+        top_gap_codes: sortedGaps.slice(0, 6).map((gap) => gap.code),
+        recommended_next_action:
+          sortedGaps.find((gap) => gap.severity !== "hard")?.next_action ||
+          sortedGaps[0]?.next_action ||
+          null,
+      };
+      row.priority_score = coverageDepthPriorityScore({
+        row,
+        gaps: sortedGaps,
+      });
+      return row;
+    })
+    .sort((a, b) => a.netuid - b.netuid);
+
+  const rankedQueue = rows
+    .filter((row) => row.priority_score > 0 && row.top_gaps.length > 0)
+    .sort((a, b) => {
+      const priorityDelta = b.priority_score - a.priority_score;
+      if (priorityDelta !== 0) return priorityDelta;
+      const scoreDelta = a.score - b.score;
+      if (scoreDelta !== 0) return scoreDelta;
+      return a.netuid - b.netuid;
+    })
+    .slice(0, COVERAGE_DEPTH_QUEUE_LIMIT)
+    .map((row, index) => {
+      const primaryGap =
+        row.top_gaps.find((gap) => gap.severity !== "hard") || row.top_gaps[0];
+      return {
+        rank: index + 1,
+        netuid: row.netuid,
+        slug: row.slug,
+        name: row.name,
+        tier: row.tier,
+        score: row.score,
+        priority_score: row.priority_score,
+        severity: primaryGap.severity,
+        top_gap_codes: row.top_gap_codes,
+        recommended_next_action:
+          row.recommended_next_action || primaryGap.next_action,
+      };
+    });
+  const allTopGaps = rows.flatMap((row) => row.top_gaps);
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    coverage_depth_version: COVERAGE_DEPTH_VERSION,
+    subnet_count: rows.length,
+    summary: {
+      row_count: rows.length,
+      agent_ready_count: rows.filter((row) => row.tier === "agent-ready")
+        .length,
+      callable_subnet_count: rows.filter(
+        (row) => row.dimensions.callable_service_count > 0,
+      ).length,
+      blocked_subnet_count: rows.filter(
+        (row) => row.blocker_level === "hard-blocked",
+      ).length,
+      queue_count: rankedQueue.length,
+      average_score:
+        rows.length === 0
+          ? 0
+          : Math.round(
+              rows.reduce((sum, row) => sum + row.score, 0) / rows.length,
+            ),
+      tier_counts: countBy(rows, "tier"),
+      blocker_level_counts: countBy(rows, "blocker_level"),
+      severity_counts: countBy(allTopGaps, "severity"),
+      gap_code_counts: countBy(allTopGaps, "code"),
+    },
+    scoring: {
+      methodology:
+        "Deterministic build-time score over callable services, schema coverage, fixture state, examples/SDKs, provenance, readiness blockers, and profile completeness. Live health is intentionally separate.",
+      weights: COVERAGE_DEPTH_WEIGHTS,
+    },
+    rows,
+    ranked_queue: rankedQueue,
+  };
+}
+
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
 // #1008: code-examples (quickstarts / SDK snippets) per subnet, projected from
 // the curated `example`-kind surfaces. They are reference material, not callable
@@ -1807,6 +2205,7 @@ const subnetExamples = (netuid) =>
   }));
 const agentCatalogIndex = [];
 const blockedAgentCatalogIndex = [];
+const agentReadinessByNetuid = new Map();
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
@@ -1822,6 +2221,7 @@ for (const subnet of mergedSubnets) {
     readiness,
     callableCount: callable,
   });
+  agentReadinessByNetuid.set(subnet.netuid, agentReadiness);
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1911,6 +2311,20 @@ await writeJson(artifactFile("agent-catalog.json"), {
   ...agentCatalogContent,
 });
 
+const coverageDepthArtifact = buildCoverageDepthArtifact({
+  subnets: mergedSubnets,
+  profileByNetuid: profileArtifacts.byNetuid,
+  surfacesByNetuid: overviewSurfacesByNetuid,
+  servicesByNetuid,
+  candidatesByNetuid: activeCandidatesByNetuid,
+  readinessByNetuid,
+  agentReadinessByNetuid,
+  examplesByNetuid: exampleSurfacesByNetuid,
+  generatedAt,
+  contractVersion,
+});
+await writeJson(artifactFile("coverage-depth.json"), coverageDepthArtifact);
+
 // --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------
 // The emerging standard for making a site/API legible to LLMs. Served from the
 // public/ root (and /.well-known) by the ASSETS handler at api.metagraph.sh.
@@ -1927,6 +2341,7 @@ const llmsHeader = [
   "## Machine entrypoints",
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
+  `- [Coverage depth scorecard](${llmsApiBase}/api/v1/coverage-depth): one ranked view of which subnets are machine-usable, what is missing, and which enrichment actions should happen next`,
   `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
   `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
@@ -2216,6 +2631,12 @@ const agentResourcesContent = {
       title: "Agent capability catalog",
       kind: "api",
       url: `${llmsApiBase}/api/v1/agent-catalog`,
+    },
+    {
+      id: "coverage-depth",
+      title: "Coverage depth scorecard",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/coverage-depth`,
     },
     {
       id: "semantic-search",

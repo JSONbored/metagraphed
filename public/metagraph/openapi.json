@@ -1803,6 +1803,420 @@
         ],
         "type": "object"
       },
+      "CoverageDepthArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "coverage_depth_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "ranked_queue": {
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthQueueEntry"
+                },
+                "type": "array"
+              },
+              "rows": {
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthRow"
+                },
+                "type": "array"
+              },
+              "scoring": {
+                "additionalProperties": true,
+                "properties": {
+                  "methodology": {
+                    "type": "string"
+                  },
+                  "weights": {
+                    "additionalProperties": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "methodology",
+                  "weights"
+                ],
+                "type": "object"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "agent_ready_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "average_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blocked_subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blocker_level_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "callable_subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "gap_code_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "queue_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "row_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "severity_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "tier_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "row_count",
+                  "agent_ready_count",
+                  "callable_subnet_count",
+                  "blocked_subnet_count",
+                  "queue_count",
+                  "average_score",
+                  "tier_counts",
+                  "blocker_level_counts",
+                  "severity_counts",
+                  "gap_code_counts"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "coverage_depth_version",
+              "subnet_count",
+              "summary",
+              "scoring",
+              "rows",
+              "ranked_queue"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "CoverageDepthQueueEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rank": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "recommended_next_action": {
+            "type": "string"
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "severity": {
+            "enum": [
+              "hard",
+              "missing-data",
+              "needs-review"
+            ],
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "top_gap_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rank",
+          "netuid",
+          "slug",
+          "name",
+          "tier",
+          "score",
+          "priority_score",
+          "severity",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "type": "object"
+      },
+      "CoverageDepthRow": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_status": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          },
+          "blocker_level": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          },
+          "completeness_score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "curation_level": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dimensions": {
+            "additionalProperties": true,
+            "properties": {
+              "callable_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "candidate_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "candidate_operational_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "data_artifact_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "docs_url_present": {
+                "type": "boolean"
+              },
+              "example_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixture_available_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixture_status_counts": {
+                "additionalProperties": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              "official_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "provider_claimed_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "registry_observed_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "schema_missing_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "schema_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sdk_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_kinds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "source_repo_present": {
+                "type": "boolean"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "surface_count",
+              "official_surface_count",
+              "registry_observed_surface_count",
+              "provider_claimed_surface_count",
+              "service_count",
+              "callable_service_count",
+              "service_kinds",
+              "schema_service_count",
+              "schema_missing_count",
+              "fixture_available_count",
+              "fixture_status_counts",
+              "example_count",
+              "sdk_count",
+              "candidate_count",
+              "candidate_operational_count",
+              "data_artifact_count",
+              "source_repo_present",
+              "docs_url_present"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readiness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recommended_next_action": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subnet_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tier": {
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ],
+            "type": "string"
+          },
+          "top_gap_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "top_gaps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "score",
+          "tier",
+          "priority_score",
+          "agent_status",
+          "blocker_level",
+          "readiness_score",
+          "dimensions",
+          "top_gaps",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "type": "object"
+      },
       "CoverageLevel": {
         "description": "How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).",
         "enum": [
@@ -12198,6 +12612,320 @@
         "summary": "Fetch registry coverage summary.",
         "tags": [
           "registry"
+        ]
+      }
+    },
+    "/api/v1/coverage-depth": {
+      "get": {
+        "operationId": "coverageDepth",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tier",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agent-ready",
+                "machine-usable",
+                "candidate-review",
+                "needs-evidence",
+                "hard-blocked",
+                "missing-interface"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "callable",
+                "base-layer",
+                "candidate",
+                "needs-evidence",
+                "blocked"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "blocker_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "none",
+                "hard-blocked",
+                "needs-review",
+                "missing-data"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agent_status",
+                "blocker_level",
+                "name",
+                "netuid",
+                "priority_score",
+                "score",
+                "tier"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "contract_version": "2026-06-06.1",
+                    "coverage_depth_version": 1,
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "notes": "Example description.",
+                    "ranked_queue": [
+                      {
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "priority_score": 100,
+                        "rank": 1,
+                        "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                        "score": 100,
+                        "severity": "hard",
+                        "slug": "example-subnet",
+                        "tier": "example",
+                        "top_gap_codes": [
+                          "example"
+                        ]
+                      }
+                    ],
+                    "rows": [
+                      {
+                        "agent_status": "callable",
+                        "blocker_level": "none",
+                        "dimensions": {
+                          "callable_service_count": 1,
+                          "candidate_count": 1,
+                          "candidate_operational_count": 1,
+                          "data_artifact_count": 1,
+                          "docs_url_present": false,
+                          "example_count": 1,
+                          "fixture_available_count": 1,
+                          "fixture_status_counts": {},
+                          "official_surface_count": 1,
+                          "provider_claimed_surface_count": 1,
+                          "registry_observed_surface_count": 1,
+                          "schema_missing_count": 1,
+                          "schema_service_count": 1,
+                          "sdk_count": 1,
+                          "service_count": 1,
+                          "service_kinds": [
+                            "example"
+                          ],
+                          "source_repo_present": false,
+                          "surface_count": 1
+                        },
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "priority_score": 100,
+                        "readiness_score": 100,
+                        "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                        "score": 100,
+                        "slug": "example-subnet",
+                        "tier": "agent-ready",
+                        "top_gap_codes": [
+                          "example"
+                        ],
+                        "top_gaps": [
+                          {
+                            "code": "example",
+                            "field": "example",
+                            "message": "example",
+                            "next_action": "example",
+                            "severity": "hard"
+                          }
+                        ]
+                      }
+                    ],
+                    "schema_version": 1,
+                    "scoring": {
+                      "methodology": "GET",
+                      "weights": {}
+                    },
+                    "subnet_count": 1,
+                    "summary": {
+                      "agent_ready_count": 1,
+                      "average_score": 100,
+                      "blocked_subnet_count": 5000000,
+                      "blocker_level_counts": {},
+                      "callable_subnet_count": 1,
+                      "gap_code_counts": {},
+                      "queue_count": 1,
+                      "row_count": 1,
+                      "severity_counts": {},
+                      "tier_counts": {}
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CoverageDepthArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+        "tags": [
+          "registry",
+          "review",
+          "api-dx"
         ]
       }
     },

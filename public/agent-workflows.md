@@ -283,6 +283,13 @@ each with `agent_readiness.status`, `agent_readiness.blocker_level`,
 `agent_readiness.blockers[]`, and `agent_readiness.missing_fields[]`. Use those
 fields when the user asks why a subnet is not agent-ready yet.
 
+For prioritization across the whole registry, read
+`GET https://api.metagraph.sh/api/v1/coverage-depth`. It has one row per subnet
+plus a `ranked_queue` of concrete enrichment actions. Use `top_gaps[]` and
+`recommended_next_action` to explain whether a subnet needs missing data,
+maintainer review, or is hard-blocked. Do not infer live uptime from this
+artifact; use health routes for that.
+
 When a service has a schema, `schema_artifact` points at the captured contract
 and `schema_source` explains how it was attached. `surface-id` and `schema-url`
 matches are exact. `same-origin-openapi` means Metagraphed found a captured

@@ -230,6 +230,19 @@ const checks = [
       assert.equal(Number.isInteger(body.data.chain_subnet_count), true),
   ],
   [
+    "/api/v1/coverage-depth?tier=machine-usable&limit=3",
+    (body) => {
+      assert.equal(Number.isInteger(body.data.subnet_count), true);
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(body.data.rows.length <= 3, true);
+      assert.equal(
+        body.data.rows.every((row) => row.tier === "machine-usable"),
+        true,
+      );
+      assert.equal(Array.isArray(body.data.ranked_queue), true);
+    },
+  ],
+  [
     "/api/v1/economics",
     (body) => {
       assert.equal(Array.isArray(body.data.subnets), true);

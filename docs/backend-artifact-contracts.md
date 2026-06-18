@@ -57,6 +57,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
 - `/metagraph/overview/{netuid}.json`: composed per-subnet overview (profile + health + curation + gaps + counts). R2-backed.
 - `/metagraph/registry-summary.json`: registry-wide summary (completeness, top subnets, level counts, latest changes). R2-backed.
+- `/metagraph/coverage-depth.json`: machine-usable coverage depth scorecard with one row per subnet, blocker/gap summaries, and a ranked enrichment queue. R2-backed.
 - `/metagraph/lineage.json`: cross-network subnet lineage — maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence, plus the testnet-only (deploying-soon) count.
 - `/metagraph/fixtures.json`: index of captured live request/response fixtures (which surfaces carry a sanitized sample).
 - `/metagraph/agent-resources.json`: machine index of every AI resource — the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.
@@ -109,6 +110,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/agent-catalog`: list subnets exposing callable services for AI agents (compact index: service kinds + callable count per subnet).
 - `/api/v1/agent-catalog/{netuid}`: fetch one subnet's agent capability catalog — each callable service with base URL, auth, machine-readable schema, and health/eligibility.
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
+- `/api/v1/coverage-depth`: fetch the machine-usable scorecard and ranked enrichment queue for prioritizing schema, fixture, example, provenance, and review work.
 - `/api/v1/lineage`: fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `/api/v1/fixtures`: fetch the index of captured live request/response fixtures (per-surface samples are at `/metagraph/fixtures/{surface_id}.json`, also via the `get_fixture` MCP tool).
 - `/api/v1/agent-resources`: fetch the AI-resources index (the copyable agent at `/agent.md`, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs).

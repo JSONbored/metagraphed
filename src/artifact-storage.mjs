@@ -94,6 +94,7 @@ const R2_ONLY_PATTERNS = [
   // (scripts/build-changelog.mjs), not a committed baseline.
   /^subnets\.json$/,
   /^coverage\.json$/,
+  /^coverage-depth\.json$/,
   // #1009: per-subnet validator/economic entity. Pure chain-state (stake,
   // emission share, registration cost) that changes every block — republished
   // each sync, never a committed seed.

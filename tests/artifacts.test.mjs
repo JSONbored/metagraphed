@@ -458,6 +458,7 @@ test("public artifacts are internally consistent", () => {
   const subnetProfile = readArtifact("profiles/7.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
   const coverage = readArtifact("coverage.json");
+  const coverageDepth = readArtifact("coverage-depth.json");
   const economics = readArtifact("economics.json");
   const contracts = readArtifact("contracts.json");
   const apiIndex = readArtifact("api-index.json");
@@ -793,6 +794,85 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     agentCatalog.blocker_summary.by_code["missing-callable-service"] > 0,
     "blocker summary must count missing callable service blockers",
+  );
+  assert.equal(
+    coverageDepth.subnet_count,
+    subnets.subnets.length,
+    "coverage-depth must score every subnet",
+  );
+  assert.equal(
+    coverageDepth.summary.row_count,
+    coverageDepth.rows.length,
+    "coverage-depth row summary must match rows",
+  );
+  assert.ok(
+    coverageDepth.rows.every(
+      (row, index, rows) => index === 0 || rows[index - 1].netuid < row.netuid,
+    ),
+    "coverage-depth rows must be sorted by netuid",
+  );
+  assert.equal(
+    Object.values(coverageDepth.summary.tier_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    coverageDepth.rows.length,
+    "coverage-depth tier counts must cover every row",
+  );
+  assert.equal(
+    coverageDepth.summary.queue_count,
+    coverageDepth.ranked_queue.length,
+    "coverage-depth queue_count must match the ranked queue",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.every(
+      (entry, index, rows) =>
+        index === 0 ||
+        rows[index - 1].priority_score > entry.priority_score ||
+        (rows[index - 1].priority_score === entry.priority_score &&
+          (rows[index - 1].score < entry.score ||
+            (rows[index - 1].score === entry.score &&
+              rows[index - 1].netuid < entry.netuid))),
+    ),
+    "coverage-depth ranked_queue must have deterministic priority order",
+  );
+  assert.ok(
+    coverageDepth.summary.severity_counts["missing-data"] > 0,
+    "coverage-depth must summarize missing-data gaps",
+  );
+  assert.ok(
+    coverageDepth.summary.tier_counts["hard-blocked"] > 0,
+    "coverage-depth must separate hard-blocked subnets",
+  );
+  const coverageDepthAllways = coverageDepth.rows.find(
+    (entry) => entry.netuid === 7,
+  );
+  assert.ok(coverageDepthAllways, "SN7 must have a coverage-depth row");
+  assert.equal(coverageDepthAllways.agent_status, "callable");
+  assert.ok(
+    coverageDepthAllways.dimensions.callable_service_count > 0,
+    "SN7 coverage-depth row must count callable services",
+  );
+  assert.ok(
+    coverageDepthAllways.top_gap_codes.includes("missing-fixture"),
+    "SN7 coverage-depth row must expose deterministic fixture absence",
+  );
+  const coverageDepthRecall = coverageDepth.rows.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.equal(coverageDepthRecall.agent_status, "blocked");
+  assert.ok(
+    coverageDepthRecall.top_gap_codes.includes("missing-callable-service"),
+    "SN31 coverage-depth row must carry missing callable-service blocker",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.some(
+      (entry) =>
+        entry.top_gap_codes.includes("missing-fixture") ||
+        entry.top_gap_codes.includes("missing-schema") ||
+        entry.top_gap_codes.includes("candidate-api-needs-review"),
+    ),
+    "coverage-depth queue must contain actionable enrichment gaps",
   );
   const catalog31 = readArtifact("agent-catalog/31.json");
   assert.equal(catalog31.agent_readiness.status, "blocked");

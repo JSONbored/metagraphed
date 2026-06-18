@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/coverage-depth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the machine-usable coverage depth scorecard and ranked enrichment queue. */
+        get: operations["coverageDepth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/curation": {
         parameters: {
             query?: never;
@@ -1513,6 +1530,100 @@ export interface components {
             after: number;
             before: number;
             delta: number;
+        };
+        CoverageDepthArtifact: components["schemas"]["ArtifactBase"] & ({
+            coverage_depth_version: number;
+            ranked_queue: components["schemas"]["CoverageDepthQueueEntry"][];
+            rows: components["schemas"]["CoverageDepthRow"][];
+            scoring: {
+                methodology: string;
+                weights: {
+                    [key: string]: number;
+                };
+            } & {
+                [key: string]: unknown;
+            };
+            subnet_count: number;
+            summary: {
+                agent_ready_count: number;
+                average_score: number;
+                blocked_subnet_count: number;
+                blocker_level_counts: {
+                    [key: string]: number;
+                };
+                callable_subnet_count: number;
+                gap_code_counts: {
+                    [key: string]: number;
+                };
+                queue_count: number;
+                row_count: number;
+                severity_counts: {
+                    [key: string]: number;
+                };
+                tier_counts: {
+                    [key: string]: number;
+                };
+            };
+        } & {
+            [key: string]: unknown;
+        });
+        CoverageDepthQueueEntry: {
+            name: string;
+            netuid: number;
+            priority_score: number;
+            rank: number;
+            recommended_next_action: string;
+            score: number;
+            /** @enum {string} */
+            severity: "hard" | "missing-data" | "needs-review";
+            slug: string;
+            tier: string;
+            top_gap_codes: string[];
+        };
+        CoverageDepthRow: {
+            /** @enum {string} */
+            agent_status: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
+            /** @enum {string} */
+            blocker_level: "none" | "hard-blocked" | "needs-review" | "missing-data";
+            completeness_score?: number | null;
+            curation_level?: string | null;
+            dimensions: {
+                callable_service_count: number;
+                candidate_count: number;
+                candidate_operational_count: number;
+                data_artifact_count: number;
+                docs_url_present: boolean;
+                example_count: number;
+                fixture_available_count: number;
+                fixture_status_counts: {
+                    [key: string]: number;
+                };
+                official_surface_count: number;
+                provider_claimed_surface_count: number;
+                registry_observed_surface_count: number;
+                schema_missing_count: number;
+                schema_service_count: number;
+                sdk_count: number;
+                service_count: number;
+                service_kinds: string[];
+                source_repo_present: boolean;
+                surface_count: number;
+            } & {
+                [key: string]: unknown;
+            };
+            name: string;
+            netuid: number;
+            priority_score: number;
+            profile_level?: string | null;
+            readiness_score: number;
+            recommended_next_action: string | null;
+            score: number;
+            slug: string;
+            subnet_type?: string | null;
+            /** @enum {string} */
+            tier: "agent-ready" | "machine-usable" | "candidate-review" | "needs-evidence" | "hard-blocked" | "missing-interface";
+            top_gap_codes: string[];
+            top_gaps: components["schemas"]["AgentReadinessBlocker"][];
         };
         /**
          * @description How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).
@@ -4943,6 +5054,200 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CoverageArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    coverageDepth: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                tier?: "agent-ready" | "machine-usable" | "candidate-review" | "needs-evidence" | "hard-blocked" | "missing-interface";
+                agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
+                blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
+                q?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "coverage_depth_version": 1,
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "ranked_queue": [
+                     *           {
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "rank": 1,
+                     *             "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                     *             "score": 100,
+                     *             "severity": "hard",
+                     *             "slug": "example-subnet",
+                     *             "tier": "example",
+                     *             "top_gap_codes": [
+                     *               "example"
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "rows": [
+                     *           {
+                     *             "agent_status": "callable",
+                     *             "blocker_level": "none",
+                     *             "dimensions": {
+                     *               "callable_service_count": 1,
+                     *               "candidate_count": 1,
+                     *               "candidate_operational_count": 1,
+                     *               "data_artifact_count": 1,
+                     *               "docs_url_present": false,
+                     *               "example_count": 1,
+                     *               "fixture_available_count": 1,
+                     *               "fixture_status_counts": {},
+                     *               "official_surface_count": 1,
+                     *               "provider_claimed_surface_count": 1,
+                     *               "registry_observed_surface_count": 1,
+                     *               "schema_missing_count": 1,
+                     *               "schema_service_count": 1,
+                     *               "sdk_count": 1,
+                     *               "service_count": 1,
+                     *               "service_kinds": [
+                     *                 "example"
+                     *               ],
+                     *               "source_repo_present": false,
+                     *               "surface_count": 1
+                     *             },
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "priority_score": 100,
+                     *             "readiness_score": 100,
+                     *             "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                     *             "score": 100,
+                     *             "slug": "example-subnet",
+                     *             "tier": "agent-ready",
+                     *             "top_gap_codes": [
+                     *               "example"
+                     *             ],
+                     *             "top_gaps": [
+                     *               {
+                     *                 "code": "example",
+                     *                 "field": "example",
+                     *                 "message": "example",
+                     *                 "next_action": "example",
+                     *                 "severity": "hard"
+                     *               }
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "scoring": {
+                     *           "methodology": "GET",
+                     *           "weights": {}
+                     *         },
+                     *         "subnet_count": 1,
+                     *         "summary": {
+                     *           "agent_ready_count": 1,
+                     *           "average_score": 100,
+                     *           "blocked_subnet_count": 5000000,
+                     *           "blocker_level_counts": {},
+                     *           "callable_subnet_count": 1,
+                     *           "gap_code_counts": {},
+                     *           "queue_count": 1,
+                     *           "row_count": 1,
+                     *           "severity_counts": {},
+                     *           "tier_counts": {}
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["CoverageDepthArtifact"];
                     };
                 };
             };

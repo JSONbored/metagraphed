@@ -84,6 +84,22 @@ export const QUERY_ENUMS = {
     "disabled",
     "rejected",
   ],
+  coverageDepthTier: [
+    "agent-ready",
+    "machine-usable",
+    "candidate-review",
+    "needs-evidence",
+    "hard-blocked",
+    "missing-interface",
+  ],
+  agentReadinessStatus: [
+    "callable",
+    "base-layer",
+    "candidate",
+    "needs-evidence",
+    "blocked",
+  ],
+  agentBlockerLevel: ["none", "hard-blocked", "needs-review", "missing-data"],
   endpointIncidentSeverity: ["critical", "warning", "info"],
   endpointIncidentState: ["active", "resolved"],
   recommendedAdapterKind: [
@@ -133,6 +149,24 @@ export const API_QUERY_COLLECTIONS = {
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
     },
     sort: ["coverage_level", "curation_level", "name", "netuid"],
+  }),
+  "coverage-depth": queryCollection("rows", {
+    filters: {
+      netuid: integerSchema,
+      tier: enumSchema(QUERY_ENUMS.coverageDepthTier),
+      agent_status: enumSchema(QUERY_ENUMS.agentReadinessStatus),
+      blocker_level: enumSchema(QUERY_ENUMS.agentBlockerLevel),
+    },
+    search: ["name", "slug", "top_gap_codes", "recommended_next_action"],
+    sort: [
+      "agent_status",
+      "blocker_level",
+      "name",
+      "netuid",
+      "priority_score",
+      "score",
+      "tier",
+    ],
   }),
   "curated-surfaces": queryCollection("surfaces", {
     filters: {
@@ -673,6 +707,12 @@ export const PUBLIC_ARTIFACTS = [
     "CoverageArtifact",
   ),
   artifact(
+    "coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+    "CoverageDepthArtifact",
+  ),
+  artifact(
     "economics",
     "/metagraph/economics.json",
     "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
@@ -1166,6 +1206,16 @@ export const API_ROUTES = [
     "Fetch registry coverage summary.",
     "standard",
     ["registry"],
+  ),
+  route(
+    "coverage-depth",
+    "GET",
+    "/api/v1/coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+    "standard",
+    ["registry", "review", "api-dx"],
+    listQuery("coverage-depth"),
   ),
   route(
     "economics",
