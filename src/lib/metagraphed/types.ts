@@ -492,3 +492,59 @@ export interface SurfaceSla {
     [key: string]: unknown;
   }>;
 }
+
+/** One weekly structural snapshot from /subnets/{n}/trajectory. */
+export interface TrajectoryPoint {
+  date: string;
+  completeness_score?: number;
+  surface_count?: number;
+  endpoint_count?: number;
+}
+
+export interface TrajectoryDelta {
+  from_date?: string;
+  to_date?: string;
+  completeness_score?: number;
+  surface_count?: number;
+  endpoint_count?: number;
+}
+
+export interface Trajectory {
+  point_count?: number;
+  points: TrajectoryPoint[];
+  deltas?: Record<string, TrajectoryDelta | null>;
+}
+
+/** Reliability grade (A–F) + score for a surface or the whole subnet. */
+export interface ReliabilityGrade {
+  score?: number;
+  grade?: string;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  sample_count?: number;
+  surface_count?: number;
+}
+
+export interface SurfaceUptimeDay {
+  day: string;
+  samples?: number;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  status?: string;
+}
+
+export interface SurfaceUptime {
+  surface_id: string;
+  day_count?: number;
+  samples?: number;
+  uptime_ratio?: number;
+  reliability?: ReliabilityGrade;
+  days: SurfaceUptimeDay[];
+}
+
+/** Long-range daily uptime history from /subnets/{n}/uptime?window=90d|1y. */
+export interface Uptime {
+  window?: string;
+  reliability?: ReliabilityGrade;
+  surfaces: SurfaceUptime[];
+}

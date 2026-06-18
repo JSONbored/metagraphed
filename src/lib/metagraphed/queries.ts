@@ -33,6 +33,8 @@ import type {
   Surface,
   SurfaceLatencyPercentiles,
   SurfaceSla,
+  Trajectory,
+  Uptime,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -587,6 +589,39 @@ export const subnetHealthIncidentsQuery = (netuid: number, window = "7d") =>
       return { data: res.data?.surfaces ?? [], meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
+  });
+
+// #1115: weekly structural trajectory (completeness / surface / endpoint counts
+// over time) from D1 snapshots.
+export const subnetTrajectoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-trajectory", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<Trajectory>>(`/api/v1/subnets/${netuid}/trajectory`, {
+        signal,
+      });
+      const d = res.data ?? {};
+      const points = Array.isArray(d.points) ? d.points : [];
+      return { data: { ...d, points } as Trajectory, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_LONG,
+  });
+
+// #1115: long-range daily uptime history + reliability grade per surface, over a
+// 90d/1y window.
+export const subnetUptimeQuery = (netuid: number, window = "90d") =>
+  queryOptions({
+    queryKey: k("subnet-uptime", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<Uptime>>(`/api/v1/subnets/${netuid}/uptime`, {
+        params: { window },
+        signal,
+      });
+      const d = res.data ?? {};
+      const surfaces = Array.isArray(d.surfaces) ? d.surfaces : [];
+      return { data: { ...d, surfaces } as Uptime, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
   });
 
 // Candidate rows carry `review_notes` (not `notes`) and a nested

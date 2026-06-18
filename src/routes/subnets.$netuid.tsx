@@ -30,6 +30,7 @@ import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
+import { GrowthSection, UptimeHistorySection } from "@/components/metagraphed/growth-uptime";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -338,6 +339,26 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         info="Live from the 2-minute health prober's D1 history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
       >
         <ReliabilityPanel netuid={netuid} />
+      </SectionAnchor>
+
+      {/* #1115: structural growth over time. */}
+      <SectionAnchor
+        id="growth"
+        title="Growth"
+        subtitle="Completeness, surfaces, and endpoints across recent weekly snapshots."
+        info="Weekly structural snapshots from D1 — how the subnet's integration coverage is evolving over time."
+      >
+        <GrowthSection netuid={netuid} />
+      </SectionAnchor>
+
+      {/* #1115: long-range daily uptime + reliability grade. */}
+      <SectionAnchor
+        id="uptime"
+        title="Uptime history"
+        subtitle="Daily uptime per surface and an overall reliability grade, over 90d/1y."
+        info="Long-range daily uptime from the health prober's D1 history, with an A–F reliability grade per surface and for the subnet overall."
+      >
+        <UptimeHistorySection netuid={netuid} />
       </SectionAnchor>
 
       {(profile?.missing_kinds?.length ?? 0) > 0 || (profile?.gap_notes?.length ?? 0) > 0 ? (
