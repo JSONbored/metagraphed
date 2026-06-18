@@ -88,6 +88,10 @@ describe("handleOgImage", () => {
     assert.match(og.calls.markup, /1,198 endpoints/);
     assert.match(og.calls.markup, /92 providers/);
     assert.match(og.calls.markup, /57% avg coverage/);
+    // no non-ASCII glyphs in the rendered text -- the stat-row
+    // separator is a styled div, not a character (which would tofu)
+    assert.doesNotMatch(og.calls.markup, /[\u0080-\uffff]/);
+    assert.doesNotMatch(og.calls.fontTexts[0], /[\u0080-\uffff]/);
     // both Space Grotesk weights loaded, subset to the rendered glyphs
     assert.deepEqual(og.calls.fontWeights.sort(), [500, 700]);
     assert.match(og.calls.fontTexts[0], /129 subnets/);
@@ -95,7 +99,7 @@ describe("handleOgImage", () => {
     assert.equal(puts.length, 1);
   });
 
-  test("falls back to the subtitle when registry-summary is unavailable", async () => {
+  test("falls back to a generic stat line when registry-summary is unavailable", async () => {
     const og = fakeOg();
     const res = await handleOgImage(req("GET"), {}, urlFor(), {
       readArtifact: readSummaryMiss,
@@ -103,9 +107,9 @@ describe("handleOgImage", () => {
       cache: null,
     });
     assert.equal(res.status, 200);
-    // no stat counts rendered; the subtitle stands in for the stat line
-    assert.doesNotMatch(og.calls.markup, /subnets ·/);
-    assert.match(og.calls.markup, /The Bittensor subnet integration registry/);
+    // no live counts rendered; the ASCII fallback stat line stands in
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
   });
 
   test("returns the fallback PNG (not a 500) when font loading fails", async () => {

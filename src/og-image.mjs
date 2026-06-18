@@ -25,6 +25,9 @@ const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 const SUBTITLE = "The Bittensor subnet integration registry";
 const HEADLINE = "Every subnet, metagraphed.";
 const EYEBROW = "api.metagraph.sh";
+// Shown in the stat row only when registry-summary is cold (rare, transient).
+// ASCII-only on purpose — see the glyph note in handleOgImage.
+const FALLBACK_STAT = "Live health, schemas, and discovery for every subnet";
 
 // A tiny valid 1x1 PNG returned when any render dependency fails.
 const FALLBACK_PNG = new Uint8Array([
@@ -73,13 +76,24 @@ async function loadStatLine(env, readArtifact) {
     if (typeof coverage === "number" && Number.isFinite(coverage)) {
       parts.push(`${coverage}% avg coverage`);
     }
-    return parts.length ? parts.join("  ·  ") : null;
+    return parts.length ? parts : null;
   } catch {
     return null;
   }
 }
 
-function renderMarkup(statLine) {
+// Build the bottom stat row: each stat in its own leaf div, joined by a small
+// ink dot (a div, not a glyph — the "·" character doesn't survive loadGoogleFont
+// subsetting and renders as tofu). When stats are cold, show the ASCII fallback.
+function renderStatRow(statParts) {
+  const items = statParts && statParts.length ? statParts : [FALLBACK_STAT];
+  const dot = `<div style="display:flex;width:9px;height:9px;border-radius:5px;background:${INK};opacity:0.5;margin:0 18px;"></div>`;
+  return items
+    .map((part) => `<div style="display:flex;">${part}</div>`)
+    .join(dot);
+}
+
+function renderMarkup(statParts) {
   // satori is strict: any element with >1 child needs display:flex + a direction;
   // text lives in leaf divs. An ink tile with a mint "M" mirrors the brand's
   // icon-mint-on-ink lockup without risking inline-SVG rendering quirks.
@@ -97,7 +111,7 @@ function renderMarkup(statLine) {
       </div>
       <div style="display:flex;flex-direction:column;">
         <div style="display:flex;width:100%;height:3px;background:${INK};opacity:0.22;margin-bottom:26px;"></div>
-        <div style="display:flex;font-size:31px;font-weight:500;">${statLine}</div>
+        <div style="display:flex;align-items:center;font-size:31px;font-weight:500;">${renderStatRow(statParts)}</div>
       </div>
     </div>`;
 }
@@ -131,7 +145,7 @@ export async function handleOgImage(request, env, url, deps = {}) {
     return new Response(null, { headers: imageHeaders() });
   }
 
-  const statLine = (await loadStatLine(env, deps.readArtifact)) ?? SUBTITLE;
+  const statParts = await loadStatLine(env, deps.readArtifact);
 
   let ImageResponse;
   let loadGoogleFont;
@@ -144,8 +158,11 @@ export async function handleOgImage(request, env, url, deps = {}) {
   }
 
   // Subset both weights to only the glyphs we render (faster, smaller fetch).
-  // Includes digits/comma/percent/middot so any live stat-line variant resolves.
-  const glyphs = `${EYEBROW}${HEADLINE}${SUBTITLE}${statLine}M0123456789,.%· `;
+  // ASCII-only: loadGoogleFont's Google Fonts subset request drops non-ASCII
+  // glyphs (e.g. U+00B7 "·"), which then render as tofu — so the stat separator
+  // is a styled div, not a character (see renderStatRow).
+  const statText = (statParts ?? [FALLBACK_STAT]).join(" ");
+  const glyphs = `${EYEBROW}${HEADLINE}${SUBTITLE}${statText}M0123456789,.% `;
   let bold;
   let medium;
   try {
@@ -159,7 +176,7 @@ export async function handleOgImage(request, env, url, deps = {}) {
   }
 
   try {
-    const image = new ImageResponse(renderMarkup(statLine), {
+    const image = new ImageResponse(renderMarkup(statParts), {
       width: 1200,
       height: 630,
       fonts: [
