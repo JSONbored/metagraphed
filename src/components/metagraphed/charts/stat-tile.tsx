@@ -7,16 +7,14 @@ interface Props {
   eyebrow: string;
   value: ReactNode;
   hint?: ReactNode;
-  /** Optional micro-chart slot rendered on the right (e.g. Sparkline). */
   chart?: ReactNode;
   tone?: "default" | "accent" | "ok" | "warn" | "down";
   className?: string;
 }
 
 /**
- * Compact KPI tile used in dense stat strips. Lighter weight than
- * `<KpiCard>` (no internal link / CTA) so we can pack 4-6 of them above
- * the fold on list/ops routes.
+ * Compact KPI tile. Flat hairline, generous baseline. Used in tighter
+ * stat strips where the hero KPI grid would feel oversized.
  */
 export function StatTile({
   icon: Icon,
@@ -30,38 +28,38 @@ export function StatTile({
   return (
     <div
       className={classNames(
-        "rounded-xl border bg-card p-3 flex items-center gap-3",
-        tone === "accent" && "border-accent/30",
-        tone === "ok" && "border-health-ok/30",
-        tone === "warn" && "border-health-warn/30",
-        tone === "down" && "border-health-down/30",
+        "rounded-lg border bg-card p-4 flex items-center gap-4",
+        tone === "accent" && "border-accent/40",
+        tone === "ok" && "border-health-ok/40",
+        tone === "warn" && "border-health-warn/40",
+        tone === "down" && "border-health-down/40",
         tone === "default" && "border-border",
         className,
       )}
     >
       {Icon ? (
-        <span
+        <Icon
           aria-hidden
           className={classNames(
-            "inline-flex size-8 shrink-0 items-center justify-center rounded-md",
+            "size-4 shrink-0",
             tone === "accent"
-              ? "bg-accent/15 text-accent-foreground"
+              ? "text-accent"
               : tone === "ok"
-                ? "bg-health-ok/15 text-health-ok"
+                ? "text-health-ok"
                 : tone === "warn"
-                  ? "bg-health-warn/15 text-health-warn"
+                  ? "text-health-warn"
                   : tone === "down"
-                    ? "bg-health-down/15 text-health-down"
-                    : "bg-surface/70 text-ink",
+                    ? "text-health-down"
+                    : "text-ink-muted",
           )}
-        >
-          <Icon className="size-4" />
-        </span>
+        />
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="mg-label truncate">{eyebrow}</div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-xl md:text-2xl font-semibold tabular-nums leading-none text-ink-strong">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
+          {eyebrow}
+        </div>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="font-display text-2xl font-semibold tabular-nums leading-none text-ink-strong">
             {value}
           </span>
           {hint ? (

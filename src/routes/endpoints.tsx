@@ -14,6 +14,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
+import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
@@ -90,6 +91,14 @@ function EndpointsPage() {
         </QueryErrorBoundary>
 
         <section>
+          <SectionHeading title="Latency by provider" />
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+              <LatencyHeatmapSection />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
+        <section>
           <SectionHeading title="RPC pools" />
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
@@ -155,6 +164,11 @@ function EndpointsStatStrip() {
       />
     </div>
   );
+}
+
+function LatencyHeatmapSection() {
+  const rows = (useSuspenseQuery(endpointsQuery()).data.data ?? []) as Endpoint[];
+  return <LatencyHeatmap endpoints={rows} />;
 }
 
 function PoolsTable() {

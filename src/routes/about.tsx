@@ -1,6 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Github, ArrowUpRight, FileCode2, Network as NetworkIcon, Activity } from "lucide-react";
+import {
+  Github,
+  ArrowUpRight,
+  FileCode2,
+  Network as NetworkIcon,
+  Activity,
+  Clock,
+} from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -188,7 +195,7 @@ function AtAGlance() {
       to: "/health",
     },
     {
-      icon: FileCode2,
+      icon: Clock,
       label: "Avg freshness",
       value: freshness.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—",
       to: "/health",

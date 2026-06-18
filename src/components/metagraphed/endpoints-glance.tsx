@@ -116,7 +116,9 @@ export function EndpointsGlance({
               <Icon className="size-3.5 shrink-0 text-ink-muted" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="mg-label">{b.label}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    {b.label}
+                  </span>
                   <span className="font-display text-sm font-semibold text-ink-strong tabular-nums">
                     {items.length}
                   </span>

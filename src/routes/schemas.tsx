@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { z } from "zod";
-import { fallback } from "@/lib/metagraphed/url-state";
+import { fallback } from "@tanstack/zod-adapter";
 import {
   ChevronDown,
   ChevronRight,
@@ -18,10 +18,11 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, ErrorState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageSection } from "@/components/metagraphed/page-section";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -88,22 +89,28 @@ function SchemasPage() {
         </Suspense>
       </QueryErrorBoundary>
       <div className="mt-6 space-y-section">
-        <section>
-          <SectionHeading title="Contracts" />
+        <PageSection
+          eyebrow="Contracts"
+          title="Published contracts"
+          description="Versioned envelope contracts that govern API responses."
+        >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
               <ContractsList />
             </Suspense>
           </QueryErrorBoundary>
-        </section>
-        <section>
-          <SectionHeading title="Schema index" />
+        </PageSection>
+        <PageSection
+          eyebrow="Explorer"
+          title="Schema index"
+          description="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
+        >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-64 w-full" />}>
               <SchemasList />
             </Suspense>
           </QueryErrorBoundary>
-        </section>
+        </PageSection>
       </div>
       <ApiSourceFooter
         paths={["/api/v1/schemas", "/api/v1/contracts"]}
@@ -116,7 +123,14 @@ function SchemasPage() {
 function ContractsList() {
   const { data } = useSuspenseQuery(contractsQuery());
   const rows = data.data ?? [];
-  if (rows.length === 0) return <EmptyState title="No contracts published" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No contracts published"
+        description="Versioned contracts will appear here once the registry ships its first envelope."
+      />
+    );
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((c) => {
@@ -166,7 +180,7 @@ function SchemasList() {
         <FilterPill value="stable" current={search.drift} label="Stable" />
       </div>
       {filtered.length === 0 ? (
-        <EmptyState title="No schemas match this filter" />
+        <TableState variant="empty" title="No schemas match this filter" />
       ) : (
         <ul className="space-y-2">
           {filtered.map((s) => (

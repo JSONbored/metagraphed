@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { classNames } from "@/lib/metagraphed/format";
 
 interface StatItem {
   label: string;
@@ -20,10 +19,9 @@ export interface ProfileHeroProps {
 }
 
 /**
- * Shared profile-page hero used by entity detail pages
- * (subnets, providers). Always renders identity + chips first, then
- * primary public-resource link rail, then a compact stat strip. Stats
- * with no value are hidden, never rendered as "—" placeholders.
+ * Shared entity-profile hero (subnet/provider detail). Blockmachine-style:
+ * eyebrow + oversized title + identity, chips clustered on the right, then
+ * a hairline KPI strip across the bottom.
  */
 export function ProfileHero({
   eyebrow,
@@ -41,52 +39,54 @@ export function ProfileHero({
   );
 
   return (
-    <header className="mb-4">
-      {banner ? <div className="mb-3">{banner}</div> : null}
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="flex items-start gap-3 min-w-0">
-          {icon ? <div className="shrink-0 mt-0.5">{icon}</div> : null}
+    <header className="mg-hero-slab relative pt-8 md:pt-12 pb-8 md:pb-10 mb-6">
+      {banner ? <div className="mb-5">{banner}</div> : null}
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+        <div className="flex items-start gap-4 min-w-0">
+          {icon ? <div className="shrink-0 mt-1">{icon}</div> : null}
           <div className="min-w-0">
-            {eyebrow ? <div className="mg-label mb-1">{eyebrow}</div> : null}
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
+            {eyebrow ? (
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted mb-2">
+                {eyebrow}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-[-0.01em] text-ink-strong">
                 {title}
               </h1>
               {subtitle ? (
-                <span className="font-mono text-xs text-ink-muted">{subtitle}</span>
+                <span className="font-mono text-xs md:text-sm text-ink-muted">{subtitle}</span>
               ) : null}
             </div>
             {description ? (
-              <p className="mt-1 text-sm text-ink-muted max-w-3xl">{description}</p>
+              <p className="mt-3 text-sm md:text-base text-ink-muted max-w-3xl leading-relaxed">
+                {description}
+              </p>
             ) : null}
           </div>
         </div>
-        {chips ? <div className="flex items-center gap-2 shrink-0">{chips}</div> : null}
+        {chips ? (
+          <div className="flex flex-wrap items-center gap-1.5 md:justify-end shrink-0 max-w-md">
+            {chips}
+          </div>
+        ) : null}
       </div>
 
-      {links ? <div className="mt-3">{links}</div> : null}
+      {links ? <div className="mt-6">{links}</div> : null}
 
       {visibleStats.length > 0 ? (
-        <div className="mt-4 rounded border border-border overflow-hidden">
-          <div className="h-[2px] w-full bg-gradient-to-r from-accent via-accent/60 to-transparent" />
-          <div
-            className={classNames(
-              "grid gap-px bg-border",
-              "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
-              visibleStats.length >= 6 && "lg:grid-cols-6",
-              visibleStats.length === 5 && "lg:grid-cols-5",
-            )}
-          >
-            {visibleStats.map((s) => (
-              <div key={s.label} className="bg-card p-3 mg-kpi">
-                <div className="mg-label">{s.label}</div>
-                <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
-                  {s.value}
-                </div>
-                {s.hint ? <div className="mt-0.5 text-[10px] text-ink-muted">{s.hint}</div> : null}
+        <div className="mg-kpi-strip mt-8 md:mt-10">
+          {visibleStats.map((s) => (
+            <div key={s.label}>
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                {s.label}
               </div>
-            ))}
-          </div>
+              <div className="mt-1.5 font-display text-xl md:text-2xl font-semibold text-ink-strong tabular-nums leading-none">
+                {s.value}
+              </div>
+              {s.hint ? <div className="mt-1 text-[10px] text-ink-muted">{s.hint}</div> : null}
+            </div>
+          ))}
         </div>
       ) : null}
     </header>

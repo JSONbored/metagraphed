@@ -106,12 +106,11 @@ const curationLabel: Record<CurationLevel, string> = {
 };
 
 const curationCls: Record<CurationLevel, string> = {
-  native: "bg-curation-native text-paper border-curation-native",
+  native: "bg-transparent text-ink-strong border-ink-strong/40",
   "candidate-discovered": "bg-transparent text-ink-muted border-dashed border-ink-subtle",
-  "machine-verified": "bg-curation-machine/10 text-curation-machine border-curation-machine/30",
-  "maintainer-reviewed":
-    "bg-curation-verified/10 text-curation-verified border-curation-verified/30",
-  "adapter-backed": "bg-curation-pilot/10 text-curation-pilot border-curation-pilot/30",
+  "machine-verified": "bg-transparent text-ink-muted border-border",
+  "maintainer-reviewed": "bg-primary-soft text-curation-verified border-accent/40",
+  "adapter-backed": "bg-primary-soft text-curation-pilot border-accent/50",
 };
 
 // Surfaces carry a per-surface `authority` (rather than a curation_level); give

@@ -60,7 +60,9 @@ export function CoverageCard({
       {pct != null ? (
         <div className="mb-3">
           <div className="mb-1 flex items-baseline justify-between">
-            <span className="mg-label">Completeness</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              Completeness
+            </span>
             <span className="font-display text-sm font-semibold text-ink-strong tabular-nums">
               {pct}%
             </span>
@@ -85,7 +87,9 @@ export function CoverageCard({
 
       {missingKinds && missingKinds.length > 0 ? (
         <div className="mb-2">
-          <div className="mg-label mb-1">Missing</div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+            Missing
+          </div>
           <div className="flex flex-wrap gap-1">
             {missingKinds.map((k) => (
               <span

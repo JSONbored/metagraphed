@@ -134,7 +134,17 @@ function ProviderShell({ slug }: { slug: string }) {
           { label: "OK", value: formatNumber(summary?.by_status?.ok) },
           { label: "Pool-eligible", value: formatNumber(summary?.pool_eligible_count) },
         ]}
-        banner={stale ? <StaleBanner generatedAt={meta?.generated_at} /> : null}
+        banner={
+          stale ? (
+            <StaleBanner
+              generatedAt={meta?.generated_at}
+              refreshQueryKeys={[
+                providerQuery(slug).queryKey,
+                providerEndpointsQuery(slug).queryKey,
+              ]}
+            />
+          ) : null
+        }
       />
 
       <ProfileTabs

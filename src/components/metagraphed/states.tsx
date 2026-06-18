@@ -3,8 +3,11 @@ import {
   RefreshCw,
   Inbox,
   Clock,
+  CheckCircle2,
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
+import { useState } from "react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
@@ -116,24 +119,93 @@ export function EmptyState({
 }
 
 /**
- * A quiet, muted freshness note shown when a snapshot is genuinely stale
- * (callers gate on isStaleFreshness, which is now a 12h threshold) or when
- * freshness metadata is unusable. Unknown timestamps stay user-visible so the
- * UI does not present potentially unverified snapshots as normal.
+ * Freshness banner. Callers gate on isStaleFreshness (12h threshold).
+ *
+ * When a usable timestamp is present we show how old the snapshot is and,
+ * optionally, a "Refresh now" button that invalidates the given query keys
+ * (redesign affordance). When the timestamp is unusable/unknown we still
+ * surface a quiet note so the UI never presents potentially unverified
+ * snapshots as normal (production safety — finder dropped this branch).
  */
-export function StaleBanner({ generatedAt }: { generatedAt?: string | null }) {
+export function StaleBanner({
+  generatedAt,
+  refreshQueryKeys,
+  refreshLabel = "Refresh now",
+}: {
+  generatedAt?: string | null;
+  /** When provided, renders a button that invalidates these query keys. */
+  refreshQueryKeys?: QueryKey[];
+  refreshLabel?: string;
+}) {
+  const queryClient = useQueryClient();
+  const [state, setState] = useState<"idle" | "pending" | "ok" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const hasTimestamp = isUsableTimestamp(generatedAt);
+
+  // Unknown freshness: keep it visible rather than hiding the banner.
+  if (!hasTimestamp) {
+    return (
+      <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
+        <Clock className="size-3 shrink-0" aria-hidden />
+        Snapshot freshness unknown — verify before relying on this data.
+      </p>
+    );
+  }
+
+  const onRefresh = async () => {
+    if (!refreshQueryKeys?.length) return;
+    setState("pending");
+    setErrorMsg(null);
+    try {
+      await Promise.all(
+        refreshQueryKeys.map((key) =>
+          queryClient.invalidateQueries({ queryKey: key, refetchType: "active" }),
+        ),
+      );
+      setState("ok");
+      setTimeout(() => setState("idle"), 2000);
+    } catch (err) {
+      setState("error");
+      setErrorMsg((err as Error)?.message ?? "Refresh failed");
+    }
+  };
+
   return (
-    <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
-      <Clock className="size-3 shrink-0" aria-hidden />
-      {hasTimestamp ? (
-        <>
-          Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
-        </>
-      ) : (
-        <>Snapshot freshness unknown — verify before relying on this data.</>
-      )}
-    </p>
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[10px] text-ink-muted"
+    >
+      <span className="inline-flex items-center gap-1.5 min-w-0">
+        <Clock className="size-3 shrink-0" aria-hidden />
+        Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+      </span>
+      {refreshQueryKeys?.length ? (
+        <span className="ml-auto flex items-center gap-2">
+          {state === "error" && errorMsg ? (
+            <span className="text-health-down truncate max-w-[18rem]" title={errorMsg}>
+              {errorMsg}
+            </span>
+          ) : null}
+          {state === "ok" ? (
+            <span className="inline-flex items-center gap-1 text-health-ok">
+              <CheckCircle2 className="size-3" /> Refreshed
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={state === "pending"}
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress"
+            aria-label={refreshLabel}
+          >
+            <RefreshCw className={`size-3 ${state === "pending" ? "animate-spin" : ""}`} />
+            {state === "pending" ? "Refreshing…" : refreshLabel}
+          </button>
+        </span>
+      ) : null}
+    </div>
   );
 }
 

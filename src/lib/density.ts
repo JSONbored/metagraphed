@@ -32,7 +32,7 @@ export function useDensity() {
     try {
       window.localStorage.setItem(STORAGE_KEY, d);
     } catch {
-      // ignore: persistence is best-effort (private mode / storage disabled)
+      /* best-effort persist */
     }
     setDensityState(d);
   }, []);

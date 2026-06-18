@@ -121,7 +121,9 @@ export function SelectFilter({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="mg-label">{label}</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        {label}
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -165,7 +167,9 @@ export function PageSizeSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="mg-label">per page</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        per page
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}

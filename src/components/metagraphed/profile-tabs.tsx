@@ -21,9 +21,9 @@ export function ProfileTabs({ tabs, defaultTab }: { tabs: ProfileTabSpec[]; defa
   return (
     <nav
       aria-label="Profile sections"
-      className="sticky top-14 z-10 -mx-4 md:mx-0 mt-4 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:rounded md:border md:bg-card"
+      className="sticky top-14 z-10 -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
     >
-      <ul className="flex items-center gap-1 overflow-x-auto px-2 py-1.5">
+      <ul className="flex items-center gap-6 overflow-x-auto px-4 md:px-0">
         {tabs.map((t) => {
           const isActive = active === t.id;
           return (
@@ -38,10 +38,10 @@ export function ProfileTabs({ tabs, defaultTab }: { tabs: ProfileTabSpec[]; defa
                   })
                 }
                 className={classNames(
-                  "relative inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium whitespace-nowrap transition-colors",
+                  "relative inline-flex items-center gap-1.5 py-3 text-[13px] font-medium whitespace-nowrap transition-colors",
                   isActive
-                    ? "bg-surface text-ink-strong after:absolute after:left-2 after:right-2 after:-bottom-[7px] after:h-[2px] after:rounded-full after:bg-accent after:content-['']"
-                    : "text-ink-muted hover:text-ink-strong hover:bg-surface/60",
+                    ? "text-ink-strong after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-ink-strong after:content-['']"
+                    : "text-ink-muted hover:text-ink-strong",
                 )}
                 aria-current={isActive ? "page" : undefined}
               >
@@ -50,6 +50,9 @@ export function ProfileTabs({ tabs, defaultTab }: { tabs: ProfileTabSpec[]; defa
                   <span className="font-mono text-[10px] text-ink-muted tabular-nums">
                     {t.count}
                   </span>
+                ) : null}
+                {isActive ? (
+                  <span aria-hidden className="ml-0.5 inline-block size-1 rounded-full bg-accent" />
                 ) : null}
                 {t.badge ? <span className="ml-0.5">{t.badge}</span> : null}
               </button>

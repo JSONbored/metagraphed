@@ -20,14 +20,10 @@ interface ProviderHoverProps {
 type Props = SubnetHoverProps | ProviderHoverProps;
 
 /**
- * Linear-style hover profile card. Wraps any link/trigger and fetches its
- * detail payload on first open (cached via the shared query client).
- */
-/**
- * Detect a touch-primary device. On those we don't render a hover card at all —
- * the trigger renders as-is so the underlying <Link> stays the one-tap target.
- * Avoids the "tap once to hover, tap again to navigate" trap of Radix HoverCard
- * on mobile.
+ * Detect a touch-primary device. On those we don't render a hover card at
+ * all — the trigger renders as-is so the underlying <Link> remains the
+ * one-tap target. Avoids the "tap once to hover, tap again to navigate"
+ * trap of Radix HoverCard on mobile.
  */
 function useCoarsePointer(): boolean {
   const [coarse, setCoarse] = useState(false);
@@ -42,6 +38,13 @@ function useCoarsePointer(): boolean {
   return coarse;
 }
 
+/**
+ * Linear-style hover profile card. Wraps any link/trigger and fetches its
+ * detail payload on first open (cached via the shared query client).
+ *
+ * On touch devices this is a no-op passthrough so taps go straight to the
+ * wrapped link, which keeps accessibility predictable.
+ */
 export function EntityHoverCard(props: Props) {
   const coarse = useCoarsePointer();
   if (coarse) return <>{props.children}</>;
@@ -182,5 +185,9 @@ function Loading() {
   );
 }
 function Failed() {
-  return <div className="mg-label">Preview unavailable</div>;
+  return (
+    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+      Preview unavailable
+    </div>
+  );
 }

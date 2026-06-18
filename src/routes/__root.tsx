@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -96,7 +97,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // pages unfurl to themselves, not the homepage.
         { name: "twitter:card", content: "summary_large_image" },
       ],
-      links: [{ rel: "stylesheet", href: appCss }],
+      links: [
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap",
+        },
+        { rel: "stylesheet", href: appCss },
+      ],
     };
   },
   shellComponent: RootShell,
@@ -129,9 +138,30 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RouteTransitionBar />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster />
     </QueryClientProvider>
+  );
+}
+
+/**
+ * Thin top-edge progress strip that animates while the router is loading the
+ * next route (data fetches, async components). Auto-hides between transitions.
+ * Pure CSS animation — does not re-render the rest of the tree.
+ */
+function RouteTransitionBar() {
+  const isLoading = useRouterState({ select: (s) => s.isLoading || s.isTransitioning });
+  return (
+    <div
+      aria-hidden
+      className="fixed inset-x-0 top-0 z-[60] h-0.5 pointer-events-none overflow-hidden"
+      style={{ opacity: isLoading ? 1 : 0, transition: "opacity 200ms ease-out" }}
+    >
+      {isLoading ? (
+        <div className="h-full w-1/3 bg-accent animate-[mg-loader_1.1s_ease-in-out_infinite]" />
+      ) : null}
+    </div>
   );
 }

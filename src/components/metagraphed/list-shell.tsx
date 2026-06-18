@@ -22,6 +22,10 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
+  /** When true, the rendered table can stick its <thead> at top-[6.5rem]
+   *  (just under the sticky filter bar) because outer wrappers avoid
+   *  creating a vertical scroll container. */
+  stickyHeader = true,
 }: {
   filters: ReactNode;
   cards?: ReactNode;
@@ -31,13 +35,18 @@ export function ListShell({
   isEmpty?: boolean;
   /** Subtly dim loaded content while a background refetch is in flight. */
   isStale?: boolean;
+  stickyHeader?: boolean;
 }) {
+  // `overflow-x-clip` keeps the rounded corners tidy without establishing a
+  // vertical scroll container, so `position: sticky` on the table's <thead>
+  // anchors against the page scroll.
+  const innerOverflow = stickyHeader ? "overflow-x-clip" : "overflow-x-auto";
   return (
     <div>
       <div
         className={classNames(
           // Sticky filter bar. Offset matches header height (h-14).
-          "sticky top-14 z-10 -mx-4 md:mx-0 mb-3",
+          "sticky top-14 z-20 -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
@@ -52,8 +61,8 @@ export function ListShell({
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
-            <div className="rounded border border-border bg-card overflow-hidden">
-              <div className="overflow-x-auto">{table}</div>
+            <div className={classNames("rounded border border-border bg-card", innerOverflow)}>
+              <div className={innerOverflow}>{table}</div>
               {footer}
             </div>
           </div>

@@ -152,7 +152,7 @@ export function useHealthPalette() {
     try {
       window.localStorage.setItem(STORAGE_KEY, id);
     } catch {
-      // ignore: persistence is best-effort (private mode / storage disabled)
+      /* best-effort persist */
     }
     setPaletteIdState(id);
   }, []);

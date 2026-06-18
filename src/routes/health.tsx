@@ -5,14 +5,17 @@ import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react"
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageSection } from "@/components/metagraphed/page-section";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { SubnetHealthMatrix } from "@/components/metagraphed/subnet-health-matrix";
 import {
   healthQuery,
   freshnessQuery,
@@ -94,6 +97,14 @@ function HealthPage() {
             <GlobalHealth interval={effectiveInterval} />
           </Suspense>
         </QueryErrorBoundary>
+        <PageSection
+          id="subnet-matrix"
+          eyebrow="Coverage"
+          title="Subnet health matrix"
+          description="Every active subnet, colored by latest probe state. Click a cell to open."
+        >
+          <SubnetHealthMatrix />
+        </PageSection>
         <section>
           <SectionHeading title="Source health" />
           <QueryErrorBoundary>
@@ -304,7 +315,14 @@ function Cell({
 function SourceHealth({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...sourceHealthQuery(), refetchInterval: interval });
   const rows = data.data ?? [];
-  if (rows.length === 0) return <EmptyState title="No source health" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No source health"
+        description="Source freshness telemetry will appear once probes report in."
+      />
+    );
   return (
     <div className="rounded border border-border bg-card overflow-x-auto">
       <table className="w-full text-sm">
@@ -414,7 +432,14 @@ function Incidents({ interval }: { interval: number | false }) {
     return Array.from(buckets.values());
   }, [rows]);
 
-  if (rows.length === 0) return <EmptyState title="No recent incidents" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No recent incidents"
+        description="Nothing is currently failing or degraded — everything's quiet."
+      />
+    );
 
   const visibleGroups = showAll ? groups : groups.slice(0, INCIDENT_INITIAL_VISIBLE);
 
@@ -481,7 +506,7 @@ function Incidents({ interval }: { interval: number | false }) {
       </div>
 
       {groups.length === 0 ? (
-        <EmptyState title="No incidents match this filter" />
+        <TableState variant="empty" title="No incidents match this filter" />
       ) : (
         <>
           <ul className="space-y-2">

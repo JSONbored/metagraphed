@@ -1,14 +1,5 @@
 import { z } from "zod";
-
-/**
- * Fall back to `value` when a URL search param fails validation, so a stale or
- * hand-edited query string degrades to a sane default instead of erroring the
- * route. zod-4-native (`.catch`); replaces `@tanstack/zod-adapter`, which
- * peer-pins zod 3 and forced `.npmrc legacy-peer-deps` (metagraphed-ui#118).
- */
-export function fallback<T extends z.ZodType>(schema: T, value: z.output<T>) {
-  return schema.catch(value);
-}
+import { fallback } from "@tanstack/zod-adapter";
 
 /** Common URL-driven table state schema for /subnets and /surfaces. */
 export const tableSearchSchema = z.object({

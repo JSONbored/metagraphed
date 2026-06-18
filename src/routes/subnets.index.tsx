@@ -29,6 +29,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import { API_BASE } from "@/lib/metagraphed/config";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/subnets/")({
@@ -199,6 +200,8 @@ function SubnetsTable() {
         }) as never,
     });
 
+  const filtersActive = !!(search.q || search.curation || search.health || search.sort);
+
   const filtered = all.filter((s) => {
     if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
     if (search.curation && s.curation_level !== search.curation) return false;
@@ -275,8 +278,21 @@ function SubnetsTable() {
       isStale={isFetching && !isFetchingNextPage}
       empty={
         <EmptyState
-          title="No matching subnets"
-          description="Try clearing filters or broadening the search."
+          title="No subnets match these filters"
+          description={
+            filtersActive
+              ? "Try clearing one or more filters, or broaden the search."
+              : "The registry returned no subnets — the source artifact may be temporarily unavailable."
+          }
+          action={
+            filtersActive
+              ? { label: "Reset filters", href: "/subnets" }
+              : {
+                  label: "Open /api/v1/subnets",
+                  href: `${API_BASE}/api/v1/subnets`,
+                  external: true,
+                }
+          }
         />
       }
       cards={rows.map((s) => (
@@ -322,7 +338,7 @@ function SubnetsTable() {
       ))}
       table={
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+          <thead className="sticky top-[6.5rem] z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
             <tr>
               <th className="px-4 py-2.5">
                 <SortHeader

@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageSection } from "@/components/metagraphed/page-section";
+import { TableState } from "@/components/metagraphed/table-state";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
@@ -66,40 +68,56 @@ function GapsPage() {
             </Suspense>
           </QueryErrorBoundary>
         </section>
-        <section>
-          <SectionHeading title="Open gaps" />
+        <PageSection
+          id="open-gaps"
+          eyebrow="Open gaps"
+          title="Missing evidence, by priority"
+          description="Public read-only view of outstanding registry gaps."
+        >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
               <GapsList />
             </Suspense>
           </QueryErrorBoundary>
-        </section>
+        </PageSection>
         <section className="grid gap-6 lg:grid-cols-2">
-          <div>
-            <SectionHeading title="Profile completeness" />
+          <PageSection
+            id="profile-completeness"
+            eyebrow="Coverage"
+            title="Profile completeness"
+            description="Per-subnet completeness across required public-interface kinds."
+          >
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <CompletenessList />
               </Suspense>
             </QueryErrorBoundary>
-          </div>
-          <div>
-            <SectionHeading title="Adapter candidates" />
+          </PageSection>
+          <PageSection
+            id="adapter-candidates"
+            eyebrow="Pilots"
+            title="Adapter candidates"
+            description="Subnets where a maintained adapter would unlock the highest registry value."
+          >
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <AdapterCandidates />
               </Suspense>
             </QueryErrorBoundary>
-          </div>
+          </PageSection>
         </section>
-        <section>
-          <SectionHeading title="Enrichment queue" />
+        <PageSection
+          id="enrichment-queue"
+          eyebrow="Queue"
+          title="Enrichment queue"
+          description="Prioritized list of registry entries awaiting verification or enrichment."
+        >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
               <EnrichmentQueue />
             </Suspense>
           </QueryErrorBoundary>
-        </section>
+        </PageSection>
       </div>
       <ApiSourceFooter
         paths={[
@@ -122,7 +140,16 @@ function severityCls(s?: string) {
 function GapsList() {
   const { data } = useSuspenseQuery(gapsQuery());
   const rows = (data.data ?? []) as Gap[];
-  if (rows.length === 0) return <EmptyState title="No open gaps" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No open gaps"
+        description="The registry has no outstanding gaps right now."
+        cta={{ label: "Suggest on GitHub", href: GITHUB_REPO, external: true }}
+        generatedAt={data.meta?.generated_at}
+      />
+    );
   return (
     <ul className="space-y-2">
       {rows.map((g) => (
@@ -168,7 +195,16 @@ function GapsList() {
 function CompletenessList() {
   const { data } = useSuspenseQuery(reviewProfileCompletenessQuery());
   const rows = data.data ?? [];
-  if (rows.length === 0) return <EmptyState title="No completeness data" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No completeness data"
+        description="Completeness scores will appear here once profiles are scored."
+        cta={{ label: "Browse subnets", href: "/subnets" }}
+        generatedAt={data.meta?.generated_at}
+      />
+    );
   return (
     <ul className="space-y-1.5">
       {rows.slice(0, 20).map((r) => (
@@ -201,7 +237,16 @@ function CompletenessList() {
 function AdapterCandidates() {
   const { data } = useSuspenseQuery(reviewAdapterCandidatesQuery());
   const rows = data.data ?? [];
-  if (rows.length === 0) return <EmptyState title="No adapter candidates" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No adapter candidates"
+        description="Adapter candidates appear once a subnet has enough public surface area to warrant one."
+        cta={{ label: "Suggest on GitHub", href: GITHUB_REPO, external: true }}
+        generatedAt={data.meta?.generated_at}
+      />
+    );
   return (
     <ul className="space-y-1.5">
       {rows.map((r, i) => (
@@ -229,7 +274,16 @@ function AdapterCandidates() {
 function EnrichmentQueue() {
   const { data } = useSuspenseQuery(reviewEnrichmentQueueQuery());
   const rows = data.data ?? [];
-  if (rows.length === 0) return <EmptyState title="Queue is empty" />;
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="Queue is empty"
+        description="Nothing is currently awaiting enrichment."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={data.meta?.generated_at}
+      />
+    );
   return (
     <div className="rounded border border-border bg-card overflow-x-auto">
       <table className="w-full text-sm">

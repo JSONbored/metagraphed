@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Globe, Github, BookOpen, Radio, Layers, Search, X } from "lucide-react";
+import { Globe, Github, BookOpen, Radio, Layers, Network, Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -184,7 +184,12 @@ function ProvidersGrid() {
 
   return (
     <div className="space-y-3">
-      {stale ? <StaleBanner generatedAt={generatedAt} /> : null}
+      {stale ? (
+        <StaleBanner
+          generatedAt={generatedAt}
+          refreshQueryKeys={[providersQuery().queryKey, providerCountsQuery().queryKey]}
+        />
+      ) : null}
 
       <ProviderOverview providers={rows} counts={counts} />
 
@@ -379,7 +384,7 @@ function ProviderCountsRow({
     <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
       <CountTile icon={<Layers className="size-3" />} label="Surfaces" value={s} />
       <CountTile icon={<Radio className="size-3" />} label="Endpoints" value={e} />
-      <CountTile label="Subnets" value={n} />
+      <CountTile icon={<Network className="size-3" />} label="Subnets" value={n} />
     </div>
   );
 }

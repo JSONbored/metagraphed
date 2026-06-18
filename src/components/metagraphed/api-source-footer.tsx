@@ -1,12 +1,16 @@
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 
 /**
  * Cosmos-directory-style footer: surfaces the canonical JSON endpoint(s)
- * powering the current view so developers can copy/share them.
+ * powering the current view so developers can copy/share them. Also
+ * registers the same paths with the global ApiSourceProvider so the
+ * header API drawer (⌘J) can show the live response.
  */
 export function ApiSourceFooter({ paths, artifacts }: { paths: string[]; artifacts?: string[] }) {
+  useRegisterApiSource(paths, artifacts ?? []);
   return (
     <footer className="mt-10 border-t border-border pt-4 text-[11px] text-ink-muted">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
