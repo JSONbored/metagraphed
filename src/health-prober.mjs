@@ -280,7 +280,13 @@ export async function loadOperationalSurfaces(env) {
   try {
     if (env.METAGRAPH_ARCHIVE?.get) {
       const prefix = env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-      const key = `${prefix}metagraph/operational-surfaces.json`;
+      // R2 artifact keys are FLAT under the prefix (latest/<file>.json), NOT
+      // latest/metagraph/<file>.json — the manifest's latest_key is
+      // "latest/operational-surfaces.json". The "/metagraph/" segment is only
+      // the public HTTP path, not the R2 key. This fallback went unexercised
+      // until #1017 made operational-surfaces.json R2-only; the stray
+      // "metagraph/" segment then 404'd every read and silently froze the prober.
+      const key = `${prefix}operational-surfaces.json`;
       const object = await env.METAGRAPH_ARCHIVE.get(key);
       if (object) {
         const body = JSON.parse(await object.text());

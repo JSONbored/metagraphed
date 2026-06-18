@@ -708,7 +708,7 @@ describe("loadOperationalSurfaces", () => {
       METAGRAPH_R2_LATEST_PREFIX: "live/",
       METAGRAPH_ARCHIVE: {
         get: async (key) => {
-          assert.equal(key, "live/metagraph/operational-surfaces.json");
+          assert.equal(key, "live/operational-surfaces.json");
           return { text: async () => JSON.stringify(surfacesBody) };
         },
       },
@@ -721,7 +721,7 @@ describe("loadOperationalSurfaces", () => {
     const env = {
       METAGRAPH_ARCHIVE: {
         get: async (key) => {
-          assert.equal(key, "latest/metagraph/operational-surfaces.json");
+          assert.equal(key, "latest/operational-surfaces.json");
           return { text: async () => JSON.stringify(surfacesBody) };
         },
       },
