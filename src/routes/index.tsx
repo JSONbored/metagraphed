@@ -792,7 +792,7 @@ function SubnetPreviewTable() {
                   {s.surfaces_count ?? "—"}
                 </td>
                 <td className="px-4 py-3">
-                  <HealthPill state={s.health ?? healthBySubnet.get(s.netuid) ?? "unknown"} />
+                  <HealthPill state={healthBySubnet.get(s.netuid) ?? s.health ?? "unknown"} />
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-[11px] text-ink-muted">
                   <TimeAgo at={s.updated_at ?? s.freshness} />
