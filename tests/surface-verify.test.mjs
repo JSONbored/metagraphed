@@ -226,6 +226,40 @@ describe("surface verify-now endpoint (#358)", () => {
       assert.equal((await res2.json()).data.from_cache, true);
     });
   });
+
+  test("blocks catalogued hostnames that resolve to private addresses", async () => {
+    let surfaceFetches = 0;
+    await withGlobals(
+      {
+        fetchImpl: async (input) => {
+          const url = String(input);
+          if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
+            return new Response(
+              JSON.stringify({
+                Answer: [{ type: 1, data: "127.0.0.1" }],
+              }),
+              { headers: { "content-type": "application/dns-json" } },
+            );
+          }
+          surfaceFetches += 1;
+          return okFetch();
+        },
+      },
+      async () => {
+        const res = await handleRequest(
+          req(SURFACE_ID),
+          createLocalArtifactEnv(),
+          {},
+        );
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.data.callable, false);
+        assert.equal(body.data.classification, "unsafe");
+        assert.equal(body.data.error, "unsafe URL");
+      },
+    );
+    assert.equal(surfaceFetches, 0);
+  });
 });
 
 // --- MCP tool: verify_integration --------------------------------------------
@@ -283,6 +317,53 @@ describe("verify_integration MCP tool (#358)", () => {
     assert.equal(bySurface.structuredContent.surface_id, "x:api:1");
     const byNetuid = await call({ netuid: 5 });
     assert.equal(byNetuid.structuredContent.surface_id, "x:api:1");
+  });
+
+  test("blocks rebinding catalogued hostnames before probing", async () => {
+    let surfaceFetches = 0;
+    const of = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
+        return new Response(
+          JSON.stringify({
+            Answer: [{ type: 1, data: "10.0.0.5" }],
+          }),
+          { headers: { "content-type": "application/dns-json" } },
+        );
+      }
+      surfaceFetches += 1;
+      return new Response("{}", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "verify_integration",
+              arguments: { surface_id: "x:api:1" },
+            },
+          }),
+        }),
+        {},
+        deps,
+      );
+      const result = (await response.json()).result;
+      assert.equal(result.isError, false);
+      assert.equal(result.structuredContent.callable, false);
+      assert.equal(result.structuredContent.classification, "unsafe");
+    } finally {
+      globalThis.fetch = of;
+    }
+    assert.equal(surfaceFetches, 0);
   });
 
   test("error paths require no probe", async () => {

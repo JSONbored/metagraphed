@@ -47,6 +47,8 @@ import {
   pruneHealthHistory,
   rollupDailyUptime,
   runHealthProber,
+  workerResolvedUrlSafetyGuard,
+  workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
@@ -1886,7 +1888,10 @@ async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
     }
   }
 
-  const result = await verifySurface(surface);
+  const result = await verifySurface(surface, {
+    isUnsafeUrl: workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch }),
+    connect: workerWebSocketConnector(globalThis.fetch),
+  });
   if (cache) {
     const stored = new Response(JSON.stringify(result), {
       headers: {

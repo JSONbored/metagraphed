@@ -12,7 +12,11 @@
 // R2/ASSETS resolution the REST routes use.
 import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
-import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
+import {
+  KV_HEALTH_RPC_POOL,
+  workerResolvedUrlSafetyGuard,
+  workerWebSocketConnector,
+} from "./health-prober.mjs";
 import {
   findSurface,
   primarySurfaceForNetuid,
@@ -1145,7 +1149,12 @@ export const MCP_TOOLS = [
           "Provide either surface_id or netuid.",
         );
       }
-      return await verifySurface(surface);
+      return await verifySurface(surface, {
+        isUnsafeUrl: workerResolvedUrlSafetyGuard({
+          fetchImpl: globalThis.fetch,
+        }),
+        connect: workerWebSocketConnector(globalThis.fetch),
+      });
     },
   },
 ];
