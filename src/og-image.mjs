@@ -22,12 +22,23 @@ const OG_PATHS = new Set(["/og.png", "/og"]);
 // Stats refresh on the 6h publish; an hour of edge cache + a long
 // stale-while-revalidate keeps render cost near-zero without serving stale art.
 const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
-const SUBTITLE = "The Bittensor subnet integration registry";
-const HEADLINE = "Every subnet, metagraphed.";
-const EYEBROW = "api.metagraph.sh";
+// Bump on any visual change to the card. It's part of the edge-cache key, so a
+// new version renders fresh on the next deploy instead of serving the previous
+// design from cache for up to an hour.
+const CARD_VERSION = "2";
+const WORDMARK = "Metagraphed";
+const TAGLINE = "The Bittensor subnet integration registry";
 // Shown in the stat row only when registry-summary is cold (rare, transient).
 // ASCII-only on purpose — see the glyph note in handleOgImage.
 const FALLBACK_STAT = "Live health, schemas, and discovery for every subnet";
+
+// The brand "M" mark (continuous zig-zag, brand kit icon) recolored to Ink, as a
+// transparent-background SVG data URI so it floats on the mint card. Injected via
+// <img> rather than inline <svg> for reliable satori rasterization. The wordmark
+// beside it is live text in Space Grotesk Bold, so the lockup matches the brand
+// banner exactly without embedding the wordmark paths.
+const LOGO_DATA_URI =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSI+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgxLjkyMCwxNTEuNzM4KSBzY2FsZSgwLjQ2NTQ1KSIgZD0iTSAzMTUuNSwxLjE5OTk5OTk5OTk5OTk4ODYgQyAzMTMuNDAwMDAwMDAwMDAwMDMsMS42OTk5OTk5OTk5OTk5ODg2IDI4MS43LDMyLjc5OTk5OTk5OTk5OTk1NSAyMDYuNSwxMDcuODk5OTk5OTk5OTk5OTggQyAxNDYuNSwxNjcuODk5OTk5OTk5OTk5OTggOTkuMzAwMDAwMDAwMDAwMDEsMjE0LjM5OTk5OTk5OTk5OTk4IDk3LjcsMjE1LjAgQyA5NS45LDIxNS42IDc5LjQsMjE2LjAgNTIuMzAwMDAwMDAwMDAwMDA0LDIxNi4wIEMgMTEuNCwyMTYuMCA5LjYwMDAwMDAwMDAwMDAwMSwyMTYuMSA2LjUsMjE4LjAgQyAtMC40LDIyMi4yOTk5OTk5OTk5OTk5OCAwLjAsMjE1Ljc5OTk5OTk5OTk5OTk4IDAuMCwzMjguNyBDIDAuMCw0MjguNSAwLjAsNDMwLjYgMi4wLDQzMy44IEMgNi4wLDQ0MC4zIDEyLjksNDQyLjUgMTkuNSw0MzkuNCBDIDIxLjMsNDM4LjYgNzAuOSwzODkuNCAxMzAuNiwzMjkuMyBDIDIyMy45LDIzNS41IDIzOS4yMDAwMDAwMDAwMDAwMiwyMjAuMzk5OTk5OTk5OTk5OTggMjQzLjgsMjE4LjM5OTk5OTk5OTk5OTk4IEMgMjQ5LjAsMjE2LjAgMjQ5LjUsMjE2LjAgMjgxLjgsMjE2LjAgQyAzMTIuNDAwMDAwMDAwMDAwMDMsMjE2LjAgMzE0LjcwMDAwMDAwMDAwMDA1LDIxNi4xIDMxNy43MDAwMDAwMDAwMDAwNSwyMTguMCBDIDMxOS40MDAwMDAwMDAwMDAwMywyMTkuMCAzMjEuNSwyMjAuODk5OTk5OTk5OTk5OTggMzIyLjIwMDAwMDAwMDAwMDA1LDIyMi4yIEMgMzIzLjIwMDAwMDAwMDAwMDA1LDIyNC4wIDMyMy42LDI0NS4xIDMyNC4wLDMyOC4wIEwgMzI0LjUsNDMxLjUgTCAzMjYuOCw0MzQuOCBDIDMzMS4wLDQ0MC42IDMzOC4xLDQ0Mi42IDM0My44LDQzOS42IEMgMzQ1LjMsNDM4LjggMzk1LjgsMzg4LjggNDU2LjAsMzI4LjUgQyA1MTYuMiwyNjguMiA1NjYuNywyMTguMiA1NjguMiwyMTcuMzk5OTk5OTk5OTk5OTggQyA1NzAuNCwyMTYuMjk5OTk5OTk5OTk5OTggNTc3LjMwMDAwMDAwMDAwMDEsMjE2LjAgNjA1LjIsMjE2LjAgQyA2MzcuNDAwMDAwMDAwMDAwMSwyMTYuMCA2MzkuNywyMTYuMSA2NDIuNywyMTguMCBDIDY0NC40MDAwMDAwMDAwMDAxLDIxOS4wIDY0Ni41LDIyMC44OTk5OTk5OTk5OTk5OCA2NDcuMiwyMjIuMiBDIDY0OC4yLDIyNC4wIDY0OC42LDI0NS43IDY0OS4wLDMzMS43IEMgNjQ5LjUsNDM4LjEgNjQ5LjUsNDM4LjkgNjUxLjYsNDQxLjcgQyA2NTQuODAwMDAwMDAwMDAwMSw0NDYuMSA2NTkuNyw0NDguMiA2NjUuMCw0NDcuNSBDIDY2OS40MDAwMDAwMDAwMDAxLDQ0Ny4wIDY3MC42LDQ0NS45IDcwNy4zMDAwMDAwMDAwMDAxLDQwOS4yIEMgNzI4LjEsMzg4LjUgNzQ1LjgwMDAwMDAwMDAwMDEsMzcwLjMgNzQ2LjYsMzY4LjggQyA3NDcuODAwMDAwMDAwMDAwMSwzNjYuNSA3NDguMCwzNTQuOSA3NDguMCwyOTUuNzk5OTk5OTk5OTk5OTUgQyA3NDguMCwyMjguMCA3NDcuOTAwMDAwMDAwMDAwMSwyMjUuMzk5OTk5OTk5OTk5OTggNzQ2LjAsMjIyLjI5OTk5OTk5OTk5OTk4IEMgNzQyLjUsMjE2LjUgNzQyLjYsMjE2LjUgNzAzLjMwMDAwMDAwMDAwMDEsMjE2LjAgQyA2NjguNywyMTUuNSA2NjcuMCwyMTUuMzk5OTk5OTk5OTk5OTggNjY0LjMwMDAwMDAwMDAwMDEsMjEzLjM5OTk5OTk5OTk5OTk4IEMgNjYyLjgwMDAwMDAwMDAwMDEsMjEyLjI5OTk5OTk5OTk5OTk4IDY2MC43LDIwOS43OTk5OTk5OTk5OTk5OCA2NTkuODAwMDAwMDAwMDAwMSwyMDcuODk5OTk5OTk5OTk5OTggQyA2NTguMSwyMDQuNyA2NTguMCwxOTcuODk5OTk5OTk5OTk5OTggNjU4LjAsMTA3Ljc5OTk5OTk5OTk5OTk1IEMgNjU4LjAsLTAuNzAwMDAwMDAwMDAwMDQ1NSA2NTguNDAwMDAwMDAwMDAwMSw1Ljc5OTk5OTk5OTk5OTk1NDUgNjUwLjgwMDAwMDAwMDAwMDEsMS44OTk5OTk5OTk5OTk5NzczIEMgNjQ2LjYsLTAuMjAwMDAwMDAwMDAwMDQ1NDcgNjQzLjQwMDAwMDAwMDAwMDEsLTAuNSA2MzkuMzAwMDAwMDAwMDAwMSwxLjA5OTk5OTk5OTk5OTk2NiBDIDYzNy43LDEuNjk5OTk5OTk5OTk5OTg4NiA1OTAuMiw0OC41OTk5OTk5OTk5OTk5NjYgNTI5LjksMTA5LjA5OTk5OTk5OTk5OTk3IEwgNDIzLjMsMjE2LjEgTCAzODIuNzAwMDAwMDAwMDAwMDUsMjE1Ljc5OTk5OTk5OTk5OTk4IEMgMzQzLjUsMjE1LjUgMzQyLjEsMjE1LjM5OTk5OTk5OTk5OTk4IDMzOS4zLDIxMy4zOTk5OTk5OTk5OTk5OCBDIDMzNy44LDIxMi4yOTk5OTk5OTk5OTk5OCAzMzUuNzAwMDAwMDAwMDAwMDUsMjA5Ljc5OTk5OTk5OTk5OTk4IDMzNC44LDIwNy44OTk5OTk5OTk5OTk5OCBDIDMzMy4xLDIwNC43IDMzMy4wLDE5Ny44OTk5OTk5OTk5OTk5OCAzMzMuMCwxMDcuNjk5OTk5OTk5OTk5OTkgQyAzMzMuMCw0LjA5OTk5OTk5OTk5OTk2NiAzMzMuMjAwMDAwMDAwMDAwMDUsOC4xOTk5OTk5OTk5OTk5ODkgMzI4LjEsMy41OTk5OTk5OTk5OTk5NjYgQyAzMjUuNiwxLjI5OTk5OTk5OTk5OTk1NDUgMzE5LjUsMC4wOTk5OTk5OTk5OTk5NjU5IDMxNS41LDEuMTk5OTk5OTk5OTk5OTg4NiIgZmlsbD0iIzA4MTEwRSIvPgo8L3N2Zz4K";
 
 // A tiny valid 1x1 PNG returned when any render dependency fails.
 const FALLBACK_PNG = new Uint8Array([
@@ -57,8 +68,9 @@ function formatCount(value) {
     : null;
 }
 
-// Pull the live counts off registry-summary.json. Returns a human stat line, or
-// the subtitle as a graceful fallback when the artifact is cold/unavailable.
+// Pull the live counts off registry-summary.json into an array of stat strings,
+// or null when the artifact is cold/unavailable (the caller then shows a generic
+// fallback line).
 async function loadStatLine(env, readArtifact) {
   try {
     if (typeof readArtifact !== "function") return null;
@@ -74,7 +86,7 @@ async function loadStatLine(env, readArtifact) {
     if (providers) parts.push(`${providers} providers`);
     const coverage = data.coverage?.average_score;
     if (typeof coverage === "number" && Number.isFinite(coverage)) {
-      parts.push(`${coverage}% avg coverage`);
+      parts.push(`${coverage}% coverage`);
     }
     return parts.length ? parts : null;
   } catch {
@@ -82,36 +94,34 @@ async function loadStatLine(env, readArtifact) {
   }
 }
 
-// Build the bottom stat row: each stat in its own leaf div, joined by a small
-// ink dot (a div, not a glyph — the "·" character doesn't survive loadGoogleFont
+// Build the stat row: each stat in its own leaf div, joined by a small ink dot
+// (a div, not a glyph — the "·" character doesn't survive loadGoogleFont
 // subsetting and renders as tofu). When stats are cold, show the ASCII fallback.
 function renderStatRow(statParts) {
   const items = statParts && statParts.length ? statParts : [FALLBACK_STAT];
-  const dot = `<div style="display:flex;width:9px;height:9px;border-radius:5px;background:${INK};opacity:0.5;margin:0 18px;"></div>`;
+  const dot = `<div style="display:flex;width:8px;height:8px;border-radius:4px;background:${INK};opacity:0.55;margin:0 20px;"></div>`;
   return items
     .map((part) => `<div style="display:flex;">${part}</div>`)
     .join(dot);
 }
 
-function renderMarkup(statParts) {
-  // satori is strict: any element with >1 child needs display:flex + a direction;
-  // text lives in leaf divs. An ink tile with a mint "M" mirrors the brand's
-  // icon-mint-on-ink lockup without risking inline-SVG rendering quirks.
+// Centered lockup (brand "M" mark + "Metagraphed" wordmark) over a divider rule
+// over the live stat row — matching the brand banner's hierarchy with generous
+// breathing room. Exported so the local preview harness renders the exact card.
+// satori is strict: any element with >1 child needs display:flex; text lives in
+// leaf divs.
+export function renderMarkup(statParts) {
   return `
-    <div style="display:flex;flex-direction:column;justify-content:space-between;width:100%;height:100%;padding:72px 80px;background:${MINT};color:${INK_TEXT};font-family:'Space Grotesk';">
-      <div style="display:flex;align-items:center;">
-        <div style="display:flex;align-items:center;justify-content:center;width:64px;height:64px;background:${INK};border-radius:14px;">
-          <div style="display:flex;font-size:40px;font-weight:700;color:${MINT};">M</div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:${MINT};color:${INK_TEXT};font-family:'Space Grotesk';overflow:hidden;">
+      <div style="position:absolute;top:-250px;right:-210px;width:740px;height:740px;background:#5BFFD2;opacity:0.5;transform:rotate(34deg);display:flex;"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:0 90px;">
+        <div style="display:flex;align-items:center;">
+          <img src="${LOGO_DATA_URI}" width="168" height="168" />
+          <div style="display:flex;font-size:120px;font-weight:700;letter-spacing:-3px;">${WORDMARK}</div>
         </div>
-        <div style="display:flex;margin-left:22px;font-size:31px;font-weight:500;letter-spacing:1px;">${EYEBROW}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;">
-        <div style="display:flex;font-size:88px;font-weight:700;line-height:1.0;max-width:1000px;">${HEADLINE}</div>
-        <div style="display:flex;margin-top:20px;font-size:35px;font-weight:500;color:${INK};opacity:0.78;">${SUBTITLE}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;">
-        <div style="display:flex;width:100%;height:3px;background:${INK};opacity:0.22;margin-bottom:26px;"></div>
-        <div style="display:flex;align-items:center;font-size:31px;font-weight:500;">${renderStatRow(statParts)}</div>
+        <div style="display:flex;width:780px;height:3px;background:${INK};opacity:0.82;margin:34px 0 30px 0;"></div>
+        <div style="display:flex;font-size:33px;font-weight:500;color:${INK};opacity:0.72;margin-bottom:28px;">${TAGLINE}</div>
+        <div style="display:flex;align-items:center;font-size:32px;font-weight:500;">${renderStatRow(statParts)}</div>
       </div>
     </div>`;
 }
@@ -133,9 +143,10 @@ export async function handleOgImage(request, env, url, deps = {}) {
     deps.cache !== undefined
       ? deps.cache
       : (globalThis.caches?.default ?? null);
-  const cacheKey = new Request(new URL("/og.png", url).toString(), {
-    method: "GET",
-  });
+  const cacheKey = new Request(
+    new URL(`/og.png?v=${CARD_VERSION}`, url).toString(),
+    { method: "GET" },
+  );
   const cached = await cache?.match(cacheKey);
   if (cached) {
     return request.method === "HEAD" ? new Response(null, cached) : cached;
@@ -162,7 +173,7 @@ export async function handleOgImage(request, env, url, deps = {}) {
   // glyphs (e.g. U+00B7 "·"), which then render as tofu — so the stat separator
   // is a styled div, not a character (see renderStatRow).
   const statText = (statParts ?? [FALLBACK_STAT]).join(" ");
-  const glyphs = `${EYEBROW}${HEADLINE}${SUBTITLE}${statText}M0123456789,.% `;
+  const glyphs = `${WORDMARK}${TAGLINE}${statText}0123456789,.% `;
   let bold;
   let medium;
   try {

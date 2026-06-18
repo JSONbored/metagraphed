@@ -87,7 +87,7 @@ describe("handleOgImage", () => {
     assert.match(og.calls.markup, /129 subnets/);
     assert.match(og.calls.markup, /1,198 endpoints/);
     assert.match(og.calls.markup, /92 providers/);
-    assert.match(og.calls.markup, /57% avg coverage/);
+    assert.match(og.calls.markup, /57% coverage/);
     // no non-ASCII glyphs in the rendered text -- the stat-row
     // separator is a styled div, not a character (which would tofu)
     assert.doesNotMatch(og.calls.markup, /[\u0080-\uffff]/);
