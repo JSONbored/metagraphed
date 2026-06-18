@@ -276,6 +276,13 @@ Common blockers:
 - The subnet is parked, deprecated, candidate-only, or otherwise not suitable
   for an integration recommendation.
 
+For machine-readable explanations, read
+`GET https://api.metagraph.sh/api/v1/agent-catalog`. The `subnets` array is the
+callable subset. The `blocked_subnets` array contains the rest of the registry,
+each with `agent_readiness.status`, `agent_readiness.blocker_level`,
+`agent_readiness.blockers[]`, and `agent_readiness.missing_fields[]`. Use those
+fields when the user asks why a subnet is not agent-ready yet.
+
 ## Agent loop
 
 Use this loop for integration tasks:

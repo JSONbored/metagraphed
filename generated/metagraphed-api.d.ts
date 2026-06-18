@@ -1045,9 +1045,29 @@ export interface components {
             [key: string]: unknown;
         });
         AgentCatalogArtifact: components["schemas"]["ArtifactBase"] & ({
+            blocked_subnet_count?: number;
+            blocked_subnets?: ({
+                agent_readiness: components["schemas"]["AgentReadinessStatus"];
+                callable_count?: number;
+                categories?: string[];
+                completeness_score?: number | null;
+                integration_readiness?: number;
+                name?: string;
+                netuid: number;
+                readiness_tier?: string;
+                service_count?: number;
+                slug?: string;
+                subnet_type?: string | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            blocker_summary?: {
+                [key: string]: unknown;
+            };
             callable_service_count?: number;
             subnet_count: number;
             subnets: ({
+                agent_readiness?: components["schemas"]["AgentReadinessStatus"];
                 base_url?: string | null;
                 callable_count?: number;
                 categories?: string[];
@@ -1069,6 +1089,7 @@ export interface components {
             [key: string]: unknown;
         });
         AgentCatalogSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
+            agent_readiness?: components["schemas"]["AgentReadinessStatus"];
             categories?: string[];
             completeness_score?: number | null;
             integration_readiness?: number;
@@ -1103,6 +1124,27 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet. */
+        AgentReadinessBlocker: {
+            /** @description Stable blocker code, e.g. missing-callable-service or missing-schema. */
+            code: string;
+            /** @description Registry field, artifact family, or evidence surface that needs attention. */
+            field: string;
+            message: string;
+            /** @description Concrete maintainer/contributor action to clear or explain the blocker. */
+            next_action: string;
+            /** @enum {string} */
+            severity: "hard" | "missing-data" | "needs-review";
+        };
+        /** @description Agent-facing readiness status and blocker taxonomy for one subnet. */
+        AgentReadinessStatus: {
+            /** @enum {string} */
+            blocker_level: "none" | "hard-blocked" | "needs-review" | "missing-data";
+            blockers: components["schemas"]["AgentReadinessBlocker"][];
+            missing_fields: string[];
+            /** @enum {string} */
+            status: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
+        };
         AgentResourcesArtifact: components["schemas"]["ArtifactBase"] & ({
             content_hash?: string;
             copyable_agent: {
@@ -3882,6 +3924,29 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "blocked_subnet_count": 5000000,
+                     *         "blocked_subnets": [
+                     *           {
+                     *             "agent_readiness": {
+                     *               "blocker_level": "none",
+                     *               "blockers": [
+                     *                 {
+                     *                   "code": "example",
+                     *                   "field": "example",
+                     *                   "message": "example",
+                     *                   "next_action": "example",
+                     *                   "severity": "hard"
+                     *                 }
+                     *               ],
+                     *               "missing_fields": [
+                     *                 "example"
+                     *               ],
+                     *               "status": "callable"
+                     *             },
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "blocker_summary": {},
                      *         "callable_service_count": 1,
                      *         "contract_version": "2026-06-06.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
@@ -3995,6 +4060,22 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "agent_readiness": {
+                     *           "blocker_level": "none",
+                     *           "blockers": [
+                     *             {
+                     *               "code": "example",
+                     *               "field": "example",
+                     *               "message": "example",
+                     *               "next_action": "example",
+                     *               "severity": "hard"
+                     *             }
+                     *           ],
+                     *           "missing_fields": [
+                     *             "example"
+                     *           ],
+                     *           "status": "callable"
+                     *         },
                      *         "categories": [
                      *           "example"
                      *         ],

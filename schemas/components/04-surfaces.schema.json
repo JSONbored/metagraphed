@@ -793,6 +793,63 @@
           }
         }
       },
+      "AgentReadinessBlocker": {
+        "type": "object",
+        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
+        "required": ["code", "severity", "message", "field", "next_action"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["hard", "missing-data", "needs-review"]
+          },
+          "message": { "type": "string" },
+          "field": {
+            "type": "string",
+            "description": "Registry field, artifact family, or evidence surface that needs attention."
+          },
+          "next_action": {
+            "type": "string",
+            "description": "Concrete maintainer/contributor action to clear or explain the blocker."
+          }
+        }
+      },
+      "AgentReadinessStatus": {
+        "type": "object",
+        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
+        "required": ["status", "blocker_level", "blockers", "missing_fields"],
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ]
+          },
+          "blocker_level": {
+            "type": "string",
+            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            }
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
       "AgentCatalogArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -802,7 +859,12 @@
             "properties": {
               "total_subnet_count": { "type": "integer", "minimum": 0 },
               "subnet_count": { "type": "integer", "minimum": 0 },
+              "blocked_subnet_count": { "type": "integer", "minimum": 0 },
               "callable_service_count": { "type": "integer", "minimum": 0 },
+              "blocker_summary": {
+                "type": "object",
+                "additionalProperties": true
+              },
               "subnets": {
                 "type": "array",
                 "items": {
@@ -826,6 +888,9 @@
                     "readiness": {
                       "$ref": "#/components/schemas/IntegrationReadiness"
                     },
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
                     "service_count": { "type": "integer", "minimum": 0 },
                     "callable_count": { "type": "integer", "minimum": 0 },
                     "service_kinds": {
@@ -834,6 +899,36 @@
                     },
                     "base_url": { "type": ["string", "null"] },
                     "health": { "type": "string" }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "blocked_subnets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["netuid", "agent_readiness"],
+                  "properties": {
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "slug": { "type": "string" },
+                    "name": { "type": "string" },
+                    "categories": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "subnet_type": { "type": ["string", "null"] },
+                    "completeness_score": { "type": ["number", "null"] },
+                    "integration_readiness": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "readiness_tier": { "type": "string" },
+                    "service_count": { "type": "integer", "minimum": 0 },
+                    "callable_count": { "type": "integer", "minimum": 0 },
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    }
                   },
                   "additionalProperties": true
                 }
@@ -901,6 +996,9 @@
               },
               "readiness": {
                 "$ref": "#/components/schemas/IntegrationReadiness"
+              },
+              "agent_readiness": {
+                "$ref": "#/components/schemas/AgentReadinessStatus"
               },
               "service_count": { "type": "integer", "minimum": 0 },
               "services": {

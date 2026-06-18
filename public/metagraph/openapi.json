@@ -70,6 +70,74 @@
           {
             "additionalProperties": true,
             "properties": {
+              "blocked_subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "blocked_subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
+                    "callable_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "categories": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "completeness_score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "integration_readiness": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "readiness_tier": {
+                      "type": "string"
+                    },
+                    "service_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "subnet_type": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "agent_readiness"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "blocker_summary": {
+                "additionalProperties": true,
+                "type": "object"
+              },
               "callable_service_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -82,6 +150,9 @@
                 "items": {
                   "additionalProperties": true,
                   "properties": {
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
                     "base_url": {
                       "type": [
                         "string",
@@ -171,6 +242,9 @@
           {
             "additionalProperties": true,
             "properties": {
+              "agent_readiness": {
+                "$ref": "#/components/schemas/AgentReadinessStatus"
+              },
               "categories": {
                 "items": {
                   "type": "string"
@@ -296,6 +370,87 @@
             "type": "object"
           }
         ]
+      },
+      "AgentReadinessBlocker": {
+        "additionalProperties": false,
+        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
+        "properties": {
+          "code": {
+            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema.",
+            "type": "string"
+          },
+          "field": {
+            "description": "Registry field, artifact family, or evidence surface that needs attention.",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "next_action": {
+            "description": "Concrete maintainer/contributor action to clear or explain the blocker.",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "hard",
+              "missing-data",
+              "needs-review"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "field",
+          "next_action"
+        ],
+        "type": "object"
+      },
+      "AgentReadinessStatus": {
+        "additionalProperties": false,
+        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
+        "properties": {
+          "blocker_level": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            },
+            "type": "array"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "blocker_level",
+          "blockers",
+          "missing_fields"
+        ],
+        "type": "object"
       },
       "AgentResourcesArtifact": {
         "allOf": [
@@ -10571,6 +10726,29 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "blocked_subnet_count": 5000000,
+                    "blocked_subnets": [
+                      {
+                        "agent_readiness": {
+                          "blocker_level": "none",
+                          "blockers": [
+                            {
+                              "code": "example",
+                              "field": "example",
+                              "message": "example",
+                              "next_action": "example",
+                              "severity": "hard"
+                            }
+                          ],
+                          "missing_fields": [
+                            "example"
+                          ],
+                          "status": "callable"
+                        },
+                        "netuid": 7
+                      }
+                    ],
+                    "blocker_summary": {},
                     "callable_service_count": 1,
                     "contract_version": "2026-06-06.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
@@ -10711,6 +10889,22 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "agent_readiness": {
+                      "blocker_level": "none",
+                      "blockers": [
+                        {
+                          "code": "example",
+                          "field": "example",
+                          "message": "example",
+                          "next_action": "example",
+                          "severity": "hard"
+                        }
+                      ],
+                      "missing_fields": [
+                        "example"
+                      ],
+                      "status": "callable"
+                    },
                     "categories": [
                       "example"
                     ],

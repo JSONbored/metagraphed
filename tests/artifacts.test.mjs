@@ -748,6 +748,58 @@ test("public artifacts are internally consistent", () => {
     "agent-catalog must carry a deterministic content_hash",
   );
   assert.ok(agentCatalog.content_hash.length >= 16);
+  assert.equal(
+    agentCatalog.total_subnet_count,
+    agentCatalog.subnet_count + agentCatalog.blocked_subnet_count,
+    "agent-catalog callable + blocked counts must cover every subnet",
+  );
+  assert.ok(
+    Array.isArray(agentCatalog.blocked_subnets) &&
+      agentCatalog.blocked_subnets.length > 0,
+    "agent-catalog must explain blocked/non-callable subnets",
+  );
+  assert.equal(
+    agentCatalog.blocked_subnet_count,
+    agentCatalog.blocked_subnets.length,
+    "blocked_subnet_count must match blocked_subnets length",
+  );
+  assert.ok(
+    agentCatalog.subnets.every(
+      (entry) => entry.agent_readiness?.status === "callable",
+    ),
+    "callable agent-catalog entries must carry callable readiness status",
+  );
+  const blockedRecall = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.ok(blockedRecall, "SN31 should be represented as a blocked subnet");
+  assert.equal(blockedRecall.agent_readiness.status, "blocked");
+  assert.ok(
+    blockedRecall.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "missing-callable-service",
+    ),
+    "blocked subnets must explain the missing callable service",
+  );
+  const rootBlocker = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 0,
+  );
+  assert.equal(rootBlocker.agent_readiness.status, "base-layer");
+  assert.ok(
+    rootBlocker.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "base-layer-only",
+    ),
+    "root subnet must explain the base-layer-only boundary",
+  );
+  assert.ok(
+    agentCatalog.blocker_summary.by_code["missing-callable-service"] > 0,
+    "blocker summary must count missing callable service blockers",
+  );
+  const catalog31 = readArtifact("agent-catalog/31.json");
+  assert.equal(catalog31.agent_readiness.status, "blocked");
+  assert.ok(
+    catalog31.agent_readiness.missing_fields.includes("surfaces"),
+    "per-subnet detail must expose blocker missing_fields",
+  );
 
   // Cross-network lineage (issue #353): mainnet ↔ testnet mapping, with the
   // profile's lineage reconciled against the standalone artifact.

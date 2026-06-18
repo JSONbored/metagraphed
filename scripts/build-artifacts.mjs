@@ -1396,6 +1396,175 @@ function subnetIntegrationReadiness({
   };
 }
 
+function buildAgentReadiness({
+  subnet,
+  profile,
+  services,
+  readiness,
+  callableCount,
+}) {
+  const components = readiness?.components || {};
+  const subnetType = profile?.subnet_type || subnet.subnet_type || null;
+  const blockers = [];
+  const add = (code, severity, message, field, nextAction) => {
+    blockers.push({
+      code,
+      severity,
+      message,
+      field,
+      next_action: nextAction,
+    });
+  };
+
+  if (subnetType === "root") {
+    add(
+      "base-layer-only",
+      "hard",
+      "Root/base-layer surfaces are not application-subnet APIs.",
+      "subnet_type",
+      "Use get_best_rpc_endpoint or /api/v1/rpc/endpoints for chain RPC access.",
+    );
+  }
+  if (!components.active_lifecycle) {
+    add(
+      "inactive-lifecycle",
+      "hard",
+      "The subnet is not marked active in the registry snapshot.",
+      "lifecycle",
+      "Wait for an active mainnet subnet before recommending it for integrations.",
+    );
+  }
+  if ((services || []).length === 0) {
+    add(
+      "missing-callable-service",
+      "missing-data",
+      "No public-safe callable service is catalogued for this subnet yet.",
+      "surfaces",
+      "Find and verify an official subnet-api, OpenAPI, SSE, or data-artifact surface.",
+    );
+  } else if (callableCount === 0) {
+    add(
+      "service-not-callable",
+      "hard",
+      "Catalogued services exist, but none are structurally callable.",
+      "services.eligibility.callable",
+      "Review unsafe/dead service classifications before recommending this subnet.",
+    );
+  }
+  if (components.has_candidate_api && callableCount === 0) {
+    add(
+      "candidate-api-needs-review",
+      "needs-review",
+      "A candidate operational surface exists but has not been promoted into the callable catalog.",
+      "registry.candidates",
+      "Verify the candidate surface and promote it if it is public, safe, and subnet-owned.",
+    );
+  }
+  if (!components.has_candidate_api && callableCount === 0) {
+    add(
+      "no-candidate-api",
+      "missing-data",
+      "No candidate API surface has been found for this subnet.",
+      "registry.candidates",
+      "Search official docs, source repos, and project sites for a public integration surface.",
+    );
+  }
+  if (!components.documented && callableCount > 0) {
+    add(
+      "missing-schema",
+      "missing-data",
+      "At least one callable service exists, but no captured schema artifact is available.",
+      "schemas",
+      "Capture an official OpenAPI/Swagger/JSON Schema source or document that no schema exists.",
+    );
+  }
+  if (!components.auth_clarity && callableCount > 0) {
+    add(
+      "unclear-auth",
+      "missing-data",
+      "Callable services exist, but auth requirements are not fully machine-readable.",
+      "auth",
+      "Declare auth_required/auth_schemes or capture auth metadata from the service schema.",
+    );
+  }
+  if (!components.has_public_docs) {
+    add(
+      "missing-docs",
+      "missing-data",
+      "No public documentation link is recorded.",
+      "docs_url",
+      "Add an official docs URL or document that no public docs exist.",
+    );
+  }
+  if (!components.has_source_repo) {
+    add(
+      "missing-source-repo",
+      "missing-data",
+      "No public source repository is recorded.",
+      "source_repo",
+      "Add an official source repo or document that no public repo exists.",
+    );
+  }
+  if (!components.profile_complete) {
+    add(
+      "profile-incomplete",
+      "missing-data",
+      "The subnet profile is below the completeness threshold used by integration readiness.",
+      "completeness_score",
+      "Fill the missing required and operational registry fields for this subnet.",
+    );
+  }
+
+  const status =
+    callableCount > 0
+      ? "callable"
+      : subnetType === "root"
+        ? "base-layer"
+        : components.has_candidate_api
+          ? "candidate"
+          : components.has_public_docs || components.has_source_repo
+            ? "needs-evidence"
+            : "blocked";
+  const blockerLevel = blockers.some((blocker) => blocker.severity === "hard")
+    ? "hard-blocked"
+    : blockers.some((blocker) => blocker.severity === "needs-review")
+      ? "needs-review"
+      : blockers.length > 0
+        ? "missing-data"
+        : "none";
+
+  return {
+    status,
+    blocker_level: blockerLevel,
+    blockers,
+    missing_fields: [
+      ...new Set(
+        blockers
+          .filter((blocker) => blocker.severity === "missing-data")
+          .map((blocker) => blocker.field),
+      ),
+    ].sort(),
+  };
+}
+
+function summarizeAgentReadinessBlockers(blockedSubnets) {
+  const blockers = blockedSubnets.flatMap(
+    (subnet) => subnet.agent_readiness?.blockers || [],
+  );
+  return {
+    by_status: countBy(
+      blockedSubnets,
+      (subnet) => subnet.agent_readiness?.status || "unknown",
+    ),
+    by_level: countBy(
+      blockedSubnets,
+      (subnet) => subnet.agent_readiness?.blocker_level || "unknown",
+    ),
+    by_severity: countBy(blockers, "severity"),
+    by_code: countBy(blockers, "code"),
+  };
+}
+
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
 // #1008: code-examples (quickstarts / SDK snippets) per subnet, projected from
 // the curated `example`-kind surfaces. They are reference material, not callable
@@ -1414,6 +1583,7 @@ const subnetExamples = (netuid) =>
     authority: surface.authority || null,
   }));
 const agentCatalogIndex = [];
+const blockedAgentCatalogIndex = [];
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
@@ -1421,6 +1591,14 @@ for (const subnet of mergedSubnets) {
   const examples = subnetExamples(subnet.netuid);
   // Reuse the readiness computed once above for the index/profile surfaces.
   const readiness = readinessByNetuid.get(subnet.netuid);
+  const callable = services.filter((s) => s.eligibility.callable).length;
+  const agentReadiness = buildAgentReadiness({
+    subnet,
+    profile,
+    services,
+    readiness,
+    callableCount: callable,
+  });
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1433,14 +1611,14 @@ for (const subnet of mergedSubnets) {
     completeness_score: profile?.completeness_score ?? null,
     integration_readiness: readiness.score,
     readiness,
+    agent_readiness: agentReadiness,
     service_count: services.length,
     services,
     example_count: examples.length,
     examples,
   });
-  if (services.length > 0) {
-    const callable = services.filter((s) => s.eligibility.callable).length;
-    callableServiceCount += callable;
+  callableServiceCount += callable;
+  if (callable > 0) {
     // Primary callable surface (first callable, else first overall) — gives the
     // index a "where do I call this + is it up" rollup so single-read consumers
     // (e.g. the /ask RAG join) don't have to fan out to per-subnet detail files.
@@ -1457,6 +1635,7 @@ for (const subnet of mergedSubnets) {
       completeness_score: profile?.completeness_score ?? null,
       integration_readiness: readiness.score,
       readiness,
+      agent_readiness: agentReadiness,
       service_count: services.length,
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
@@ -1465,11 +1644,37 @@ for (const subnet of mergedSubnets) {
       // Live-only: overlaid from KV/D1 on read; `unknown` when the store is cold.
       health: "unknown",
     });
+  } else {
+    blockedAgentCatalogIndex.push({
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      categories: Array.isArray(profile?.categories) ? profile.categories : [],
+      subnet_type: profile?.subnet_type || null,
+      completeness_score: profile?.completeness_score ?? null,
+      integration_readiness: readiness.score,
+      readiness_tier: readiness.readiness_tier,
+      service_count: services.length,
+      callable_count: callable,
+      agent_readiness: agentReadiness,
+    });
   }
 }
 const agentCatalogSubnets = agentCatalogIndex.sort(
   (a, b) => a.netuid - b.netuid,
 );
+const blockedAgentCatalogSubnets = blockedAgentCatalogIndex.sort(
+  (a, b) => a.netuid - b.netuid,
+);
+const agentCatalogContent = {
+  total_subnet_count: mergedSubnets.length,
+  subnet_count: agentCatalogIndex.length,
+  blocked_subnet_count: blockedAgentCatalogIndex.length,
+  callable_service_count: callableServiceCount,
+  blocker_summary: summarizeAgentReadinessBlockers(blockedAgentCatalogSubnets),
+  subnets: agentCatalogSubnets,
+  blocked_subnets: blockedAgentCatalogSubnets,
+};
 await writeJson(artifactFile("agent-catalog.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -1479,11 +1684,8 @@ await writeJson(artifactFile("agent-catalog.json"), {
   // discerning agent reads honest freshness, not a 1970 stamp (issue #349).
   generated_at: generatedAt,
   published_at: publishedAt(),
-  content_hash: hashJson(agentCatalogSubnets),
-  total_subnet_count: mergedSubnets.length,
-  subnet_count: agentCatalogIndex.length,
-  callable_service_count: callableServiceCount,
-  subnets: agentCatalogSubnets,
+  content_hash: hashJson(agentCatalogContent),
+  ...agentCatalogContent,
 });
 
 // --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------

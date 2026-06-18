@@ -60,6 +60,40 @@ score:
 | `identity-only` | neither of the above, but `has_source_repo` or `active_lifecycle` |
 | `dormant`       | none — no interface, no candidate, no docs, no repo, not active   |
 
+## Blocker reasons (`agent_readiness`)
+
+The agent catalog keeps its existing `subnets` array as the callable subset, and
+adds `blocked_subnets` for the rest of the registry. Each callable and blocked
+row carries an `agent_readiness` object:
+
+- `status`: `callable`, `base-layer`, `candidate`, `needs-evidence`, or
+  `blocked`.
+- `blocker_level`: `none`, `hard-blocked`, `needs-review`, or `missing-data`.
+- `blockers[]`: stable `{ code, severity, message, field, next_action }`
+  objects.
+- `missing_fields[]`: deduplicated fields/evidence families from
+  `missing-data` blockers.
+
+The blocker model is not a second score. It is a deterministic explanation of
+the same readiness facts, shaped for agents and UI filters. Use it when a subnet
+is absent from the callable subset and the user asks why.
+
+Common blocker codes:
+
+| Code                         | Meaning                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `base-layer-only`            | root/base-layer surfaces are not application-subnet APIs                 |
+| `inactive-lifecycle`         | the subnet is not marked active in the registry snapshot                 |
+| `missing-callable-service`   | no public-safe callable service is catalogued yet                        |
+| `service-not-callable`       | services exist, but none are structurally callable                       |
+| `candidate-api-needs-review` | an unpromoted candidate operational surface needs maintainer review      |
+| `no-candidate-api`           | no candidate API surface has been found                                  |
+| `missing-schema`             | callable services exist but no captured schema artifact is available     |
+| `unclear-auth`               | callable services exist but auth metadata is not machine-readable enough |
+| `missing-docs`               | no public documentation link is recorded                                 |
+| `missing-source-repo`        | no public source repository is recorded                                  |
+| `profile-incomplete`         | the subnet profile is below the completeness threshold                   |
+
 ## Live verification (`readiness.readiness_verified`)
 
 The numeric `score` is deliberately build-time and deterministic, so
