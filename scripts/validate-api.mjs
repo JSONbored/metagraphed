@@ -5,8 +5,8 @@ import path from "node:path";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import {
-  artifactFilePath,
   createLocalArtifactEnv,
+  latestArtifactDate,
   readJson,
   repoRoot,
 } from "./lib.mjs";
@@ -23,13 +23,14 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const env = createLocalArtifactEnv();
-// health/latest.json is no longer generated (live-only health). The
-// health/history artifact is keyed by the build's generated_at date in the
-// deterministic (no-live-probe) build that validate/CI run, so derive the date
-// from a stable committed artifact's generated_at.
-const latestHealthHistoryDate = String(
-  (await readJson(artifactFilePath("subnets.json"))).generated_at,
-).slice(0, 10);
+// health/latest.json is no longer generated (live-only health). Daily
+// health-history snapshots are R2-only locally, so validate against the newest
+// staged/public snapshot instead of inferring a date from an unrelated artifact.
+const latestHealthHistoryDate = await latestArtifactDate("health/history");
+assert.ok(
+  latestHealthHistoryDate,
+  "validate:api requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` before validating the API",
+);
 
 const checks = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],

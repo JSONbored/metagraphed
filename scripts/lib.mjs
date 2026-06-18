@@ -278,6 +278,28 @@ export function artifactDirectoryPath(relativePath) {
   return path.join(publicMetagraphRoot, normalized);
 }
 
+export async function latestArtifactDate(relativePath) {
+  const dirPath = artifactDirectoryPath(relativePath);
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  return (
+    entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
+      .map((file) => file.replace(/\.json$/, ""))
+      .sort()
+      .at(-1) || null
+  );
+}
+
 export function createLocalArtifactEnv(overrides = {}) {
   return {
     ASSETS: {

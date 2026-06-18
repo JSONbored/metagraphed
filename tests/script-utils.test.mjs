@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
@@ -35,6 +35,7 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
+  latestArtifactDate,
   listJsonFiles,
   listJsonFilesRecursive,
   loadCandidates,
@@ -727,6 +728,7 @@ describe("script utility contracts", () => {
         artifactFilePath("health/history/2099-01-01.json"),
         stagedPath,
       );
+      assert.equal(await latestArtifactDate("health/history"), "2099-01-01");
       const env = createLocalArtifactEnv();
       const object = await env.METAGRAPH_ARCHIVE.get(
         "latest/health/history/2099-01-01.json",
@@ -760,6 +762,28 @@ describe("script utility contracts", () => {
     } finally {
       await rm(stagedPath, { force: true });
     }
+
+    assert.equal(await latestArtifactDate("__missing-date-fixtures__"), null);
+
+    const noDateDir = path.join(
+      repoRoot,
+      "public/metagraph/__latest-date-no-matches__",
+    );
+    try {
+      await rm(noDateDir, { recursive: true, force: true });
+      await mkdir(noDateDir, { recursive: true });
+      await writeFile(path.join(noDateDir, "not-a-date.json"), "{}\n");
+      assert.equal(
+        await latestArtifactDate("__latest-date-no-matches__"),
+        null,
+      );
+    } finally {
+      await rm(noDateDir, { recursive: true, force: true });
+    }
+
+    await assert.rejects(() => latestArtifactDate("types.d.ts"), {
+      code: "ENOTDIR",
+    });
   });
 
   test("augments manual overlays with verified baseline surfaces", async () => {

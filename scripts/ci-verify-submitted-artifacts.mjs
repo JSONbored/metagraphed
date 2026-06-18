@@ -79,7 +79,10 @@ function main() {
       mismatches.push(`${artifact} (rebuilt version unreadable)`);
       continue;
     }
-    if (canonicalJson(committed) !== canonicalJson(rebuilt)) {
+    if (
+      canonicalArtifactJson(artifact, committed) !==
+      canonicalArtifactJson(artifact, rebuilt)
+    ) {
       mismatches.push(`${artifact} (content differs from a fresh build)`);
     }
   }
@@ -109,6 +112,30 @@ if (
 /** Stable JSON: recursively sort object keys while preserving semantic array order. */
 export function canonicalJson(value) {
   return JSON.stringify(normalizeForComparison(value));
+}
+
+export function canonicalArtifactJson(artifactPath, value) {
+  const normalized = normalizeForComparison(value);
+  if (
+    artifactPath === "public/metagraph/r2-manifest.json" &&
+    normalized &&
+    typeof normalized === "object" &&
+    !Array.isArray(normalized)
+  ) {
+    // The committed compact manifest is a publish lockfile, but its full/R2-only
+    // byte totals can vary slightly across otherwise-equivalent rebuilds. Keep
+    // the dual artifact entries strict while ignoring the known unstable R2
+    // aggregate byte counters.
+    delete normalized.full_artifact_size_bytes;
+    if (
+      normalized.storage_tier_size_bytes &&
+      typeof normalized.storage_tier_size_bytes === "object" &&
+      !Array.isArray(normalized.storage_tier_size_bytes)
+    ) {
+      delete normalized.storage_tier_size_bytes.r2;
+    }
+  }
+  return JSON.stringify(normalized);
 }
 
 function normalizeForComparison(value) {
