@@ -837,7 +837,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
-    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
     "RpcUsageArtifact",
   ),
   artifact(
@@ -1429,7 +1429,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/rpc/usage",
     "/metagraph/rpc/usage.json",
-    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
     "short",
     ["rpc", "analytics", "operations"],
     [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],

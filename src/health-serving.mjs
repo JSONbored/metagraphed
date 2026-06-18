@@ -449,8 +449,9 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
 // `totals`: one aggregate row { total, ok_count, failover_count, cache_hits,
 // avg_latency_ms }. `latency`: one row { p50, p95 } (window percentiles).
 // `endpointRows`/`networkRows`: per-endpoint / per-network breakdowns ordered by
-// request volume. Cold/unmigrated D1 yields a schema-stable zeroed payload (every
-// arg may be empty/undefined), so the route never errors before the table exists.
+// request volume. `bucketRows`: bounded time buckets for heatmaps. Cold/
+// unmigrated D1 yields a schema-stable zeroed payload (every arg may be
+// empty/undefined), so the route never errors before the table exists.
 export function formatRpcUsage({
   window,
   observedAt,
@@ -458,6 +459,8 @@ export function formatRpcUsage({
   latency,
   endpointRows,
   networkRows,
+  bucketRows,
+  bucketGranularity,
 }) {
   const total = Number(totals?.total) || 0;
   const okCount = Number(totals?.ok_count) || 0;
@@ -469,6 +472,7 @@ export function formatRpcUsage({
   return {
     schema_version: 1,
     window: window || null,
+    bucket_granularity: bucketGranularity || null,
     observed_at: observedAt || null,
     source: "rpc-proxy",
     summary: {
@@ -509,6 +513,18 @@ export function formatRpcUsage({
         error_rate: ratioOf(requests - ok, requests),
       };
     }),
+    buckets: (bucketRows || [])
+      .map((row) => {
+        const ts = Number(row.ts);
+        if (!Number.isFinite(ts)) return null;
+        return {
+          ts: Math.trunc(ts),
+          requests: Number(row.requests) || 0,
+          errors: Math.max(0, Number(row.errors) || 0),
+          avg_latency_ms: roundInt(row.avg_latency_ms),
+        };
+      })
+      .filter(Boolean),
   };
 }
 

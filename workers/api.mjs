@@ -104,6 +104,7 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -1714,7 +1715,8 @@ async function handleRpcUsage(request, env, url) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   const since = Date.now() - days * DAY_MS;
-  const [totalsRows, latencyRows, endpointRows, networkRows] =
+  const bucketConfig = RPC_USAGE_BUCKETS[label];
+  const [totalsRows, latencyRows, endpointRows, networkRows, bucketRows] =
     await Promise.all([
       d1All(
         env,
@@ -1765,6 +1767,24 @@ async function handleRpcUsage(request, env, url) {
          ORDER BY requests DESC`,
         [since],
       ),
+      d1All(
+        env,
+        `SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
+                COUNT(*) AS requests,
+                SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
+                AVG(latency_ms) AS avg_latency_ms
+         FROM rpc_proxy_events
+         WHERE observed_at >= ?
+         GROUP BY ts
+         ORDER BY ts ASC
+         LIMIT ?`,
+        [
+          bucketConfig.bucketMs,
+          bucketConfig.bucketMs,
+          since,
+          bucketConfig.maxBuckets,
+        ],
+      ),
     ]);
   const meta = await readHealthKv(env, KV_HEALTH_META);
   const data = formatRpcUsage({
@@ -1774,6 +1794,8 @@ async function handleRpcUsage(request, env, url) {
     latency: latencyRows[0],
     endpointRows,
     networkRows,
+    bucketRows,
+    bucketGranularity: bucketConfig.granularity,
   });
   return envelopeResponse(
     request,

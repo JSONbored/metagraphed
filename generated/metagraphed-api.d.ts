@@ -674,7 +674,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry). */
+        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry). */
         get: operations["rpcUsage"];
         put?: never;
         post?: never;
@@ -2729,8 +2729,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file). */
+        /** @description RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, per-endpoint request distribution, and bounded time buckets for heatmaps. Computed live from the rpc_proxy_events telemetry (no static file). */
         RpcUsageArtifact: {
+            bucket_granularity?: string | null;
+            buckets: ({
+                avg_latency_ms: number | null;
+                errors: number;
+                requests: number;
+                ts: number;
+            } & {
+                [key: string]: unknown;
+            })[];
             endpoints: ({
                 avg_latency_ms?: number | null;
                 endpoint_id: string | null;
@@ -9056,6 +9065,15 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "bucket_granularity": "example",
+                     *         "buckets": [
+                     *           {
+                     *             "avg_latency_ms": 120,
+                     *             "errors": 1,
+                     *             "requests": 1,
+                     *             "ts": 1
+                     *           }
+                     *         ],
                      *         "endpoints": [
                      *           {
                      *             "endpoint_id": "https://api.metagraph.sh/example",

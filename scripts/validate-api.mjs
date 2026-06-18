@@ -98,6 +98,8 @@ const checks = [
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
       assert.equal(typeof body.data.summary.total_requests, "number");
+      assert.equal(typeof body.data.bucket_granularity, "string");
+      assert.equal(Array.isArray(body.data.buckets), true);
       assert.equal(Array.isArray(body.data.endpoints), true);
       assert.equal(Array.isArray(body.data.networks), true);
     },
