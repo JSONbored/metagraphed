@@ -1069,6 +1069,21 @@ export const MCP_TOOLS = [
               schema_url: s.schema_url || null,
             }
           : { available: false, schema_url: s.schema_url || null },
+        fixture: s.fixture
+          ? {
+              available: true,
+              fetch_with: `get_fixture with surface_id ${s.surface_id}`,
+              artifact_path: s.fixture.artifact_path,
+              captured_at: s.fixture.captured_at,
+              response_status: s.fixture.response?.status ?? null,
+              content_type: s.fixture.response?.content_type ?? null,
+            }
+          : {
+              available: false,
+              status: s.fixture_status?.status || "missing",
+              reason:
+                s.fixture_status?.reason || "no captured fixture available",
+            },
         health: {
           status: s.health?.status ?? "unknown",
           stale: s.health?.stale ?? false,
@@ -1077,6 +1092,7 @@ export const MCP_TOOLS = [
       }));
       const isCallable = callable.length > 0;
       const schemaStep = steps.find((s) => s.schema.available);
+      const fixtureStep = steps.find((s) => s.fixture.available);
       return {
         netuid,
         name: detail.name,
@@ -1094,6 +1110,7 @@ export const MCP_TOOLS = [
           ? [
               `get_subnet_health with netuid ${netuid} for live status`,
               ...(schemaStep ? [schemaStep.schema.fetch_with] : []),
+              ...(fixtureStep ? [fixtureStep.fixture.fetch_with] : []),
             ]
           : [`get_subnet with netuid ${netuid}`],
       };

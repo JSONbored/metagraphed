@@ -169,9 +169,22 @@ const candidates = flattenSurfaces(subnets).filter(
 );
 
 const captured = [];
+const statuses = [];
 await mapLimit(candidates, CONCURRENCY, async (surface) => {
   const result = await fetchSample(surface.url);
-  if (!result.ok) return;
+  if (!result.ok) {
+    statuses.push({
+      surface_id: surface.id,
+      netuid: surface.netuid,
+      subnet_slug: surface.subnet_slug || null,
+      kind: surface.kind,
+      status: "capture-failed",
+      reason: result.error || "capture failed",
+      response_status: result.status ?? null,
+      error_class: result.error_class || null,
+    });
+    return;
+  }
   const fixture = {
     schema_version: 1,
     generated_at: generatedAt,
@@ -190,15 +203,62 @@ await mapLimit(candidates, CONCURRENCY, async (surface) => {
     },
   };
   captured.push(fixture);
+  statuses.push({
+    surface_id: surface.id,
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug || null,
+    kind: surface.kind,
+    status: "captured",
+    reason: null,
+    response_status: result.status,
+    error_class: null,
+    captured_at: observedAt,
+  });
   if (shouldWrite) {
     await writeJson(artifactOutputPath(`fixtures/${surface.id}.json`), fixture);
   }
 });
 
+const statusCounts = Object.fromEntries(
+  Object.entries(
+    statuses.reduce((acc, entry) => {
+      acc[entry.status] = (acc[entry.status] || 0) + 1;
+      return acc;
+    }, {}),
+  ).sort(),
+);
+const captureReport = {
+  schema_version: 1,
+  generated_at: generatedAt,
+  captured_at: observedAt,
+  mode: dryRun ? "dry-run" : "write",
+  candidate_count: candidates.length,
+  captured_count: captured.length,
+  status_counts: statusCounts,
+  surfaces: statuses.sort((a, b) =>
+    String(a.surface_id).localeCompare(String(b.surface_id)),
+  ),
+};
+if (shouldWrite) {
+  await writeJson(artifactOutputPath("fixtures/_capture-report.json"), {
+    ...captureReport,
+    mode: "write",
+  });
+}
+
 const summary = {
   mode: dryRun ? "dry-run" : "write",
   candidate_count: candidates.length,
   captured_count: captured.length,
+  status_counts: statusCounts,
   surface_ids: captured.map((fixture) => fixture.surface_id).sort(),
+  failures: statuses
+    .filter((entry) => entry.status !== "captured")
+    .map((entry) => ({
+      surface_id: entry.surface_id,
+      reason: entry.reason,
+      response_status: entry.response_status,
+      error_class: entry.error_class,
+    })),
 };
 console.log(JSON.stringify(summary, null, 2));

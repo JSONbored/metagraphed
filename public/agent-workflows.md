@@ -290,6 +290,15 @@ OpenAPI surface for the same subnet and origin; inspect the schema artifact
 before generating endpoint-specific request bodies. For MCP, pass
 `schema_source.surface_id` to `get_api_schema` when it is present.
 
+Fixtures are separate from schemas. Each service has `fixture_status` so agents
+can distinguish `available`, `missing`, `capture-failed`, `auth-required`,
+`non-get`, and `unsupported-kind` cases. When `fixture_status.status` is
+`available`, the service also carries `fixture.artifact_path`; fetch it through
+REST (`GET /metagraph/fixtures/{surface_id}.json`) or MCP (`get_fixture`) before
+showing a response example. The global fixture index is available at
+`GET https://api.metagraph.sh/api/v1/fixtures` and includes coverage rows for
+no-auth GET capture candidates.
+
 ## Agent loop
 
 Use this loop for integration tasks:

@@ -1426,6 +1426,8 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.deepEqual(out.services[0].auth.schemes, ["apiKey"]);
     assert.equal(out.services[0].schema.available, true);
     assert.match(out.services[0].schema.fetch_with, /get_api_schema/);
+    assert.equal(out.services[0].fixture.available, false);
+    assert.equal(out.services[0].fixture.status, "missing");
     // ready-to-run snippets (#351): curl/python/typescript for a first call
     assert.ok(out.services[0].snippets, "expected integration snippets");
     assert.match(
@@ -1436,6 +1438,38 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.match(out.services[0].snippets.python, /import requests/);
     assert.match(out.services[0].snippets.typescript, /await fetch/);
     assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
+  });
+
+  test("how_do_i_call surfaces fixture fetch instructions when available", async () => {
+    const fixtureDetail = structuredClone(callDetail);
+    const service =
+      fixtureDetail["/metagraph/agent-catalog/7.json"].services[0];
+    service.fixture = {
+      captured_at: "2026-06-18T00:00:00.000Z",
+      request: { method: "GET", url: "https://api.data.io" },
+      response: { status: 200, content_type: "application/json" },
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+    };
+    service.fixture_status = {
+      status: "available",
+      reason: null,
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+      captured_at: "2026-06-18T00:00:00.000Z",
+    };
+
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 7 },
+      { deps: makeDeps(fixtureDetail) },
+    );
+
+    const out = res.body.result.structuredContent;
+    assert.equal(out.services[0].fixture.available, true);
+    assert.equal(
+      out.services[0].fixture.fetch_with,
+      "get_fixture with surface_id sn-7-api",
+    );
+    assert.ok(out.next_steps.some((s) => /get_fixture/.test(s)));
   });
 
   test("how_do_i_call regenerates snippets without cleartext credentials", async () => {

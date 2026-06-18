@@ -308,6 +308,9 @@
                     "fixture": {
                       "$ref": "#/components/schemas/SurfaceFixtureReference"
                     },
+                    "fixture_status": {
+                      "$ref": "#/components/schemas/AgentServiceFixtureStatus"
+                    },
                     "health": {
                       "additionalProperties": true,
                       "type": "object"
@@ -595,6 +598,48 @@
             "type": "object"
           }
         ]
+      },
+      "AgentServiceFixtureStatus": {
+        "additionalProperties": false,
+        "description": "Fixture availability or absence reason for an agent-catalog service.",
+        "properties": {
+          "artifact_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "available",
+              "missing",
+              "capture-failed",
+              "auth-required",
+              "non-get",
+              "unsupported-kind"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "artifact_path",
+          "captured_at"
+        ],
+        "type": "object"
       },
       "AgentServiceSchemaSource": {
         "additionalProperties": false,
@@ -2683,6 +2728,72 @@
           {
             "additionalProperties": true,
             "properties": {
+              "candidate_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "coverage": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "artifact_path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "captured_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "response_status": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "available",
+                        "missing",
+                        "capture-failed"
+                      ],
+                      "type": "string"
+                    },
+                    "subnet_slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "netuid",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "fixture_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -2728,11 +2839,22 @@
                 },
                 "type": "array"
               },
+              "missing_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
               "published_at": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "status_counts": {
+                "additionalProperties": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "object"
               }
             },
             "required": [
@@ -13478,7 +13600,15 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "candidate_count": 1,
                     "contract_version": "2026-06-06.1",
+                    "coverage": [
+                      {
+                        "netuid": 7,
+                        "status": "available",
+                        "surface_id": "example"
+                      }
+                    ],
                     "fixture_count": 1,
                     "fixtures": [
                       {
@@ -13487,9 +13617,13 @@
                       }
                     ],
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "missing_count": 1,
                     "notes": "Example description.",
                     "published_at": "2026-06-01T00:00:00.000Z",
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "status_counts": {
+                      "example": 1
+                    }
                   },
                   "meta": {
                     "artifact_path": "example",

@@ -224,10 +224,11 @@ const capturedSchemaDocuments = new Map();
 
 // Captured live request/response fixtures (issue #352), written to R2 staging by
 // the network capture:fixtures step. Preserve them across the wipe so the build
-// can re-serve fixtures/{surface_id}.json + index them in the committed
-// fixtures.json. Absent on a pure deterministic build (no capture run) → an
-// empty index, populated on the next refresh (same model as schemas).
+// can re-serve fixtures/{surface_id}.json + index them in R2 fixtures.json.
+// Absent on a pure deterministic build (no capture run) → an empty index,
+// populated on the next refresh (same model as schemas).
 const capturedFixtures = new Map();
+let capturedFixtureReport = null;
 {
   const fixturesDir = path.join(r2OutputRoot, "fixtures");
   let fixtureFiles;
@@ -239,6 +240,10 @@ const capturedFixtures = new Map();
   for (const file of fixtureFiles) {
     if (!file.endsWith(".json") || file === "index.json") continue;
     const existing = await readOptionalJson(path.join(fixturesDir, file));
+    if (file === "_capture-report.json") {
+      capturedFixtureReport = existing;
+      continue;
+    }
     if (existing?.surface_id) {
       capturedFixtures.set(existing.surface_id, existing);
     }
@@ -685,6 +690,11 @@ const AGENT_SERVICE_KINDS = new Set([
   "sse",
   "data-artifact",
 ]);
+const FIXTURE_SERVICE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "data-artifact",
+]);
 const overviewSurfacesByNetuid = groupByNetuid(surfaces);
 const agentSchemaBySurfaceId = new Map(
   (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
@@ -714,6 +724,11 @@ const agentEndpointBySurfaceId = new Map(
   endpointResources.endpoints
     .filter((endpoint) => endpoint.surface_id)
     .map((endpoint) => [endpoint.surface_id, endpoint]),
+);
+const capturedFixtureStatusBySurfaceId = new Map(
+  (capturedFixtureReport?.surfaces || [])
+    .filter((entry) => entry?.surface_id)
+    .map((entry) => [entry.surface_id, entry]),
 );
 
 // Integration readiness (objective 0-100) for EVERY subnet — surfaced inline on
@@ -1343,6 +1358,110 @@ function serviceSchemaSource(schemaResolution) {
   };
 }
 
+function fixtureProbeMethod(surface) {
+  return (surface.probe?.method || "GET").toUpperCase();
+}
+
+function isFixtureCaptureCandidateSurface(surface) {
+  return (
+    FIXTURE_SERVICE_KINDS.has(surface.kind) &&
+    surface.public_safe &&
+    !surface.auth_required &&
+    surface.probe?.enabled !== false &&
+    fixtureProbeMethod(surface) === "GET"
+  );
+}
+
+function fixtureCoverageEntry(surface) {
+  const fixtureRef = surfaceFixtureReference(
+    surface.id,
+    capturedFixtures.get(surface.id),
+  );
+  const report = capturedFixtureStatusBySurfaceId.get(surface.id);
+  const status = fixtureRef
+    ? "available"
+    : report && report.status !== "captured"
+      ? "capture-failed"
+      : "missing";
+  return {
+    surface_id: surface.id,
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug || null,
+    kind: surface.kind,
+    status,
+    reason:
+      status === "capture-failed"
+        ? report.reason || "capture failed"
+        : status === "missing"
+          ? "no captured fixture available"
+          : null,
+    captured_at: fixtureRef?.captured_at || null,
+    response_status:
+      fixtureRef?.response?.status ?? report?.response_status ?? null,
+    artifact_path: fixtureRef?.artifact_path || null,
+  };
+}
+
+function fixtureCoverageEntries(surfacesForFixtures) {
+  return surfacesForFixtures
+    .filter(isFixtureCaptureCandidateSurface)
+    .map(fixtureCoverageEntry)
+    .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+}
+
+function serviceFixtureStatus(surface, fixtureRef, authRequired) {
+  if (fixtureRef) {
+    return {
+      status: "available",
+      reason: null,
+      artifact_path: fixtureRef.artifact_path,
+      captured_at: fixtureRef.captured_at,
+    };
+  }
+  if (authRequired) {
+    return {
+      status: "auth-required",
+      reason: "fixture capture skips credentialed services",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  if (!FIXTURE_SERVICE_KINDS.has(surface.kind)) {
+    return {
+      status: "unsupported-kind",
+      reason: "fixture capture only samples JSON-returning service kinds",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  if (
+    surface.probe?.enabled === false ||
+    fixtureProbeMethod(surface) !== "GET"
+  ) {
+    return {
+      status: "non-get",
+      reason: "fixture capture only samples enabled GET probes",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  const report = capturedFixtureStatusBySurfaceId.get(surface.id);
+  if (report && report.status !== "captured") {
+    return {
+      status: "capture-failed",
+      reason: report.reason || "capture failed",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  return {
+    status: "missing",
+    reason: "no captured fixture available",
+    artifact_path: null,
+    captured_at: null,
+  };
+}
+
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
@@ -1368,6 +1487,11 @@ function buildSubnetServices(netuid) {
         surface.id,
         capturedFixtures.get(surface.id),
       );
+      const fixtureStatus = serviceFixtureStatus(
+        surface,
+        fixtureRef,
+        authRequired,
+      );
       return {
         surface_id: surface.id,
         kind: surface.kind,
@@ -1391,6 +1515,7 @@ function buildSubnetServices(netuid) {
           auth: authDetail,
         }),
         ...(fixtureRef ? { fixture: fixtureRef } : {}),
+        fixture_status: fixtureStatus,
         schema_url: surface.schema_url || schema?.schema_url || null,
         schema_status:
           surface.schema_status || (schema ? "machine-readable" : null),
@@ -2409,14 +2534,26 @@ const fixtureIndexEntries = [...capturedFixtures.values()]
     response_status: fixture.response?.status ?? null,
   }))
   .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+const fixtureCoverage = fixtureCoverageEntries(surfaces);
 for (const fixture of capturedFixtures.values()) {
   await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
+}
+if (capturedFixtureReport) {
+  await writeJson(artifactFile("fixtures/_capture-report.json"), {
+    ...capturedFixtureReport,
+    mode: capturedFixtureReport.mode || "write",
+  });
 }
 await writeJson(artifactFile("fixtures.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   published_at: publishedAt(),
+  candidate_count: fixtureCoverage.length,
   fixture_count: fixtureIndexEntries.length,
+  missing_count: fixtureCoverage.filter((entry) => entry.status !== "available")
+    .length,
+  status_counts: countBy(fixtureCoverage, "status"),
+  coverage: fixtureCoverage,
   fixtures: fixtureIndexEntries,
 });
 

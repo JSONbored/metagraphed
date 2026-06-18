@@ -903,6 +903,41 @@ test("public artifacts are internally consistent", () => {
   assert.equal(typeof fixturesIndex.fixture_count, "number");
   assert.equal(Array.isArray(fixturesIndex.fixtures), true);
   assert.equal(fixturesIndex.fixture_count, fixturesIndex.fixtures.length);
+  assert.equal(
+    fixturesIndex.candidate_count,
+    fixturesIndex.coverage.length,
+    "fixture candidate_count must match coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.missing_count,
+    fixturesIndex.coverage.filter((entry) => entry.status !== "available")
+      .length,
+    "fixture missing_count must summarize non-available coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.status_counts.missing,
+    fixturesIndex.candidate_count,
+    "deterministic no-capture builds should classify fixture candidates as missing",
+  );
+  const allwaysFixtureCandidate = fixturesIndex.coverage.find(
+    (entry) => entry.surface_id === "allways-api-health",
+  );
+  assert.equal(allwaysFixtureCandidate.status, "missing");
+  const allwaysFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-api-health");
+  assert.equal(allwaysFixtureService.fixture_status.status, "missing");
+  const allwaysSseFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-sse");
+  assert.equal(
+    allwaysSseFixtureService.fixture_status.status,
+    "unsupported-kind",
+  );
+  const allwaysHistoryFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-crown-history");
+  assert.equal(allwaysHistoryFixtureService.fixture_status.status, "non-get");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
   assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);

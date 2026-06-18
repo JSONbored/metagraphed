@@ -895,6 +895,28 @@
           }
         }
       },
+      "AgentServiceFixtureStatus": {
+        "type": "object",
+        "description": "Fixture availability or absence reason for an agent-catalog service.",
+        "required": ["status", "reason", "artifact_path", "captured_at"],
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "missing",
+              "capture-failed",
+              "auth-required",
+              "non-get",
+              "unsupported-kind"
+            ]
+          },
+          "reason": { "type": ["string", "null"] },
+          "artifact_path": { "type": ["string", "null"] },
+          "captured_at": { "type": ["string", "null"] }
+        }
+      },
       "AgentCatalogArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -1081,6 +1103,9 @@
                     },
                     "fixture": {
                       "$ref": "#/components/schemas/SurfaceFixtureReference"
+                    },
+                    "fixture_status": {
+                      "$ref": "#/components/schemas/AgentServiceFixtureStatus"
                     }
                   },
                   "additionalProperties": true

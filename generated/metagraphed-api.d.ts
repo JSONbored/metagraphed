@@ -1107,6 +1107,7 @@ export interface components {
                     [key: string]: unknown;
                 };
                 fixture?: components["schemas"]["SurfaceFixtureReference"];
+                fixture_status?: components["schemas"]["AgentServiceFixtureStatus"];
                 health?: {
                     [key: string]: unknown;
                 };
@@ -1192,6 +1193,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Fixture availability or absence reason for an agent-catalog service. */
+        AgentServiceFixtureStatus: {
+            artifact_path: string | null;
+            captured_at: string | null;
+            reason: string | null;
+            /** @enum {string} */
+            status: "available" | "missing" | "capture-failed" | "auth-required" | "non-get" | "unsupported-kind";
+        };
         /** @description Source metadata for the schema artifact associated with an agent-catalog service. */
         AgentServiceSchemaSource: {
             /** @description Metagraphed schema artifact path. */
@@ -1723,6 +1732,21 @@ export interface components {
             [key: string]: unknown;
         });
         FixturesIndexArtifact: components["schemas"]["ArtifactBase"] & ({
+            candidate_count?: number;
+            coverage?: ({
+                artifact_path?: string | null;
+                captured_at?: string | null;
+                kind?: string;
+                netuid: number;
+                reason?: string | null;
+                response_status?: number | null;
+                /** @enum {string} */
+                status: "available" | "missing" | "capture-failed";
+                subnet_slug?: string | null;
+                surface_id: string;
+            } & {
+                [key: string]: unknown;
+            })[];
             fixture_count: number;
             fixtures: ({
                 captured_at?: string | null;
@@ -1734,7 +1758,11 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            missing_count?: number;
             published_at?: string | null;
+            status_counts?: {
+                [key: string]: number;
+            };
         } & {
             [key: string]: unknown;
         });
@@ -5843,7 +5871,15 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "candidate_count": 1,
                      *         "contract_version": "2026-06-06.1",
+                     *         "coverage": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "status": "available",
+                     *             "surface_id": "example"
+                     *           }
+                     *         ],
                      *         "fixture_count": 1,
                      *         "fixtures": [
                      *           {
@@ -5852,9 +5888,13 @@ export interface operations {
                      *           }
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "missing_count": 1,
                      *         "notes": "Example description.",
                      *         "published_at": "2026-06-01T00:00:00.000Z",
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "status_counts": {
+                     *           "example": 1
+                     *         }
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

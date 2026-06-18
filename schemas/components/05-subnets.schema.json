@@ -1840,7 +1840,35 @@
             "required": ["fixture_count", "fixtures"],
             "properties": {
               "published_at": { "type": ["string", "null"] },
+              "candidate_count": { "type": "integer", "minimum": 0 },
               "fixture_count": { "type": "integer", "minimum": 0 },
+              "missing_count": { "type": "integer", "minimum": 0 },
+              "status_counts": {
+                "type": "object",
+                "additionalProperties": { "type": "integer", "minimum": 0 }
+              },
+              "coverage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["surface_id", "netuid", "status"],
+                  "properties": {
+                    "surface_id": { "type": "string" },
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "subnet_slug": { "type": ["string", "null"] },
+                    "kind": { "type": "string" },
+                    "status": {
+                      "type": "string",
+                      "enum": ["available", "missing", "capture-failed"]
+                    },
+                    "reason": { "type": ["string", "null"] },
+                    "captured_at": { "type": ["string", "null"] },
+                    "response_status": { "type": ["integer", "null"] },
+                    "artifact_path": { "type": ["string", "null"] }
+                  },
+                  "additionalProperties": true
+                }
+              },
               "fixtures": {
                 "type": "array",
                 "items": {

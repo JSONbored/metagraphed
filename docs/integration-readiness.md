@@ -112,6 +112,22 @@ generation. Treat `same-origin-openapi` as a strong pointer to the canonical
 API contract, then inspect the schema artifact before claiming a specific path
 or request shape is supported.
 
+## Fixture status (`fixture_status`)
+
+Agent-catalog services expose fixture availability separately from schemas:
+
+| Status             | Meaning                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `available`        | a sanitized request/response fixture exists               |
+| `missing`          | no fixture has been captured yet                          |
+| `capture-failed`   | the capture run tried the service and could not save JSON |
+| `auth-required`    | capture is skipped because credentials are required       |
+| `non-get`          | capture is skipped because the probe is disabled/non-GET  |
+| `unsupported-kind` | capture is skipped because the service kind is not JSON   |
+
+Use `fixture_status` to explain absence. Use `fixture.artifact_path` only when
+the status is `available`.
+
 ## Live verification (`readiness.readiness_verified`)
 
 The numeric `score` is deliberately build-time and deterministic, so
