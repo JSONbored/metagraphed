@@ -7,12 +7,19 @@
 // repeated calls can't fan out into real outbound probes.
 import { probeSurface } from "./health-probe-core.mjs";
 
-// Surface ids look like "7:subnet-api:x" or "nodies-finney-rpc".
+// Surface ids look like "7:subnet-api:x" or "nodies-finney-rpc"; stable
+// surface keys look like "srf-4d92fe6304cbb843". Both are catalog-resolved
+// identifiers, never URLs.
 export const SURFACE_ID_PATTERN = /^[a-z0-9][a-z0-9:._-]*$/i;
 
 export function findSurface(surfaces, surfaceId) {
   if (!Array.isArray(surfaces) || typeof surfaceId !== "string") return null;
-  return surfaces.find((surface) => surface?.surface_id === surfaceId) || null;
+  return (
+    surfaces.find(
+      (surface) =>
+        surface?.surface_id === surfaceId || surface?.surface_key === surfaceId,
+    ) || null
+  );
 }
 
 // Resolve the surface to verify for a subnet: its primary callable surface, else
@@ -43,6 +50,7 @@ export async function verifySurface(
   return {
     schema_version: 1,
     surface_id: surface.surface_id,
+    surface_key: surface.surface_key ?? null,
     netuid: typeof surface.netuid === "number" ? surface.netuid : null,
     kind: surface.kind,
     url: surface.url,

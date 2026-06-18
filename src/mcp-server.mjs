@@ -1099,14 +1099,14 @@ export const MCP_TOOLS = [
     name: "verify_integration",
     title: "Verify a surface is callable right now",
     description:
-      'Live-probe a single catalogued surface (by surface_id) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
+      'Live-probe a single catalogued surface (by surface_id or stable surface_key) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
     inputSchema: {
       type: "object",
       properties: {
         surface_id: {
           type: "string",
           description:
-            'Surface id to verify, e.g. "7:subnet-api:x" or "nodies-finney-rpc".',
+            'Surface id or stable surface_key to verify, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
         },
         netuid: {
           type: "integer",
@@ -1132,7 +1132,7 @@ export const MCP_TOOLS = [
         if (!surface) {
           throw toolError(
             "not_found",
-            `No catalogued surface with id "${args.surface_id}".`,
+            `No catalogued surface with id or key "${args.surface_id}".`,
           );
         }
       } else if (Number.isInteger(args?.netuid)) {
@@ -1436,6 +1436,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: ["surface_id", "status", "callable"],
     properties: {
       surface_id: { type: "string" },
+      surface_key: NULLABLE_STRING,
       netuid: NULLABLE_INT,
       kind: { type: "string" },
       url: { type: "string" },

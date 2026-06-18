@@ -35,6 +35,28 @@ function isBaseLayerEndpoint(kind) {
   return kind === "subtensor-rpc" || kind === "subtensor-wss";
 }
 
+function surfaceLookupKey(row) {
+  return row?.surface_key || row?.surface_id || null;
+}
+
+function addLiveSurfaceRow(map, row) {
+  const key = surfaceLookupKey(row);
+  if (key) map.set(key, row);
+  // Fallback for pre-#1005 artifacts/caches that only carry surface_id. Do not
+  // overwrite a stable-key match when an id happens to collide.
+  if (row?.surface_id && !map.has(row.surface_id)) {
+    map.set(row.surface_id, row);
+  }
+}
+
+function liveRowForSurface(map, surface) {
+  return (
+    (surface?.surface_key ? map.get(surface.surface_key) : null) ||
+    (surface?.surface_id ? map.get(surface.surface_id) : null) ||
+    null
+  );
+}
+
 function endpointPoolEligibility(endpoint) {
   const reasons = [];
   if (!isBaseLayerEndpoint(endpoint.kind)) {
@@ -108,16 +130,18 @@ export function summarizeRows(rows) {
 // rows are never preserved. Returns null when there is no live snapshot.
 export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
   if (!liveCurrent || !Array.isArray(liveCurrent.surfaces)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   for (const row of liveCurrent.surfaces) {
-    if (row.netuid === netuid) liveById.set(row.surface_id, row);
+    if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
-  if (liveById.size === 0) return null;
+  if (liveBySurface.size === 0) return null;
 
   const merged = [];
-  for (const [id, live] of liveById) {
+  for (const live of new Map(
+    [...liveBySurface.values()].map((row) => [surfaceLookupKey(row), row]),
+  ).values()) {
     merged.push({
-      surface_id: id,
+      surface_id: live.surface_id,
       netuid,
       kind: live.kind,
       provider: live.provider,
@@ -268,7 +292,9 @@ export function mergeFreshness(staticFreshness, liveMeta) {
 }
 
 // Format D1 GROUP BY aggregates into a trends payload. `windows` maps a label to
-// an array of per-surface aggregate rows {surface_id, total, ok_count, avg_latency_ms}.
+// an array of per-surface aggregate rows {surface_id, surface_key?, total,
+// ok_count, avg_latency_ms}. SQL groups by stable surface_key and keeps surface_id
+// as the current display alias.
 export function formatTrends({ netuid, observedAt, windows }) {
   const formatWindow = (rows) => {
     let total = 0;
@@ -418,8 +444,8 @@ function roundInt(value) {
 }
 
 // p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
-// surface). `rows`: [{ surface_id, samples, p50, p95, p99, avg_latency_ms,
-// min_latency_ms, max_latency_ms }].
+// stable surface). `rows`: [{ surface_id, surface_key?, samples, p50, p95, p99,
+// avg_latency_ms, min_latency_ms, max_latency_ms }].
 export function formatPercentiles({ netuid, window, observedAt, rows }) {
   const surfaces = (rows || [])
     .map((row) => ({
@@ -528,8 +554,8 @@ export function formatRpcUsage({
   };
 }
 
-// SLA + downtime incidents per surface. `slaRows`: [{ surface_id, total,
-// ok_count }]. `incidentRows`: [{ surface_id, started_at, ended_at,
+// SLA + downtime incidents per surface. `slaRows`: [{ surface_id, surface_key?,
+// total, ok_count }]. `incidentRows`: [{ surface_id, surface_key?, started_at, ended_at,
 // failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).
 // `maxIncidents` is a defensive API cap so flapping endpoints cannot force the
 // formatter to materialize unbounded incident arrays.
@@ -550,7 +576,8 @@ export function formatIncidents({
     if (acceptedIncidents >= incidentLimit) {
       break;
     }
-    const list = incidentsBySurface.get(row.surface_id) || [];
+    const key = surfaceLookupKey(row);
+    const list = incidentsBySurface.get(key) || [];
     const startedAt = Number(row.started_at);
     const endedAt = Number(row.ended_at);
     list.push({
@@ -560,14 +587,14 @@ export function formatIncidents({
       failed_samples: Number(row.failed_samples) || 0,
     });
     acceptedIncidents += 1;
-    incidentsBySurface.set(row.surface_id, list);
+    incidentsBySurface.set(key, list);
   }
 
   const surfaces = (slaRows || [])
     .map((row) => {
       const total = Number(row.total) || 0;
       const okCount = Number(row.ok_count) || 0;
-      const incidents = incidentsBySurface.get(row.surface_id) || [];
+      const incidents = incidentsBySurface.get(surfaceLookupKey(row)) || [];
       const downtimeMs = incidents.reduce((sum, i) => sum + i.duration_ms, 0);
       return {
         surface_id: row.surface_id,
@@ -591,7 +618,7 @@ export function formatIncidents({
 }
 
 // Global, cross-subnet incident ledger from the same gap-island grouping as
-// formatIncidents, but keyed by netuid + surface_id and listing ONLY surfaces
+// formatIncidents, but keyed by netuid + stable surface identity and listing ONLY surfaces
 // that had an incident in the window (a "what's been down lately" feed, not a
 // full SLA table). `incidentRows`: [{ netuid, surface_id, started_at, ended_at,
 // failed_samples }], already capped + ordered by the SQL.
@@ -611,7 +638,7 @@ export function formatGlobalIncidents({
       break;
     }
     const netuid = Number(row.netuid);
-    const key = `${netuid}/${row.surface_id}`;
+    const key = `${netuid}/${surfaceLookupKey(row)}`;
     const entry = bySurface.get(key) || {
       netuid,
       surface_id: row.surface_id,
@@ -838,11 +865,24 @@ function shiftDate(isoDate, days) {
 // Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio
 // from the summed ok_count/samples (exact, not an average of ratios).
 export function formatUptime({ netuid, window, rows, now = null }) {
-  const reliability = computeReliability(rows, { window: window || null, now });
+  const reliabilityRows = (rows || []).map((row) => ({
+    ...row,
+    surface_id: surfaceLookupKey(row),
+  }));
+  const reliability = computeReliability(reliabilityRows, {
+    window: window || null,
+    now,
+  });
   const bySurface = new Map();
   for (const row of rows || []) {
-    const list = bySurface.get(row.surface_id) || [];
-    list.push({
+    const key = surfaceLookupKey(row);
+    if (!key) continue;
+    const entry = bySurface.get(key) || {
+      surface_id: row.surface_id,
+      days: [],
+    };
+    entry.surface_id = row.surface_id || entry.surface_id;
+    entry.days.push({
       day: row.day,
       samples: Number(row.samples) || 0,
       ok_count: Number(row.ok_count) || 0,
@@ -853,19 +893,20 @@ export function formatUptime({ netuid, window, rows, now = null }) {
           : Math.round(Number(row.avg_latency_ms)),
       status: row.status || "unknown",
     });
-    bySurface.set(row.surface_id, list);
+    bySurface.set(key, entry);
   }
   const surfaces = [...bySurface.entries()]
-    .map(([surfaceId, days]) => {
+    .map(([surfaceKey, entry]) => {
+      const { days } = entry;
       days.sort((a, b) => String(a.day).localeCompare(String(b.day)));
       const samples = days.reduce((sum, d) => sum + d.samples, 0);
       const okCount = days.reduce((sum, d) => sum + d.ok_count, 0);
       return {
-        surface_id: surfaceId,
+        surface_id: entry.surface_id || surfaceKey,
         day_count: days.length,
         samples,
         uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
-        reliability: reliability.surfaces[surfaceId] || null,
+        reliability: reliability.surfaces[surfaceKey] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
           day: d.day,
@@ -908,9 +949,22 @@ export async function loadSubnetReliability({
   try {
     const result = await db
       .prepare(
-        `SELECT surface_id, day, samples, ok_count, avg_latency_ms
+        `SELECT MAX(surface_id) AS surface_id,
+                COALESCE(surface_key, surface_id) AS surface_key,
+                day,
+                SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                CASE
+                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                    THEN CAST(ROUND(
+                      SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                      SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+                    ) AS INTEGER)
+                  ELSE NULL
+                END AS avg_latency_ms
          FROM surface_uptime_daily
          WHERE netuid = ? AND day >= ?
+         GROUP BY COALESCE(surface_key, surface_id), day
          ORDER BY day DESC
          LIMIT ?`,
       )
@@ -937,6 +991,7 @@ export async function loadSubnetReliability({
 function liveFromD1Rows(rows) {
   const surfaces = rows.map((r) => ({
     surface_id: r.surface_id,
+    surface_key: r.surface_key ?? null,
     netuid: r.netuid,
     kind: r.kind,
     provider: r.provider,
@@ -1002,7 +1057,7 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
       const { results } = await database
         .prepare(
           `SELECT surface_id, netuid, kind, provider, url, status, classification,
-                  latency_ms, status_code, last_checked, last_ok
+                  surface_key, latency_ms, status_code, last_checked, last_ok
            FROM surface_status
            WHERE last_checked >= ?`,
         )
@@ -1042,12 +1097,12 @@ export function overlayOverviewHealth(staticOverview, live, netuid) {
 // public-safe subset at build time, so structural callability is implied.
 export function overlayCatalogDetail(staticDetail, live, netuid) {
   if (!live || !Array.isArray(live.surfaces)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   for (const row of live.surfaces) {
-    if (row.netuid === netuid) liveById.set(row.surface_id, row);
+    if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
   const services = (staticDetail?.services || []).map((service) => {
-    const row = liveById.get(service.surface_id) || null;
+    const row = liveRowForSurface(liveBySurface, service);
     const status = row ? row.status : "unknown";
     const classification = row
       ? row.classification
@@ -1185,12 +1240,12 @@ function countEndpointStatuses(endpoints) {
 // carries no endpoints array (the caller then serves it untouched).
 export function overlayArtifactEndpoints(staticData, live) {
   if (!staticData || !Array.isArray(staticData.endpoints)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   if (live && Array.isArray(live.surfaces)) {
-    for (const row of live.surfaces) liveById.set(row.surface_id, row);
+    for (const row of live.surfaces) addLiveSurfaceRow(liveBySurface, row);
   }
   const endpoints = staticData.endpoints.map((endpoint) =>
-    overlayEndpointHealth(endpoint, liveById.get(endpoint.surface_id) || null),
+    overlayEndpointHealth(endpoint, liveRowForSurface(liveBySurface, endpoint)),
   );
   const result = {
     ...staticData,

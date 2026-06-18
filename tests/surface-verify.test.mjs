@@ -14,6 +14,7 @@ describe("surface-verify core (#358)", () => {
   const surfaces = [
     {
       surface_id: "7:subnet-api:x",
+      surface_key: "srf-subnetapix0000",
       netuid: 7,
       kind: "subnet-api",
       url: "https://x",
@@ -47,6 +48,7 @@ describe("surface-verify core (#358)", () => {
 
   test("findSurface matches by surface_id", () => {
     assert.equal(findSurface(surfaces, "7:subnet-api:x")?.url, "https://x");
+    assert.equal(findSurface(surfaces, "srf-subnetapix0000")?.url, "https://x");
     assert.equal(findSurface(surfaces, "nope"), null);
     assert.equal(findSurface(null, "x"), null);
     assert.equal(findSurface(surfaces, 7), null);
@@ -89,6 +91,7 @@ describe("surface-verify core (#358)", () => {
     };
     const out = await verifySurface(surfaces[0], {}, okProber);
     assert.equal(out.surface_id, "7:subnet-api:x");
+    assert.equal(out.surface_key, "srf-subnetapix0000");
     assert.equal(out.callable, true);
     assert.equal(out.latency_ms, 42);
     assert.equal(out.netuid, 7);
@@ -130,6 +133,7 @@ describe("surface verify-now endpoint (#358)", () => {
   // handler reads it via the imported readArtifact → env.ASSETS, so we use the
   // local artifact env, not an injected readArtifact).
   const SURFACE_ID = "sn-6-numinous-api-health";
+  const SURFACE_KEY = "srf-4d92fe6304cbb843";
   const req = (id) =>
     new Request(`https://metagraph.sh/api/v1/surfaces/${id}/verify`);
 
@@ -227,6 +231,20 @@ describe("surface verify-now endpoint (#358)", () => {
     });
   });
 
+  test("accepts stable surface_key as the verify identifier", async () => {
+    await withGlobals({ fetchImpl: okFetch }, async () => {
+      const res = await handleRequest(
+        req(SURFACE_KEY),
+        createLocalArtifactEnv(),
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.surface_id, SURFACE_ID);
+      assert.equal(body.data.surface_key, SURFACE_KEY);
+    });
+  });
+
   test("blocks catalogued hostnames that resolve to private addresses", async () => {
     let surfaceFetches = 0;
     await withGlobals(
@@ -268,6 +286,7 @@ describe("verify_integration MCP tool (#358)", () => {
     surfaces: [
       {
         surface_id: "x:api:1",
+        surface_key: "srf-xapi100000000",
         netuid: 5,
         kind: "subnet-api",
         url: "https://x.example/api",
@@ -315,6 +334,10 @@ describe("verify_integration MCP tool (#358)", () => {
     const bySurface = await call({ surface_id: "x:api:1" });
     assert.equal(bySurface.isError, false);
     assert.equal(bySurface.structuredContent.surface_id, "x:api:1");
+    const byKey = await call({ surface_id: "srf-xapi100000000" });
+    assert.equal(byKey.isError, false);
+    assert.equal(byKey.structuredContent.surface_id, "x:api:1");
+    assert.equal(byKey.structuredContent.surface_key, "srf-xapi100000000");
     const byNetuid = await call({ netuid: 5 });
     assert.equal(byNetuid.structuredContent.surface_id, "x:api:1");
   });

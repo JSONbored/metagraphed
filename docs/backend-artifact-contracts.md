@@ -38,6 +38,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
 - `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
 - `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- Live health overlays, trends, percentiles, incidents, and uptime rollups join/group by `surface_key` when present and keep `surface_id` as the served display alias, so display-name/slug renames do not split probe history.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery. R2-backed.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.

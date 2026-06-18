@@ -518,6 +518,7 @@ async function persistToKv(kv, probed, runAt) {
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
+    surface_key: row.surface_key,
     netuid: row.netuid,
     kind: row.kind,
     provider: row.provider,

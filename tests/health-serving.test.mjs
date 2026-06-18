@@ -901,7 +901,14 @@ describe("worker live health serving", () => {
 describe("resolveLiveHealth (KV → D1 → null)", () => {
   const liveKv = {
     last_run_at: "2026-06-13T00:00:00.000Z",
-    surfaces: [{ surface_id: "7:subnet-api:x", netuid: 7, status: "ok" }],
+    surfaces: [
+      {
+        surface_id: "7:subnet-api:x",
+        surface_key: "srf-livekv00000000",
+        netuid: 7,
+        status: "ok",
+      },
+    ],
     subnets: [{ netuid: 7, status: "ok" }],
   };
 
@@ -921,6 +928,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     const db = {
       prepare: (sql) => {
         assert.match(sql, /WHERE last_checked >= \?/);
+        assert.match(sql, /surface_key/);
         return {
           bind: (cutoff) => {
             observedCutoffs.push(cutoff);
@@ -929,6 +937,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
                 results: [
                   {
                     surface_id: "7:subnet-api:x",
+                    surface_key: "srf-d1fallback0000",
                     netuid: 7,
                     kind: "subnet-api",
                     provider: "x",
@@ -955,6 +964,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     });
     assert.equal(live.health_source, "live-d1-fallback");
     assert.equal(live.surfaces[0].status, "failed");
+    assert.equal(live.surfaces[0].surface_key, "srf-d1fallback0000");
     assert.equal(live.subnets[0].netuid, 7);
     assert.equal(live.subnets[0].status, "failed");
     assert.deepEqual(observedCutoffs, [1_700_000_000_000]);
@@ -1048,7 +1058,8 @@ describe("composed-artifact health overlays", () => {
     subnets: [{ netuid: 7, status: "failed", surface_count: 1, ok_count: 0 }],
     surfaces: [
       {
-        surface_id: "7:subnet-api:x",
+        surface_id: "7:subnet-api:renamed",
+        surface_key: "srf-subnetapix0000",
         netuid: 7,
         status: "failed",
         classification: "down",
@@ -1083,6 +1094,7 @@ describe("composed-artifact health overlays", () => {
       services: [
         {
           surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
           base_url: "https://x",
           health: { status: "ok", stale: true },
           eligibility: { callable: true, reasons: [] },
@@ -1097,6 +1109,25 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.services[0].base_url, "https://x"); // structural kept
     assert.equal(out.health_source, "live-cron-prober");
     assert.equal(overlayCatalogDetail(detail, null, 7), null);
+  });
+
+  test("overlayCatalogDetail joins renamed services by stable surface_key", () => {
+    const detail = {
+      netuid: 7,
+      services: [
+        {
+          surface_id: "7:subnet-api:old-name",
+          surface_key: "srf-subnetapix0000",
+          base_url: "https://x",
+          health: { status: "ok", stale: true },
+          eligibility: { callable: true },
+        },
+      ],
+    };
+    const out = overlayCatalogDetail(detail, live, 7);
+    assert.equal(out.services[0].surface_id, "7:subnet-api:old-name");
+    assert.equal(out.services[0].health.status, "failed");
+    assert.equal(out.services[0].eligibility.callable, false);
   });
 
   test("overlayCatalogDetail marks a service with no live row as unknown", () => {
@@ -1132,6 +1163,7 @@ describe("composed-artifact health overlays", () => {
       services: [
         {
           surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
           base_url: "https://x",
           health: { status: "ok", stale: true },
           eligibility: { callable: true },
@@ -1178,6 +1210,7 @@ describe("composed-artifact health overlays", () => {
       endpoints: [
         {
           surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
           url: "https://x",
           status: "ok",
           classification: "live",
@@ -1222,6 +1255,26 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.health_source, "live-cron-prober");
     assert.deepEqual(out.summary.by_status, { failed: 1, unknown: 1 });
     assert.equal(out.summary.pool_eligible_count, 0);
+  });
+
+  test("overlayArtifactEndpoints joins renamed endpoints by stable surface_key", () => {
+    const out = overlayArtifactEndpoints(
+      {
+        endpoints: [
+          {
+            surface_id: "7:subnet-api:old-name",
+            surface_key: "srf-subnetapix0000",
+            status: "ok",
+            health_source: "probe-derived",
+            health_stale: false,
+          },
+        ],
+      },
+      live,
+    );
+    assert.equal(out.endpoints[0].surface_id, "7:subnet-api:old-name");
+    assert.equal(out.endpoints[0].status, "failed");
+    assert.equal(out.endpoints[0].health_source, "live-cron-prober");
   });
 
   test("overlayArtifactEndpoints recomputes pool eligibility from live health and static constraints", () => {
@@ -1729,6 +1782,40 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.reliability.surface_count, 2);
     assert.equal(typeof out.surfaces[0].reliability.score, "number");
     assert.match(out.surfaces[0].reliability.grade, /^[A-F]$/);
+  });
+
+  test("groups renamed uptime rows by stable surface_key", () => {
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          uptime_ratio: 0.8,
+          avg_latency_ms: 60,
+          status: "degraded",
+        },
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          uptime_ratio: 1,
+          avg_latency_ms: 40,
+          status: "ok",
+        },
+      ],
+    });
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].surface_id, "7:api:new");
+    assert.equal(out.surfaces[0].samples, 200);
+    assert.equal(out.surfaces[0].uptime_ratio, 0.9);
+    assert.equal(out.reliability.surface_count, 1);
   });
 
   test("returns an empty series + null reliability for no rows", () => {

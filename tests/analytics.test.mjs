@@ -347,6 +347,23 @@ function analyticsD1() {
     },
   };
 }
+function captureD1Env(queries) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            queries.push({ sql, params });
+            return {
+              all: () => Promise.resolve({ results: rowsForSql(sql) }),
+            };
+          },
+        };
+      },
+    },
+  };
+}
 function rowsForSql(sql) {
   if (sql.includes("WITH ranked")) {
     return [
@@ -503,40 +520,37 @@ describe("analytics routes (fake D1 with data)", () => {
     METAGRAPH_HEALTH_DB: analyticsD1(),
   };
   test("percentiles surfaces p95 from D1", async () => {
+    const queries = [];
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
-      env,
+      captureD1Env(queries),
     );
     assert.equal(body.data.surfaces[0].latency_ms.p95, 400);
+    assert.match(
+      queries[0].sql,
+      /PARTITION BY COALESCE\(surface_key, surface_id\)/,
+    );
+    assert.match(queries[0].sql, /GROUP BY surface_key/);
   });
   test("incidents computes uptime + incidents from D1", async () => {
+    const queries = [];
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      env,
+      captureD1Env(queries),
     );
     assert.equal(body.data.surfaces[0].uptime_ratio, 0.98);
     assert.equal(body.data.surfaces[0].incident_count, 1);
+    assert.match(
+      queries[0].sql,
+      /GROUP BY COALESCE\(surface_key, surface_id\)/,
+    );
+    assert.match(queries[1].sql, /PARTITION BY surface_key/);
   });
   test("incidents SQL uses a hard incident row cap", async () => {
     const queries = [];
-    const envWithCapture = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              queries.push({ sql, params });
-              return {
-                all: () => Promise.resolve({ results: rowsForSql(sql) }),
-              };
-            },
-          };
-        },
-      },
-    };
     const { status } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      envWithCapture,
+      captureD1Env(queries),
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
@@ -547,6 +561,29 @@ describe("analytics routes (fake D1 with data)", () => {
     // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
     assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
     assert.equal(incidentQuery.params.at(-2), 2);
+  });
+
+  test("trends and uptime SQL group by stable surface key", async () => {
+    const queries = [];
+    const envWithCapture = captureD1Env(queries);
+    await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
+      envWithCapture,
+    );
+    await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/uptime",
+      envWithCapture,
+    );
+    assert.match(
+      queries.find((query) => query.sql.includes("FROM surface_checks"))?.sql ||
+        "",
+      /GROUP BY COALESCE\(surface_key, surface_id\)/,
+    );
+    assert.match(
+      queries.find((query) => query.sql.includes("FROM surface_uptime_daily"))
+        ?.sql || "",
+      /GROUP BY COALESCE\(surface_key, surface_id\), day/,
+    );
   });
 
   test("global incidents SQL bounds source rows before window grouping", async () => {

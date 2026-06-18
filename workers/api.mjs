@@ -1168,13 +1168,14 @@ async function handleHealthTrends(request, env, netuid) {
         const result = await withTimeout(
           db
             .prepare(
-              `SELECT surface_id,
+              `SELECT MAX(surface_id) AS surface_id,
+                    COALESCE(surface_key, surface_id) AS surface_key,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
                     AVG(latency_ms) AS avg_latency_ms
              FROM surface_checks
              WHERE netuid = ? AND checked_at >= ?
-             GROUP BY surface_id`,
+             GROUP BY COALESCE(surface_key, surface_id)`,
             )
             .bind(netuid, nowMs - days * DAY_MS)
             .all(),
@@ -1281,14 +1282,22 @@ async function handleHealthPercentiles(request, env, netuid, url) {
   const rows = await d1All(
     env,
     `WITH ranked AS (
-       SELECT surface_id, latency_ms,
-              ROW_NUMBER() OVER (PARTITION BY surface_id ORDER BY latency_ms) AS rn,
-              COUNT(*) OVER (PARTITION BY surface_id) AS cnt
+       SELECT COALESCE(surface_key, surface_id) AS surface_key,
+              surface_id,
+              latency_ms,
+              ROW_NUMBER() OVER (
+                PARTITION BY COALESCE(surface_key, surface_id)
+                ORDER BY latency_ms
+              ) AS rn,
+              COUNT(*) OVER (
+                PARTITION BY COALESCE(surface_key, surface_id)
+              ) AS cnt
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ? AND latency_ms IS NOT NULL
      )
-     SELECT surface_id,
-            cnt AS samples,
+     SELECT MAX(surface_id) AS surface_id,
+            surface_key,
+            MAX(cnt) AS samples,
             MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
             MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95,
             MAX(CASE WHEN rn = CAST(0.99 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p99,
@@ -1296,7 +1305,7 @@ async function handleHealthPercentiles(request, env, netuid, url) {
             MIN(latency_ms) AS min_latency_ms,
             MAX(latency_ms) AS max_latency_ms
      FROM ranked
-     GROUP BY surface_id`,
+     GROUP BY surface_key`,
     [netuid, Date.now() - days * DAY_MS],
   );
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -1328,10 +1337,13 @@ async function handleHealthIncidents(request, env, netuid, url) {
   const [slaRows, incidentRows] = await Promise.all([
     d1All(
       env,
-      `SELECT surface_id, COUNT(*) AS total, SUM(ok) AS ok_count
+      `SELECT MAX(surface_id) AS surface_id,
+              COALESCE(surface_key, surface_id) AS surface_key,
+              COUNT(*) AS total,
+              SUM(ok) AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
-       GROUP BY surface_id`,
+       GROUP BY COALESCE(surface_key, surface_id)`,
       [netuid, since],
     ),
     // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
@@ -1340,24 +1352,30 @@ async function handleHealthIncidents(request, env, netuid, url) {
     d1All(
       env,
       `WITH failures AS (
-         SELECT surface_id, checked_at,
+         SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                surface_id,
+                checked_at,
                 checked_at - LAG(checked_at)
-                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS gap
+                  OVER (
+                    PARTITION BY COALESCE(surface_key, surface_id)
+                    ORDER BY checked_at
+                  ) AS gap
          FROM surface_checks
          WHERE netuid = ? AND checked_at >= ? AND ok = 0
        ),
        grouped AS (
-         SELECT surface_id, checked_at,
+         SELECT surface_key, surface_id, checked_at,
                 SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS grp
+                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
          FROM failures
        )
-       SELECT surface_id,
+       SELECT MAX(surface_id) AS surface_id,
+              surface_key,
               MIN(checked_at) AS started_at,
               MAX(checked_at) AS ended_at,
               COUNT(*) AS failed_samples
        FROM grouped
-       GROUP BY surface_id, grp
+       GROUP BY surface_key, grp
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
        LIMIT ?`,
@@ -1400,30 +1418,35 @@ async function handleGlobalIncidents(request, env, url) {
   const incidentRows = await d1All(
     env,
     `WITH recent_failures AS (
-       SELECT netuid, surface_id, checked_at
+       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at
        FROM surface_checks
        WHERE checked_at >= ? AND ok = 0
        ORDER BY checked_at DESC
        LIMIT ?
      ),
      failures AS (
-       SELECT netuid, surface_id, checked_at,
+       SELECT netuid, surface_key, surface_id, checked_at,
               checked_at - LAG(checked_at)
-                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS gap
+                OVER (
+                  PARTITION BY netuid, surface_key
+                  ORDER BY checked_at
+                ) AS gap
        FROM recent_failures
      ),
      grouped AS (
-       SELECT netuid, surface_id, checked_at,
+       SELECT netuid, surface_key, surface_id, checked_at,
               SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS grp
+                OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
        FROM failures
      )
-     SELECT netuid, surface_id,
+     SELECT netuid,
+            MAX(surface_id) AS surface_id,
+            surface_key,
             MIN(checked_at) AS started_at,
             MAX(checked_at) AS ended_at,
             COUNT(*) AS failed_samples
      FROM grouped
-     GROUP BY netuid, surface_id, grp
+     GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
      LIMIT ?`,
@@ -1504,9 +1527,32 @@ async function handleUptime(request, env, netuid, url) {
     .slice(0, 10);
   const rows = await d1All(
     env,
-    `SELECT surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status
+    `SELECT MAX(surface_id) AS surface_id,
+            COALESCE(surface_key, surface_id) AS surface_key,
+            day,
+            SUM(samples) AS samples,
+            SUM(ok_count) AS ok_count,
+            CASE
+              WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
+              ELSE NULL
+            END AS uptime_ratio,
+            CASE
+              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                THEN CAST(ROUND(
+                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+                ) AS INTEGER)
+              ELSE NULL
+            END AS avg_latency_ms,
+            CASE
+              WHEN SUM(samples) = 0 THEN 'unknown'
+              WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
+              WHEN SUM(ok_count) = 0 THEN 'failed'
+              ELSE 'degraded'
+            END AS status
      FROM surface_uptime_daily
      WHERE netuid = ? AND day >= ?
+     GROUP BY COALESCE(surface_key, surface_id), day
      ORDER BY day DESC
      LIMIT ?`,
     [netuid, cutoff, MAX_UPTIME_ROWS],
@@ -1864,16 +1910,17 @@ async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   if (!surface) {
     return errorResponse(
       "surface_not_found",
-      `No catalogued surface with id "${surfaceId}".`,
+      `No catalogued surface with id or key "${surfaceId}".`,
       404,
       { surface_id: surfaceId },
     );
   }
 
+  const canonicalSurfaceId = surface.surface_key || surface.surface_id;
   const cache = globalThis.caches?.default || null;
   const cacheKey = cache
     ? new Request(
-        `https://verify.metagraph.sh/${encodeURIComponent(surfaceId)}`,
+        `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
       )
     : null;
   if (cache) {
