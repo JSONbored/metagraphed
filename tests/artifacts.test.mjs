@@ -784,6 +784,10 @@ test("public artifacts are internally consistent", () => {
     agentResources.resources.some((r) => r.id === "agent"),
     "resources must include the copyable agent",
   );
+  assert.ok(
+    agentResources.resources.some((r) => r.id === "agent-workflows"),
+    "resources must include the public agent workflow guide",
+  );
   assert.ok(agentResources.resources.every((r) => r.id && r.title && r.url));
   // every profile that claims to have graduated appears in the lineage artifact
   for (const profile of profiles.profiles) {

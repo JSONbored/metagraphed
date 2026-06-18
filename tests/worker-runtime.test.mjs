@@ -1552,6 +1552,11 @@ describe("Agent discovery surfaces", () => {
       context["service-doc"][0].href,
       "https://api.metagraph.sh/llms.txt",
     );
+    assert.ok(
+      context["service-doc"].some(
+        (entry) => entry.href === "https://api.metagraph.sh/agent-workflows.md",
+      ),
+    );
     assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
   });
 

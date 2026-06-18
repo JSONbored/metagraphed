@@ -24,6 +24,7 @@ Anonymous abuse-control limits apply per client IP (no key raises them):
 ## Discovery
 
 - Machine index: https://api.metagraph.sh/llms.txt
+- Agent workflows: https://api.metagraph.sh/agent-workflows.md
 - API catalog (RFC 9727): https://api.metagraph.sh/.well-known/api-catalog
 - OpenAPI 3.1: https://api.metagraph.sh/metagraph/openapi.json
 - MCP server card: https://api.metagraph.sh/.well-known/mcp/server-card.json

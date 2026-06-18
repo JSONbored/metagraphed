@@ -98,5 +98,6 @@ the SDK, so code written against localnet runs unchanged on testnet and mainnet.
 ## More
 
 - Machine index: `https://api.metagraph.sh/llms.txt` (and `/llms-full.txt`)
+- Agent workflows: `https://api.metagraph.sh/agent-workflows.md`
 - OpenAPI 3.1: `https://api.metagraph.sh/metagraph/openapi.json`
 - Source: `https://github.com/JSONbored/metagraphed`

@@ -1503,6 +1503,7 @@ const llmsHeader = [
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
   `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
+  `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
   `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}). Content-negotiated via Accept, or append .rss/.atom/.json.`,
@@ -1756,6 +1757,12 @@ const agentResourcesContent = {
       url: `${llmsApiBase}/agent.md`,
     },
     {
+      id: "agent-workflows",
+      title: "Agent workflows",
+      kind: "guide",
+      url: `${llmsApiBase}/agent-workflows.md`,
+    },
+    {
       id: "skill",
       title: "Bittensor skill",
       kind: "skill",
@@ -1868,6 +1875,7 @@ const sitemapUrls = [
   `${llmsApiBase}/llms.txt`,
   `${llmsApiBase}/llms-full.txt`,
   `${llmsApiBase}/agent.md`,
+  `${llmsApiBase}/agent-workflows.md`,
   `${llmsApiBase}/auth.md`,
   `${llmsApiBase}/metagraph/openapi.json`,
   `${llmsApiBase}/.well-known/api-catalog`,
@@ -1925,6 +1933,7 @@ Anonymous abuse-control limits apply per client IP (no key raises them):
 ## Discovery
 
 - Machine index: ${llmsApiBase}/llms.txt
+- Agent workflows: ${llmsApiBase}/agent-workflows.md
 - API catalog (RFC 9727): ${llmsApiBase}/.well-known/api-catalog
 - OpenAPI 3.1: ${llmsApiBase}/metagraph/openapi.json
 - MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
