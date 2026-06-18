@@ -783,26 +783,36 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
-      return true;
+      return [];
     }
 
     const host = normalizeHostname(url.hostname);
     if (isIP(host)) {
-      return false;
+      return [{ address: host, family: isIP(host) }];
     }
 
     const records = await resolver(host, { all: true, verbatim: true });
-    return (
+    if (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))
-    );
+    ) {
+      return [];
+    }
+    return records.map((record) => ({
+      address: record.address,
+      family: record.family,
+    }));
   } catch {
-    return true;
+    return [];
   }
+}
+
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+  return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
 }
 
 function isUnsafeHostname(host) {

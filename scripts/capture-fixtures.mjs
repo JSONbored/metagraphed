@@ -4,13 +4,15 @@
 // Network step (runs in the refresh pipeline, NOT the deterministic build):
 // writes R2-staging fixtures/{surface_id}.json that build-artifacts re-attaches
 // and indexes. Mirrors snapshot-openapi.mjs's safe-fetch + DoS bounds.
+import http from "node:http";
+import https from "node:https";
 import {
   artifactOutputPath,
   buildTimestamp,
   flattenSurfaces,
   isJsonContentType,
-  isUnsafeResolvedUrl,
   isUnsafeUrl,
+  resolvePublicUrlAddresses,
   loadSubnets,
   sanitizeFixtureBody,
   writeJson,
@@ -56,54 +58,52 @@ async function mapLimit(items, limit, fn) {
 }
 
 async function fetchSample(url, redirectCount = 0) {
-  if (
-    typeof url !== "string" ||
-    isUnsafeUrl(url) ||
-    (await isUnsafeResolvedUrl(url))
-  ) {
+  if (typeof url !== "string" || isUnsafeUrl(url)) {
+    return { ok: false, error: "unsafe or invalid url" };
+  }
+  const resolvedAddresses = await resolvePublicUrlAddresses(url);
+  if (resolvedAddresses.length === 0) {
     return { ok: false, error: "unsafe or invalid url" };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "metagraphed-fixture-capture/0.0",
-      },
-      redirect: "manual",
-      signal: controller.signal,
-    });
-    const location = response.headers.get("location");
+    const response = await pinnedFetch(
+      url,
+      resolvedAddresses,
+      controller.signal,
+    );
+    const location = headerValue(response, "location");
     if (
-      [301, 302, 303, 307, 308].includes(response.status) &&
+      [301, 302, 303, 307, 308].includes(response.statusCode) &&
       location &&
       redirectCount < 5
     ) {
       const target = new URL(location, url).toString();
-      await response.body?.cancel();
+      response.destroy();
       return fetchSample(target, redirectCount + 1);
     }
-    const contentType = response.headers.get("content-type") || "";
-    if (!response.ok || !isJsonContentType(contentType)) {
-      await response.body?.cancel();
+    const contentType = headerValue(response, "content-type") || "";
+    const ok = response.statusCode >= 200 && response.statusCode < 300;
+    if (!ok || !isJsonContentType(contentType)) {
+      response.destroy();
       return {
         ok: false,
-        status: response.status,
-        error: response.ok ? "non-json response" : `http ${response.status}`,
+        status: response.statusCode,
+        error: ok ? "non-json response" : `http ${response.statusCode}`,
       };
     }
     const contentLength = parseContentLength(
-      response.headers.get("content-length"),
+      headerValue(response, "content-length"),
     );
     if (contentLength !== null && contentLength > MAX_BYTES) {
-      await response.body?.cancel();
+      response.destroy();
       return { ok: false, error: "response exceeds byte limit" };
     }
     const raw = await readBoundedResponseText(response, MAX_BYTES);
     return {
       ok: true,
-      status: response.status,
+      status: response.statusCode,
       content_type: contentType,
       body: JSON.parse(raw),
     };
@@ -114,6 +114,39 @@ async function fetchSample(url, redirectCount = 0) {
   }
 }
 
+function pinnedFetch(url, resolvedAddresses, signal) {
+  const parsed = new URL(url);
+  const client = parsed.protocol === "https:" ? https : http;
+  let nextAddress = 0;
+
+  return new Promise((resolve, reject) => {
+    const request = client.request(
+      parsed,
+      {
+        headers: {
+          accept: "application/json",
+          "user-agent": "metagraphed-fixture-capture/0.0",
+        },
+        lookup: (_hostname, _options, callback) => {
+          const record =
+            resolvedAddresses[nextAddress % resolvedAddresses.length];
+          nextAddress += 1;
+          callback(null, record.address, record.family);
+        },
+        signal,
+      },
+      resolve,
+    );
+    request.on("error", reject);
+    request.end();
+  });
+}
+
+function headerValue(response, name) {
+  const value = response.headers[name];
+  return Array.isArray(value) ? value[0] : value || null;
+}
+
 function parseContentLength(value) {
   if (!value || !/^\d+$/.test(value)) {
     return null;
@@ -122,40 +155,21 @@ function parseContentLength(value) {
 }
 
 async function readBoundedResponseText(response, maxBytes) {
-  if (!response.body) {
-    return "";
-  }
-
-  const reader = response.body.getReader();
   const chunks = [];
   let receivedBytes = 0;
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      receivedBytes += value.byteLength;
-      if (receivedBytes > maxBytes) {
-        await reader.cancel();
-        throw new FixtureCaptureLimitError(
-          `JSON response exceeds ${maxBytes} byte limit`,
-        );
-      }
-      chunks.push(value);
+  for await (const chunk of response) {
+    receivedBytes += chunk.byteLength;
+    if (receivedBytes > maxBytes) {
+      response.destroy();
+      throw new FixtureCaptureLimitError(
+        `JSON response exceeds ${maxBytes} byte limit`,
+      );
     }
-  } finally {
-    reader.releaseLock();
+    chunks.push(chunk);
   }
 
-  const body = new Uint8Array(receivedBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(body);
+  return Buffer.concat(chunks, receivedBytes).toString("utf8");
 }
 
 const subnets = await loadSubnets();

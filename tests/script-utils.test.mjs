@@ -35,6 +35,7 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
+  resolvePublicUrlAddresses,
   latestArtifactDate,
   listJsonFiles,
   listJsonFilesRecursive,
@@ -1393,6 +1394,13 @@ describe("script utility contracts", () => {
     assert.equal(
       await isUnsafeResolvedUrl("https://metagraph.example", publicResolver),
       false,
+    );
+    assert.deepEqual(
+      await resolvePublicUrlAddresses(
+        "https://metagraph.example",
+        publicResolver,
+      ),
+      [{ address: "93.184.216.34", family: 4 }],
     );
     assert.equal(
       await isUnsafeResolvedUrl("https://empty.example", emptyResolver),
