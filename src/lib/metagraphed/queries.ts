@@ -20,6 +20,7 @@ import type {
   GlobalIncidentSurface,
   HealthState,
   HealthSummary,
+  Lineage,
   PrimaryAppSurface,
   ReadinessSummary,
   Provider,
@@ -182,6 +183,18 @@ export const coverageQuery = () =>
       return { data: normalizeCoverage(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
+  });
+
+export const lineageQuery = () =>
+  queryOptions({
+    queryKey: k("lineage"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<Lineage>>("/api/v1/lineage", { signal });
+      const d = res.data ?? {};
+      const links = Array.isArray(d.links) ? d.links : [];
+      return { data: { ...d, links } as Lineage, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_LONG,
   });
 
 export const freshnessQuery = () =>

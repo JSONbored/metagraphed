@@ -28,6 +28,7 @@ import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
+import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -36,6 +37,7 @@ import {
   subnetHealthQuery,
   subnetCandidatesQuery,
   fixturesIndexQuery,
+  lineageQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -284,6 +286,10 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
           answer, up top before the endpoint/surface detail. */}
       <ReadinessScorecard profile={profile} />
 
+      {/* #1113: cross-network lineage — renders only when this subnet is paired
+          with a testnet/mainnet counterpart. */}
+      <SubnetLineageSection netuid={netuid} />
+
       <SectionAnchor
         id="endpoints-glance"
         title="Endpoints at a glance"
@@ -327,6 +333,48 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <GapsPanel profile={profile} compact />
       ) : null}
     </>
+  );
+}
+
+// #1113: cross-network lineage. Non-blocking (useQuery, shared cache across all
+// subnet pages); renders nothing unless this netuid is paired with a counterpart.
+function SubnetLineageSection({ netuid }: { netuid: number }) {
+  const { data: lineageRes } = useQuery(lineageQuery());
+  const lineage = lineageRes?.data;
+  const link = lineage?.links.find(
+    (l) => l.mainnet_netuid === netuid || l.testnet_netuid === netuid,
+  );
+  if (!lineage || !link) return null;
+
+  const onMainnet = link.mainnet_netuid === netuid;
+  const counterpartName = onMainnet ? link.testnet_name : link.mainnet_name;
+  const counterpartNetuid = onMainnet ? link.testnet_netuid : link.mainnet_netuid;
+  const selfNetwork = onMainnet ? lineage.source_network : lineage.target_network;
+  const counterpartNetwork = onMainnet ? lineage.target_network : lineage.source_network;
+  const matchedBy = link.matched_by?.replace(/_/g, " ");
+
+  return (
+    <SectionAnchor
+      id="lineage"
+      title="Lineage"
+      subtitle={`Paired across networks — ${selfNetwork} ↔ ${counterpartNetwork}.`}
+      info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
+    >
+      <section className="rounded-lg border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="mg-label">{counterpartNetwork} counterpart</span>
+          <span className="font-display text-sm font-semibold text-ink-strong">
+            {counterpartName ?? `Subnet ${counterpartNetuid}`}
+          </span>
+          <span className="font-mono text-xs text-ink-muted">#{counterpartNetuid}</span>
+        </div>
+        {matchedBy ? (
+          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-mono text-ink-muted">
+            matched by {matchedBy}
+          </span>
+        ) : null}
+      </section>
+    </SectionAnchor>
   );
 }
 
@@ -741,6 +789,11 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
                     <TimeAgo at={s.updated_at} />
                   </span>
                 </div>
+                {!compact ? (
+                  <div className="mt-2 border-t border-border pt-2">
+                    <VerifySurfaceButton surfaceId={s.id} />
+                  </div>
+                ) : null}
                 {!compact && fixtureMap.has(s.id) ? (
                   <SurfaceFixture surfaceId={s.id} entry={fixtureMap.get(s.id)!} />
                 ) : null}

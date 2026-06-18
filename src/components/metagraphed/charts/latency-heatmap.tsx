@@ -18,8 +18,16 @@ interface Cell {
   okCount: number;
   warnCount: number;
   downCount: number;
-  avgLatency: number | null;
+  p50Latency: number | null;
   endpoints: Endpoint[];
+}
+
+/** Median (p50) of the supplied latencies, or null when none are numeric. */
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
 const KIND_ORDER = ["rpc", "wss", "archive", "api", "sse", "grpc", "other"];
@@ -71,8 +79,6 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
         const latencies = arr
           .map((e) => e.latency_ms)
           .filter((v): v is number => typeof v === "number");
-        const avg =
-          latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : null;
         return {
           provider: p,
           kind: k,
@@ -80,7 +86,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
           okCount: arr.filter((e) => e.health === "ok").length,
           warnCount: arr.filter((e) => e.health === "warn").length,
           downCount: arr.filter((e) => e.health === "down").length,
-          avgLatency: avg,
+          p50Latency: median(latencies),
           endpoints: arr,
         };
       });
@@ -101,7 +107,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Latency heatmap · provider × kind · cell = avg p50 of tracked endpoints
+          Latency heatmap · provider × kind · cell = p50 latency of tracked endpoints
         </div>
         <div className="flex items-center gap-2.5 text-[10px] font-mono text-ink-muted">
           <Bucket cls="bg-health-ok/80" label="<150ms" />
@@ -156,10 +162,10 @@ function Cell({ cell }: { cell: Cell }) {
   if (cell.count === 0) {
     return <div className="h-7 rounded bg-ink-subtle/10" aria-hidden />;
   }
-  const tone = latencyTone(cell.avgLatency, cell.downCount > 0);
+  const tone = latencyTone(cell.p50Latency, cell.downCount > 0);
   const title =
     `${cell.provider} · ${cell.kind} · ${cell.count} endpoint${cell.count > 1 ? "s" : ""}` +
-    (cell.avgLatency != null ? ` · avg ${Math.round(cell.avgLatency)}ms` : "") +
+    (cell.p50Latency != null ? ` · p50 ${Math.round(cell.p50Latency)}ms` : "") +
     (cell.downCount ? ` · ${cell.downCount} down` : "") +
     (cell.warnCount ? ` · ${cell.warnCount} warn` : "");
   return (
@@ -170,7 +176,7 @@ function Cell({ cell }: { cell: Cell }) {
         tone,
       )}
     >
-      {cell.avgLatency != null ? `${Math.round(cell.avgLatency)}` : cell.count}
+      {cell.p50Latency != null ? `${Math.round(cell.p50Latency)}` : cell.count}
     </div>
   );
 }

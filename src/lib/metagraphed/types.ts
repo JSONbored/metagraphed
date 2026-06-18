@@ -433,3 +433,34 @@ export interface AdapterSnapshot {
   metrics?: Record<string, unknown>;
   [key: string]: unknown;
 }
+
+export interface LineageLink {
+  mainnet_netuid: number;
+  mainnet_name?: string;
+  mainnet_slug?: string;
+  testnet_netuid: number;
+  testnet_name?: string;
+  testnet_slug?: string;
+  /** How the pair was matched, e.g. "chain_name" or "github_repo". */
+  matched_by?: string;
+}
+
+export interface Lineage {
+  source_network: string;
+  target_network: string;
+  link_count: number;
+  graduated_subnet_count: number;
+  testnet_only_count: number;
+  broken_link_count: number;
+  links: LineageLink[];
+}
+
+/** Result of an on-demand re-probe via /api/v1/surfaces/{id}/verify. */
+export interface VerifyResult {
+  status?: HealthState | string;
+  classification?: string;
+  latency_ms?: number;
+  status_code?: number;
+  verified_at?: string;
+  from_cache?: boolean;
+}
