@@ -793,6 +793,12 @@ export const PUBLIC_ARTIFACTS = [
     "HealthTrendsArtifact",
   ),
   artifact(
+    "health-trends-bulk",
+    "/metagraph/health/trends.json",
+    "Compact all-subnet 7d/30d daily uptime + latency trend matrix. Served live from D1 at /api/v1/health/trends (no static file).",
+    "BulkHealthTrendsArtifact",
+  ),
+  artifact(
     "health-percentiles",
     "/metagraph/health/percentiles/{netuid}.json",
     "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
@@ -1327,6 +1333,15 @@ export const API_ROUTES = [
     ["health", "subnets"],
     listQuery("health-surfaces", { exclude: ["netuid"] }),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "health-trends-bulk",
+    "GET",
+    "/api/v1/health/trends",
+    "/metagraph/health/trends.json",
+    "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+    "short",
+    ["health", "analytics"],
   ),
   route(
     "subnet-health-trends",

@@ -471,6 +471,12 @@ describe("analytics routes (cold local D1)", () => {
       hungEnv,
     );
     assert.equal(trends.status, 200);
+    const bulkTrends = await getJson(
+      "https://api.metagraph.sh/api/v1/health/trends",
+      hungEnv,
+    );
+    assert.equal(bulkTrends.status, 200);
+    assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
   });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
     const { body } = await getJson(

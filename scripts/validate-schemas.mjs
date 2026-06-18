@@ -22,6 +22,7 @@ import {
 // per-route response validation, not by validating files here.
 const COMPUTED_ARTIFACTS = new Set([
   "health-trends",
+  "health-trends-bulk",
   "health-percentiles",
   "health-incidents",
   "subnet-trajectory",

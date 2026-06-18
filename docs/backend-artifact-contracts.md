@@ -71,6 +71,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
 - `/metagraph/agent-catalog.json`: compact index of subnets exposing callable services for AI agents (per subnet: service kinds + callable count). Committed.
 - `/metagraph/agent-catalog/{netuid}.json`: per-subnet agent capability catalog — each callable service with base URL, auth, machine-readable schema, and build-time health/eligibility. R2-backed.
+- `/metagraph/health/trends.json`: schema for the compact all-subnet 7d/30d daily uptime + latency trend matrix served live from D1 at `GET /api/v1/health/trends` (no static file is written).
 - `/metagraph/health/trends/{netuid}.json`: schema for the computed 7d/30d uptime + latency trends served live from D1 at `GET /api/v1/subnets/{netuid}/health/trends` (no static file is written).
 - `/metagraph/health/percentiles/{netuid}.json`: schema for per-surface latency percentiles (p50/p95/p99) served live from D1 at `GET /api/v1/subnets/{netuid}/health/percentiles` (no static file).
 - `/metagraph/health/incidents/{netuid}.json`: schema for per-surface SLA + reconstructed downtime incidents served live from D1 at `GET /api/v1/subnets/{netuid}/health/incidents` (no static file).
@@ -138,6 +139,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/health`: fetch global health summary.
 - `/api/v1/health/history/{date}`: fetch compact daily health history.
 - `/api/v1/subnets/{netuid}/health`: fetch health detail for one subnet.
+- `/api/v1/health/trends`: fetch compact all-subnet 7d/30d daily uptime and latency trends (live from D1).
 - `/api/v1/freshness`: fetch freshness and staleness state.
 - `/api/v1/source-health`: fetch upstream source health.
 - `/api/v1/evidence`: fetch public evidence ledger.

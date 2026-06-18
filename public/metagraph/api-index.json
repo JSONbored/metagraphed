@@ -310,6 +310,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
@@ -3367,6 +3374,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/health/trends.json",
+      "cache": "short",
+      "description": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+      "id": "health-trends-bulk",
+      "method": "GET",
+      "path": "/api/v1/health/trends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",

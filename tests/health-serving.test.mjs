@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import {
   OPERATIONAL_KINDS,
   buildGlobalHealth,
+  formatBulkTrends,
   formatGlobalIncidents,
   formatTrends,
   mergeFreshness,
@@ -674,6 +675,118 @@ describe("formatTrends (additional paths)", () => {
   });
 });
 
+describe("formatBulkTrends", () => {
+  test("groups daily rows by subnet and sorts subnets/points", () => {
+    const out = formatBulkTrends({
+      observedAt: "2026-06-11T00:00:00.000Z",
+      windowDays: { "7d": 7, "30d": 30 },
+      windows: {
+        "7d": [
+          {
+            netuid: 8,
+            date: "2026-06-10",
+            total: 4,
+            ok_count: 2,
+            avg_latency_ms: 10.2,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: 10,
+            ok_count: 9,
+            avg_latency_ms: 50.4,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 5,
+            ok_count: 5,
+            avg_latency_ms: 30,
+          },
+        ],
+        "30d": [],
+      },
+    });
+
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.source, "live-cron-prober");
+    assert.equal(out.windows["7d"].days, 7);
+    assert.equal(out.windows["7d"].granularity, "1d");
+    assert.equal(out.windows["7d"].subnet_count, 2);
+    assert.deepEqual(
+      out.windows["7d"].subnets.map((entry) => entry.netuid),
+      [7, 8],
+    );
+
+    const sn7 = out.windows["7d"].subnets[0];
+    assert.equal(sn7.samples, 15);
+    assert.equal(sn7.uptime_ratio, Number((14 / 15).toFixed(4)));
+    assert.equal(sn7.avg_latency_ms, 44);
+    assert.deepEqual(
+      sn7.points.map((point) => point.date),
+      ["2026-06-10", "2026-06-11"],
+    );
+    assert.equal(sn7.points[1].uptime_ratio, 0.9);
+    assert.equal(sn7.points[1].avg_latency_ms, 50);
+    assert.equal(out.windows["30d"].subnet_count, 0);
+  });
+
+  test("empty or invalid rows keep the schema-stable cold shape", () => {
+    const out = formatBulkTrends({
+      windows: {
+        "7d": [
+          { netuid: -1, date: "2026-06-10", total: 1, ok_count: 1 },
+          { netuid: 7, date: "not-a-date", total: 1, ok_count: 1 },
+        ],
+      },
+      windowDays: { "7d": 7 },
+    });
+    assert.equal(out.observed_at, null);
+    assert.equal(out.windows["7d"].days, 7);
+    assert.equal(out.windows["7d"].subnet_count, 0);
+    assert.deepEqual(out.windows["7d"].subnets, []);
+  });
+
+  test("covers zero-sample and omitted-window fallback branches", () => {
+    const empty = formatBulkTrends({});
+    assert.deepEqual(empty.windows, {});
+
+    const out = formatBulkTrends({
+      windows: {
+        "7d": null,
+        cold: [
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 0,
+            ok_count: undefined,
+            avg_latency_ms: null,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: undefined,
+            ok_count: undefined,
+            avg_latency_ms: "not-a-number",
+          },
+          { netuid: "bad", date: "2026-06-10", total: 1, ok_count: 1 },
+          { netuid: 9, total: 1, ok_count: 1 },
+        ],
+      },
+    });
+
+    assert.equal(out.windows["7d"].days, 0);
+    assert.equal(out.windows["7d"].subnet_count, 0);
+    const sn7 = out.windows.cold.subnets[0];
+    assert.equal(sn7.samples, 0);
+    assert.equal(sn7.uptime_ratio, null);
+    assert.equal(sn7.avg_latency_ms, null);
+    assert.equal(sn7.points[0].uptime_ratio, null);
+    assert.equal(sn7.points[0].avg_latency_ms, null);
+    assert.equal(sn7.points[1].avg_latency_ms, null);
+  });
+});
+
 // --- Worker integration: the LIVE path (mock KV + D1) -------------------------
 function kvWith(entries) {
   return {
@@ -744,6 +857,44 @@ describe("worker live health serving", () => {
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, 0.99);
     assert.equal(body.data.source, "live-cron-prober");
+  });
+
+  test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: d1With([
+        {
+          netuid: 8,
+          date: "2026-06-10",
+          total: 10,
+          ok_count: 8,
+          avg_latency_ms: 30,
+        },
+        {
+          netuid: 7,
+          date: "2026-06-10",
+          total: 5,
+          ok_count: 5,
+          avg_latency_ms: 20,
+        },
+      ]),
+      METAGRAPH_CONTROL: kvWith({
+        "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
+      }),
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.meta.artifact_path, "/metagraph/health/trends.json");
+    assert.equal(body.data.observed_at, "2026-06-11T00:00:00.000Z");
+    assert.equal(body.data.windows["7d"].days, 7);
+    assert.deepEqual(
+      body.data.windows["7d"].subnets.map((entry) => entry.netuid),
+      [7, 8],
+    );
+    assert.equal(
+      body.data.windows["7d"].subnets[1].points[0].uptime_ratio,
+      0.8,
+    );
   });
 });
 

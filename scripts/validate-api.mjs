@@ -48,6 +48,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/health/trends",
+    (body) => {
+      assert.equal(body.data.source, "live-cron-prober");
+      assert.equal(typeof body.data.windows, "object");
+      assert.equal(Array.isArray(body.data.windows["7d"].subnets), true);
+      assert.equal(typeof body.data.windows["7d"].subnet_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/health/percentiles",
     (body) => {
       assert.equal(body.data.netuid, 7);

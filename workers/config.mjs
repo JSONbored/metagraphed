@@ -12,10 +12,12 @@ export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Distinct minute (odd) so it never collides with the 2-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
-// Trend windows for /api/v1/subnets/{netuid}/health/trends.
+// Trend windows for /api/v1/subnets/{netuid}/health/trends and
+// /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
   /^\/metagraph\/health\/(?:latest\.json|summary\.json|subnets\/\d+\.json)$/;
 export const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
+export const BULK_TRENDS_PATH_PATTERN = /^\/api\/v1\/health\/trends$/;
 export const TRENDS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
 export const PERCENTILES_PATH_PATTERN =

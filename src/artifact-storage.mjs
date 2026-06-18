@@ -27,6 +27,7 @@ const R2_ONLY_PATTERNS = [
   // Health trends are computed live from D1 by the Worker, never written as a
   // file. Marked R2-only so the contract maps a schema to the route without the
   // build expecting a committed/staged artifact.
+  /^health\/trends\.json$/,
   /^health\/trends\/(?:\d+|\{netuid\})\.json$/,
   // AI-4 analytics: also computed live from D1, never written as files.
   /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,

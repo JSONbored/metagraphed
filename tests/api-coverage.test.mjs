@@ -1071,6 +1071,52 @@ describe("health trends D1 error handling", () => {
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
+
+  test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  throw new Error("d1 down");
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["7d"].subnets, []);
+  });
+
+  test("bulk route treats a D1 response without results as empty", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {};
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["30d"].subnets, []);
+  });
 });
 
 // --- readAsset with no ASSETS binding ----------------------------------------

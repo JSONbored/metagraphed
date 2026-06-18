@@ -52,6 +52,7 @@ import {
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
 import {
   buildGlobalHealth,
+  formatBulkTrends,
   formatGlobalIncidents,
   formatIncidents,
   formatLeaderboards,
@@ -87,6 +88,7 @@ import {
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
+  BULK_TRENDS_PATH_PATTERN,
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
@@ -352,6 +354,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     // D1-backed health trends (slug-aware after resolution). Special-handled
     // rather than artifact-backed, like /api/v1/events.
+    const bulkTrendsMatch = BULK_TRENDS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (bulkTrendsMatch) {
+      return handleBulkHealthTrends(request, env);
+    }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
       return handleHealthTrends(request, env, Number(trendsMatch[1]));
@@ -422,6 +430,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname.startsWith("/api/v1/webhooks/") ||
+    BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
     INCIDENTS_PATH_PATTERN.test(pathname) ||
@@ -1073,6 +1082,68 @@ async function handleApiRequest(
     ctx?.waitUntil?.(overlayCache.put(overlayCacheKey, response.clone()));
   }
   return response;
+}
+
+// D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
+// compact matrix feed for UI dashboards and agents, so it groups by netuid/day
+// instead of returning every surface series.
+async function handleBulkHealthTrends(request, env) {
+  const db = env.METAGRAPH_HEALTH_DB;
+  const nowMs = Date.now();
+  const windows = {};
+  const windowRows = await Promise.all(
+    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+      if (!db?.prepare) {
+        return [label, []];
+      }
+      try {
+        const result = await withTimeout(
+          db
+            .prepare(
+              `SELECT netuid,
+                    date(checked_at / 1000, 'unixepoch') AS date,
+                    COUNT(*) AS total,
+                    SUM(ok) AS ok_count,
+                    AVG(latency_ms) AS avg_latency_ms
+             FROM surface_checks
+             WHERE checked_at >= ?
+             GROUP BY netuid, date
+             ORDER BY netuid, date`,
+            )
+            .bind(nowMs - days * DAY_MS)
+            .all(),
+          d1TimeoutMs(env),
+        );
+        return [label, result?.results || []];
+      } catch {
+        return [label, []];
+      }
+    }),
+  );
+  for (const [label, rows] of windowRows) {
+    windows[label] = rows;
+  }
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatBulkTrends({
+    observedAt: meta?.last_run_at || null,
+    windows,
+    windowDays: HEALTH_TREND_WINDOWS,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/health/trends.json",
+        cache: "short",
+        contract_version: contractVersion(env),
+        generated_at: data.observed_at,
+        published_at: await publishedAt(env),
+        source: "live-cron-prober",
+      },
+    },
+    "short",
+  );
 }
 
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational

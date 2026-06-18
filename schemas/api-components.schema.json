@@ -753,6 +753,135 @@
           }
         ]
       },
+      "BulkHealthTrendsArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "granularity": {
+                  "enum": [
+                    "1d"
+                  ],
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "subnets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "minimum": 0,
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "netuid": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "points": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "avg_latency_ms": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "date": {
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                              "type": "string"
+                            },
+                            "samples": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "uptime_ratio": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "date",
+                            "samples",
+                            "uptime_ratio",
+                            "avg_latency_ms"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "uptime_ratio": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "netuid",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms",
+                      "points"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "days",
+                "granularity",
+                "subnet_count",
+                "subnets"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "windows"
+        ],
+        "type": "object"
+      },
       "CacheProfile": {
         "enum": [
           "short",

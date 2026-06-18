@@ -361,6 +361,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). */
+        get: operations["healthTrendsBulk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidents": {
         parameters: {
             query?: never;
@@ -1222,6 +1239,31 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        BulkHealthTrendsArtifact: {
+            observed_at?: string | null;
+            schema_version: number;
+            source: string;
+            windows: {
+                [key: string]: {
+                    days: number;
+                    /** @enum {string} */
+                    granularity: "1d";
+                    subnet_count: number;
+                    subnets: {
+                        avg_latency_ms: number | null;
+                        netuid: number;
+                        points: {
+                            avg_latency_ms: number | null;
+                            date: string;
+                            samples: number;
+                            uptime_ratio: number | null;
+                        }[];
+                        samples: number;
+                        uptime_ratio: number | null;
+                    }[];
+                };
+            };
+        };
         /** @enum {unknown} */
         CacheProfile: "short" | "standard" | "static";
         CandidatesArtifact: components["schemas"]["ArtifactBase"] & ({
@@ -6222,6 +6264,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    healthTrendsBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "windows": {
+                     *           "example": {
+                     *             "days": 1,
+                     *             "granularity": "1d",
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "avg_latency_ms": 120,
+                     *                 "netuid": 7,
+                     *                 "points": [
+                     *                   {
+                     *                     "avg_latency_ms": 120,
+                     *                     "date": "2026-06-01",
+                     *                     "samples": 1,
+                     *                     "uptime_ratio": 0.9966
+                     *                   }
+                     *                 ],
+                     *                 "samples": 1,
+                     *                 "uptime_ratio": 0.9966
+                     *               }
+                     *             ]
+                     *           }
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["BulkHealthTrendsArtifact"];
                     };
                 };
             };

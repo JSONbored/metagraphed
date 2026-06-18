@@ -767,6 +767,135 @@
           }
         ]
       },
+      "BulkHealthTrendsArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "granularity": {
+                  "enum": [
+                    "1d"
+                  ],
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "subnets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "minimum": 0,
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "netuid": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "points": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "avg_latency_ms": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "date": {
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                              "type": "string"
+                            },
+                            "samples": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "uptime_ratio": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "date",
+                            "samples",
+                            "uptime_ratio",
+                            "avg_latency_ms"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "uptime_ratio": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "netuid",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms",
+                      "points"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "days",
+                "granularity",
+                "subnet_count",
+                "subnets"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "windows"
+        ],
+        "type": "object"
+      },
       "CacheProfile": {
         "enum": [
           "short",
@@ -13902,6 +14031,149 @@
         "summary": "Fetch compact daily health history.",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/health/trends": {
+      "get": {
+        "operationId": "healthTrendsBulk",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "source": "live-cron-prober",
+                    "windows": {
+                      "example": {
+                        "days": 1,
+                        "granularity": "1d",
+                        "subnet_count": 1,
+                        "subnets": [
+                          {
+                            "avg_latency_ms": 120,
+                            "netuid": 7,
+                            "points": [
+                              {
+                                "avg_latency_ms": 120,
+                                "date": "2026-06-01",
+                                "samples": 1,
+                                "uptime_ratio": 0.9966
+                              }
+                            ],
+                            "samples": 1,
+                            "uptime_ratio": 0.9966
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkHealthTrendsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+        "tags": [
+          "health",
+          "analytics"
         ]
       }
     },

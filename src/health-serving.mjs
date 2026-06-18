@@ -309,6 +309,91 @@ export function formatTrends({ netuid, observedAt, windows }) {
   };
 }
 
+// Format all-subnet daily aggregates for the matrix UI. This intentionally
+// keeps the bulk contract subnet-level instead of per-surface to bound payload
+// size while still exposing enough data for sparklines and uptime sorting.
+export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
+  const formatWindow = (rows, days) => {
+    const bySubnet = new Map();
+    for (const row of rows || []) {
+      const netuid = Number(row.netuid);
+      const date = String(row.date || "");
+      if (
+        !Number.isInteger(netuid) ||
+        netuid < 0 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      ) {
+        continue;
+      }
+      const samples = Math.max(0, Number(row.total) || 0);
+      const okCount = Math.max(0, Number(row.ok_count) || 0);
+      const latencyRaw =
+        row.avg_latency_ms == null ? null : Number(row.avg_latency_ms);
+      const avgLatency = Number.isFinite(latencyRaw)
+        ? Math.round(latencyRaw)
+        : null;
+
+      let entry = bySubnet.get(netuid);
+      if (!entry) {
+        entry = {
+          netuid,
+          samples: 0,
+          okCount: 0,
+          latencyTotal: 0,
+          latencySamples: 0,
+          points: [],
+        };
+        bySubnet.set(netuid, entry);
+      }
+
+      entry.samples += samples;
+      entry.okCount += okCount;
+      if (Number.isFinite(latencyRaw) && samples > 0) {
+        entry.latencyTotal += latencyRaw * samples;
+        entry.latencySamples += samples;
+      }
+      entry.points.push({
+        date,
+        samples,
+        uptime_ratio: samples ? round4(okCount / samples) : null,
+        avg_latency_ms: avgLatency,
+      });
+    }
+
+    const subnets = [...bySubnet.values()]
+      .map((entry) => ({
+        netuid: entry.netuid,
+        samples: entry.samples,
+        uptime_ratio: entry.samples
+          ? round4(entry.okCount / entry.samples)
+          : null,
+        avg_latency_ms: entry.latencySamples
+          ? Math.round(entry.latencyTotal / entry.latencySamples)
+          : null,
+        points: entry.points.sort((a, b) => a.date.localeCompare(b.date)),
+      }))
+      .sort((a, b) => a.netuid - b.netuid);
+
+    return {
+      days: Number(days) || 0,
+      granularity: "1d",
+      subnet_count: subnets.length,
+      subnets,
+    };
+  };
+
+  const windowsOut = {};
+  for (const [label, rows] of Object.entries(windows || {})) {
+    windowsOut[label] = formatWindow(rows, windowDays[label]);
+  }
+  return {
+    schema_version: 1,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    windows: windowsOut,
+  };
+}
+
 // --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
 
 // A gap larger than this between consecutive failing checks (probe cadence is

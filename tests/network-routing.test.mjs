@@ -91,6 +91,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
 
     for (const route of [
       "/api/v1/registry/leaderboards",
+      "/api/v1/health/trends",
       "/api/v1/subnets/7/health/trends",
     ]) {
       const bare = await get(env, route);
@@ -237,7 +238,11 @@ describe("multi-network routing prefix (Phase 1)", () => {
     );
     assert.equal(leaderboards.res.status, 404);
 
-    // Numeric per-subnet dynamic route (D1-backed) is mainnet-only too.
+    // D1-backed health trend routes are mainnet-only too.
+    const bulkTrends = await get(env, "/api/v1/testnet/health/trends");
+    assert.equal(bulkTrends.res.status, 404);
+    assert.equal(bulkTrends.body.meta.network, "testnet");
+
     const trends = await get(env, "/api/v1/testnet/subnets/7/health/trends");
     assert.equal(trends.res.status, 404);
     assert.equal(trends.body.meta.network, "testnet");
