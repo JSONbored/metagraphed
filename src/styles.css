@@ -67,6 +67,11 @@
      readiness-scorecard, rpc-proxy, and the agents route. */
   --spacing-section: 3rem;
   --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent);
+
+  /* Layout geometry tokens — single source of truth for structural offsets. */
+  --spacing-nav: 3.5rem;           /* app header height (h-nav in app-shell) */
+  --spacing-sticky-offset: 6.5rem; /* nav + filter-bar height — sticky thead anchor */
+  --spacing-section-gap: 4rem;     /* between top-level page sections */
 }
 
 /* ============ LIGHT (default) — Bone + Ink ============ */
@@ -589,9 +594,9 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-mega-scrim {
   position: fixed;
-  /* Sit below the sticky app header (h-14) so navbar items remain hoverable
+  /* Sit below the sticky app header so navbar items remain hoverable
      while the panel is open. */
-  top: 3.5rem;
+  top: var(--spacing-nav);
   left: 0;
   right: 0;
   bottom: 0;

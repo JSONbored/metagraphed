@@ -47,7 +47,7 @@ function OverviewPage() {
     <AppShell>
       <HomeHero />
 
-      <section className="mt-16">
+      <section className="mt-section-gap">
         <SectionHeader
           eyebrow="What's tracked"
           title="Every public surface, in one registry."
@@ -58,7 +58,7 @@ function OverviewPage() {
 
       <LivePerformance />
 
-      <section className="mt-16">
+      <section className="mt-section-gap">
         <SectionHeader
           eyebrow="Pilots"
           title="Adapter-backed subnets"
@@ -82,7 +82,7 @@ function OverviewPage() {
         </div>
       </section>
 
-      <section className="mt-16">
+      <section className="mt-section-gap">
         <div className="flex items-end justify-between mb-6">
           <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
           <Link
@@ -100,7 +100,7 @@ function OverviewPage() {
         </QueryErrorBoundary>
       </section>
 
-      <section className="mt-16">
+      <section className="mt-section-gap">
         <SectionHeader
           eyebrow="For developers"
           title="Public, read-only, JSON-Schema canonical."

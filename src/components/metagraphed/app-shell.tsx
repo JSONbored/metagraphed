@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </a>
           {/* Top bar */}
           <header className="sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex h-14 items-center gap-3">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
                 className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}

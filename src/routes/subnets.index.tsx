@@ -338,7 +338,7 @@ function SubnetsTable() {
       ))}
       table={
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-[6.5rem] z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+          <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
             <tr>
               <th className="px-4 py-2.5">
                 <SortHeader

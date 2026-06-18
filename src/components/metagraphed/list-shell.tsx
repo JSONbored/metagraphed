@@ -22,7 +22,7 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at top-[6.5rem]
+  /** When true, the rendered table can stick its <thead> at top-sticky-offset
    *  (just under the sticky filter bar) because outer wrappers avoid
    *  creating a vertical scroll container. */
   stickyHeader = true,
@@ -45,8 +45,8 @@ export function ListShell({
     <div>
       <div
         className={classNames(
-          // Sticky filter bar. Offset matches header height (h-14).
-          "sticky top-14 z-20 -mx-4 md:mx-0 mb-3",
+          // Sticky filter bar. Offset matches header height (h-nav).
+          "sticky top-nav z-20 -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
