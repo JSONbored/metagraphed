@@ -1001,6 +1001,10 @@ describe("sanitizeFixtureBody (#352)", () => {
   test("redacts common compact and camelCase sensitive keys", () => {
     const out = sanitizeFixtureBody({
       accessToken: "access-token",
+      idToken: "id-token",
+      authToken: "auth-token",
+      clientSecret: "client-secret",
+      secretKey: "secret-key",
       sessionId: "session-id",
       cookieValue: "cookie-value",
       passwordHash: "password-hash",
@@ -1011,6 +1015,10 @@ describe("sanitizeFixtureBody (#352)", () => {
     });
 
     assert.equal(out.accessToken, "[redacted]");
+    assert.equal(out.idToken, "[redacted]");
+    assert.equal(out.authToken, "[redacted]");
+    assert.equal(out.clientSecret, "[redacted]");
+    assert.equal(out.secretKey, "[redacted]");
     assert.equal(out.sessionId, "[redacted]");
     assert.equal(out.cookieValue, "[redacted]");
     assert.equal(out.passwordHash, "[redacted]");

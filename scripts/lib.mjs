@@ -906,7 +906,7 @@ export function redactCredentialedUrls(value) {
 // might echo back. Match common separator-delimited, camelCase, and compact
 // spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed|id|auth|client|secret)(?:Token|Key|Id|Secret|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|authToken|idToken|clientSecret|secretKey|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
