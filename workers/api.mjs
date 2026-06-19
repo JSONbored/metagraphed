@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -160,6 +161,30 @@ function isStaticEdgeCacheEligible(matched, network) {
 // overlay output is fully determined by (contract_version, last_run_at) — the
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
 const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
+
+function canonicalOverlayCacheSearch(url, matched) {
+  const config = API_QUERY_COLLECTIONS[matched.queryCollection];
+  if (!config) return "";
+  const filterNames =
+    matched.queryFilterNames?.length > 0
+      ? matched.queryFilterNames
+      : Object.keys(config.filters);
+  const cacheableNames = [
+    "q",
+    "fields",
+    "limit",
+    "cursor",
+    "sort",
+    "order",
+    ...filterNames,
+  ];
+  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
+  for (const name of cacheableNames) {
+    const value = url.searchParams.get(name);
+    if (value !== null) canonicalUrl.searchParams.set(name, value);
+  }
+  return canonicalUrl.search;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -918,7 +943,7 @@ async function handleApiRequest(
       overlayCacheKey = new Request(
         `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${url.search}`,
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalOverlayCacheSearch(url, matched)}`,
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
