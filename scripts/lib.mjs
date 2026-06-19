@@ -960,6 +960,23 @@ export function sanitizeFixtureBody(
 // body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
 // stays lean and the one already-sanitized copy is served from a single place.
 // Returns null when there is no fixture, so callers omit the field entirely.
+export function fixtureCaptureFailureReason(error) {
+  const name = error?.name || null;
+  if (name === "SyntaxError") {
+    return "invalid json response";
+  }
+  if (name === "AbortError") {
+    return "request timed out";
+  }
+  if (name === "FixtureCaptureLimitError") {
+    return "response exceeds byte limit";
+  }
+  if (name === "TypeError") {
+    return "request failed";
+  }
+  return "capture failed";
+}
+
 export function surfaceFixtureReference(surfaceId, fixture) {
   if (!surfaceId || !fixture || typeof fixture !== "object") {
     return null;

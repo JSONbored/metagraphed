@@ -7,6 +7,7 @@
 import {
   artifactOutputPath,
   buildTimestamp,
+  fixtureCaptureFailureReason,
   flattenSurfaces,
   isJsonContentType,
   isUnsafeResolvedUrl,
@@ -108,7 +109,11 @@ async function fetchSample(url, redirectCount = 0) {
       body: JSON.parse(raw),
     };
   } catch (error) {
-    return { ok: false, error: error.message, error_class: error.name };
+    return {
+      ok: false,
+      error: fixtureCaptureFailureReason(error),
+      error_class: error.name,
+    };
   } finally {
     clearTimeout(timer);
   }
