@@ -397,6 +397,48 @@ export const subnetQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
+const READINESS_COMPONENT_KEYS = [
+  "has_callable_api",
+  "callable_now",
+  "documented",
+  "auth_clarity",
+  "profile_complete",
+  "active_lifecycle",
+] as const;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function normalizeReadiness(raw: unknown): ReadinessSummary | undefined {
+  if (!isPlainObject(raw)) return undefined;
+
+  const componentsRaw = raw.components;
+  let components: Record<string, boolean> | undefined;
+
+  if (isPlainObject(componentsRaw)) {
+    const normalizedComponents: Record<string, boolean> = {};
+    for (const key of READINESS_COMPONENT_KEYS) {
+      if (typeof componentsRaw[key] === "boolean") {
+        normalizedComponents[key] = componentsRaw[key];
+      }
+    }
+    if (Object.keys(normalizedComponents).length > 0) {
+      components = normalizedComponents;
+    }
+  }
+
+  const readiness: ReadinessSummary = {};
+  if (typeof raw.score === "number") readiness.score = raw.score;
+  if (typeof raw.readiness_version === "number")
+    readiness.readiness_version = raw.readiness_version;
+  if (components) readiness.components = components;
+
+  return Object.keys(readiness).length > 0 ? readiness : undefined;
+}
+
 function encodePathSegment(segment: string): string {
   return encodeURIComponent(segment);
 }
@@ -475,7 +517,7 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
       typeof profile.integration_readiness === "number"
         ? (profile.integration_readiness as number)
         : undefined,
-    readiness: profile.readiness as ReadinessSummary | undefined,
+    readiness: normalizeReadiness(profile.readiness),
     // counts
     surface_count: (profile.surface_count as number) ?? (subnet.surface_count as number),
     surfaces_count: (profile.surface_count as number) ?? (subnet.surface_count as number),
