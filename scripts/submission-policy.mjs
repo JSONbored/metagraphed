@@ -227,6 +227,7 @@ export function buildIssueIntakeReport({
 
   const auth = normalizeAuth(
     fields["does this interface require authentication?"] ||
+      fields["does this endpoint require authentication?"] ||
       fields.auth_required,
   );
   if (auth.value === null) {
