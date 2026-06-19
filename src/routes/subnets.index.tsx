@@ -102,14 +102,8 @@ function SubnetsPage() {
 }
 
 function SubnetsStatStrip() {
-  const coverage = (useSuspenseQuery(coverageQuery()).data.data ?? {}) as Record<
-    string,
-    number | undefined
-  >;
-  const health = (useSuspenseQuery(healthQuery()).data.data ?? {}) as Record<
-    string,
-    number | undefined
-  >;
+  const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
+  const health = useSuspenseQuery(healthQuery()).data.data ?? {};
   const active = coverage.netuids_active;
   const total = coverage.netuids_total;
   const adapter = coverage.adapter_backed;
@@ -122,21 +116,21 @@ function SubnetsStatStrip() {
       <StatTile
         icon={Network}
         eyebrow="Active subnets"
-        value={active ?? "—"}
-        hint={total ? `of ${total}` : undefined}
+        value={formatNumber(active)}
+        hint={total ? `of ${formatNumber(total)}` : undefined}
       />
       <StatTile
         icon={Radio}
         eyebrow="Adapter-backed"
-        value={adapter ?? "—"}
+        value={formatNumber(adapter)}
         hint="pilots"
         tone="accent"
       />
-      <StatTile icon={Layers} eyebrow="Manifested surfaces" value={manifested ?? "—"} />
+      <StatTile icon={Layers} eyebrow="Manifested surfaces" value={formatNumber(manifested)} />
       <StatTile
         icon={Activity}
         eyebrow="Healthy"
-        value={ok != null && totalH ? `${ok}/${totalH}` : "—"}
+        value={ok != null && totalH ? `${formatNumber(ok)}/${formatNumber(totalH)}` : "—"}
         tone={healthyOk ? "ok" : "default"}
       />
     </div>

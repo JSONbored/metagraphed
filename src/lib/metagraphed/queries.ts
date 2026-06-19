@@ -169,14 +169,16 @@ async function fetchDetail<T>(
 // currently always 0, so fall through to the first-party surface count for the
 // "manifested surfaces" tile rather than render a bare 0.
 function normalizeCoverage(raw: unknown): Coverage {
-  const d = (raw ?? {}) as Record<string, number | undefined>;
+  const d = (raw ?? {}) as Record<string, unknown>;
+  const num = (key: string) =>
+    typeof d[key] === "number" && Number.isFinite(d[key]) ? d[key] : undefined;
   return {
     ...(d as object),
-    netuids_total: d.netuids_total ?? d.chain_subnet_count,
-    netuids_active: d.netuids_active ?? d.application_subnet_count ?? d.probed_count,
-    adapter_backed: d.adapter_backed ?? d.first_party_subnet_count,
-    manifested: d.manifested ?? (d.manifested_count || undefined) ?? d.official_surface_count,
-    surfaces_total: d.surfaces_total ?? d.official_surface_count ?? d.surface_count,
+    netuids_total: num("netuids_total") ?? num("chain_subnet_count"),
+    netuids_active: num("netuids_active") ?? num("application_subnet_count") ?? num("probed_count"),
+    adapter_backed: num("adapter_backed") ?? num("first_party_subnet_count"),
+    manifested: num("manifested") ?? num("manifested_count") ?? num("official_surface_count"),
+    surfaces_total: num("surfaces_total") ?? num("official_surface_count") ?? num("surface_count"),
   } as Coverage;
 }
 
@@ -242,37 +244,34 @@ export const freshnessQuery = () =>
   });
 
 function normalizeHealthBlock(d: Record<string, unknown>): HealthSummary {
-  const sc = (d.status_counts as Record<string, number> | undefined) ?? undefined;
-  const cc = (d.classification_counts as Record<string, number> | undefined) ?? undefined;
-  const ok = (d.ok_count as number | undefined) ?? sc?.ok ?? (d.ok as number | undefined);
-  const warn =
-    (d.degraded_count as number | undefined) ?? sc?.degraded ?? (d.warn as number | undefined);
-  const down =
-    (d.failed_count as number | undefined) ?? sc?.failed ?? (d.down as number | undefined);
+  const num = (value: unknown) =>
+    typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  const sc = (d.status_counts as Record<string, unknown> | undefined) ?? undefined;
+  const cc = (d.classification_counts as Record<string, unknown> | undefined) ?? undefined;
+  const ok = num(d.ok_count) ?? num(sc?.ok) ?? num(d.ok);
+  const warn = num(d.degraded_count) ?? num(sc?.degraded) ?? num(d.warn);
+  const down = num(d.failed_count) ?? num(sc?.failed) ?? num(d.down);
   const unknown =
-    (d.unknown_count as number | undefined) ??
-    sc?.unknown ??
-    cc?.unsupported ??
-    (d.unknown as number | undefined);
+    num(d.unknown_count) ?? num(sc?.unknown) ?? num(cc?.unsupported) ?? num(d.unknown);
   const total =
-    (d.surface_count as number | undefined) ??
-    (d.total as number | undefined) ??
+    num(d.surface_count) ??
+    num(d.total) ??
     [ok, warn, down, unknown].reduce<number | undefined>(
       (acc, v) => (typeof v === "number" ? (acc ?? 0) + v : acc),
       undefined,
     );
   const uptime =
-    (d.uptime_24h as number | undefined) ??
+    num(d.uptime_24h) ??
     (typeof ok === "number" && typeof total === "number" && total > 0 ? ok / total : undefined);
   return {
+    ...d,
     ok,
     warn,
     down,
     unknown,
     total,
     uptime_24h: uptime,
-    generated_at: d.generated_at as string | undefined,
-    ...d,
+    generated_at: typeof d.generated_at === "string" ? d.generated_at : undefined,
   } as HealthSummary;
 }
 

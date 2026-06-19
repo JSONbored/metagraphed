@@ -385,6 +385,7 @@ export interface Coverage {
   netuids_total?: number;
   netuids_active?: number;
   manifested?: number;
+  surfaces_total?: number;
   probed?: number;
   native_only?: number;
   adapter_backed?: number;
