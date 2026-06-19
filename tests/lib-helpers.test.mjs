@@ -584,9 +584,15 @@ describe("backfilledIdentityUrl", () => {
       "https://curated.example/repo",
     );
   });
-  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+  test("preserves explicit curated null suppression", () => {
     assert.equal(
       backfilledIdentityUrl(null, "github.com/opentensor/bittensor"),
+      null,
+    );
+  });
+  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/opentensor/bittensor"),
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
@@ -596,10 +602,16 @@ describe("backfilledIdentityUrl", () => {
     );
   });
   test("rejects placeholder junk and unusable chain values", () => {
-    assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
-    assert.equal(backfilledIdentityUrl(null, "github.com/username/repo"), null);
-    assert.equal(backfilledIdentityUrl(null, null), null);
-    assert.equal(backfilledIdentityUrl(null, "not a url"), null);
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://deprecated.png"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/username/repo"),
+      null,
+    );
+    assert.equal(backfilledIdentityUrl(undefined, null), null);
+    assert.equal(backfilledIdentityUrl(undefined, "not a url"), null);
   });
 });
 

@@ -1044,13 +1044,14 @@ export function isPlaceholderIdentityUrl(value) {
 }
 
 // Resolve a subnet identity link (source_repo / website_url / logo_url):
-// curated overlay wins; otherwise fall back to the cleaned on-chain value;
-// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
-// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
-// generator and the reproducibility validator.
+// an explicit curated overlay value wins (including null suppression); otherwise
+// fall back to the cleaned on-chain value; otherwise null. Shared by
+// build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
+// the chain backfill can't drift between the generator and the reproducibility
+// validator.
 export function backfilledIdentityUrl(overlayValue, chainValue) {
-  if (overlayValue) {
-    return overlayValue;
+  if (overlayValue !== undefined) {
+    return overlayValue || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
