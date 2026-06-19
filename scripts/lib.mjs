@@ -775,6 +775,9 @@ export function isUnsafeUrl(value) {
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
+    if (url.username || url.password) {
+      return true;
+    }
 
     const host = normalizeHostname(url.hostname);
     return isUnsafeHostname(host);
@@ -783,26 +786,36 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
-      return true;
+      return [];
     }
 
     const host = normalizeHostname(url.hostname);
     if (isIP(host)) {
-      return false;
+      return [{ address: host, family: isIP(host) }];
     }
 
     const records = await resolver(host, { all: true, verbatim: true });
-    return (
+    if (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))
-    );
+    ) {
+      return [];
+    }
+    return records.map((record) => ({
+      address: record.address,
+      family: record.family,
+    }));
   } catch {
-    return true;
+    return [];
   }
+}
+
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+  return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
 }
 
 function isUnsafeHostname(host) {
@@ -906,7 +919,7 @@ export function redactCredentialedUrls(value) {
 // might echo back. Match common separator-delimited, camelCase, and compact
 // spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed|id|auth|client|secret)(?:Token|Key|Id|Secret|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|authToken|idToken|clientSecret|secretKey|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
@@ -960,6 +973,23 @@ export function sanitizeFixtureBody(
 // body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
 // stays lean and the one already-sanitized copy is served from a single place.
 // Returns null when there is no fixture, so callers omit the field entirely.
+export function fixtureCaptureFailureReason(error) {
+  const name = error?.name || null;
+  if (name === "SyntaxError") {
+    return "invalid json response";
+  }
+  if (name === "AbortError") {
+    return "request timed out";
+  }
+  if (name === "FixtureCaptureLimitError") {
+    return "response exceeds byte limit";
+  }
+  if (name === "TypeError") {
+    return "request failed";
+  }
+  return "capture failed";
+}
+
 export function surfaceFixtureReference(surfaceId, fixture) {
   if (!surfaceId || !fixture || typeof fixture !== "object") {
     return null;
@@ -1010,6 +1040,7 @@ export function normalizePublicUrl(value) {
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
       url.username ||
       url.password ||
+      isCredentialedUrl(url.toString()) ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
@@ -1044,13 +1075,14 @@ export function isPlaceholderIdentityUrl(value) {
 }
 
 // Resolve a subnet identity link (source_repo / website_url / logo_url):
-// curated overlay wins; otherwise fall back to the cleaned on-chain value;
-// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
-// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
-// generator and the reproducibility validator.
+// an explicit curated overlay value wins (including null suppression); otherwise
+// fall back to the cleaned on-chain value; otherwise null. Shared by
+// build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
+// the chain backfill can't drift between the generator and the reproducibility
+// validator.
 export function backfilledIdentityUrl(overlayValue, chainValue) {
-  if (overlayValue) {
-    return overlayValue;
+  if (overlayValue !== undefined) {
+    return overlayValue || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
@@ -1147,7 +1179,12 @@ const CONTACT_JUNK_VALUES = new Set([
   "-",
   "null",
 ]);
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_ATOM = "[A-Z0-9!#$%&\\'*+/=?^_`{|}~-]+";
+const EMAIL_RE = new RegExp(
+  `^${EMAIL_ATOM}(?:\\.${EMAIL_ATOM})*@` +
+    "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+  "i",
+);
 export function subnetContact(overlayContact) {
   if (typeof overlayContact !== "string") return null;
   const value = overlayContact.trim();

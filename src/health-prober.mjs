@@ -470,6 +470,14 @@ async function persistToD1(db, probed, runAt) {
          classification=excluded.classification, latency_ms=excluded.latency_ms,
          status_code=excluded.status_code, last_checked=excluded.last_checked,
          last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
+         updated_at=excluded.updated_at
+       ON CONFLICT(surface_id) DO UPDATE SET
+         surface_key=excluded.surface_key,
+         netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
+         provider=excluded.provider, status=excluded.status,
+         classification=excluded.classification, latency_ms=excluded.latency_ms,
+         status_code=excluded.status_code, last_checked=excluded.last_checked,
+         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
          updated_at=excluded.updated_at`,
     );
     const statements = [];
@@ -643,6 +651,15 @@ export async function rollupDailyUptime(env, overrides = {}) {
      GROUP BY COALESCE(surface_key, surface_id), netuid
      ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
        surface_id = excluded.surface_id,
+       netuid = excluded.netuid,
+       samples = excluded.samples,
+       ok_count = excluded.ok_count,
+       uptime_ratio = excluded.uptime_ratio,
+       avg_latency_ms = excluded.avg_latency_ms,
+       status = excluded.status,
+       updated_at = excluded.updated_at
+     ON CONFLICT(surface_id, day) DO UPDATE SET
+       surface_key = excluded.surface_key,
        netuid = excluded.netuid,
        samples = excluded.samples,
        ok_count = excluded.ok_count,
