@@ -362,11 +362,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (bulkTrendsMatch) {
-      return handleBulkHealthTrends(request, env);
+      return handleBulkHealthTrends(request, env, resolved.url);
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
-      return handleHealthTrends(request, env, Number(trendsMatch[1]));
+      return handleHealthTrends(
+        request,
+        env,
+        Number(trendsMatch[1]),
+        resolved.url,
+      );
     }
     const percentilesMatch = PERCENTILES_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1091,7 +1096,11 @@ async function handleApiRequest(
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
-async function handleBulkHealthTrends(request, env) {
+async function handleBulkHealthTrends(request, env, url) {
+  const queryError = noQueryParamsError(url);
+  if (queryError) {
+    return analyticsQueryError(queryError);
+  }
   const db = env.METAGRAPH_HEALTH_DB;
   const nowMs = Date.now();
   const windows = {};
@@ -1153,7 +1162,11 @@ async function handleBulkHealthTrends(request, env) {
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
-async function handleHealthTrends(request, env, netuid) {
+async function handleHealthTrends(request, env, netuid, url) {
+  const queryError = noQueryParamsError(url);
+  if (queryError) {
+    return analyticsQueryError(queryError);
+  }
   const db = env.METAGRAPH_HEALTH_DB;
   const nowMs = Date.now();
   const windows = {};
@@ -1212,6 +1225,16 @@ async function handleHealthTrends(request, env, netuid) {
     },
     "short",
   );
+}
+
+function noQueryParamsError(url) {
+  for (const key of url.searchParams.keys()) {
+    return {
+      parameter: key,
+      message: `${key} is not supported for this route.`,
+    };
+  }
+  return null;
 }
 
 function analyticsWindow(url) {

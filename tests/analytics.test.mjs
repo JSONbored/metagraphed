@@ -457,6 +457,32 @@ describe("analytics routes (cold local D1)", () => {
       assert.equal(body.error.code, "invalid_query");
     }
   });
+  test("trends rejects unsupported query parameters before D1", async () => {
+    let d1Calls = 0;
+    const countingEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind: () => ({ all: () => Promise.resolve({ results: [] }) }),
+          };
+        },
+      },
+    };
+    for (const path of [
+      "/api/v1/subnets/7/health/trends?r=nonce",
+      "/api/v1/health/trends?cacheBust=x",
+    ]) {
+      const { status, body } = await getJson(
+        `https://api.metagraph.sh${path}`,
+        countingEnv,
+      );
+      assert.equal(status, 400);
+      assert.equal(body.error.code, "invalid_query");
+    }
+    assert.equal(d1Calls, 0);
+  });
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
