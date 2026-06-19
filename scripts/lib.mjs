@@ -825,16 +825,25 @@ const SELF_DOMAIN = "metagraph.sh";
 // targets squats of our exact domain, not the generic "metagraph" Bittensor term
 // (a subnet legitimately named "…metagraph…" is unaffected).
 export function isBrandImpersonationUrl(value) {
-  let host;
+  let url;
   try {
-    host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
   if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
     return false;
   }
-  return /metagraph\.sh(?:\.|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host);
+
+  const userinfo = `${url.username}:${url.password}`.toLowerCase();
+  return (
+    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(
+      host,
+    ) ||
+    /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
+  );
 }
 
 function isUnsafeIpAddress(address) {
