@@ -827,17 +827,68 @@ export const subnetHealthQuery = (netuid: number) =>
     staleTime: STALE_SHORT,
   });
 
+function normalizeSurfaceLatencyPercentile(raw: unknown): SurfaceLatencyPercentiles | undefined {
+  if (!isPlainRecord(raw) || typeof raw.surface_id !== "string") return undefined;
+
+  const latency = isPlainRecord(raw.latency_ms) ? raw.latency_ms : {};
+  return {
+    surface_id: raw.surface_id,
+    samples: optionalNumber(raw.samples),
+    latency_ms: {
+      p50: optionalNumber(latency.p50),
+      p95: optionalNumber(latency.p95),
+      p99: optionalNumber(latency.p99),
+      avg: optionalNumber(latency.avg),
+      min: optionalNumber(latency.min),
+      max: optionalNumber(latency.max),
+    },
+  };
+}
+
+function normalizeSurfaceLatencyPercentiles(raw: unknown): SurfaceLatencyPercentiles[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((surface) => {
+    const normalized = normalizeSurfaceLatencyPercentile(surface);
+    return normalized ? [normalized] : [];
+  });
+}
+
+function normalizeSurfaceSla(raw: unknown): SurfaceSla | undefined {
+  if (!isPlainRecord(raw) || typeof raw.surface_id !== "string") return undefined;
+
+  return {
+    surface_id: raw.surface_id,
+    samples: optionalNumber(raw.samples),
+    uptime_ratio: optionalNumber(raw.uptime_ratio),
+    incident_count: optionalNumber(raw.incident_count),
+    downtime_ms: optionalNumber(raw.downtime_ms),
+    incidents: Array.isArray(raw.incidents) ? raw.incidents : undefined,
+  };
+}
+
+function normalizeSurfaceSlas(raw: unknown): SurfaceSla[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((surface) => {
+    const normalized = normalizeSurfaceSla(surface);
+    return normalized ? [normalized] : [];
+  });
+}
+
 // #1114: per-surface latency distribution (p50/p95/p99) over a 7d/30d window,
 // computed live from D1.
 export const subnetHealthPercentilesQuery = (netuid: number, window = "7d") =>
   queryOptions({
     queryKey: k("subnet-health-percentiles", netuid, window),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<{ surfaces?: SurfaceLatencyPercentiles[] }>(
+      const res = await apiFetch<{ surfaces?: unknown }>(
         `/api/v1/subnets/${netuid}/health/percentiles`,
         { params: { window }, signal },
       );
-      return { data: res.data?.surfaces ?? [], meta: res.meta, url: res.url };
+      return {
+        data: normalizeSurfaceLatencyPercentiles(res.data?.surfaces),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_SHORT,
   });
@@ -848,11 +899,11 @@ export const subnetHealthIncidentsQuery = (netuid: number, window = "7d") =>
   queryOptions({
     queryKey: k("subnet-health-incidents", netuid, window),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<{ surfaces?: SurfaceSla[] }>(
+      const res = await apiFetch<{ surfaces?: unknown }>(
         `/api/v1/subnets/${netuid}/health/incidents`,
         { params: { window }, signal },
       );
-      return { data: res.data?.surfaces ?? [], meta: res.meta, url: res.url };
+      return { data: normalizeSurfaceSlas(res.data?.surfaces), meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
   });
