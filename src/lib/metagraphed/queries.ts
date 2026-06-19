@@ -35,12 +35,34 @@ import type {
   SurfaceLatencyPercentiles,
   SurfaceSla,
   Trajectory,
+  TrajectoryDelta,
+  TrajectoryPoint,
+  ReliabilityGrade,
+  SurfaceUptime,
+  SurfaceUptimeDay,
   Uptime,
 } from "./types";
 
 const STALE_SHORT = 30_000;
 const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
+
+const MAX_TRAJECTORY_POINTS = 104;
+const MAX_UPTIME_SURFACES = 500;
+const MAX_UPTIME_DAYS = 366;
+
+function coerceFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function coerceString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
 
 /** Include the selected chain network so SSR mainnet data cannot hydrate into a testnet view. */
 export const metagraphedQueryKey = (...parts: unknown[]) => [
@@ -106,6 +128,111 @@ function finiteTimestamp(value: unknown): string | undefined {
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeReliabilityGrade(raw: unknown): ReliabilityGrade | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  return {
+    score: coerceFiniteNumber(raw.score),
+    grade: coerceString(raw.grade),
+    uptime_ratio: coerceFiniteNumber(raw.uptime_ratio),
+    avg_latency_ms: coerceFiniteNumber(raw.avg_latency_ms),
+    sample_count: coerceFiniteNumber(raw.sample_count),
+    surface_count: coerceFiniteNumber(raw.surface_count),
+  };
+}
+
+function normalizeTrajectoryDelta(raw: unknown): TrajectoryDelta | null {
+  if (!isPlainRecord(raw)) return null;
+  return {
+    from_date: coerceString(raw.from_date),
+    to_date: coerceString(raw.to_date),
+    completeness_score: coerceFiniteNumber(raw.completeness_score),
+    surface_count: coerceFiniteNumber(raw.surface_count),
+    endpoint_count: coerceFiniteNumber(raw.endpoint_count),
+  };
+}
+
+function normalizeTrajectoryPoint(raw: unknown): TrajectoryPoint | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  return {
+    date: coerceString(raw.date) ?? "",
+    completeness_score: coerceFiniteNumber(raw.completeness_score),
+    surface_count: coerceFiniteNumber(raw.surface_count),
+    endpoint_count: coerceFiniteNumber(raw.endpoint_count),
+  };
+}
+
+function normalizeTrajectory(raw: Partial<Trajectory> | undefined): Trajectory {
+  const d = isPlainRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_TRAJECTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeTrajectoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  const deltas = isPlainRecord(d.deltas)
+    ? Object.fromEntries(
+        Object.entries(d.deltas).map(([window, delta]) => [
+          window,
+          normalizeTrajectoryDelta(delta),
+        ]),
+      )
+    : undefined;
+  return {
+    ...(d as object),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+    deltas,
+  };
+}
+
+function normalizeUptimeDay(raw: unknown): SurfaceUptimeDay | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  return {
+    day: coerceString(raw.day) ?? "",
+    samples: coerceFiniteNumber(raw.samples),
+    uptime_ratio: coerceFiniteNumber(raw.uptime_ratio),
+    avg_latency_ms: coerceFiniteNumber(raw.avg_latency_ms),
+    status: coerceString(raw.status),
+  };
+}
+
+function normalizeSurfaceUptime(raw: unknown): SurfaceUptime | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const surfaceId = coerceString(raw.surface_id);
+  if (!surfaceId) return undefined;
+  const days = Array.isArray(raw.days)
+    ? raw.days.slice(-MAX_UPTIME_DAYS).flatMap((day) => {
+        const normalized = normalizeUptimeDay(day);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(raw as object),
+    surface_id: surfaceId,
+    day_count: coerceFiniteNumber(raw.day_count) ?? days.length,
+    samples: coerceFiniteNumber(raw.samples),
+    uptime_ratio: coerceFiniteNumber(raw.uptime_ratio),
+    reliability: normalizeReliabilityGrade(raw.reliability),
+    days,
+  };
+}
+
+function normalizeUptime(raw: Partial<Uptime> | undefined): Uptime {
+  const d = isPlainRecord(raw) ? raw : {};
+  const surfaces = Array.isArray(d.surfaces)
+    ? d.surfaces.slice(0, MAX_UPTIME_SURFACES).flatMap((surface) => {
+        const normalized = normalizeSurfaceUptime(surface);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(d as object),
+    window: coerceString(d.window),
+    reliability: normalizeReliabilityGrade(d.reliability),
+    surfaces,
+  };
 }
 
 function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
@@ -656,9 +783,7 @@ export const subnetTrajectoryQuery = (netuid: number) =>
       const res = await apiFetch<Partial<Trajectory>>(`/api/v1/subnets/${netuid}/trajectory`, {
         signal,
       });
-      const d = res.data ?? {};
-      const points = Array.isArray(d.points) ? d.points : [];
-      return { data: { ...d, points } as Trajectory, meta: res.meta, url: res.url };
+      return { data: normalizeTrajectory(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_LONG,
   });
@@ -673,9 +798,7 @@ export const subnetUptimeQuery = (netuid: number, window = "90d") =>
         params: { window },
         signal,
       });
-      const d = res.data ?? {};
-      const surfaces = Array.isArray(d.surfaces) ? d.surfaces : [];
-      return { data: { ...d, surfaces } as Uptime, meta: res.meta, url: res.url };
+      return { data: normalizeUptime(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });
