@@ -8,6 +8,12 @@ export const getRouter = () => {
     defaultOptions: {
       queries: {
         retry: (failureCount, error) => {
+          // Preserve TanStack Query's server-side no-retry default so SSR
+          // requests cannot amplify failing upstream API calls.
+          if (typeof window === "undefined") {
+            return false;
+          }
+
           // #370: `artifact_not_found` is a definitive "not published here"
           // (e.g. a native-only testnet partition) — don't burn 3 retries
           // before the NativeOnlyNotice degradation renders.
