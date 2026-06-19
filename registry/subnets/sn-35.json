@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "netuid": 35,
+  "name": "OxMarkets",
+  "slug": "sn-35",
+  "status": "active",
+  "categories": [],
+  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "surfaces": [],
+  "contact": "contact@0xmarkets.io"
+}

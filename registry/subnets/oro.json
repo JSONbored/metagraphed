@@ -85,7 +85,6 @@
       "notes": "Official ORO source repository."
     }
   ],
-  "social": {
-    "x": "https://x.com/oroagents"
-  }
+  "social": { "x": "https://x.com/oroagents" },
+  "contact": "team@oroagents.com"
 }

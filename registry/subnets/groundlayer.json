@@ -104,7 +104,6 @@
       "notes": "Official GroundLayer roadmap page."
     }
   ],
-  "social": {
-    "x": "https://x.com/groundlayerhq"
-  }
+  "social": { "x": "https://x.com/groundlayerhq" },
+  "contact": "groundlayer@rizzo.network"
 }

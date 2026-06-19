@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "netuid": 37,
+  "name": "Aurelius",
+  "slug": "sn-37",
+  "status": "active",
+  "categories": [],
+  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "surfaces": [],
+  "social": { "x": "https://x.com/aureliusaligned" },
+  "contact": "aurelius.subnet@gmail.com"
+}

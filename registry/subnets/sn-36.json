@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "netuid": 36,
+  "name": "Eirel",
+  "slug": "sn-36",
+  "status": "active",
+  "categories": [],
+  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "surfaces": [],
+  "social": { "x": "https://x.com/rendix_network" }
+}

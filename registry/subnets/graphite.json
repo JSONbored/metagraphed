@@ -74,7 +74,6 @@
       "notes": "Official Graphite source repository."
     }
   ],
-  "social": {
-    "x": "https://x.com/graphitesubnet"
-  }
+  "social": { "x": "https://x.com/graphitesubnet" },
+  "contact": "team@graphite-ai.net"
 }

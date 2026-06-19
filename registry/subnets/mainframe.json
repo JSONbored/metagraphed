@@ -51,7 +51,6 @@
       "notes": "Official Mainframe source repository."
     }
   ],
-  "social": {
-    "x": "https://x.com/macrocosmosai"
-  }
+  "social": { "x": "https://x.com/macrocosmosai" },
+  "contact": "brian@macrocosmos.ai"
 }
