@@ -1770,8 +1770,8 @@ function normalizeSchema(raw: unknown): SchemaInfo {
     drift_status: drift,
     drift: drift != null && drift !== "unchanged",
     artifact_path: s.path as string | undefined,
-    hash: s.hash as string | undefined,
-    previous_hash: s.previous_hash as string | undefined,
+    hash: typeof s.hash === "string" ? s.hash : undefined,
+    previous_hash: typeof s.previous_hash === "string" ? s.previous_hash : undefined,
     status: s.status as string | undefined,
     updated_at:
       (s.observed_at as string) ??
