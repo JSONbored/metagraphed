@@ -390,7 +390,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(request, env, Number(trajectoryMatch[1]));
+      return handleTrajectory(
+        request,
+        env,
+        Number(trajectoryMatch[1]),
+        resolved.url,
+      );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
@@ -1214,17 +1219,29 @@ async function handleHealthTrends(request, env, netuid) {
   );
 }
 
-function analyticsWindow(url) {
+function validateQueryParams(url, allowedParams) {
+  const seen = new Set();
   for (const key of url.searchParams.keys()) {
-    if (key !== ANALYTICS_WINDOW_PARAM) {
+    if (!allowedParams.includes(key)) {
       return {
-        error: {
-          parameter: key,
-          message: `${key} is not supported for this route.`,
-        },
+        parameter: key,
+        message: `${key} is not supported for this route.`,
       };
     }
+    if (seen.has(key)) {
+      return {
+        parameter: key,
+        message: `${key} may only be provided once.`,
+      };
+    }
+    seen.add(key);
   }
+  return null;
+}
+
+function analyticsWindow(url) {
+  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
   if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
@@ -1481,7 +1498,9 @@ async function handleGlobalIncidents(request, env, url) {
 }
 
 // Week-over-week structural trajectory from daily snapshots.
-async function handleTrajectory(request, env, netuid) {
+async function handleTrajectory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
   // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
   // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
@@ -1513,6 +1532,8 @@ async function handleTrajectory(request, env, netuid) {
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
 // yet (mirrors the other D1-backed analytics routes).
 async function handleUptime(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
   const days = UPTIME_WINDOWS[windowParam];
   if (!days) {
@@ -1617,6 +1638,8 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
 // Registry leaderboards: healthiest / fastest-rpc / most-complete /
 // fastest-growing. Combines live D1 status with registry projections.
 async function handleLeaderboards(request, env, url) {
+  const validationError = validateQueryParams(url, ["board", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
   if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
     return errorResponse(

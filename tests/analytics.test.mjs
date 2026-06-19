@@ -447,14 +447,23 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
   });
-  test("incidents rejects unsupported query parameters", async () => {
-    for (const query of ["window=bogus", "window=7d&cacheBust=x"]) {
+  test("D1 analytics routes reject non-canonical query strings before D1", async () => {
+    const cases = [
+      ["/api/v1/subnets/7/health/percentiles?window=bogus", "window"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&window=7d", "window"],
+      ["/api/v1/subnets/7/trajectory?x=random", "x"],
+      ["/api/v1/registry/leaderboards?limit=10&x=random", "x"],
+      ["/api/v1/registry/leaderboards?limit=10&limit=10", "limit"],
+    ];
+    for (const [path, parameter] of cases) {
       const { status, body } = await getJson(
-        `https://api.metagraph.sh/api/v1/subnets/7/health/incidents?${query}`,
+        `https://api.metagraph.sh${path}`,
         env,
       );
-      assert.equal(status, 400);
+      assert.equal(status, 400, path);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, parameter);
     }
   });
   test("trajectory returns empty-but-valid", async () => {
@@ -496,9 +505,25 @@ describe("analytics routes (cold local D1)", () => {
     assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
   });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
+    const profileEnv = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        get: async () => ({
+          json: async () => ({
+            profiles: [
+              {
+                netuid: 7,
+                slug: "sn-7",
+                name: "Subnet 7",
+                completeness_score: 88,
+              },
+            ],
+          }),
+        }),
+      },
+    });
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
-      env,
+      profileEnv,
     );
     assert.equal(typeof body.data.boards, "object");
     assert.ok(body.data.boards["most-complete"].length > 0);
