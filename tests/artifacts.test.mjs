@@ -390,6 +390,20 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   }
 }, 30_000);
 
+test("committed R2 manifest does not use fallback history keys", () => {
+  const manifest = JSON.parse(
+    readFileSync("public/metagraph/r2-manifest.json", "utf8"),
+  );
+
+  assert.notEqual(manifest.generated_at, "1970-01-01T00:00:00.000Z");
+  assert.notEqual(manifest.run_prefix, "runs/1970-01-01T00-00-00-000Z/");
+  assert.ok(
+    manifest.artifacts.every(
+      (artifact) => !artifact.key.startsWith("runs/1970-01-01T00-00-00-000Z/"),
+    ),
+  );
+});
+
 test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
   const timestamp = "2026-06-08T12:34:56.789Z";
   const expectedRunPrefix = "runs/2026-06-08T12-34-56-789Z/";
