@@ -934,8 +934,47 @@ function normalizeRpcUsage(raw: unknown): RpcUsage {
         avg: finiteOptionalNumber(lat.avg) ?? null,
       },
     },
-    endpoints: Array.isArray(r.endpoints) ? (r.endpoints as RpcUsage["endpoints"]) : [],
-    networks: Array.isArray(r.networks) ? (r.networks as RpcUsage["networks"]) : [],
+    endpoints: Array.isArray(r.endpoints)
+      ? r.endpoints.flatMap((endpoint, index) => {
+          const normalized = normalizeRpcUsageEndpoint(endpoint, index);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+    networks: Array.isArray(r.networks)
+      ? r.networks.flatMap((network) => {
+          const normalized = normalizeRpcUsageNetwork(network);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+  };
+}
+
+function normalizeRpcUsageEndpoint(
+  raw: unknown,
+  index: number,
+): RpcUsage["endpoints"][number] | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const e = raw as Record<string, unknown>;
+  return {
+    rank: finiteNumber(e.rank, index + 1),
+    endpoint_id: typeof e.endpoint_id === "string" ? e.endpoint_id : null,
+    provider: typeof e.provider === "string" ? e.provider : null,
+    requests: finiteNumber(e.requests),
+    ok_requests: finiteNumber(e.ok_requests),
+    error_rate: finiteOptionalNumber(e.error_rate) ?? null,
+    avg_latency_ms: finiteOptionalNumber(e.avg_latency_ms) ?? null,
+  };
+}
+
+function normalizeRpcUsageNetwork(raw: unknown): RpcUsage["networks"][number] | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const n = raw as Record<string, unknown>;
+  const network = typeof n.network === "string" ? n.network : "unknown";
+  return {
+    network,
+    requests: finiteNumber(n.requests),
+    ok_requests: finiteNumber(n.ok_requests),
+    error_rate: finiteOptionalNumber(n.error_rate) ?? null,
   };
 }
 
