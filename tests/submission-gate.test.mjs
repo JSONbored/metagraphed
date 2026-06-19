@@ -134,7 +134,7 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.errors[0].category, "generated-artifact-tampering");
   });
 
-  test("routes tampered direct submissions through the UGC preflight", () => {
+  test("routes tampered direct submissions through full validation", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
       const changedFilesPath = path.join(tmp, "changed-files.txt");
@@ -157,7 +157,7 @@ describe("Metagraphed submission gate policy", () => {
         },
       );
 
-      assert.match(readFileSync(outputPath, "utf8"), /^mode=ugc$/m);
+      assert.match(readFileSync(outputPath, "utf8"), /^mode=full$/m);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -276,7 +276,7 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
-  test("routes mixed direct candidate PRs through the UGC gate", () => {
+  test("routes mixed direct candidate PRs through full validation", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
       const changedFiles = path.join(tmp, "changed-files.txt");
@@ -295,7 +295,7 @@ describe("Metagraphed submission gate policy", () => {
       );
       const report = JSON.parse(output);
 
-      assert.equal(report.mode, "ugc");
+      assert.equal(report.mode, "full");
       assert.equal(report.scope, "direct-candidate");
       assert.deepEqual(
         report.errors.map((error) => error.category),
