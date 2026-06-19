@@ -132,10 +132,19 @@ const authorityCls: Record<string, string> = {
 };
 
 export function CurationChip({ level }: { level?: CurationLevel | string }) {
-  const lvl = (level as CurationLevel) ?? "candidate-discovered";
   const key = String(level ?? "");
-  const label = curationLabel[lvl] ?? authorityLabel[key] ?? (level ? key : "—");
-  const cls = curationCls[lvl] ?? authorityCls[key] ?? curationCls["candidate-discovered"];
+  const label = Object.hasOwn(curationLabel, key)
+    ? curationLabel[key as CurationLevel]
+    : Object.hasOwn(authorityLabel, key)
+      ? authorityLabel[key]
+      : level
+        ? key
+        : "—";
+  const cls = Object.hasOwn(curationCls, key)
+    ? curationCls[key as CurationLevel]
+    : Object.hasOwn(authorityCls, key)
+      ? authorityCls[key]
+      : curationCls["candidate-discovered"];
   return (
     <span
       className={classNames(
