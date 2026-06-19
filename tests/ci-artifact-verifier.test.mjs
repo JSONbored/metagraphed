@@ -19,6 +19,16 @@ test("artifact canonical JSON preserves semantic array order", () => {
   );
 });
 
+test("artifact canonical JSON preserves __proto__ data properties", () => {
+  const withProtoKey = JSON.parse('{"x":1,"__proto__":{"polluted":true}}');
+
+  assert.notEqual(canonicalJson(withProtoKey), canonicalJson({ x: 1 }));
+  assert.equal(
+    canonicalJson(withProtoKey),
+    '{"__proto__":{"polluted":true},"x":1}',
+  );
+});
+
 test("R2 manifest comparison ignores only R2 aggregate byte drift", () => {
   const committed = {
     artifact_count: 1,
