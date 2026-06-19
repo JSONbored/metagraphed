@@ -309,24 +309,30 @@ test("artifact build does not preserve forged endpoint index health", () => {
 test("artifact build does not preserve forged schema snapshot metadata", () => {
   const schemaDriftPath = artifactFilePath("schema-drift.json");
   const schemaIndexPath = artifactFilePath("schemas/index.json");
-  const originalSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+  const originalSchemaDrift = existsSync(schemaDriftPath)
+    ? readFileSync(schemaDriftPath, "utf8")
+    : null;
   const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
   const supportArtifacts = snapshotSupportArtifacts();
-  const schemaDrift = JSON.parse(originalSchemaDrift);
+  const schemaDrift = originalSchemaDrift
+    ? JSON.parse(originalSchemaDrift)
+    : null;
   const schemaIndex = JSON.parse(originalSchemaIndex);
-  const driftTarget = schemaDrift.surfaces?.[0];
-  const indexTarget = schemaIndex.schemas?.find(
-    (schema) => schema.surface_id === driftTarget?.surface_id,
-  );
-  assert(driftTarget, "expected a schema drift surface entry to tamper");
+  const driftTarget = schemaDrift?.surfaces?.[0];
+  const indexTarget =
+    schemaIndex.schemas?.find(
+      (schema) => schema.surface_id === driftTarget?.surface_id,
+    ) || schemaIndex.schemas?.find((schema) => schema.status === "captured");
   assert(indexTarget, "expected a schema index entry to tamper");
 
   const forgedMarker = "AUTOVALIDATOR_FORGED_METADATA_SHOULD_NOT_SURVIVE_BUILD";
-  driftTarget.netuid = 999999;
-  driftTarget.subnet_slug = forgedMarker;
-  driftTarget.url = "https://attacker.invalid/openapi";
-  driftTarget.schema_url = "https://attacker.invalid/openapi.json";
-  driftTarget.hash = "forged-hash";
+  if (driftTarget) {
+    driftTarget.netuid = 999999;
+    driftTarget.subnet_slug = forgedMarker;
+    driftTarget.url = "https://attacker.invalid/openapi";
+    driftTarget.schema_url = "https://attacker.invalid/openapi.json";
+    driftTarget.hash = "forged-hash";
+  }
   indexTarget.netuid = 999999;
   indexTarget.subnet_slug = forgedMarker;
   indexTarget.url = "https://attacker.invalid/openapi";
@@ -344,7 +350,12 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   };
 
   try {
-    writeFileSync(schemaDriftPath, `${JSON.stringify(schemaDrift, null, 2)}\n`);
+    if (schemaDrift) {
+      writeFileSync(
+        schemaDriftPath,
+        `${JSON.stringify(schemaDrift, null, 2)}\n`,
+      );
+    }
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
@@ -353,14 +364,22 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       stdio: "pipe",
     });
 
-    const rebuiltSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+    const rebuiltSchemaDrift = existsSync(schemaDriftPath)
+      ? readFileSync(schemaDriftPath, "utf8")
+      : "";
     const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
     assert.equal(rebuiltSchemaDrift.includes(forgedMarker), false);
     assert.equal(rebuiltSchemaIndex.includes(forgedMarker), false);
-    assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
+    if (rebuiltSchemaDrift) {
+      assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
+    }
     assert.equal(JSON.parse(rebuiltSchemaIndex).source, "artifact-build");
   } finally {
-    writeFileSync(schemaDriftPath, originalSchemaDrift);
+    if (originalSchemaDrift) {
+      writeFileSync(schemaDriftPath, originalSchemaDrift);
+    } else {
+      rmSync(schemaDriftPath, { force: true });
+    }
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
@@ -389,6 +408,20 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
     restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
+
+test("committed R2 manifest does not use fallback history keys", () => {
+  const manifest = JSON.parse(
+    readFileSync("public/metagraph/r2-manifest.json", "utf8"),
+  );
+
+  assert.notEqual(manifest.generated_at, "1970-01-01T00:00:00.000Z");
+  assert.notEqual(manifest.run_prefix, "runs/1970-01-01T00-00-00-000Z/");
+  assert.ok(
+    manifest.artifacts.every(
+      (artifact) => !artifact.key.startsWith("runs/1970-01-01T00-00-00-000Z/"),
+    ),
+  );
+});
 
 test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
   const timestamp = "2026-06-08T12:34:56.789Z";

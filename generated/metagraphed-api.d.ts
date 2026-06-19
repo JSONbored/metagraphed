@@ -1461,7 +1461,7 @@ export interface components {
             [key: string]: unknown;
         });
         /** @enum {unknown} */
-        Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "unknown";
+        Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         ContractsArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: components["schemas"]["ArtifactContractEntry"][];
             /** @constant */
@@ -6682,7 +6682,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
-                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
+                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11175,7 +11175,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
-                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
+                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
                 fields?: string;
                 limit?: number;
                 cursor?: number;

@@ -204,7 +204,8 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(info.res.status, 200);
     assert.equal(info.body.data.network, "local");
     assert.equal(info.body.data.mode, "client-side");
-    assert.match(info.body.data.rpc.ws, /127\.0\.0\.1:9944/);
+    assert.equal(info.body.data.rpc.ws, undefined);
+    assert.equal(info.body.data.rpc.network_arg, "local");
     // Develop-before-mainnet quickstart (issue #354): real ordered steps + the
     // testnet/mainnet/lineage references, not just a ws:// URL.
     const steps = info.body.data.quickstart?.steps;

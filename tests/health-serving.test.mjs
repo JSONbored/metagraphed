@@ -859,19 +859,72 @@ describe("worker live health serving", () => {
     assert.equal(body.data.source, "live-cron-prober");
   });
 
+  test("/api/v1/health/trends rejects unsupported query parameters before D1", async () => {
+    let queried = false;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          queried = true;
+          return d1With([]).prepare();
+        },
+      },
+    });
+    const res = await handleRequest(
+      req("/api/v1/health/trends?cacheBust=1"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal(queried, false);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "cacheBust");
+  });
+
+  test("/api/v1/health/trends reads the bounded daily rollup once", async () => {
+    const queries = [];
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          queries.push(sql);
+          return {
+            bind(...params) {
+              queries.push(params);
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    assert.equal(
+      queries.filter((entry) => typeof entry === "string").length,
+      1,
+    );
+    assert.match(queries[0], /FROM surface_uptime_daily/);
+    assert.doesNotMatch(queries[0], /FROM surface_checks/);
+    assert.match(queries[0], /LIMIT \?/);
+    assert.equal(queries[1][1], 10000);
+  });
+
   test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
           netuid: 8,
-          date: "2026-06-10",
+          date: "2026-06-17",
           total: 10,
           ok_count: 8,
           avg_latency_ms: 30,
         },
         {
           netuid: 7,
-          date: "2026-06-10",
+          date: "2026-06-17",
           total: 5,
           ok_count: 5,
           avg_latency_ms: 20,

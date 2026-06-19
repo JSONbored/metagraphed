@@ -363,9 +363,12 @@ describe("isBrandImpersonationUrl", () => {
   test("blocks squats of the exact domain", () => {
     for (const url of [
       "https://metagraph.sh.evil.com/api",
+      "https://metagraph.sh-evil.com/api",
       "https://metagraphsh.com",
       "https://metagraph-sh.io/call",
       "https://api.metagraphsh.net",
+      "https://metagraph.sh@evil.com/api",
+      "https://user:metagraph-sh@evil.com/api",
     ]) {
       assert.equal(isBrandImpersonationUrl(url), true, url);
     }
@@ -608,6 +611,10 @@ describe("backfilledIdentityUrl", () => {
     );
     assert.equal(
       backfilledIdentityUrl(undefined, "github.com/username/repo"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://glyph.testnet.local"),
       null,
     );
     assert.equal(backfilledIdentityUrl(undefined, null), null);

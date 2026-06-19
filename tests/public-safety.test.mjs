@@ -143,6 +143,19 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("flags sensitive wallet/key wording hidden in a fixture body key", async () => {
+    await writeTestFixture({
+      "seed phrase": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    });
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(
+        `${TEST_FIXTURE}:response.body.seed phrase key: wallet/key wording`,
+      ),
+      `sensitive wallet/key wording must still fire on fixture body keys; got:\n${output}`,
+    );
+  });
+
   test("still flags a hard secret hidden in a fixture body value", async () => {
     await writeTestFixture({
       note: "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",

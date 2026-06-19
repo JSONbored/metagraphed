@@ -1152,6 +1152,9 @@ function normalizePublicUrl(value) {
     ) {
       return null;
     }
+    if (url.username || url.password) {
+      return null;
+    }
     // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +
     // localhost. The authoritative, DNS-resolving check (isUnsafeResolvedUrl)
     // still runs at probe + overlay-promotion time; this just keeps obviously

@@ -1543,6 +1543,7 @@
           "transient",
           "timeout",
           "content-mismatch",
+          "wrong-chain",
           "unknown"
         ]
       },

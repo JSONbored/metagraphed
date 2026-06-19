@@ -1557,6 +1557,7 @@
           "transient",
           "timeout",
           "content-mismatch",
+          "wrong-chain",
           "unknown"
         ]
       },
@@ -15209,7 +15210,8 @@
                 "timeout",
                 "transient",
                 "unsupported",
-                "unsafe"
+                "unsafe",
+                "wrong-chain"
               ],
               "type": "string"
             }
@@ -22554,7 +22556,8 @@
                 "timeout",
                 "transient",
                 "unsupported",
-                "unsafe"
+                "unsafe",
+                "wrong-chain"
               ],
               "type": "string"
             }

@@ -1032,6 +1032,125 @@ describe("script utility contracts", () => {
     assert.equal(surface.rate_limit_notes, "See docs for tier details.");
   });
 
+  test("does not promote owner-mismatched source repository candidates", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 53, name: "EfficientFrontier", status: "active" }],
+    };
+    const candidates = [
+      {
+        auth_required: false,
+        confidence: "medium",
+        id: "community-sn-53-source-repo-github-com",
+        kind: "source-repo",
+        name: "EfficientFrontier community source-repo",
+        netuid: 53,
+        provider: "signalplus",
+        public_safe: true,
+        schema_version: 1,
+        source_tier: "community-docs",
+        source_type: "community-pr-intake",
+        source_url:
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
+        source_urls: [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
+        ],
+        state: "schema-valid",
+        url: "https://github.com/oxylok/53-EfficientFrontier",
+      },
+      {
+        id: "sn-53-signalplus-source-repo",
+        kind: "source-repo",
+        name: "SignalPlus source repository",
+        netuid: 53,
+        provider: "signalplus",
+        source_tier: "provider-claimed",
+        source_type: "provider-website-link",
+        source_url: "https://www.signalplus.com/",
+        source_urls: ["https://www.signalplus.com/"],
+        state: "schema-valid",
+        url: "https://github.com/signalplus/example",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: candidates.map((candidate) => ({
+        candidate_id: candidate.id,
+        classification: "live",
+        content_type: "text/html",
+        quality_signals: { public_safe: true },
+      })),
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      providers: [
+        {
+          id: "signalplus",
+          name: "SignalPlus",
+          website_url: "https://www.signalplus.com/",
+        },
+      ],
+      verification,
+    });
+
+    assert.deepEqual(
+      overlaySet.generatedOverlays[0].surfaces.map((surface) => surface.id),
+      ["sn-53-signalplus-source-repo"],
+    );
+    assert.equal(
+      overlaySet.generatedOverlays[0].source_repo,
+      "https://github.com/signalplus/example",
+    );
+  });
+
+  test("does not promote candidates that already require review by state", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 89, name: "ReviewState", status: "active" }],
+    };
+    const candidates = [
+      {
+        id: "sn-89-review-state-docs",
+        kind: "docs",
+        name: "ReviewState docs",
+        netuid: 89,
+        provider: "reviewstate",
+        source_tier: "provider-claimed",
+        source_type: "project-website-link",
+        source_url: "https://reviewstate.example.com/",
+        source_urls: ["https://reviewstate.example.com/"],
+        state: "needs-review",
+        url: "https://reviewstate.example.com/docs",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: [
+        {
+          candidate_id: "sn-89-review-state-docs",
+          classification: "live",
+          content_type: "text/html",
+          quality_signals: { public_safe: true },
+        },
+      ],
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      providers: [{ id: "reviewstate", name: "ReviewState" }],
+      verification,
+    });
+
+    assert.deepEqual(overlaySet.generatedOverlays[0].surfaces, []);
+  });
+
   test("does not promote HTML-only Swagger pages as OpenAPI surfaces", async () => {
     const nativeSnapshot = {
       captured_at: "2026-06-08T00:00:00.000Z",
@@ -1242,6 +1361,8 @@ describe("script utility contracts", () => {
     assert.equal(isValidUrl("not a url"), false);
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
     assert.equal(isUnsafeUrl("http://metadata.localhost"), true);
+    assert.equal(isUnsafeUrl("https://taochat.testnet.local"), true);
+    assert.equal(isUnsafeUrl("https://local"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://100.64.0.1"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
