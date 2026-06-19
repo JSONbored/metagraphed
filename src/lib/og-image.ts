@@ -2,7 +2,12 @@
 // workers-og (satori + resvg-wasm) so social/link unfurls have a real image. The
 // title comes from ?title= (server.ts derives it from the route). Infra module
 // (imported by the Worker entry), so it survives Lovable regens.
-import { ImageResponse, loadGoogleFont } from "workers-og";
+//
+// workers-og is loaded lazily inside handleOgImage (see below), NOT statically:
+// it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
+// break `vite dev` SSR for every route. It only has to work on the Cloudflare
+// Worker, which reaches the dynamic import only on an actual /og request.
+type WorkersOg = typeof import("workers-og");
 
 const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
@@ -90,6 +95,19 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
         "content-type": "image/png",
       },
     });
+  }
+
+  // Lazily pull in workers-og (satori + yoga wasm) only now that we're actually
+  // rendering — keeps the wasm out of the SSR module graph so `vite dev` works.
+  // Failure here returns the fallback PNG rather than throwing, since this runs
+  // outside server.ts's try/catch.
+  let ImageResponse: WorkersOg["ImageResponse"];
+  let loadGoogleFont: WorkersOg["loadGoogleFont"];
+  try {
+    ({ ImageResponse, loadGoogleFont } = await import("workers-og"));
+  } catch (error) {
+    console.error("Failed to load workers-og", error);
+    return fallbackImageResponse();
   }
 
   const title = escapeText(normalizedTitle);

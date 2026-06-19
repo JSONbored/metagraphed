@@ -468,19 +468,26 @@ function injectAnalytics(response: Response, request: Request): Response {
     `<meta property="og:image:width" content="1200">` +
     `<meta property="og:image:height" content="630">` +
     `<meta name="twitter:image" content="${escapeHtmlAttr(ogImage)}">`;
-  const transformed = new HTMLRewriter()
-    .on("head", {
-      element(element) {
-        element.append(RESOURCE_HINTS, { html: true });
-        element.append(canonicalTag, { html: true });
-        element.append(ogUrlTag, { html: true });
-        element.append(jsonLdTag, { html: true });
-        element.append(ogImageTags, { html: true });
-        element.append(UMAMI_SNIPPET, { html: true });
-        element.append(WEB_VITALS_SNIPPET, { html: true });
-      },
-    })
-    .transform(response);
+  // HTMLRewriter is a Cloudflare Workers runtime global; under local `vite dev`
+  // (Node) it's absent. Skip the streaming <head> injection there — these meta
+  // tags are a production SEO/unfurl concern — and pass the rendered HTML through
+  // unchanged. Production (workerd) keeps the full injection path.
+  const transformed =
+    typeof HTMLRewriter === "undefined"
+      ? response
+      : new HTMLRewriter()
+          .on("head", {
+            element(element) {
+              element.append(RESOURCE_HINTS, { html: true });
+              element.append(canonicalTag, { html: true });
+              element.append(ogUrlTag, { html: true });
+              element.append(jsonLdTag, { html: true });
+              element.append(ogImageTags, { html: true });
+              element.append(UMAMI_SNIPPET, { html: true });
+              element.append(WEB_VITALS_SNIPPET, { html: true });
+            },
+          })
+          .transform(response);
   const headers = new Headers(transformed.headers);
   headers.set("link", DISCOVERY_LINK_HEADER);
   // Conservative security headers for the HTML site (no CSP — an SPA CSP is
