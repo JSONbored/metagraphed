@@ -587,9 +587,15 @@ describe("backfilledIdentityUrl", () => {
       "https://curated.example/repo",
     );
   });
-  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+  test("preserves explicit curated null suppression", () => {
     assert.equal(
       backfilledIdentityUrl(null, "github.com/opentensor/bittensor"),
+      null,
+    );
+  });
+  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/opentensor/bittensor"),
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
@@ -599,10 +605,16 @@ describe("backfilledIdentityUrl", () => {
     );
   });
   test("rejects placeholder junk and unusable chain values", () => {
-    assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
-    assert.equal(backfilledIdentityUrl(null, "github.com/username/repo"), null);
-    assert.equal(backfilledIdentityUrl(null, null), null);
-    assert.equal(backfilledIdentityUrl(null, "not a url"), null);
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://deprecated.png"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/username/repo"),
+      null,
+    );
+    assert.equal(backfilledIdentityUrl(undefined, null), null);
+    assert.equal(backfilledIdentityUrl(undefined, "not a url"), null);
   });
 });
 
@@ -1004,6 +1016,10 @@ describe("sanitizeFixtureBody (#352)", () => {
   test("redacts common compact and camelCase sensitive keys", () => {
     const out = sanitizeFixtureBody({
       accessToken: "access-token",
+      idToken: "id-token",
+      authToken: "auth-token",
+      clientSecret: "client-secret",
+      secretKey: "secret-key",
       sessionId: "session-id",
       cookieValue: "cookie-value",
       passwordHash: "password-hash",
@@ -1014,6 +1030,10 @@ describe("sanitizeFixtureBody (#352)", () => {
     });
 
     assert.equal(out.accessToken, "[redacted]");
+    assert.equal(out.idToken, "[redacted]");
+    assert.equal(out.authToken, "[redacted]");
+    assert.equal(out.clientSecret, "[redacted]");
+    assert.equal(out.secretKey, "[redacted]");
     assert.equal(out.sessionId, "[redacted]");
     assert.equal(out.cookieValue, "[redacted]");
     assert.equal(out.passwordHash, "[redacted]");
@@ -1389,6 +1409,10 @@ describe("subnetContact", () => {
     assert.equal(subnetContact("None"), null);
     assert.equal(subnetContact("deprecated@gmail.com"), null); // junk local-part
     assert.equal(subnetContact("not an email"), null);
+    assert.equal(subnetContact("javascript:alert(1)@example.com"), null);
+    assert.equal(subnetContact("<|system|>@example.com"), null);
+    assert.equal(subnetContact("https://evil.com@127.0.0.1/x"), null);
+    assert.equal(subnetContact("mailto:javascript:alert(1)@example.com"), null);
     assert.equal(subnetContact("http://127.0.0.1/x"), null); // not public
     assert.equal(subnetContact(""), null);
     assert.equal(subnetContact(null), null);

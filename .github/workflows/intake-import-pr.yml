@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   import:
-    if: contains(github.event.issue.labels.*.name, 'interface-submission') && contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')
+    if: (contains(github.event.issue.labels.*.name, 'interface-submission') || contains(github.event.issue.labels.*.name, 'endpoint-submission')) && contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
