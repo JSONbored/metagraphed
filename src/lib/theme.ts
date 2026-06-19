@@ -13,8 +13,12 @@ function systemPrefersDark(): boolean {
 
 function readChoice(): ThemeChoice {
   if (typeof window === "undefined") return "system";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "light" || v === "dark" || v === "system" ? v : "system";
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "light" || v === "dark" || v === "system" ? v : "system";
+  } catch {
+    return "system";
+  }
 }
 
 function apply(choice: ThemeChoice): ResolvedTheme {
