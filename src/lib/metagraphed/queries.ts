@@ -1563,9 +1563,9 @@ export const providerCountsQuery = () =>
       ]);
       const map = new Map<string, { surfaces: number; endpoints: number; subnets: Set<number> }>();
       const surfaceProviderSlug = (row: Record<string, unknown>) =>
-        row.provider_slug ?? row.provider;
+        pickStr(row.provider_slug, row.provider);
       const endpointProviderSlug = (row: Record<string, unknown>) =>
-        row.provider_slug ?? row.provider ?? row.operator;
+        pickStr(row.provider_slug, row.provider, row.operator);
       const bump = (slug: unknown, kind: "surfaces" | "endpoints", netuid: unknown) => {
         if (typeof slug !== "string" || !slug) return;
         const entry = map.get(slug) ?? { surfaces: 0, endpoints: 0, subnets: new Set<number>() };
