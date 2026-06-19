@@ -439,6 +439,7 @@ describe("runHealthProber", () => {
       apiUpsert.sql,
       /ON CONFLICT\(surface_key\) WHERE surface_key IS NOT NULL/,
     );
+    assert.match(apiUpsert.sql, /ON CONFLICT\(surface_id\) DO UPDATE SET/);
     assert.equal(apiUpsert.binds[1], "srf-sn7apikey000000");
     assert.equal(apiUpsert.binds[12], 3);
   });
@@ -1374,6 +1375,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
       stmts[0].sql,
       /ON CONFLICT\(surface_key, day\) WHERE surface_key IS NOT NULL/,
     );
+    assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\) DO UPDATE SET/);
     // binds: [day, updated_at, dayStart, dayEnd]
     assert.deepEqual(stmts[0].binds, [
       "2026-06-13",

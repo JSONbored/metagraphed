@@ -382,7 +382,7 @@ function rowsForSql(sql) {
   if (sql.includes("SUM(ok) AS ok_count")) {
     return [{ surface_id: "s1", total: 100, ok_count: 98 }];
   }
-  if (sql.includes("WITH failures") || sql.includes("failures AS")) {
+  if (sql.includes("WITH checks") || sql.includes("checks AS")) {
     return [
       {
         netuid: 7,
@@ -447,14 +447,23 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
   });
-  test("incidents rejects unsupported query parameters", async () => {
-    for (const query of ["window=bogus", "window=7d&cacheBust=x"]) {
+  test("D1 analytics routes reject non-canonical query strings before D1", async () => {
+    const cases = [
+      ["/api/v1/subnets/7/health/percentiles?window=bogus", "window"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&window=7d", "window"],
+      ["/api/v1/subnets/7/trajectory?x=random", "x"],
+      ["/api/v1/registry/leaderboards?limit=10&x=random", "x"],
+      ["/api/v1/registry/leaderboards?limit=10&limit=10", "limit"],
+    ];
+    for (const [path, parameter] of cases) {
       const { status, body } = await getJson(
-        `https://api.metagraph.sh/api/v1/subnets/7/health/incidents?${query}`,
+        `https://api.metagraph.sh${path}`,
         env,
       );
-      assert.equal(status, 400);
+      assert.equal(status, 400, path);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, parameter);
     }
   });
   test("trajectory returns empty-but-valid", async () => {
@@ -496,9 +505,25 @@ describe("analytics routes (cold local D1)", () => {
     assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
   });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
+    const profileEnv = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        get: async () => ({
+          json: async () => ({
+            profiles: [
+              {
+                netuid: 7,
+                slug: "sn-7",
+                name: "Subnet 7",
+                completeness_score: 88,
+              },
+            ],
+          }),
+        }),
+      },
+    });
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
-      env,
+      profileEnv,
     );
     assert.equal(typeof body.data.boards, "object");
     assert.ok(body.data.boards["most-complete"].length > 0);
@@ -545,6 +570,15 @@ describe("analytics routes (fake D1 with data)", () => {
       /GROUP BY COALESCE\(surface_key, surface_id\)/,
     );
     assert.match(queries[1].sql, /PARTITION BY surface_key/);
+    assert.doesNotMatch(
+      queries[1].sql,
+      /WHERE netuid = \? AND checked_at >= \? AND ok = 0/,
+    );
+    assert.match(
+      queries[1].sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(queries[1].sql, /FROM grouped\n {7}WHERE ok = 0/);
   });
   test("incidents SQL uses a hard incident row cap", async () => {
     const queries = [];
@@ -554,7 +588,7 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH failures"),
+      query.sql.includes("WITH checks"),
     );
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
@@ -609,9 +643,15 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH recent_failures"),
+      query.sql.includes("WITH recent_checks"),
     );
     assert.ok(incidentQuery.sql.includes("ORDER BY checked_at DESC"));
+    assert.doesNotMatch(incidentQuery.sql, /WHERE checked_at >= \? AND ok = 0/);
+    assert.match(
+      incidentQuery.sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(incidentQuery.sql, /FROM grouped\n {5}WHERE ok = 0/);
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params[1], 5000);
     assert.equal(incidentQuery.params.at(-1), 1000);

@@ -19,6 +19,16 @@ test("artifact canonical JSON preserves semantic array order", () => {
   );
 });
 
+test("artifact canonical JSON preserves __proto__ data properties", () => {
+  const withProtoKey = JSON.parse('{"x":1,"__proto__":{"polluted":true}}');
+
+  assert.notEqual(canonicalJson(withProtoKey), canonicalJson({ x: 1 }));
+  assert.equal(
+    canonicalJson(withProtoKey),
+    '{"__proto__":{"polluted":true},"x":1}',
+  );
+});
+
 test("R2 manifest comparison ignores only R2 aggregate byte drift", () => {
   const committed = {
     artifact_count: 1,
@@ -47,5 +57,26 @@ test("R2 manifest comparison ignores only R2 aggregate byte drift", () => {
       ...rebuilt,
       storage_tier_size_bytes: { dual: 11, r2: 21 },
     }),
+  );
+});
+
+test("R2 manifest comparison rejects invalid ignored byte totals", () => {
+  const rebuilt = {
+    artifact_count: 1,
+    artifact_size_bytes: 10,
+    full_artifact_count: 3,
+    full_artifact_size_bytes: 30,
+    artifacts: [{ path: "/metagraph/types.d.ts", size_bytes: 10 }],
+    storage_tier_size_bytes: { dual: 10, r2: 20 },
+  };
+  const committed = {
+    ...rebuilt,
+    full_artifact_size_bytes: "30",
+    storage_tier_size_bytes: { dual: 10, r2: { bytes: 20 } },
+  };
+
+  assert.notEqual(
+    canonicalArtifactJson("public/metagraph/r2-manifest.json", committed),
+    canonicalArtifactJson("public/metagraph/r2-manifest.json", rebuilt),
   );
 });
