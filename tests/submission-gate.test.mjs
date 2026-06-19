@@ -1285,6 +1285,7 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.deepEqual(urlOwnerTokens("https://attacker.uc.r.appspot.com/api"), [
       "attacker",
     ]);
+    assert.deepEqual(urlOwnerTokens("https://abc.gitlab.io/api"), ["abc"]);
     assert.deepEqual(urlOwnerTokens("not a url"), []);
     assert.deepEqual(urlOwnerTokens(42), []);
     // a sub-4-char org is filtered out
@@ -1322,6 +1323,33 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.equal(
       ownerTokensMatch(["safescanai"], ["byzantium", "byzantiumai"]),
       false,
+    );
+  });
+
+  test("short multi-tenant URL owners still trigger owner mismatch review", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].kind = "subnet-api";
+    document.candidates[0].url = "https://abc.gitlab.io/api";
+    document.candidates[0].source_url =
+      "https://docs.all-ways.io/how-it-works.html";
+    document.candidates[0].source_urls = [
+      "https://docs.all-ways.io/how-it-works.html",
+    ];
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/abc-gitlab-api.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(
+      report.manual_reasons.includes(
+        "candidate url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
+      ),
+      true,
     );
   });
 
