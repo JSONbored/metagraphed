@@ -1536,7 +1536,7 @@ export type ProviderCounts = {
  * Aggregated counts of surfaces/endpoints/subnets per provider slug.
  * The /api/v1/providers list endpoint does not include these counts —
  * we derive them from the surfaces and endpoints collections, both of
- * which carry a `provider` slug per row.
+ * which carry a canonical `provider_slug` and may also carry a `provider` fallback per row.
  */
 export const providerCountsQuery = () =>
   queryOptions({
@@ -1562,6 +1562,10 @@ export const providerCountsQuery = () =>
         fetchAll("/api/v1/endpoints", "endpoints"),
       ]);
       const map = new Map<string, { surfaces: number; endpoints: number; subnets: Set<number> }>();
+      const surfaceProviderSlug = (row: Record<string, unknown>) =>
+        row.provider_slug ?? row.provider;
+      const endpointProviderSlug = (row: Record<string, unknown>) =>
+        row.provider_slug ?? row.provider ?? row.operator;
       const bump = (slug: unknown, kind: "surfaces" | "endpoints", netuid: unknown) => {
         if (typeof slug !== "string" || !slug) return;
         const entry = map.get(slug) ?? { surfaces: 0, endpoints: 0, subnets: new Set<number>() };
@@ -1569,8 +1573,8 @@ export const providerCountsQuery = () =>
         if (typeof netuid === "number") entry.subnets.add(netuid);
         map.set(slug, entry);
       };
-      for (const s of surfaces) bump(s.provider, "surfaces", s.netuid);
-      for (const e of endpoints) bump(e.provider, "endpoints", e.netuid);
+      for (const s of surfaces) bump(surfaceProviderSlug(s), "surfaces", s.netuid);
+      for (const e of endpoints) bump(endpointProviderSlug(e), "endpoints", e.netuid);
       const out: Record<string, ProviderCounts> = {};
       for (const [slug, v] of map) {
         out[slug] = { surfaces: v.surfaces, endpoints: v.endpoints, subnets: v.subnets.size };
