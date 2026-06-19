@@ -35,11 +35,12 @@ const schemasSearchSchema = z.object({
   open: fallback(z.string(), "").default(""),
 });
 
-function sameOriginApiPathUrl(path?: string) {
-  if (typeof path !== "string" || !path.startsWith("/")) return undefined;
+function sameOriginApiUrl(url?: string) {
+  if (typeof url !== "string" || url.trim() === "") return undefined;
   try {
     const apiBaseUrl = new URL(API_BASE);
-    const artifactUrl = new URL(path, apiBaseUrl);
+    const artifactUrl = new URL(url, apiBaseUrl);
+    if (!["http:", "https:"].includes(artifactUrl.protocol)) return undefined;
     return artifactUrl.origin === apiBaseUrl.origin ? artifactUrl.href : undefined;
   } catch {
     return undefined;
@@ -134,7 +135,7 @@ function ContractsList() {
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((c) => {
-        const artifactUrl = sameOriginApiPathUrl(c.path);
+        const artifactUrl = sameOriginApiUrl(c.path);
         return (
           <div key={c.id} className="rounded border border-border bg-card p-3">
             <div className="flex items-start justify-between gap-2">
@@ -316,18 +317,19 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
         );
         return res.data;
       } catch {
-        if (schema.url) {
-          const r = await fetch(schema.url, { signal });
-          const text = await r.text();
-          let parsed: unknown = text;
-          try {
-            parsed = JSON.parse(text);
-          } catch {
-            /* keep as text */
-          }
-          return { current: parsed } as SchemaSnapshot;
+        const artifactUrl = sameOriginApiUrl(schema.url);
+        if (!artifactUrl) {
+          throw new Error("No diff endpoint and no trusted same-origin schema URL");
         }
-        throw new Error("No diff endpoint and no schema URL");
+        const r = await fetch(artifactUrl, { signal });
+        const text = await r.text();
+        let parsed: unknown = text;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          /* keep as text */
+        }
+        return { current: parsed } as SchemaSnapshot;
       }
     },
     staleTime: 5 * 60_000,
