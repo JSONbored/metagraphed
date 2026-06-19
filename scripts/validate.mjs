@@ -105,6 +105,7 @@ const verificationClassifications = new Set([
   "transient",
   "timeout",
   "content-mismatch",
+  "wrong-chain",
 ]);
 const reviewDecisions = new Set([
   "maintainer-reviewed",

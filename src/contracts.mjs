@@ -46,6 +46,7 @@ export const QUERY_ENUMS = {
     "transient",
     "unsupported",
     "unsafe",
+    "wrong-chain",
   ],
   healthStatus: ["ok", "degraded", "failed", "unknown"],
   providerAuthority: [
