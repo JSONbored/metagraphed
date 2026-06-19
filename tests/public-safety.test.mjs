@@ -57,6 +57,18 @@ describe("public URL safety checks", () => {
     assert.equal(await isUnsafeResolvedUrl("http://localhost/"), true);
   });
 
+  test("blocks credentialed public URLs before DNS resolution", () => {
+    const credentialedUrls = [
+      "https://user:pass@example.com/api",
+      "http://peer1-api:8080,0xPeer2@http//peer2-api:8080",
+      "wss://token@example.com/socket",
+    ];
+
+    for (const url of credentialedUrls) {
+      assert.equal(isUnsafeUrl(url), true, url);
+    }
+  });
+
   test("allows syntactically valid public HTTP URLs before DNS resolution", () => {
     assert.equal(isUnsafeUrl("https://example.com/api"), false);
     assert.equal(isUnsafeUrl("http://8.8.8.8/dns-query"), false);

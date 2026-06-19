@@ -775,6 +775,9 @@ export function isUnsafeUrl(value) {
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
+    if (url.username || url.password) {
+      return true;
+    }
 
     const host = normalizeHostname(url.hostname);
     return isUnsafeHostname(host);
