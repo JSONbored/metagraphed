@@ -819,7 +819,13 @@ export async function isUnsafeResolvedUrl(value, resolver = lookup) {
 }
 
 function isUnsafeHostname(host) {
-  if (!host || host === "localhost" || host.endsWith(".localhost")) {
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "local" ||
+    host.endsWith(".local")
+  ) {
     return true;
   }
 

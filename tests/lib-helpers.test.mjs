@@ -610,6 +610,10 @@ describe("backfilledIdentityUrl", () => {
       backfilledIdentityUrl(undefined, "github.com/username/repo"),
       null,
     );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://glyph.testnet.local"),
+      null,
+    );
     assert.equal(backfilledIdentityUrl(undefined, null), null);
     assert.equal(backfilledIdentityUrl(undefined, "not a url"), null);
   });

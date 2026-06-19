@@ -1229,6 +1229,8 @@ describe("script utility contracts", () => {
     assert.equal(isValidUrl("not a url"), false);
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
     assert.equal(isUnsafeUrl("http://metadata.localhost"), true);
+    assert.equal(isUnsafeUrl("https://taochat.testnet.local"), true);
+    assert.equal(isUnsafeUrl("https://local"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://100.64.0.1"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
