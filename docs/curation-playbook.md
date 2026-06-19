@@ -32,6 +32,12 @@ The enrichment queue is also available through
 registry truth; it only prioritizes public-safe work derived from current
 artifacts.
 
+For the single maintainer/agent view of "which subnets should we enrich next
+and why?", use `/api/v1/coverage-depth`. It combines callable-service,
+schema, fixture, example/SDK, provenance, profile, and `agent_readiness`
+signals into one ranked queue while preserving separate missing-data,
+needs-review, and hard-blocker gap types.
+
 Contributor-ready targets are available through
 `/api/v1/review/enrichment-targets`. This route groups the queue into concrete
 surface-candidate, adapter-review, maintainer-review, and monitoring-followup

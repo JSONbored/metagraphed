@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-58-data-artifact-handshake58-com",
+      "kind": "data-artifact",
+      "name": "Pending community data-artifact",
+      "netuid": 58,
+      "provider": "handshake58",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://handshake58.com/openapi.json",
+      "source_urls": ["https://handshake58.com/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://handshake58.com/api/skills"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}

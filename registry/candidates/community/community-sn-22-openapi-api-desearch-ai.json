@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-22-openapi-api-desearch-ai",
+      "kind": "openapi",
+      "name": "Desearch community openapi",
+      "netuid": 22,
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://www.desearch.ai/docs",
+      "source_urls": ["https://www.desearch.ai/docs"],
+      "state": "schema-valid",
+      "url": "https://api.desearch.ai/openapi.json"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}

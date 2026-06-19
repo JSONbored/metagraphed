@@ -73,5 +73,8 @@
       },
       "notes": "Official Graphite source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/graphitesubnet"
+  }
 }

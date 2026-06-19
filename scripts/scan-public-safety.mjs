@@ -28,7 +28,12 @@ const patterns = [
   {
     name: "private or loopback URL",
     regex:
-      /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+    // The standard local subtensor RPC endpoint is documented setup guidance for
+    // the `local` network surface (llms.txt / setup docs), not a leaked internal
+    // URL. Scoped to the exact well-known endpoint; any other loopback URL on the
+    // same line is still flagged (allowlisted spans are stripped before testing).
+    allow: /wss?:\/\/127\.0\.0\.1:9944\b/gi,
   },
   {
     name: "token-like assignment",
@@ -137,7 +142,11 @@ for (const root of targetRoots) {
         if (pattern.soft && skipSoft) {
           continue;
         }
-        if (pattern.regex.test(line)) {
+        // Strip allowlisted spans (e.g. the documented local subtensor RPC
+        // endpoint) before testing, so a real leak elsewhere on the same line
+        // is still caught.
+        const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+        if (pattern.regex.test(probe)) {
           findings.push(`${relative}:${index + 1}: ${pattern.name}`);
         }
       }
@@ -168,7 +177,7 @@ function scanCapturedFixtureBody(relativePath, content) {
     return;
   }
 
-  for (const { valuePath, value } of walkJsonStrings(body)) {
+  for (const { valuePath, value, kind } of walkJsonStrings(body)) {
     for (const pattern of patterns) {
       // Keep broad Bittensor terminology exempt for mirrored fixture bodies, but
       // still scan security-sensitive wallet/key phrases that can appear under
@@ -186,9 +195,11 @@ function scanCapturedFixtureBody(relativePath, content) {
         continue;
       }
       if (pattern.regex.test(value)) {
-        findings.push(
-          `${relativePath}:response.body${valuePath}: ${pattern.name}`,
-        );
+        const location =
+          kind === "key"
+            ? `${relativePath}:response.body${valuePath} key`
+            : `${relativePath}:response.body${valuePath}`;
+        findings.push(`${location}: ${pattern.name}`);
       }
     }
   }
@@ -241,7 +252,9 @@ function* walkJsonStrings(node, valuePath = "") {
   }
   if (node && typeof node === "object") {
     for (const [key, value] of Object.entries(node)) {
-      yield* walkJsonStrings(value, `${valuePath}.${key}`);
+      const nestedPath = `${valuePath}.${key}`;
+      yield { valuePath: nestedPath, value: key, kind: "key" };
+      yield* walkJsonStrings(value, nestedPath);
     }
   }
 }

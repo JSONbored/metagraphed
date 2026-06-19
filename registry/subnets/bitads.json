@@ -99,5 +99,8 @@
       },
       "notes": "Official BitAds source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/bitkoop"
+  }
 }

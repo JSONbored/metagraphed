@@ -116,5 +116,9 @@
       },
       "notes": "Official miner API contract documentation for Cacheon. This is documentation for miner-hosted OpenAI-compatible endpoints, not a promoted shared public API endpoint."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/cacheon_ai"
+  },
+  "contact": "hello@cacheon.ai"
 }

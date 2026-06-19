@@ -69,7 +69,34 @@ for (const file of trackedFiles) {
     continue;
   }
 
-  if (stat.isSymbolicLink() || !stat.isFile()) {
+  if (stat.isSymbolicLink()) {
+    let linkTarget;
+    try {
+      linkTarget = await fs.readlink(absolutePath);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        continue;
+      }
+      console.warn(`Skipping unreadable symlink ${file}: ${error.message}`);
+      continue;
+    }
+
+    for (const pattern of contentPatterns) {
+      if (!pattern.regex.test(linkTarget)) {
+        continue;
+      }
+      if (
+        pattern.name !== "real Discord webhook URL" &&
+        allowedContentMentions.has(file)
+      ) {
+        continue;
+      }
+      findings.push(`${file}: symlink target: ${pattern.name}`);
+    }
+    continue;
+  }
+
+  if (!stat.isFile()) {
     continue;
   }
 

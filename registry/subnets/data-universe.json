@@ -191,5 +191,8 @@
       },
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  }
 }

@@ -14,7 +14,7 @@
   "website_url": "https://actual.inc/",
   "docs_url": null,
   "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
-  "source_repo": null,
+  "source_repo": "https://github.com/actual-computer/actual-subnet-95",
   "baseline_excluded_surface_ids": [
     "sn-95-taomarketcap-source-repo",
     "sn-95-taomarketcap-website",
@@ -79,5 +79,6 @@
       },
       "notes": "Public Actual GGUF model registry page. The page is browser-facing and served publicly; account-specific Actual docs redirect to login and are not listed as public docs."
     }
-  ]
+  ],
+  "contact": "subnet@actual.inc"
 }

@@ -151,5 +151,8 @@
       },
       "notes": "Public NATIX Hugging Face organization linked from the StreetVision README."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/natixnetwork"
+  }
 }

@@ -65,5 +65,8 @@
       },
       "notes": "Official Sundae Bar source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/sundae_bar_"
+  }
 }

@@ -100,3 +100,102 @@ describe("generateServiceSnippets (#351)", () => {
     );
   });
 });
+
+describe("generateServiceSnippets structured auth (#746)", () => {
+  const base = { base_url: "https://api.example.com/v1", auth_required: true };
+
+  test("structured header auth uses the exact header name + placeholder", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "header",
+        name: "X-API-Key",
+        value_format: "<api-key>",
+      },
+    });
+    assert.match(out.curl, /-H 'X-API-Key: <api-key>'/);
+    assert.match(out.python, /"X-API-Key": "<api-key>"/);
+    assert.match(out.typescript, /"X-API-Key": "<api-key>"/);
+  });
+
+  test("structured query auth puts the credential on the URL, not a header", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api_key",
+        value_format: "YOUR_API_KEY",
+      },
+    });
+    assert.match(out.curl, /\?api_key=YOUR_API_KEY/);
+    assert.doesNotMatch(out.curl, /-H /);
+    assert.match(out.python, /\?api_key=YOUR_API_KEY/);
+  });
+
+  test("appends with & when the base URL already has a query string", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      base_url: "https://api.example.com/v1?v=2",
+      auth: { scheme: "api-key", location: "query", name: "key" },
+    });
+    assert.match(out.curl, /\?v=2&key=YOUR_API_KEY/);
+  });
+
+  test("structured auth wins over the scheme-type guess", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth_schemes: ["http"], // would guess Authorization: Bearer
+      auth: {
+        scheme: "api-key",
+        location: "header",
+        name: "X-Custom-Key",
+        value_format: "<key>",
+      },
+    });
+    assert.match(out.curl, /X-Custom-Key/);
+    assert.doesNotMatch(out.curl, /Authorization/);
+  });
+
+  test("scheme:none yields a plain GET even when auth_required is set", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "none" },
+    });
+    assert.doesNotMatch(out.curl, /-H /);
+  });
+
+  test("rejects a placeholder that could break snippet quoting", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "header",
+        name: "X-API-Key",
+        value_format: "x'; rm -rf /",
+      },
+    });
+    // unsafe placeholder is dropped → falls back to a plain GET, never injected
+    assert.doesNotMatch(out.curl, /rm -rf/);
+  });
+
+  test("fills scheme-appropriate placeholders when value_format is omitted", () => {
+    const bearer = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "bearer" },
+    });
+    assert.match(bearer.curl, /-H 'Authorization: Bearer YOUR_API_KEY'/);
+    const basic = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "basic" },
+    });
+    assert.match(basic.curl, /Authorization: Basic <base64/);
+    // query api-key with no name defaults the param to api_key
+    const key = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "api-key", location: "query" },
+    });
+    assert.match(key.curl, /\?api_key=YOUR_API_KEY/);
+  });
+});

@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import {
   OPERATIONAL_KINDS,
   buildGlobalHealth,
+  formatBulkTrends,
   formatGlobalIncidents,
   formatTrends,
   mergeFreshness,
@@ -674,6 +675,118 @@ describe("formatTrends (additional paths)", () => {
   });
 });
 
+describe("formatBulkTrends", () => {
+  test("groups daily rows by subnet and sorts subnets/points", () => {
+    const out = formatBulkTrends({
+      observedAt: "2026-06-11T00:00:00.000Z",
+      windowDays: { "7d": 7, "30d": 30 },
+      windows: {
+        "7d": [
+          {
+            netuid: 8,
+            date: "2026-06-10",
+            total: 4,
+            ok_count: 2,
+            avg_latency_ms: 10.2,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: 10,
+            ok_count: 9,
+            avg_latency_ms: 50.4,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 5,
+            ok_count: 5,
+            avg_latency_ms: 30,
+          },
+        ],
+        "30d": [],
+      },
+    });
+
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.source, "live-cron-prober");
+    assert.equal(out.windows["7d"].days, 7);
+    assert.equal(out.windows["7d"].granularity, "1d");
+    assert.equal(out.windows["7d"].subnet_count, 2);
+    assert.deepEqual(
+      out.windows["7d"].subnets.map((entry) => entry.netuid),
+      [7, 8],
+    );
+
+    const sn7 = out.windows["7d"].subnets[0];
+    assert.equal(sn7.samples, 15);
+    assert.equal(sn7.uptime_ratio, Number((14 / 15).toFixed(4)));
+    assert.equal(sn7.avg_latency_ms, 44);
+    assert.deepEqual(
+      sn7.points.map((point) => point.date),
+      ["2026-06-10", "2026-06-11"],
+    );
+    assert.equal(sn7.points[1].uptime_ratio, 0.9);
+    assert.equal(sn7.points[1].avg_latency_ms, 50);
+    assert.equal(out.windows["30d"].subnet_count, 0);
+  });
+
+  test("empty or invalid rows keep the schema-stable cold shape", () => {
+    const out = formatBulkTrends({
+      windows: {
+        "7d": [
+          { netuid: -1, date: "2026-06-10", total: 1, ok_count: 1 },
+          { netuid: 7, date: "not-a-date", total: 1, ok_count: 1 },
+        ],
+      },
+      windowDays: { "7d": 7 },
+    });
+    assert.equal(out.observed_at, null);
+    assert.equal(out.windows["7d"].days, 7);
+    assert.equal(out.windows["7d"].subnet_count, 0);
+    assert.deepEqual(out.windows["7d"].subnets, []);
+  });
+
+  test("covers zero-sample and omitted-window fallback branches", () => {
+    const empty = formatBulkTrends({});
+    assert.deepEqual(empty.windows, {});
+
+    const out = formatBulkTrends({
+      windows: {
+        "7d": null,
+        cold: [
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 0,
+            ok_count: undefined,
+            avg_latency_ms: null,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: undefined,
+            ok_count: undefined,
+            avg_latency_ms: "not-a-number",
+          },
+          { netuid: "bad", date: "2026-06-10", total: 1, ok_count: 1 },
+          { netuid: 9, total: 1, ok_count: 1 },
+        ],
+      },
+    });
+
+    assert.equal(out.windows["7d"].days, 0);
+    assert.equal(out.windows["7d"].subnet_count, 0);
+    const sn7 = out.windows.cold.subnets[0];
+    assert.equal(sn7.samples, 0);
+    assert.equal(sn7.uptime_ratio, null);
+    assert.equal(sn7.avg_latency_ms, null);
+    assert.equal(sn7.points[0].uptime_ratio, null);
+    assert.equal(sn7.points[0].avg_latency_ms, null);
+    assert.equal(sn7.points[1].avg_latency_ms, null);
+  });
+});
+
 // --- Worker integration: the LIVE path (mock KV + D1) -------------------------
 function kvWith(entries) {
   return {
@@ -745,12 +858,110 @@ describe("worker live health serving", () => {
     assert.equal(body.data.windows["7d"].uptime_ratio, 0.99);
     assert.equal(body.data.source, "live-cron-prober");
   });
+
+  test("/api/v1/health/trends rejects unsupported query parameters before D1", async () => {
+    let queried = false;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          queried = true;
+          return d1With([]).prepare();
+        },
+      },
+    });
+    const res = await handleRequest(
+      req("/api/v1/health/trends?cacheBust=1"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal(queried, false);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "cacheBust");
+  });
+
+  test("/api/v1/health/trends reads the bounded daily rollup once", async () => {
+    const queries = [];
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          queries.push(sql);
+          return {
+            bind(...params) {
+              queries.push(params);
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    assert.equal(
+      queries.filter((entry) => typeof entry === "string").length,
+      1,
+    );
+    assert.match(queries[0], /FROM surface_uptime_daily/);
+    assert.doesNotMatch(queries[0], /FROM surface_checks/);
+    assert.match(queries[0], /LIMIT \?/);
+    assert.equal(queries[1][1], 10000);
+  });
+
+  test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: d1With([
+        {
+          netuid: 8,
+          date: "2026-06-17",
+          total: 10,
+          ok_count: 8,
+          avg_latency_ms: 30,
+        },
+        {
+          netuid: 7,
+          date: "2026-06-17",
+          total: 5,
+          ok_count: 5,
+          avg_latency_ms: 20,
+        },
+      ]),
+      METAGRAPH_CONTROL: kvWith({
+        "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
+      }),
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.meta.artifact_path, "/metagraph/health/trends.json");
+    assert.equal(body.data.observed_at, "2026-06-11T00:00:00.000Z");
+    assert.equal(body.data.windows["7d"].days, 7);
+    assert.deepEqual(
+      body.data.windows["7d"].subnets.map((entry) => entry.netuid),
+      [7, 8],
+    );
+    assert.equal(
+      body.data.windows["7d"].subnets[1].points[0].uptime_ratio,
+      0.8,
+    );
+  });
 });
 
 describe("resolveLiveHealth (KV → D1 → null)", () => {
   const liveKv = {
     last_run_at: "2026-06-13T00:00:00.000Z",
-    surfaces: [{ surface_id: "7:subnet-api:x", netuid: 7, status: "ok" }],
+    surfaces: [
+      {
+        surface_id: "7:subnet-api:x",
+        surface_key: "srf-livekv00000000",
+        netuid: 7,
+        status: "ok",
+      },
+    ],
     subnets: [{ netuid: 7, status: "ok" }],
   };
 
@@ -770,6 +981,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     const db = {
       prepare: (sql) => {
         assert.match(sql, /WHERE last_checked >= \?/);
+        assert.match(sql, /surface_key/);
         return {
           bind: (cutoff) => {
             observedCutoffs.push(cutoff);
@@ -778,6 +990,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
                 results: [
                   {
                     surface_id: "7:subnet-api:x",
+                    surface_key: "srf-d1fallback0000",
                     netuid: 7,
                     kind: "subnet-api",
                     provider: "x",
@@ -804,6 +1017,7 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     });
     assert.equal(live.health_source, "live-d1-fallback");
     assert.equal(live.surfaces[0].status, "failed");
+    assert.equal(live.surfaces[0].surface_key, "srf-d1fallback0000");
     assert.equal(live.subnets[0].netuid, 7);
     assert.equal(live.subnets[0].status, "failed");
     assert.deepEqual(observedCutoffs, [1_700_000_000_000]);
@@ -897,7 +1111,8 @@ describe("composed-artifact health overlays", () => {
     subnets: [{ netuid: 7, status: "failed", surface_count: 1, ok_count: 0 }],
     surfaces: [
       {
-        surface_id: "7:subnet-api:x",
+        surface_id: "7:subnet-api:renamed",
+        surface_key: "srf-subnetapix0000",
         netuid: 7,
         status: "failed",
         classification: "down",
@@ -932,6 +1147,7 @@ describe("composed-artifact health overlays", () => {
       services: [
         {
           surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
           base_url: "https://x",
           health: { status: "ok", stale: true },
           eligibility: { callable: true, reasons: [] },
@@ -946,6 +1162,25 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.services[0].base_url, "https://x"); // structural kept
     assert.equal(out.health_source, "live-cron-prober");
     assert.equal(overlayCatalogDetail(detail, null, 7), null);
+  });
+
+  test("overlayCatalogDetail joins renamed services by stable surface_key", () => {
+    const detail = {
+      netuid: 7,
+      services: [
+        {
+          surface_id: "7:subnet-api:old-name",
+          surface_key: "srf-subnetapix0000",
+          base_url: "https://x",
+          health: { status: "ok", stale: true },
+          eligibility: { callable: true },
+        },
+      ],
+    };
+    const out = overlayCatalogDetail(detail, live, 7);
+    assert.equal(out.services[0].surface_id, "7:subnet-api:old-name");
+    assert.equal(out.services[0].health.status, "failed");
+    assert.equal(out.services[0].eligibility.callable, false);
   });
 
   test("overlayCatalogDetail marks a service with no live row as unknown", () => {
@@ -968,6 +1203,47 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.services[0].eligibility.callable, false);
   });
 
+  test("overlayCatalogDetail gates readiness_verified on a live ok probe (#357)", () => {
+    const readiness = {
+      score: 100,
+      readiness_tier: "buildable",
+      readiness_version: 2,
+      components: { has_callable_api: true },
+    };
+    const detail = {
+      netuid: 7,
+      readiness,
+      services: [
+        {
+          surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
+          base_url: "https://x",
+          health: { status: "ok", stale: true },
+          eligibility: { callable: true },
+        },
+      ],
+    };
+    // live `x` probed "failed" → catalogued but NOT verified; score untouched.
+    const dead = overlayCatalogDetail(detail, live, 7);
+    assert.equal(dead.readiness.readiness_verified, false);
+    assert.equal(dead.readiness.score, 100);
+    assert.equal(dead.readiness.readiness_tier, "buildable");
+    // same surface probed "ok" → verified.
+    const okLive = {
+      ...live,
+      surfaces: [{ ...live.surfaces[0], status: "ok" }],
+    };
+    const verified = overlayCatalogDetail(detail, okLive, 7);
+    assert.equal(verified.readiness.readiness_verified, true);
+    // a detail with no readiness object → field simply absent (no crash).
+    const bare = overlayCatalogDetail(
+      { netuid: 7, services: detail.services },
+      okLive,
+      7,
+    );
+    assert.equal(bare.readiness, undefined);
+  });
+
   test("overlayCatalogIndex returns null without a live snapshot", () => {
     assert.equal(overlayCatalogIndex({ subnets: [] }, null), null);
   });
@@ -987,6 +1263,7 @@ describe("composed-artifact health overlays", () => {
       endpoints: [
         {
           surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
           url: "https://x",
           status: "ok",
           classification: "live",
@@ -1031,6 +1308,26 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.health_source, "live-cron-prober");
     assert.deepEqual(out.summary.by_status, { failed: 1, unknown: 1 });
     assert.equal(out.summary.pool_eligible_count, 0);
+  });
+
+  test("overlayArtifactEndpoints joins renamed endpoints by stable surface_key", () => {
+    const out = overlayArtifactEndpoints(
+      {
+        endpoints: [
+          {
+            surface_id: "7:subnet-api:old-name",
+            surface_key: "srf-subnetapix0000",
+            status: "ok",
+            health_source: "probe-derived",
+            health_stale: false,
+          },
+        ],
+      },
+      live,
+    );
+    assert.equal(out.endpoints[0].surface_id, "7:subnet-api:old-name");
+    assert.equal(out.endpoints[0].status, "failed");
+    assert.equal(out.endpoints[0].health_source, "live-cron-prober");
   });
 
   test("overlayArtifactEndpoints recomputes pool eligibility from live health and static constraints", () => {
@@ -1246,6 +1543,29 @@ describe("composed-artifact health overlays", () => {
 });
 
 describe("worker live health overlay on composed routes", () => {
+  const seedComposedArchive = ({
+    overview = { netuid: 7, health: null },
+    catalog = { netuid: 7, services: [] },
+  } = {}) => ({
+    async get(key) {
+      if (String(key).includes("overview/7.json")) {
+        return {
+          async json() {
+            return overview;
+          },
+        };
+      }
+      if (String(key).includes("agent-catalog/7.json")) {
+        return {
+          async json() {
+            return catalog;
+          },
+        };
+      }
+      return null;
+    },
+  });
+
   test("/api/v1/subnets/7/overview overlays live health from KV", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
@@ -1257,6 +1577,7 @@ describe("worker live health overlay on composed routes", () => {
           surfaces: [],
         },
       }),
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     assert.equal(res.status, 200);
@@ -1275,6 +1596,7 @@ describe("worker live health overlay on composed routes", () => {
           surfaces: [],
         },
       }),
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
     const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
     assert.equal(res.status, 200);
@@ -1298,8 +1620,43 @@ describe("worker live health overlay on composed routes", () => {
     assert.equal((await res.json()).meta.source, "live-cron-prober");
   });
 
+  test("live overlays preserve missing composed artifact 404s", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: kvWith({
+        "health:current": {
+          last_run_at: "2026-06-13T00:00:00.000Z",
+          subnets: [{ netuid: 1, status: "ok" }],
+          surfaces: [],
+        },
+      }),
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return null;
+        },
+      },
+    });
+
+    const overview = await handleRequest(
+      req("/api/v1/subnets/999999/overview"),
+      env,
+      {},
+    );
+    assert.equal(overview.status, 404);
+    assert.equal((await overview.json()).ok, false);
+
+    const catalog = await handleRequest(
+      req("/api/v1/agent-catalog/999999"),
+      env,
+      {},
+    );
+    assert.equal(catalog.status, 404);
+    assert.equal((await catalog.json()).ok, false);
+  });
+
   test("composed routes fall back to the static artifact when KV+D1 are cold", async () => {
-    const env = createLocalArtifactEnv();
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
+    });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     assert.equal(res.status, 200);
     assert.notEqual((await res.json()).meta.source, "live-cron-prober");
@@ -1477,7 +1834,9 @@ describe("worker live health overlay on composed routes", () => {
   test("composed overview no longer embeds a baked health status", async () => {
     // The built artifact carries health:null; cold reads must not surface a
     // stale status (the overlay would set it live in prod).
-    const env = createLocalArtifactEnv();
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
+    });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     const body = await res.json();
     assert.equal(body.data.health, null);
@@ -1538,6 +1897,40 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.reliability.surface_count, 2);
     assert.equal(typeof out.surfaces[0].reliability.score, "number");
     assert.match(out.surfaces[0].reliability.grade, /^[A-F]$/);
+  });
+
+  test("groups renamed uptime rows by stable surface_key", () => {
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          uptime_ratio: 0.8,
+          avg_latency_ms: 60,
+          status: "degraded",
+        },
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          uptime_ratio: 1,
+          avg_latency_ms: 40,
+          status: "ok",
+        },
+      ],
+    });
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].surface_id, "7:api:new");
+    assert.equal(out.surfaces[0].samples, 200);
+    assert.equal(out.surfaces[0].uptime_ratio, 0.9);
+    assert.equal(out.reliability.surface_count, 1);
   });
 
   test("returns an empty series + null reliability for no rows", () => {
@@ -1608,13 +2001,15 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
 
   test("rejects an invalid window with 400", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(
-      req("/api/v1/subnets/7/uptime?window=5y"),
-      env,
-      {},
-    );
-    assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    for (const windowParam of ["5y", "constructor", "__proto__"]) {
+      const res = await handleRequest(
+        req(`/api/v1/subnets/7/uptime?window=${windowParam}`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal((await res.json()).error.code, "invalid_query");
+    }
   });
 });
 

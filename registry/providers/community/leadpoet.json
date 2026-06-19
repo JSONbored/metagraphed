@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/leadpoet/leadpoet",
+    "id": "leadpoet",
+    "kind": "subnet-team",
+    "name": "Leadpoet",
+    "public_notes": "Subnet 71 (Leadpoet) team profile — intent-driven AI for modern sales teams. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+    "schema_version": 1,
+    "website_url": "https://leadpoet.com/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}

@@ -5,6 +5,7 @@
   "slug": "sn-76",
   "status": "active",
   "categories": ["baseline-curated", "identity-reviewed", "official-website"],
+  "source_repo": "https://github.com/byzantiumaitao-arch/byzantium",
   "dashboard_url": "https://taomarketcap.com/subnets/76",
   "website_url": "https://www.byzantiumai.net/",
   "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted.",

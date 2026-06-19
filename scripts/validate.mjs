@@ -3,7 +3,10 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
   backfilledIdentityUrl,
+  socialAccounts,
+  subnetContact,
   flattenSurfaces,
+  withSurfaceFreshness,
   loadCandidates,
   loadVerification,
   loadNativeSnapshot,
@@ -102,6 +105,7 @@ const verificationClassifications = new Set([
   "transient",
   "timeout",
   "content-mismatch",
+  "wrong-chain",
 ]);
 const reviewDecisions = new Set([
   "maintainer-reviewed",
@@ -571,7 +575,10 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
   assert(candidateStates.has(candidate.state), `${key}: invalid state`);
   assert(Boolean(candidate.name), `${key}: name is required`);
   assert(surfaceKinds.has(candidate.kind), `${key}: invalid kind`);
-  assert(isValidUrl(candidate.url), `${key}: url must be a URL`);
+  assert(
+    normalizePublicHttpUrl(candidate.url) && !isCredentialedUrl(candidate.url),
+    `${key}: url must be a public HTTP(S) URL without credentials`,
+  );
   assert(isValidUrl(candidate.source_url), `${key}: source_url must be a URL`);
   if (candidate.source_urls !== undefined) {
     assert(
@@ -791,6 +798,14 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
       gap_notes: [],
     },
     links: overlay?.links || [],
+    // Mirror mergeSubnet's #745 social backfill (overlay wins, else sanitized
+    // on-chain `additional`) so the reproducibility check matches the generator.
+    social: socialAccounts(
+      nativeSubnet.chain_identity?.additional,
+      overlay?.social,
+    ),
+    // Mirror mergeSubnet's overlay-curated support contact.
+    contact: subnetContact(overlay?.contact),
   };
 }
 
@@ -890,16 +905,31 @@ async function validateGeneratedArtifacts(
   const overlayByNetuid = new Map(
     overlays.map((overlay) => [overlay.netuid, overlay]),
   );
-  const candidatesByNetuid = Map.groupBy(
-    candidates,
-    (candidate) => candidate.netuid,
-  );
   const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const activeNetuids = new Set(nativeNetuids);
   const activeOverlays = overlays.filter((overlay) =>
     activeNetuids.has(overlay.netuid),
   );
-  const surfaces = flattenSurfaces(activeOverlays);
+  // #1006: mirror the build's per-surface freshness stamp (last_verified_at is
+  // added inside flattenSurfaces; `stale` is computed against the same committed
+  // captured_at) so the per-subnet detail artifact stays reproducible.
+  const surfaces = withSurfaceFreshness(
+    flattenSurfaces(activeOverlays),
+    Date.parse(nativeSnapshot.captured_at),
+  );
+  // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate
+  // sharing a curated surface's registrySurfaceKey is already promoted, so the
+  // per-subnet detail artifact counts/lists only the non-superseded candidates.
+  const curatedSurfaceIdByRegistryKey = new Map(
+    surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+  );
+  const activeCandidatesByNetuid = Map.groupBy(
+    candidates.filter(
+      (candidate) =>
+        !curatedSurfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+    ),
+    (candidate) => candidate.netuid,
+  );
   const endpointsByNetuid = Map.groupBy(
     endpointsArtifact.endpoints || [],
     (endpoint) => endpoint.netuid,
@@ -915,7 +945,7 @@ async function validateGeneratedArtifacts(
           subnet: nativeSubnet,
         },
         overlayByNetuid.get(nativeSubnet.netuid),
-        candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+        activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
       ),
     ]),
   );
@@ -932,7 +962,8 @@ async function validateGeneratedArtifacts(
     const detailPath = artifactPath(`subnets/${subnet.netuid}.json`);
     try {
       const detailArtifact = await readJson(detailPath);
-      const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+      const subnetCandidates =
+        activeCandidatesByNetuid.get(subnet.netuid) || [];
       const subnetSurfaces = surfaces.filter(
         (surface) => surface.netuid === subnet.netuid,
       );
@@ -1117,6 +1148,7 @@ async function validateGeneratedArtifacts(
   for (const expectedArtifact of [
     "changelog",
     "source-snapshots",
+    "surface-aliases",
     "rpc-pools",
     "r2-manifest",
     "type-definitions",
@@ -1269,11 +1301,14 @@ async function validateGeneratedArtifacts(
     r2ManifestArtifact.bucket_binding === "METAGRAPH_ARCHIVE",
     "R2 manifest: unexpected bucket binding",
   );
+  // changelog.json moved to R2-only (#1003): it's uploaded with the other
+  // r2-tier artifacts via the FULL manifest and intentionally excluded from the
+  // compact (committed cold-start) manifest, which only carries dual-tier paths.
   assert(
-    r2ManifestArtifact.artifacts.some(
+    !r2ManifestArtifact.artifacts.some(
       (artifact) => artifact.path === "/metagraph/changelog.json",
     ),
-    "R2 manifest: changelog must be uploaded",
+    "R2 manifest (compact): changelog is r2-tier and must be excluded",
   );
   assert(
     r2ManifestArtifact.required_artifact_paths?.includes(
@@ -1377,6 +1412,10 @@ function validateFreshnessForPublish(freshnessArtifact) {
     const observedAt = Date.parse(source.as_of);
     if (!Number.isFinite(observedAt)) {
       failures.push(`${source.id} has invalid as_of timestamp`);
+      continue;
+    }
+    if (observedAt > now) {
+      failures.push(`${source.id} as_of timestamp is in the future`);
       continue;
     }
     const ageHours = (now - observedAt) / 3_600_000;

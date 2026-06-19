@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/mode-network/synth-subnet",
+    "id": "synth",
+    "kind": "subnet-team",
+    "name": "Synth",
+    "public_notes": "Subnet 50 (Synth) team profile — predictive intelligence for financial markets, operated by Mode Network. Public-safe identity from the subnet's on-chain SubnetIdentitiesV3 (name, website, source repo).",
+    "schema_version": 1,
+    "website_url": "https://synthdata.co/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}

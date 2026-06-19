@@ -62,9 +62,11 @@
         ]
       },
       "CoverageLevel": {
+        "description": "How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).",
         "enum": ["native-only", "manifested", "probed"]
       },
       "CurationLevel": {
+        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
         "enum": [
           "native",
           "candidate-discovered",
@@ -101,6 +103,7 @@
         ]
       },
       "HealthStatus": {
+        "description": "Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).",
         "enum": ["ok", "degraded", "failed", "unknown"]
       },
       "Classification": {
@@ -115,6 +118,7 @@
           "transient",
           "timeout",
           "content-mismatch",
+          "wrong-chain",
           "unknown"
         ]
       },
