@@ -74,6 +74,45 @@ export const metagraphedQueryKey = (...parts: unknown[]) => [
 
 const k = metagraphedQueryKey;
 
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function normalizeEconomicsSubnets(value: unknown): SubnetEconomics[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+
+    const netuid = optionalNumber(item.netuid);
+    if (netuid == null) return [];
+
+    return [
+      {
+        ...item,
+        netuid,
+        name: optionalString(item.name),
+        slug: optionalString(item.slug),
+        emission_share: optionalNumber(item.emission_share),
+        alpha_price_tao: optionalNumber(item.alpha_price_tao),
+        validator_count: optionalNumber(item.validator_count),
+        max_validators: optionalNumber(item.max_validators),
+        miner_count: optionalNumber(item.miner_count),
+        max_uids: optionalNumber(item.max_uids),
+        total_stake_tao: optionalNumber(item.total_stake_tao),
+        max_stake_tao: optionalNumber(item.max_stake_tao),
+        subnet_volume_tao: optionalNumber(item.subnet_volume_tao),
+        registration_cost_tao: optionalNumber(item.registration_cost_tao),
+        registration_allowed: booleanValue(item.registration_allowed),
+      } satisfies SubnetEconomics,
+    ];
+  });
+}
+
 /**
  * Normalize a list response. The API wraps lists as
  *   { ok, data: { <collection>: T[] }, meta }.
@@ -381,10 +420,10 @@ export const economicsQuery = () =>
   queryOptions({
     queryKey: k("economics"),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<{ subnets?: SubnetEconomics[] }>("/api/v1/economics", {
+      const res = await apiFetch<{ subnets?: unknown }>("/api/v1/economics", {
         signal,
       });
-      return { data: res.data?.subnets ?? [], meta: res.meta, url: res.url };
+      return { data: normalizeEconomicsSubnets(res.data?.subnets), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });
