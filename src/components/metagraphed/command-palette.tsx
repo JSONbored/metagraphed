@@ -35,6 +35,7 @@ import {
   SUGGESTED_QUERIES,
 } from "@/lib/metagraphed/search-history";
 import { Kbd } from "./kbd";
+import { safeExternalUrl } from "./external-link";
 
 const ROUTE_INDEX: Array<{
   label: string;
@@ -185,7 +186,8 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     if (kind === "endpoint") return { to: "/endpoints" };
     if (hit.netuid != null)
       return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
-    if (hit.url) return { external: hit.url };
+    const safeUrl = safeExternalUrl(hit.url);
+    if (safeUrl) return { external: safeUrl };
     return { to: "/" };
   }, []);
 
