@@ -705,12 +705,16 @@ function TableSkeleton() {
 
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
-  const { data: healthRes } = useSuspenseQuery(healthQuery());
-  const coverage = useQuery(coverageQuery()).data?.data;
+  // Best-effort overlays: the subnet list is the hard dependency for this table,
+  // but health and coverage failures should degrade to Unknown/dash values rather
+  // than replace the entire table via the surrounding QueryErrorBoundary.
+  const { data: healthRes } = useQuery({ ...healthQuery(), retry: 0 });
+  const coverage = useQuery({ ...coverageQuery(), retry: 0 }).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
-  const hsubs = (healthRes.data as { subnets?: Array<{ netuid: number; status?: string }> })
-    ?.subnets;
+  const hsubs = (
+    healthRes?.data as { subnets?: Array<{ netuid: number; status?: string }> } | undefined
+  )?.subnets;
   if (Array.isArray(hsubs)) {
     for (const s of hsubs) {
       const st = s.status;

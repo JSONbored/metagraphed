@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Donut, DonutLegend } from "./donut";
 import { Sparkline } from "./sparkline";
 import { coverageQuery, healthQuery, freshnessQuery } from "@/lib/metagraphed/queries";
@@ -6,14 +6,14 @@ import { humaniseSeconds } from "@/lib/metagraphed/format";
 
 /**
  * Home "registry pulse" strip — three small modules: curation donut, health
- * donut, freshness sparkline. useSuspenseQuery so it renders server-side (the
- * caller wraps it in Suspense + QueryErrorBoundary); a plain useQuery painted an
- * empty strip on SSR. Still degrades gracefully when individual fields are null.
+ * donut, freshness sparkline. These overlay endpoints are best-effort: if one
+ * fails, keep the pulse card visible and render dash/empty states for that
+ * slice instead of throwing to the widget-level error boundary.
  */
 export function RegistryPulse() {
-  const coverage = useSuspenseQuery(coverageQuery()).data?.data;
-  const health = useSuspenseQuery(healthQuery()).data?.data;
-  const fresh = useSuspenseQuery(freshnessQuery()).data?.data;
+  const coverage = useQuery({ ...coverageQuery(), retry: 0 }).data?.data;
+  const health = useQuery({ ...healthQuery(), retry: 0 }).data?.data;
+  const fresh = useQuery({ ...freshnessQuery(), retry: 0 }).data?.data;
 
   const curationSegs = [
     {
