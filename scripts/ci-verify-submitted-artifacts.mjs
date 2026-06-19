@@ -143,7 +143,7 @@ function normalizeForComparison(value) {
     return value.map(normalizeForComparison);
   }
   if (value && typeof value === "object") {
-    const out = {};
+    const out = Object.create(null);
     for (const key of Object.keys(value).sort()) {
       out[key] = normalizeForComparison(value[key]);
     }
