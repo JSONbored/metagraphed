@@ -439,6 +439,29 @@ describe("createMetagraphedClient", () => {
     expect((out as { data: unknown }).data).toEqual({ fresh: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  test("throws instead of looping on repeated 304 responses without a cache entry", async () => {
+    const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
+      if (fetchMock.mock.calls.length === 2) {
+        expect(
+          (init.headers as Record<string, string>)["if-none-match"],
+        ).toBeUndefined();
+      }
+      return new Response(null, { status: 304 });
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+
+    await expect(
+      client.health({ headers: { "if-none-match": 'W/"caller-stale"' } }),
+    ).rejects.toMatchObject({
+      name: "MetagraphedError",
+      status: 304,
+      message: "GET /api/v1/health returned 304 without a cached response",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("createLruEtagCache", () => {
