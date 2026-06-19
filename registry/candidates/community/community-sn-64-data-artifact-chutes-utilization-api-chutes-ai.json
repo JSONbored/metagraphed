@@ -3,7 +3,7 @@
     {
       "auth_required": false,
       "confidence": "medium",
-      "id": "community-sn-64-data-artifact-api-chutes-ai",
+      "id": "community-sn-64-data-artifact-chutes-utilization-api-chutes-ai",
       "kind": "data-artifact",
       "name": "Chutes utilization data-artifact",
       "netuid": 64,

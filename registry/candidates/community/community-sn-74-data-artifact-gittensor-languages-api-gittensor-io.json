@@ -3,7 +3,7 @@
     {
       "auth_required": false,
       "confidence": "medium",
-      "id": "community-sn-74-data-artifact-api-gittensor-io",
+      "id": "community-sn-74-data-artifact-gittensor-languages-api-gittensor-io",
       "kind": "data-artifact",
       "name": "Gittensor languages data-artifact",
       "netuid": 74,
