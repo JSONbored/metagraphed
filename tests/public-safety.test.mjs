@@ -3,7 +3,12 @@ import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
-import { isUnsafeResolvedUrl, isUnsafeUrl, repoRoot } from "../scripts/lib.mjs";
+import {
+  isUnsafeResolvedUrl,
+  isUnsafeUrl,
+  normalizePublicHttpUrl,
+  repoRoot,
+} from "../scripts/lib.mjs";
 
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
 const TEST_FIXTURE = "__public_safety_test__.json";
@@ -51,6 +56,25 @@ describe("public URL safety checks", () => {
     for (const url of unsafeUrls) {
       assert.equal(isUnsafeUrl(url), true, url);
     }
+  });
+
+  test("normalizes only public non-credentialed HTTP URLs", () => {
+    const unsafeUrls = [
+      "http://10.0.0.1/admin/",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://[::1]/",
+      "https://user:pass@example.com/private/",
+      "https://example.com/private?token=secret",
+    ];
+
+    for (const url of unsafeUrls) {
+      assert.equal(normalizePublicHttpUrl(url), null, url);
+    }
+
+    assert.equal(
+      normalizePublicHttpUrl("example.com/docs/#intro"),
+      "https://example.com/docs",
+    );
   });
 
   test("blocks hostnames that resolve to private addresses", async () => {

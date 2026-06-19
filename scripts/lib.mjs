@@ -1010,6 +1010,7 @@ export function normalizePublicUrl(value) {
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
       url.username ||
       url.password ||
+      isCredentialedUrl(url.toString()) ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
