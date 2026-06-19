@@ -31,6 +31,19 @@ describe("batch subnet lookups (?netuids=)", () => {
     assert.equal((await res.json()).error.code, "invalid_query");
   });
 
+  test("rejects an oversized netuids list with 400 invalid_query", async () => {
+    const netuids = Array.from({ length: 129 }, (_, i) => i).join(",");
+    const res = await get(`/api/v1/subnets?netuids=${netuids}`);
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_query");
+  });
+
+  test("rejects oversized netuid members with 400 invalid_query", async () => {
+    const res = await get("/api/v1/subnets?netuids=100000");
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_query");
+  });
+
   test("the single netuid filter still works alongside", async () => {
     const res = await get("/api/v1/subnets?netuid=7");
     assert.equal(res.status, 200);

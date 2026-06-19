@@ -351,6 +351,47 @@ describe("createMetagraphedClient", () => {
     });
   });
 
+  test("ETag cache keys do not expose raw request header values", async () => {
+    const observedKeys: string[] = [];
+    const cache = {
+      get(key: string) {
+        observedKeys.push(key);
+        return undefined;
+      },
+      set(key: string) {
+        observedKeys.push(key);
+      },
+    };
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ ok: true, data: { v: 1 }, meta: {} }), {
+          status: 200,
+          headers: { etag: 'W/"secret-safe"' },
+        }),
+    );
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+      headers: {
+        authorization: "Bearer SECRET_TOKEN_123",
+        cookie: "sid=SECRET_COOKIE_456",
+      },
+      cache,
+    });
+
+    await client.health({ headers: { "x-api-key": "SECRET_API_KEY_789" } });
+
+    expect(observedKeys).toHaveLength(2);
+    for (const key of observedKeys) {
+      expect(key).toContain("https://api.metagraph.sh/api/v1/health");
+      expect(key).not.toContain("SECRET_TOKEN_123");
+      expect(key).not.toContain("SECRET_COOKIE_456");
+      expect(key).not.toContain("SECRET_API_KEY_789");
+      expect(key).not.toContain("authorization:");
+      expect(key).not.toContain("cookie:");
+      expect(key).not.toContain("x-api-key:");
+    }
+  });
+
   test("fetchAll collects data rows across cursor pages", async () => {
     const pages = [
       {
@@ -437,6 +478,29 @@ describe("createMetagraphedClient", () => {
     });
     const out = await client.health();
     expect((out as { data: unknown }).data).toEqual({ fresh: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("throws instead of looping on repeated 304 responses without a cache entry", async () => {
+    const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
+      if (fetchMock.mock.calls.length === 2) {
+        expect(
+          (init.headers as Record<string, string>)["if-none-match"],
+        ).toBeUndefined();
+      }
+      return new Response(null, { status: 304 });
+    });
+    const client = createMetagraphedClient({
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+
+    await expect(
+      client.health({ headers: { "if-none-match": 'W/"caller-stale"' } }),
+    ).rejects.toMatchObject({
+      name: "MetagraphedError",
+      status: 304,
+      message: "GET /api/v1/health returned 304 without a cached response",
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -22,7 +22,9 @@
           "slug",
           "title",
           "subtitle",
-          "url"
+          "url",
+          "categories",
+          "service_kinds"
         ],
         "properties": {
           "score": { "type": "number" },
@@ -31,7 +33,15 @@
           "slug": { "type": ["string", "null"] },
           "title": { "type": ["string", "null"] },
           "subtitle": { "type": ["string", "null"] },
-          "url": { "type": ["string", "null"] }
+          "url": { "type": ["string", "null"] },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "service_kinds": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
         }
       }
     }

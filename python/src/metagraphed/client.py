@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from importlib.metadata import PackageNotFoundError, version as _package_version
-from typing import Any, Iterator, List, Mapping, Optional, Sequence
+from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
@@ -40,6 +40,40 @@ DEFAULT_USER_AGENT = (
     f"metagraphed-python/{__version__} (+https://github.com/JSONbored/metagraphed)"
 )
 _PATH_PARAM = re.compile(r"\{([^{}]+)\}")
+
+
+def _url_origin(url: str) -> Tuple[str, str, Optional[int]]:
+    parsed = urllib.parse.urlsplit(url)
+    port = parsed.port
+    if port is None and parsed.scheme == "http":
+        port = 80
+    elif port is None and parsed.scheme == "https":
+        port = 443
+    return (parsed.scheme.lower(), (parsed.hostname or "").lower(), port)
+
+
+class _CrossOriginSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that does not forward custom headers cross-origin."""
+
+    _CROSS_ORIGIN_HEADER_ALLOWLIST = frozenset({"Accept", "User-agent"})
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is None:
+            return None
+        if _url_origin(req.full_url) != _url_origin(newurl):
+            for key in list(redirected.headers):
+                if key not in self._CROSS_ORIGIN_HEADER_ALLOWLIST:
+                    redirected.remove_header(key)
+            for key in list(redirected.unredirected_hdrs):
+                if key not in self._CROSS_ORIGIN_HEADER_ALLOWLIST:
+                    redirected.remove_header(key)
+        return redirected
+
+
+def _open_request(request: urllib.request.Request, timeout: float):
+    opener = urllib.request.build_opener(_CrossOriginSafeRedirectHandler())
+    return opener.open(request, timeout=timeout)
 
 
 class MetagraphedError(Exception):
@@ -101,7 +135,7 @@ def metagraphed_fetch(
     attempt = 0
     while True:
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with _open_request(request, timeout=timeout) as response:
                 body = response.read().decode("utf-8")
             break
         except urllib.error.HTTPError as error:
@@ -276,7 +310,7 @@ def metagraphed_rpc(
         request.add_header(key, value)
 
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with _open_request(request, timeout=timeout) as response:
             body = response.read().decode("utf-8")
     except urllib.error.HTTPError as error:
         raise MetagraphedError(

@@ -231,6 +231,10 @@ function mapMatch(match) {
     title: metadata.title ?? null,
     subtitle: metadata.subtitle ?? null,
     url: metadata.url ?? null,
+    categories: Array.isArray(metadata.categories) ? metadata.categories : [],
+    service_kinds: Array.isArray(metadata.service_kinds)
+      ? metadata.service_kinds
+      : [],
   };
 }
 
