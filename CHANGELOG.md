@@ -19,6 +19,22 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.15.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.3...platform-v0.15.0) (2026-06-19)
+
+
+### Features
+
+* **registry:** add SN64 Chutes utilization data-artifact ([#1216](https://github.com/JSONbored/metagraphed/issues/1216)) ([451241d](https://github.com/JSONbored/metagraphed/commit/451241df33b16e6e05a4ff502f6417ea716eda6b))
+* **registry:** add SN74 Gittensor languages data-artifact ([#1217](https://github.com/JSONbored/metagraphed/issues/1217)) ([269e6bb](https://github.com/JSONbored/metagraphed/commit/269e6bb78f698f5c5fbc7ac7c9da5eae26895bd6))
+
+
+### Bug Fixes
+
+* **ci:** route invalid submissions through full validation ([b4142d2](https://github.com/JSONbored/metagraphed/commit/b4142d205a51fb6f034c33bba4e95df33f29fef1))
+* **public-safety:** remove loopback URL from LLM discovery docs ([5f5a3cd](https://github.com/JSONbored/metagraphed/commit/5f5a3cd3d35e20363782b18a5a8efd328797b1ca))
+* **registry:** prevent candidate id collisions ([233a5b5](https://github.com/JSONbored/metagraphed/commit/233a5b5e360832a5d5e4effbf734e53c50e375a3))
+* **scan:** tighten local subtensor allowlist ([929aaaf](https://github.com/JSONbored/metagraphed/commit/929aaaf610d8b2fe25e5a7119124eddea9b24f8e))
+
 ## [0.14.3](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.2...platform-v0.14.3) (2026-06-19)
 
 
