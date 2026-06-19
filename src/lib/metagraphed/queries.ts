@@ -558,32 +558,35 @@ export const sourceHealthQuery = () =>
     staleTime: STALE_MED,
   });
 
+function firstString(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string");
+}
+
+function firstFiniteNumber(...values: unknown[]): number | undefined {
+  return values.find(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  );
+}
+
 function normalizeSubnet(raw: unknown): Subnet {
   if (!raw || typeof raw !== "object") return raw as Subnet;
   const s = raw as Record<string, unknown>;
-  const statusToHealth = (v: unknown): HealthState | undefined => {
-    if (typeof v !== "string") return undefined;
-    if (v === "ok") return "ok";
-    if (v === "degraded" || v === "warn") return "warn";
-    if (v === "failed" || v === "down") return "down";
-    return "unknown";
-  };
   return {
     ...(s as object),
-    netuid: s.netuid as number,
-    name: (s.name as string) ?? (s.native_name as string),
-    type: (s.subnet_type as Subnet["type"]) ?? (s.type as Subnet["type"]),
-    participants: (s.participants as number) ?? (s.participant_count as number),
-    surfaces_count: (s.surfaces_count as number) ?? (s.surface_count as number),
-    candidates_count: (s.candidates_count as number) ?? (s.candidate_count as number),
+    netuid: firstFiniteNumber(s.netuid) ?? (s.netuid as number),
+    name: firstString(s.name, s.native_name),
+    type: firstString(s.subnet_type, s.type) as Subnet["type"] | undefined,
+    participants: firstFiniteNumber(s.participants, s.participant_count),
+    surfaces_count: firstFiniteNumber(s.surfaces_count, s.surface_count),
+    candidates_count: firstFiniteNumber(s.candidates_count, s.candidate_count),
     // chain `status` is "active" → "unknown" here; the real probe health is
     // joined from /api/v1/health in the table. Default to "unknown" (never
     // undefined) so the health filter matches unprobed rows.
-    health: (s.health as HealthState) ?? statusToHealth(s.status) ?? "unknown",
-    icon_url: (s.icon_url as string) ?? (s.logo_url as string),
+    health: statusToHealth(s.health) ?? statusToHealth(s.status) ?? "unknown",
+    icon_url: firstString(s.icon_url, s.logo_url),
     // API key is website_url; the BrandIcon favicon fallback reads `website`.
-    website: (s.website as string) ?? (s.website_url as string),
-    updated_at: (s.updated_at as string) ?? (s.last_checked as string) ?? (s.last_ok as string),
+    website: firstString(s.website, s.website_url),
+    updated_at: firstString(s.updated_at, s.last_checked, s.last_ok),
   } as Subnet;
 }
 
