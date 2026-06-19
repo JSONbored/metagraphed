@@ -34,7 +34,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1/{network}/…`. Bare paths default to mainnet, so every URL above is the mainnet view.
 - `mainnet` (alias `finney`): the full registry — curated services, schemas, 2-minute health. The default.
 - `testnet` (alias `test`): native chain registry only — subnet identity from the testnet chain, no curated services/health. Testnet netuids are independent of mainnet. e.g. `GET /api/v1/testnet/subnets`, `GET /api/v1/testnet/subnets/{netuid}`.
-- `local`: a per-developer subtensor metagraphed can't host — `GET /api/v1/local` returns setup guidance (point your SDK/RPC at `ws://127.0.0.1:9944`).
+- `local`: a per-developer subtensor metagraphed can't host — `GET /api/v1/local` returns setup guidance (point your SDK/RPC at your own local subtensor node).
 
 ## Subnets
 - SN0 root (root); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/0
