@@ -49,7 +49,12 @@ export function safeExternalUrl(href?: string) {
   if (!href) return undefined;
   try {
     const url = new URL(href.trim());
-    if (!SAFE_EXTERNAL_PROTOCOLS.has(url.protocol) || isPrivateHostname(url.hostname)) {
+    if (
+      !SAFE_EXTERNAL_PROTOCOLS.has(url.protocol) ||
+      url.username ||
+      url.password ||
+      isPrivateHostname(url.hostname)
+    ) {
       return undefined;
     }
     return url.href;
