@@ -11,6 +11,30 @@ export function contractVersion(env) {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
+// Contract versions are "YYYY-MM-DD.N": the ISO date sorts lexicographically,
+// the revision N numerically. Returns <0 if a precedes b, 0 if equal, >0 after.
+function compareContractVersions(a, b) {
+  const parse = (value) => {
+    const [date = "", rev = "0"] = String(value).split(".");
+    return [date, Number.parseInt(rev, 10) || 0];
+  };
+  const [dateA, revA] = parse(a);
+  const [dateB, revB] = parse(b);
+  if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+  return revA - revB;
+}
+
+// A served artifact built under an OLDER contract than the live one may predate
+// a schema change — the silent serve-time drift #1001 makes observable. Returns
+// { built_under, live } when the artifact lags the live contract, else null.
+export function contractStaleness(env, builtUnderVersion) {
+  if (!builtUnderVersion) return null;
+  const live = contractVersion(env);
+  return compareContractVersions(builtUnderVersion, live) < 0
+    ? { built_under: String(builtUnderVersion), live }
+    : null;
+}
+
 // Published-at is read from the latest-pointer KV (warmed on publish), so this
 // only touches KV on origin misses. Returns null when KV is unbound or the
 // pointer predates published_at support.
@@ -54,6 +78,14 @@ export async function envelopeResponse(request, payload, cacheProfile) {
     "x-metagraph-contract-version",
     payload.meta.contract_version || CONTRACT_VERSION,
   );
+  // Serve-time drift signal (#1001): mirror meta.stale_contract on a header so
+  // monitoring/CDN can alarm on a served artifact that lags the live contract.
+  if (payload.meta.stale_contract?.built_under) {
+    headers.set(
+      "x-metagraph-stale-contract",
+      payload.meta.stale_contract.built_under,
+    );
+  }
   if (request.headers.get("if-none-match") === etag) {
     return new Response(null, {
       status: 304,

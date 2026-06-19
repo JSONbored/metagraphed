@@ -1,6 +1,7 @@
 import {
   clusterDomainFromUrl,
   flattenSurfaces,
+  MULTI_TENANT_HOST_SUFFIXES,
   normalizePublicHttpUrl,
   normalizePublicUrl,
   registrySurfaceKey,
@@ -90,6 +91,7 @@ const CANDIDATE_SCHEMA_FIELDS = new Set([
   "public_safe",
   "verification",
   "rate_limit_notes",
+  "rate_limit",
   "review_notes",
 ]);
 
@@ -226,6 +228,7 @@ export function buildIssueIntakeReport({
 
   const auth = normalizeAuth(
     fields["does this interface require authentication?"] ||
+      fields["does this endpoint require authentication?"] ||
       fields.auth_required,
   );
   if (auth.value === null) {
@@ -832,6 +835,85 @@ function validateCandidateSchemaShape(candidate) {
       message: "candidate source_type must be a string",
     });
   }
+  if (candidate.rate_limit !== undefined) {
+    if (
+      !candidate.rate_limit ||
+      typeof candidate.rate_limit !== "object" ||
+      Array.isArray(candidate.rate_limit)
+    ) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate rate_limit must be an object",
+      });
+    } else {
+      const allowedRateLimitFields = new Set([
+        "requests",
+        "window",
+        "burst",
+        "scope",
+        "cost_notes",
+      ]);
+      for (const field of ["requests", "window"]) {
+        if (candidate.rate_limit[field] === undefined) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is required`,
+          });
+        }
+      }
+      for (const field of Object.keys(candidate.rate_limit)) {
+        if (!allowedRateLimitFields.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is not allowed`,
+          });
+        }
+      }
+      for (const field of ["requests", "burst"]) {
+        if (
+          candidate.rate_limit[field] !== undefined &&
+          (!Number.isInteger(candidate.rate_limit[field]) ||
+            candidate.rate_limit[field] < 0)
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} must be a non-negative integer`,
+          });
+        }
+      }
+      if (
+        candidate.rate_limit.window !== undefined &&
+        (typeof candidate.rate_limit.window !== "string" ||
+          candidate.rate_limit.window.length === 0)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.window is required",
+        });
+      }
+      if (
+        candidate.rate_limit.scope !== undefined &&
+        !["per-key", "per-ip", "global", "unknown"].includes(
+          candidate.rate_limit.scope,
+        )
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.scope is unsupported",
+        });
+      }
+      if (
+        candidate.rate_limit.cost_notes !== undefined &&
+        typeof candidate.rate_limit.cost_notes !== "string"
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.cost_notes must be a string",
+        });
+      }
+    }
+  }
+
   for (const field of ["rate_limit_notes", "review_notes"]) {
     if (
       candidate[field] !== undefined &&
@@ -890,10 +972,15 @@ const normIdentToken = (value) =>
   String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+const isMultiTenantClusterDomain = (domain) =>
+  typeof domain === "string" &&
+  [...MULTI_TENANT_HOST_SUFFIXES].some((suffix) =>
+    domain.toLowerCase().endsWith(`.${suffix}`),
+  );
 
 /** Owner token(s) a URL claims — a code host (github/gitlab/bitbucket) contributes its ORG; any other
- *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars (a 1-3 char slug
- *  matches anywhere). */
+ *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars except short
+ *  multi-tenant labels, which are still tenant-controlled owner claims and must not disappear. */
 export function urlOwnerTokens(value) {
   if (typeof value !== "string" || !value) return [];
   let url;
@@ -906,12 +993,18 @@ export function urlOwnerTokens(value) {
   const out = [];
   if (CODE_HOST_RE.test(host)) {
     const org = url.pathname.replace(/^\/+/, "").split("/")[0];
-    if (org) out.push(normIdentToken(org));
+    const token = normIdentToken(org);
+    if (token.length >= 4) out.push(token);
   } else {
     const domain = clusterDomainFromUrl(value);
-    if (domain) out.push(normIdentToken(domain.split(".")[0]));
+    if (domain) {
+      const token = normIdentToken(domain.split(".")[0]);
+      if (token.length >= 4 || isMultiTenantClusterDomain(domain)) {
+        out.push(token);
+      }
+    }
   }
-  return out.filter((token) => token.length >= 4);
+  return out.filter(Boolean);
 }
 
 /** Identity tokens for a candidate's declared provider — its name, id, and the owner tokens of its
@@ -1245,6 +1338,12 @@ export function validateProviderForSubmission({
   const teamUrl = normalizePublicUrl(provider?.team_url);
   const contactUrl = normalizePublicUrl(provider?.contact_url);
   const logoUrl = normalizePublicHttpUrl(provider?.logo_url);
+  const socialEntries =
+    provider?.social &&
+    typeof provider.social === "object" &&
+    !Array.isArray(provider.social)
+      ? Object.entries(provider.social)
+      : [];
 
   if (!provider || typeof provider !== "object") {
     return {
@@ -1303,6 +1402,19 @@ export function validateProviderForSubmission({
       });
     } else if (provider[field] && provider[field] !== normalized) {
       warnings.push(`provider ${field} will be normalized by registry tooling`);
+    }
+  }
+  for (const [key, value] of socialEntries) {
+    const normalized = normalizePublicHttpUrl(value);
+    if (!normalized) {
+      errors.push({
+        category: "private-or-unsafe-url",
+        message: `provider social.${key} is invalid or unsafe`,
+      });
+    } else if (value !== normalized) {
+      warnings.push(
+        `provider social.${key} will be normalized by registry tooling`,
+      );
     }
   }
   if (!["community", "provider-claimed"].includes(provider.authority)) {

@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   buildTimestamp,
+  corroboratingSources,
   generatedSourceRoot,
   isHtmlContentType,
   isJsonContentType,
@@ -493,6 +494,13 @@ function scoreCandidate(candidate, probe) {
     score += 10;
   } else if (candidate.confidence === "low") {
     score += 3;
+  }
+  // #1007: corroboration bonus. 2+ independent discovery sources agreeing on the
+  // same (netuid, kind, url) is strong signal, so a corroborated candidate scores
+  // above an otherwise-identical single-source one. Additive — it never lowers a
+  // score, so it cannot regress an existing promotion.
+  if (corroboratingSources(candidate).length >= 2) {
+    score += 8;
   }
   if (
     isJsonContentType(probe.content_type) &&

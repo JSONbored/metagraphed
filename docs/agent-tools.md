@@ -17,6 +17,10 @@ of `{ type: "function", function: {...} }`; the Anthropic document is a bare
 array of `{ name, description, input_schema }`. Each is dropped directly into the
 respective SDK's `tools` parameter.
 
+For the end-to-end path from "find a callable subnet" to a working REST, MCP,
+npm, or Python call, use the public workflow guide at
+`https://api.metagraph.sh/agent-workflows.md`.
+
 ## Executing a tool call
 
 The specs declare the tool _shape_; execution is uniform — forward the model's

@@ -6,13 +6,15 @@ import {
   artifactRelativePath,
   isGeneratedPublicArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
+import { artifactFilePath } from "./lib.mjs";
 
 function main() {
   const changedFilesPath = valueAfter("--changed-files") || "changed-files.txt";
   const artifactRoot = valueAfter("--artifact-root") || "public/metagraph";
 
   const GENERATED_PUBLIC_ARTIFACTS = new Set([
-    "public/metagraph/build-summary.json",
+    // build-summary.json moved to R2-only (#1003); only r2-manifest + types.d.ts
+    // remain committed generated artifacts.
     "public/metagraph/r2-manifest.json",
     "public/metagraph/types.d.ts",
   ]);
@@ -77,7 +79,10 @@ function main() {
       mismatches.push(`${artifact} (rebuilt version unreadable)`);
       continue;
     }
-    if (canonicalJson(committed) !== canonicalJson(rebuilt)) {
+    if (
+      canonicalArtifactJson(artifact, committed) !==
+      canonicalArtifactJson(artifact, rebuilt)
+    ) {
       mismatches.push(`${artifact} (content differs from a fresh build)`);
     }
   }
@@ -109,12 +114,45 @@ export function canonicalJson(value) {
   return JSON.stringify(normalizeForComparison(value));
 }
 
+export function canonicalArtifactJson(artifactPath, value) {
+  const normalized = normalizeForComparison(value);
+  if (
+    artifactPath === "public/metagraph/r2-manifest.json" &&
+    normalized &&
+    typeof normalized === "object" &&
+    !Array.isArray(normalized)
+  ) {
+    // The committed compact manifest is a publish lockfile, but its full/R2-only
+    // byte totals can vary slightly across otherwise-equivalent rebuilds. Keep
+    // the dual artifact entries strict while ignoring the known unstable R2
+    // aggregate byte counters only when they are valid byte totals; otherwise
+    // committed public manifest tampering must remain visible to the verifier.
+    if (isValidByteTotal(normalized.full_artifact_size_bytes)) {
+      delete normalized.full_artifact_size_bytes;
+    }
+    if (
+      normalized.storage_tier_size_bytes &&
+      typeof normalized.storage_tier_size_bytes === "object" &&
+      !Array.isArray(normalized.storage_tier_size_bytes)
+    ) {
+      if (isValidByteTotal(normalized.storage_tier_size_bytes.r2)) {
+        delete normalized.storage_tier_size_bytes.r2;
+      }
+    }
+  }
+  return JSON.stringify(normalized);
+}
+
+function isValidByteTotal(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
 function normalizeForComparison(value) {
   if (Array.isArray(value)) {
     return value.map(normalizeForComparison);
   }
   if (value && typeof value === "object") {
-    const out = {};
+    const out = Object.create(null);
     for (const key of Object.keys(value).sort()) {
       out[key] = normalizeForComparison(value[key]);
     }
@@ -144,8 +182,9 @@ function gitDiffsFromHead(file) {
 
 function loadIndexedArtifacts(rootPath) {
   const artifactPaths = new Set();
+  // build-summary.json is R2-only (#1003) — read its index from the staging tier.
   for (const artifact of readJsonArtifact(
-    path.join(rootPath, "build-summary.json"),
+    artifactFilePath("build-summary.json"),
   ).artifacts || []) {
     const relativePath = artifactRelativePath(artifact.path || "");
     if (relativePath) {

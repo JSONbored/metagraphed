@@ -201,5 +201,8 @@
       "url": "https://taomarketcap.com/subnets/24"
     }
   ],
-  "website_url": "https://silxinc.com/"
+  "website_url": "https://silxinc.com/",
+  "social": {
+    "x": "https://x.com/quasarmodels"
+  }
 }

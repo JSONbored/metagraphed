@@ -77,7 +77,7 @@ Candidates are never treated as verified surfaces. They must pass verification a
 
 `npm run discover:candidates` generates a public-source candidate bundle from enrichment sources such as TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, Backprop Finance dashboard routes, Taostats metagraph dashboard routes, GitHub README links, and public websites. Third-party directories and dashboards are enrichment only; native chain data remains canonical for active subnet existence and curated overlays remain canonical for reviewed public interfaces.
 
-`npm run verify:candidates` writes a compact Git-reviewed promotion snapshot to `registry/verification/promotions.json` and stages the full volatile verification run for R2. Classification values include live, redirected, auth-required, dead, unsafe, unsupported, rate-limited, transient, timeout, and content-mismatch.
+`npm run verify:candidates` writes a compact Git-reviewed promotion snapshot to `registry/verification/promotions.json` and stages the full volatile verification run for R2. Classification values include live, redirected, auth-required, dead, unsafe, unsupported, rate-limited, transient, timeout, content-mismatch, and wrong-chain.
 
 `npm run curate:baseline` promotes only live/redirected public-safe candidates into derived generated baseline overlays. It does not overwrite hand-curated overlays. Git stores a compact generated-overlay checksum summary, while the expanded generated overlay bundle is staged outside Git for R2.
 
@@ -89,6 +89,7 @@ Candidates are never treated as verified surfaces. They must pass verification a
 
 Generated artifacts expose review state through:
 
+- `/metagraph/coverage-depth.json`
 - `/metagraph/review/curation.json`
 - `/metagraph/review/gap-priorities.json`
 - `/metagraph/review/adapter-candidates.json`

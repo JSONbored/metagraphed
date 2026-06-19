@@ -49,6 +49,33 @@
             "examples": ["https://example.com/logo.png"],
             "description": "Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness."
           },
+          "social": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness.",
+            "properties": {
+              "x": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "telegram": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "reddit": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "youtube": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              }
+            }
+          },
           "team_url": {
             "type": "string",
             "format": "uri"

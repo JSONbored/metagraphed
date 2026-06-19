@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-14-data-artifact-api-cacheon-ai",
+      "kind": "data-artifact",
+      "name": "Cacheon community data-artifact",
+      "netuid": 14,
+      "provider": "cacheon",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://cacheon.ai/docs/miners/api-contract",
+      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "state": "schema-valid",
+      "url": "https://api.cacheon.ai/api/container-logs"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}

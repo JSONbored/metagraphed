@@ -12,7 +12,7 @@
     "tee"
   ],
   "source_repo": null,
-  "website_url": null,
+  "website_url": "https://saygm.com/",
   "docs_url": null,
   "dashboard_url": null,
   "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace, but no official public website, source repository, API, OpenAPI schema, or docs site has been verified.",
@@ -33,5 +33,9 @@
       "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
     ]
   },
-  "surfaces": []
+  "surfaces": [],
+  "social": {
+    "x": "https://x.com/say_gm_"
+  },
+  "contact": "hi@saygm.com"
 }

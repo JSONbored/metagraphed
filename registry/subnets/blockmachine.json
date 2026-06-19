@@ -84,5 +84,8 @@
       },
       "notes": "Official BlockMachine source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/blockmachine_io"
+  }
 }

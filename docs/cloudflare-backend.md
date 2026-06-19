@@ -51,6 +51,7 @@ Worker responses include CORS, cache-control, ETags, and `x-metagraph-contract-v
 - Static assets binding: `ASSETS`
 - Optional KV binding: `METAGRAPH_CONTROL`
 - KV keys: `metagraph:latest`, `metagraph:feature-flags`, `metagraph:endpoint-pools`, `metagraph:source-freshness`
+- D1 health migrations live in `migrations/`. `0006_surface_key_rekey.sql` must be applied before deploying the prober cutover that upserts `surface_status` and `surface_uptime_daily` by stable `surface_key`.
 
 If no KV binding is configured, the Worker falls back to `METAGRAPH_R2_LATEST_PREFIX` for R2 reads. R2-tier artifacts are read from R2 first; static fallback is only allowed when `METAGRAPH_ALLOW_R2_STATIC_FALLBACK=true` is set for local migration/testing.
 

@@ -47,6 +47,14 @@ Tensorplex `subnet-docs`, and Taopedia articles. Set `GITHUB_TOKEN` or
 refreshes; scheduled sync and publish workflows already pass `GITHUB_TOKEN`
 from GitHub Actions.
 
+Discovery also probes every known base origin (discovered project websites
+plus existing `subnet-api`/`docs` surfaces) for an OpenAPI/Swagger spec at
+conventional paths, registering an `openapi` candidate only on a validated
+document. These are read-only `GET`s with a per-request timeout, a 2 MiB body
+cap, and the private-IP/unsafe-URL block, run at concurrency 8 and
+short-circuiting on the first hit per origin — so each refresh makes live
+requests to all known origins.
+
 Live health probes are only written when explicitly enabled:
 
 ```bash

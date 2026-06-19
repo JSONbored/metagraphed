@@ -65,5 +65,8 @@
       },
       "notes": "Official Djinn source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/djinn_gg"
+  }
 }

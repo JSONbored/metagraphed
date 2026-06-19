@@ -101,5 +101,8 @@
       },
       "notes": "Public source repository for DSperse / SN2."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/inference_labs"
+  }
 }

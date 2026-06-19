@@ -280,7 +280,7 @@
                     "minimum": 0
                   },
                   "coverage_delta": {
-                    "type": "object",
+                    "type": ["object", "null"],
                     "additionalProperties": {
                       "oneOf": [
                         {

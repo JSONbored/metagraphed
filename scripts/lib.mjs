@@ -278,6 +278,28 @@ export function artifactDirectoryPath(relativePath) {
   return path.join(publicMetagraphRoot, normalized);
 }
 
+export async function latestArtifactDate(relativePath) {
+  const dirPath = artifactDirectoryPath(relativePath);
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  return (
+    entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
+      .map((file) => file.replace(/\.json$/, ""))
+      .sort()
+      .at(-1) || null
+  );
+}
+
 export function createLocalArtifactEnv(overrides = {}) {
   return {
     ASSETS: {
@@ -455,14 +477,87 @@ export async function loadDetailedVerification() {
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
-      subnet.surfaces.map((surface) => ({
-        ...surface,
-        netuid: subnet.netuid,
-        subnet_slug: subnet.slug,
-        subnet_name: subnet.name,
-      })),
+      subnet.surfaces.map((surface) => {
+        const flattened = {
+          ...surface,
+          netuid: subnet.netuid,
+          subnet_slug: subnet.slug,
+          subnet_name: subnet.name,
+        };
+        // #1005: a stable identity decoupled from the hand-authored display id.
+        flattened.key = surfaceStableKey(flattened);
+        // #1006: the as-of timestamp every served surface should carry. A
+        // per-surface verification wins; otherwise the subnet's curation
+        // verified_at (when a maintainer last vetted the overlay). null when
+        // neither exists — the agent then sees the surface is unverified.
+        flattened.last_verified_at =
+          surface.verification?.verified_at ??
+          subnet.curation?.verified_at ??
+          null;
+        return flattened;
+      }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// #1006: per-kind verification-freshness TTL (days). `last_verified_at` is the
+// curator's as-of; a surface is `stale` once it hasn't been re-verified within
+// its kind's window. Callable/operational surfaces drift fast (short window);
+// static identity surfaces are stable (long window). Any kind not listed uses
+// SURFACE_FRESHNESS_DEFAULT_TTL_DAYS. Fixed (not env-gated) so the build and the
+// validate reproduction compute byte-identical `stale` values.
+export const SURFACE_FRESHNESS_DEFAULT_TTL_DAYS = 90;
+export const SURFACE_FRESHNESS_TTL_DAYS = {
+  "subnet-api": 30,
+  openapi: 30,
+  sse: 30,
+  "data-artifact": 30,
+  "subtensor-rpc": 30,
+  "subtensor-wss": 30,
+  dashboard: 60,
+  website: 90,
+  docs: 90,
+  archive: 120,
+  example: 120,
+  sdk: 120,
+  "source-repo": 120,
+  "repo-registry": 120,
+};
+
+export function surfaceFreshnessTtlDays(kind) {
+  return SURFACE_FRESHNESS_TTL_DAYS[kind] ?? SURFACE_FRESHNESS_DEFAULT_TTL_DAYS;
+}
+
+// True when a surface's verification is older than its kind's TTL, measured
+// against `nowMs` (the dataset's native-snapshot captured_at, a committed +
+// deterministic reference — never wall-clock — so the flag is reproducible). A
+// surface with no last_verified_at is NOT stale: that's "unverified", a distinct
+// state the null timestamp already signals.
+export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
+  if (!lastVerifiedAt) return false;
+  const verifiedMs = Date.parse(lastVerifiedAt);
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
+}
+
+// Stamp the serve-time `stale` flag onto a flattened-surface list (the companion
+// to flattenSurfaces' static `last_verified_at`). Kept separate because `stale`
+// needs the `nowMs` reference flattenSurfaces does not carry; build + validate
+// both call this with the same captured_at so per-subnet artifacts reproduce.
+export function withSurfaceFreshness(surfaces, nowMs) {
+  return surfaces.map((surface) => ({
+    ...surface,
+    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
+  }));
+}
+
+// Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
+// surface keeps the same `key` across display-name/slug renames (the `id` is
+// author-controlled and changes on rename, which orphans D1 history + breaks the
+// derived endpoint link). PR1 surfaces this `key`; later PRs re-key D1 history +
+// endpoint links onto it. A URL change is intentionally a new identity.
+export function surfaceStableKey(entry) {
+  return `srf-${sha256Hex(registrySurfaceKey(entry)).slice(0, 16)}`;
 }
 
 export function stableStringify(value) {
@@ -680,6 +775,9 @@ export function isUnsafeUrl(value) {
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
+    if (url.username || url.password) {
+      return true;
+    }
 
     const host = normalizeHostname(url.hostname);
     return isUnsafeHostname(host);
@@ -688,30 +786,46 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
-      return true;
+      return [];
     }
 
     const host = normalizeHostname(url.hostname);
     if (isIP(host)) {
-      return false;
+      return [{ address: host, family: isIP(host) }];
     }
 
     const records = await resolver(host, { all: true, verbatim: true });
-    return (
+    if (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))
-    );
+    ) {
+      return [];
+    }
+    return records.map((record) => ({
+      address: record.address,
+      family: record.family,
+    }));
   } catch {
-    return true;
+    return [];
   }
 }
 
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+  return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
 function isUnsafeHostname(host) {
-  if (!host || host === "localhost" || host.endsWith(".localhost")) {
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "local" ||
+    host.endsWith(".local")
+  ) {
     return true;
   }
 
@@ -730,16 +844,25 @@ const SELF_DOMAIN = "metagraph.sh";
 // targets squats of our exact domain, not the generic "metagraph" Bittensor term
 // (a subnet legitimately named "…metagraph…" is unaffected).
 export function isBrandImpersonationUrl(value) {
-  let host;
+  let url;
   try {
-    host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
   if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
     return false;
   }
-  return /metagraph\.sh(?:\.|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host);
+
+  const userinfo = `${url.username}:${url.password}`.toLowerCase();
+  return (
+    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(
+      host,
+    ) ||
+    /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
+  );
 }
 
 function isUnsafeIpAddress(address) {
@@ -811,7 +934,7 @@ export function redactCredentialedUrls(value) {
 // might echo back. Match common separator-delimited, camelCase, and compact
 // spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed|id|auth|client|secret)(?:Token|Key|Id|Secret|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|authToken|idToken|clientSecret|secretKey|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
@@ -825,7 +948,11 @@ export function sanitizeFixtureBody(
   const walk = (node, depth) => {
     if (depth > maxDepth) return "[truncated: max depth]";
     if (typeof node === "string") {
-      const redacted = redactCredentialedUrl(node);
+      // Redact credentials AND private/loopback URLs. A captured spec can carry a
+      // servers[].url pointing at localhost / 10.x / 192.168.x (operators leave
+      // dev servers in their public OpenAPI); the publish public-safety scan
+      // rejects those, so mirror the schema-snapshot sanitizer here too.
+      const redacted = sanitizeSchemaText(redactCredentialedUrl(node));
       return redacted.length > maxString
         ? `${redacted.slice(0, maxString)}…[truncated]`
         : redacted;
@@ -851,6 +978,54 @@ export function sanitizeFixtureBody(
     return node;
   };
   return walk(value, 0);
+}
+
+// Bounded reference to a captured live request/response fixture (#748). Gives an
+// agent reading a subnet's callable services enough to see the example REQUEST
+// (method + url) and the response shape (status + content_type) inline, plus
+// artifact_path to fetch the full sanitized body (GET
+// /metagraph/fixtures/{surface_id}.json, also the get_fixture MCP tool). The
+// body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
+// stays lean and the one already-sanitized copy is served from a single place.
+// Returns null when there is no fixture, so callers omit the field entirely.
+export function fixtureCaptureFailureReason(error) {
+  const name = error?.name || null;
+  if (name === "SyntaxError") {
+    return "invalid json response";
+  }
+  if (name === "AbortError") {
+    return "request timed out";
+  }
+  if (name === "FixtureCaptureLimitError") {
+    return "response exceeds byte limit";
+  }
+  if (name === "TypeError") {
+    return "request failed";
+  }
+  return "capture failed";
+}
+
+export function surfaceFixtureReference(surfaceId, fixture) {
+  if (!surfaceId || !fixture || typeof fixture !== "object") {
+    return null;
+  }
+  const request = fixture.request || {};
+  const response = fixture.response || {};
+  return {
+    captured_at: fixture.captured_at || null,
+    request: {
+      method: typeof request.method === "string" ? request.method : "GET",
+      url: typeof request.url === "string" ? request.url : null,
+    },
+    response: {
+      status: Number.isInteger(response.status) ? response.status : null,
+      content_type:
+        typeof response.content_type === "string"
+          ? response.content_type
+          : null,
+    },
+    artifact_path: `/metagraph/fixtures/${surfaceId}.json`,
+  };
 }
 
 export function normalizePublicUrl(value) {
@@ -880,6 +1055,7 @@ export function normalizePublicUrl(value) {
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
       url.username ||
       url.password ||
+      isCredentialedUrl(url.toString()) ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
@@ -914,19 +1090,128 @@ export function isPlaceholderIdentityUrl(value) {
 }
 
 // Resolve a subnet identity link (source_repo / website_url / logo_url):
-// curated overlay wins; otherwise fall back to the cleaned on-chain value;
-// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
-// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
-// generator and the reproducibility validator.
+// an explicit curated overlay value wins (including null suppression); otherwise
+// fall back to the cleaned on-chain value; otherwise null. Shared by
+// build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
+// the chain backfill can't drift between the generator and the reproducibility
+// validator.
 export function backfilledIdentityUrl(overlayValue, chainValue) {
-  if (overlayValue) {
-    return overlayValue;
+  if (overlayValue !== undefined) {
+    return overlayValue || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
     return null;
   }
   return normalized;
+}
+
+// Social platforms recognized in the free-text on-chain `additional` field, by
+// canonical host (#745).
+const SOCIAL_HOSTS = {
+  x: ["x.com", "twitter.com"],
+  telegram: ["t.me", "telegram.me", "telegram.org"],
+  reddit: ["reddit.com"],
+  youtube: ["youtube.com", "youtu.be"],
+};
+const SOCIAL_KEYS = Object.keys(SOCIAL_HOSTS);
+
+function socialHostKey(host) {
+  const h = host.replace(/^www\./, "").toLowerCase();
+  for (const key of SOCIAL_KEYS) {
+    if (SOCIAL_HOSTS[key].some((d) => h === d || h.endsWith(`.${d}`))) {
+      return key;
+    }
+  }
+  return null;
+}
+
+function socialHostMatchesKey(url, key) {
+  try {
+    return socialHostKey(new URL(url).hostname) === key;
+  } catch {
+    return false;
+  }
+}
+
+// Resolve a subnet/provider's structured social links: a curated overlay
+// `social` object wins per platform; otherwise extract from the free-text
+// on-chain `additional` content (sanitized + junk-guarded via
+// normalizePublicHttpUrl). Returns a { x?, telegram?, reddit?, youtube? } object
+// or null. Shared by build-artifacts (mergeSubnet) and validate
+// (buildExpectedGeneratedSubnet) so the chain extraction can't drift.
+// Display-only: a chain-claimed handle is NOT verification, and this NEVER feeds
+// completeness_score/missing_* (the flywheel's gaps stay the product).
+export function socialAccounts(additionalText, overlaySocial = null) {
+  const out = {};
+  const text = typeof additionalText === "string" ? additionalText : "";
+  const re =
+    /\b(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com|t\.me|telegram\.(?:me|org)|reddit\.com|youtube\.com|youtu\.be)\/[^\s"'<>)\]]+/gi;
+  for (const raw of text.match(re) || []) {
+    const normalized = normalizePublicHttpUrl(raw.replace(/[.,;]+$/, ""));
+    if (!normalized || isPlaceholderIdentityUrl(normalized)) {
+      continue;
+    }
+    let host;
+    try {
+      host = new URL(normalized).hostname;
+    } catch {
+      continue;
+    }
+    const key = socialHostKey(host);
+    if (key && !out[key]) {
+      out[key] = normalized;
+    }
+  }
+  if (
+    overlaySocial &&
+    typeof overlaySocial === "object" &&
+    !Array.isArray(overlaySocial)
+  ) {
+    for (const key of SOCIAL_KEYS) {
+      const curated = normalizePublicHttpUrl(overlaySocial[key]);
+      if (curated && socialHostMatchesKey(curated, key)) {
+        out[key] = curated;
+      }
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Taostats-survey follow-up: the operator's published support contact
+// (SubnetIdentitiesV3 `subnet_contact` — an email or URL). metagraphed otherwise
+// keeps only a `contact_present` boolean, dropping the value an integration dev
+// (or agent) needs to reach a team when an API breaks. Overlay-driven and
+// sanitized — never parsed from free chain text, so it can't carry injection;
+// display-only, never feeds completeness (the #343 flywheel gate). Returns a
+// bare email (lowercased) or a normalized public URL, else null.
+const CONTACT_JUNK_VALUES = new Set([
+  "deprecated",
+  "none",
+  "n/a",
+  "na",
+  "tbd",
+  "-",
+  "null",
+]);
+const EMAIL_ATOM = "[A-Z0-9!#$%&\\'*+/=?^_`{|}~-]+";
+const EMAIL_RE = new RegExp(
+  `^${EMAIL_ATOM}(?:\\.${EMAIL_ATOM})*@` +
+    "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+  "i",
+);
+export function subnetContact(overlayContact) {
+  if (typeof overlayContact !== "string") return null;
+  const value = overlayContact.trim();
+  if (!value || CONTACT_JUNK_VALUES.has(value.toLowerCase())) return null;
+  const email = /^mailto:/i.test(value) ? value.slice(7).trim() : value;
+  if (EMAIL_RE.test(email)) {
+    // Reject junk placeholders that happen to be well-formed (deprecated@…).
+    const local = email.slice(0, email.indexOf("@")).toLowerCase();
+    return CONTACT_JUNK_VALUES.has(local) ? null : email.toLowerCase();
+  }
+  const url = normalizePublicHttpUrl(value);
+  return url && !isPlaceholderIdentityUrl(url) ? url : null;
 }
 
 export function registrySurfaceKey(entry) {
@@ -958,6 +1243,74 @@ export function isHtmlContentType(value) {
   return String(value || "")
     .toLowerCase()
     .includes("html");
+}
+
+// Conventional, read-only paths where a subnet or provider commonly exposes a
+// machine-readable OpenAPI 3.x (or legacy Swagger 2.0) document. Auto-discovery
+// (#1004) probes these on each known base origin to surface callable APIs the
+// registry can then validate, capture, and promote.
+export const OPENAPI_PROBE_PATHS = Object.freeze([
+  "/openapi.json",
+  "/swagger.json",
+  "/swagger/v1/swagger.json",
+  "/docs/openapi.json",
+  "/api/openapi.json",
+  "/api/v1/openapi.json",
+  "/v1/openapi.json",
+  "/.well-known/openapi.json",
+]);
+
+// Structural check that a parsed JSON value is a genuine OpenAPI/Swagger
+// document — not merely some JSON served at /openapi.json. Requires the version
+// marker plus the `info` and `paths` objects every spec carries, so a stray
+// config or error body never registers as a callable API. Pure + side-effect
+// free, so it is exhaustively unit-testable.
+export function isOpenApiDocument(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return false;
+  }
+  const version =
+    typeof body.openapi === "string"
+      ? body.openapi
+      : typeof body.swagger === "string"
+        ? body.swagger
+        : null;
+  // OpenAPI reports "3.x.y"; Swagger reports "2.0". Reject anything else.
+  if (!version || !/^[23]\.\d/.test(version)) {
+    return false;
+  }
+  const isPlainObject = (value) =>
+    Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  return isPlainObject(body.info) && isPlainObject(body.paths);
+}
+
+// Probe an ordered list of candidate spec paths on `origin`, returning the first
+// whose body is a valid OpenAPI/Swagger document as `{ url, document }`, or null
+// if none match. `fetcher(url)` owns all network + safety concerns (timeout,
+// body cap, private-IP/unsafe-URL block) and returns the parsed JSON body or
+// null; keeping it injectable leaves this orchestration pure and mock-driven in
+// tests. A fetcher that throws is treated as a miss for that path, so one bad
+// path never aborts the sweep.
+export async function probeOpenApiSpec(origin, paths, fetcher) {
+  let base;
+  try {
+    base = new URL(origin);
+  } catch {
+    return null;
+  }
+  for (const specPath of paths) {
+    const url = new URL(specPath, base).toString();
+    let body;
+    try {
+      body = await fetcher(url);
+    } catch {
+      continue;
+    }
+    if (isOpenApiDocument(body)) {
+      return { url, document: body };
+    }
+  }
+  return null;
 }
 
 export function buildTimestamp() {
@@ -1116,6 +1469,7 @@ export function buildSubnetLineageLinks(
   sourceSubnets,
   targetSubnets,
   approvedLinks = [],
+  brokenLinks = [],
 ) {
   const sourcesByNetuid = new Map(
     (sourceSubnets || []).map((source) => [source.netuid, source]),
@@ -1133,11 +1487,26 @@ export function buildSubnetLineageLinks(
       !Number.isInteger(targetNetuid) ||
       !LINEAGE_MATCH_TYPES.has(approval?.matched_by)
     ) {
+      // #1012: don't silently drop — record the malformed approval so it's fixable.
+      brokenLinks.push({
+        source_netuid: Number.isInteger(sourceNetuid) ? sourceNetuid : null,
+        target_netuid: Number.isInteger(targetNetuid) ? targetNetuid : null,
+        reason: "invalid-approval",
+      });
       continue;
     }
     const source = sourcesByNetuid.get(sourceNetuid);
     const target = targetsByNetuid.get(targetNetuid);
-    if (!source || !target) continue;
+    if (!source || !target) {
+      // #1012: an approval referencing a netuid that no longer exists on its
+      // network — surface it instead of silently dropping the lineage link.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: !source ? "source-netuid-missing" : "target-netuid-missing",
+      });
+      continue;
+    }
     const key = `${sourceNetuid}:${targetNetuid}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -1297,6 +1666,20 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// #1007: the distinct discovery sources (clustered domains) that independently
+// surfaced a candidate, from its source_urls. 2+ distinct sources is strong
+// corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
+// trustworthy than a single-source one — and feeds a `confirmed_by` field plus a
+// verification-score bonus (scoreCandidate). Pure + deterministic (sorted,
+// deduped); clusterDomainFromUrl folds api./docs. subdomains into one source so
+// two URLs on the same site never read as independent corroboration.
+export function corroboratingSources(candidate) {
+  const urls = Array.isArray(candidate?.source_urls)
+    ? candidate.source_urls
+    : [];
+  return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
+}
+
 // Build a fallback "what does it do" blurb from curated provider notes when a
 // subnet has no chain/overlay description (issue #346). Sanitized + truncated to
 // a word boundary. This populates a SEPARATE derived_description field — it never
@@ -1311,6 +1694,90 @@ export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
     .slice(0, maxLength)
     .replace(/\s+\S*$/, "")
     .trimEnd()}…`;
+}
+
+// Pull a usable OAuth2/OIDC token (or authorize) endpoint out of a security
+// scheme, tolerating OpenAPI 3 `flows.*` and Swagger 2 top-level shapes.
+function oauthTokenUrl(scheme) {
+  if (typeof scheme.openIdConnectUrl === "string") {
+    return scheme.openIdConnectUrl;
+  }
+  const flows =
+    scheme.flows && typeof scheme.flows === "object" ? scheme.flows : {};
+  for (const flow of Object.values(flows)) {
+    if (flow && typeof flow.tokenUrl === "string") {
+      return flow.tokenUrl;
+    }
+    if (flow && typeof flow.authorizationUrl === "string") {
+      return flow.authorizationUrl;
+    }
+  }
+  if (typeof scheme.tokenUrl === "string") {
+    return scheme.tokenUrl;
+  }
+  if (typeof scheme.authorizationUrl === "string") {
+    return scheme.authorizationUrl;
+  }
+  return null;
+}
+
+// Map a captured OpenAPI/Swagger securitySchemes object to a single structured
+// auth hint a caller can act on (#746): the scheme + concrete header/param name
+// and a value PLACEHOLDER (never a real secret). Prefers a concrete api-key/http
+// scheme over oauth2 when several are declared. token_url is junk/SSRF-guarded.
+export function deriveAuthDetail(schemes) {
+  const entries = Object.values(schemes || {}).filter(
+    (scheme) => scheme && typeof scheme === "object",
+  );
+  if (!entries.length) {
+    return null;
+  }
+  const pick =
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "apikey") ||
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "http") ||
+    entries[0];
+  const type = String(pick.type || "").toLowerCase();
+  if (type === "apikey" && typeof pick.name === "string" && pick.name) {
+    const location = ["header", "query", "cookie"].includes(pick.in)
+      ? pick.in
+      : "header";
+    return {
+      scheme: "api-key",
+      location,
+      name: pick.name,
+      value_format: "<api-key>",
+    };
+  }
+  if (type === "http") {
+    if (String(pick.scheme || "").toLowerCase() === "basic") {
+      return {
+        scheme: "basic",
+        location: "header",
+        name: "Authorization",
+        value_format: "Basic <base64(user:pass)>",
+      };
+    }
+    return {
+      scheme: "bearer",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+  }
+  if (type === "oauth2" || type === "openidconnect") {
+    const detail = {
+      scheme: "oauth2",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+    const tokenUrl = normalizePublicHttpUrl(oauthTokenUrl(pick));
+    if (tokenUrl) {
+      detail.token_url = tokenUrl;
+    }
+    return detail;
+  }
+  return null;
 }
 
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
@@ -1329,7 +1796,13 @@ export function extractAuth(spec) {
         .filter((type) => typeof type === "string"),
     ),
   ].sort();
-  return { auth_required: authSchemes.length > 0, auth_schemes: authSchemes };
+  return {
+    auth_required: authSchemes.length > 0,
+    auth_schemes: authSchemes,
+    // Structured, caller-actionable detail (#746): exact header/param + value
+    // placeholder. null when no scheme is declared.
+    auth_detail: deriveAuthDetail(schemes),
+  };
 }
 
 // Declared lifecycle, derived from canonical on-chain identity names (teams set
@@ -1418,6 +1891,24 @@ export const README_KIND_LIMITS = {
   "subnet-api": 2,
   website: 1,
 };
+
+// #1008: detect a code-example / quickstart link from a normalized haystack
+// (`"<label> <hostname> <pathname>"`, lowercased). `/example` matches both
+// `/example/` and `/examples/`. Pure + exported so the discovery classifier and
+// its tests share one definition. Callers check this AHEAD of the generic
+// api/docs heuristics so an examples dir is not mis-bucketed.
+export function isLikelyExampleLink(haystack) {
+  if (typeof haystack !== "string") return false;
+  return (
+    haystack.includes("/example") ||
+    haystack.includes("quickstart") ||
+    haystack.includes("quick-start") ||
+    haystack.includes("getting-started") ||
+    haystack.includes("/tutorial") ||
+    haystack.includes(".ipynb") ||
+    haystack.includes("colab.research.google")
+  );
+}
 
 const GENERIC_README_REFERENCE_HOSTS = [
   "arxiv.org",
@@ -1612,6 +2103,80 @@ export function slugify(value) {
     .replace(/-{2,}/g, "-");
 }
 
+// #1009: per-subnet validator + economic entity, derived from the chain
+// snapshot's `economics` block (validator/miner counts, stake, registration
+// cost, alpha price). dTAO emission is price-weighted, so each subnet's
+// emission_share is its alpha price as a fraction of the network total across
+// every subnet that reports one — computed here rather than read from the
+// now-zeroed on-chain subnet_emission field. Pure + side-effect free so it is
+// fully unit-testable; subnets with no economics block are omitted (graceful
+// when the snapshot predates the economics fetcher).
+export function buildEconomicsArtifact({
+  subnets,
+  economicsByNetuid,
+  generatedAt,
+  network = null,
+  capturedAt = null,
+}) {
+  const numericOrZero = (value) => (typeof value === "number" ? value : 0);
+  const round = (value, places) => {
+    const factor = 10 ** places;
+    return Math.round(value * factor) / factor;
+  };
+  const withEconomics = subnets
+    .map((subnet) => ({
+      subnet,
+      economics: economicsByNetuid.get(subnet.netuid) || null,
+    }))
+    .filter((entry) => entry.economics);
+  const totalAlphaPrice = withEconomics.reduce(
+    (sum, { economics }) => sum + numericOrZero(economics.alpha_price_tao),
+    0,
+  );
+  const rows = withEconomics.map(({ subnet, economics }) => {
+    const price =
+      typeof economics.alpha_price_tao === "number"
+        ? economics.alpha_price_tao
+        : null;
+    const emissionShare =
+      price != null && totalAlphaPrice > 0
+        ? round(price / totalAlphaPrice, 6)
+        : null;
+    return {
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      ...economics,
+      emission_share: emissionShare,
+    };
+  });
+  // Highest emission share first (the "top subnets by emission" view); stable
+  // tiebreak on netuid so the order is deterministic.
+  rows.sort(
+    (a, b) =>
+      (b.emission_share ?? -1) - (a.emission_share ?? -1) ||
+      a.netuid - b.netuid,
+  );
+  const sumField = (field) =>
+    rows.reduce((sum, row) => sum + numericOrZero(row[field]), 0);
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    network,
+    captured_at: capturedAt,
+    summary: {
+      subnet_count: subnets.length,
+      with_economics_count: rows.length,
+      total_stake_tao: round(sumField("total_stake_tao"), 9),
+      total_validators: sumField("validator_count"),
+      total_miners: sumField("miner_count"),
+      registration_open_count: rows.filter((row) => row.registration_allowed)
+        .length,
+    },
+    subnets: rows,
+  };
+}
+
 export function buildRpcEndpointArtifact({
   surfaces,
   healthSurfaces = [],
@@ -1699,6 +2264,7 @@ export function buildEndpointResourceArtifact({
     healthSurfaces.map((surface) => [surface.surface_id, surface]),
   );
   const endpoints = surfaces.map((surface) => {
+    const surfaceKey = surface.key || surfaceStableKey(surface);
     const health = healthBySurface.get(surface.id) || {};
     const monitored = surface.probe?.enabled === true && surface.public_safe;
     const healthMeta = endpointHealthMetadata({
@@ -1716,8 +2282,9 @@ export function buildEndpointResourceArtifact({
     });
 
     return {
-      id: `endpoint-${surface.id}`,
+      id: `endpoint-${surfaceKey}`,
       surface_id: surface.id,
+      surface_key: surfaceKey,
       netuid: surface.netuid,
       subnet_slug: surface.subnet_slug,
       subnet_name: surface.subnet_name,
@@ -1912,6 +2479,8 @@ function endpointPool(id, kind, endpoints) {
     endpoints: poolEndpoints.map((endpoint) => ({
       archive_support: endpoint.archive_support,
       id: endpoint.id,
+      surface_id: endpoint.surface_id,
+      surface_key: endpoint.surface_key,
       kind: endpoint.kind,
       layer: endpoint.layer || endpointLayer(endpoint.kind),
       health_source: endpoint.health_source || "missing-probe",
@@ -1964,6 +2533,7 @@ export function buildEndpointIncidentArtifact({
         id: `incident-${endpoint.id}`,
         endpoint_id: endpoint.id,
         surface_id: endpoint.surface_id,
+        surface_key: endpoint.surface_key,
         netuid: endpoint.netuid,
         subnet_slug: endpoint.subnet_slug,
         subnet_name: endpoint.subnet_name,

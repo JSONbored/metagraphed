@@ -188,6 +188,14 @@
           "id": {
             "type": "string"
           },
+          "surface_id": {
+            "type": "string",
+            "description": "Human-readable surface alias retained for display/back-compat."
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005) when the pool endpoint came from a catalogued surface."
+          },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
@@ -276,6 +284,7 @@
         "required": [
           "id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -301,6 +310,10 @@
           },
           "surface_id": {
             "type": "string"
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links."
           },
           "netuid": {
             "type": "integer",
@@ -520,6 +533,7 @@
           "id",
           "endpoint_id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -549,6 +563,10 @@
           },
           "surface_id": {
             "type": "string"
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url for the affected surface."
           },
           "netuid": {
             "type": "integer",

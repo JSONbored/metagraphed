@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-7-data-artifact-api-all-ways-io",
+      "kind": "data-artifact",
+      "name": "Allways community data-artifact",
+      "netuid": 7,
+      "provider": "allways",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.all-ways.io/swagger-json",
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "state": "schema-valid",
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}

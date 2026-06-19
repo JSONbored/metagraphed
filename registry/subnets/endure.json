@@ -81,5 +81,8 @@
       },
       "notes": "Official Endure documentation linked from the project website."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/endurenet"
+  }
 }

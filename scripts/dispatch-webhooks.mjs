@@ -14,7 +14,12 @@ import { spawnSync } from "node:child_process";
 import { resolve4, resolve6 } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
 import path from "node:path";
-import { readJson, repoRoot, stableStringify } from "./lib.mjs";
+import {
+  artifactFilePath,
+  readJson,
+  repoRoot,
+  stableStringify,
+} from "./lib.mjs";
 import {
   buildChangeEvent,
   dispatchChangeEvent,
@@ -27,12 +32,11 @@ const write = args.has("--write");
 const dryRun = args.has("--dry-run") || !write;
 const MAX_DISPATCH_SUBSCRIPTIONS = 128;
 
-const changelog = await readJson(
-  path.join(repoRoot, "public/metagraph/changelog.json"),
-);
-const buildSummary = await readJson(
-  path.join(repoRoot, "public/metagraph/build-summary.json"),
-);
+// changelog.json is R2-only (#1003) — resolve via the tier-aware path so this
+// reads the freshly-built dist/ copy in the publish flow (was public/).
+const changelog = await readJson(artifactFilePath("changelog.json"));
+// build-summary.json is R2-only (#1003) — tier-aware read (dist/).
+const buildSummary = await readJson(artifactFilePath("build-summary.json"));
 const pointer = {
   published_at: buildSummary.published_at || null,
   contract_version:

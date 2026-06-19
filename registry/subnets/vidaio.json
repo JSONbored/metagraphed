@@ -74,5 +74,8 @@
       },
       "notes": "Public Vidaio source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/vidaio_"
+  }
 }

@@ -215,5 +215,8 @@
       "url": "https://taomarketcap.com/subnets/22"
     }
   ],
-  "website_url": "https://www.desearch.ai/"
+  "website_url": "https://www.desearch.ai/",
+  "social": {
+    "x": "https://x.com/desearch_ai"
+  }
 }

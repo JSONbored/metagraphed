@@ -178,6 +178,24 @@
         "timeout_ms": 10000
       },
       "notes": "Public browser-facing Gradients model surface linked from the website."
+    },
+    {
+      "id": "sn-56-gradients-examples",
+      "name": "Gradients code examples",
+      "kind": "example",
+      "url": "https://github.com/gradients-ai/G.O.D/tree/main/examples",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/gradients-ai/G.O.D"],
+      "probe": {
+        "enabled": false,
+        "method": "HEAD",
+        "expect": "any"
+      },
+      "notes": "Official Gradients (G.O.D) examples — DPO / GRPO / environment task quickstarts."
     }
-  ]
+  ],
+  "contact": "info@gradients.io"
 }

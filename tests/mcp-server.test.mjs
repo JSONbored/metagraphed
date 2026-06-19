@@ -742,6 +742,107 @@ describe("MCP tools (injected deps)", () => {
         openapi: "3.1.0",
       },
       "/metagraph/registry-summary.json": { completeness: 0.42 },
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        coverage_depth_version: 1,
+        rows: [
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            tier: "machine-usable",
+            score: 77,
+            priority_score: 86,
+            agent_status: "callable",
+            blocker_level: "none",
+            top_gap_codes: ["missing-fixture", "partial-schema-coverage"],
+            top_gaps: [
+              {
+                code: "missing-fixture",
+                severity: "missing-data",
+                field: "fixtures",
+                next_action: "capture a sanitized fixture",
+              },
+              {
+                code: "partial-schema-coverage",
+                severity: "missing-data",
+                field: "schemas",
+                next_action: "capture remaining schemas",
+              },
+            ],
+            recommended_next_action: "capture a sanitized fixture",
+            dimensions: {
+              callable_service_count: 13,
+              service_kinds: ["openapi", "subnet-api"],
+              schema_service_count: 12,
+              schema_missing_count: 1,
+              fixture_available_count: 0,
+              fixture_status_counts: { missing: 13 },
+              example_count: 0,
+              sdk_count: 0,
+              candidate_operational_count: 3,
+              official_surface_count: 0,
+              provider_claimed_surface_count: 15,
+            },
+          },
+          {
+            netuid: 31,
+            slug: "recall",
+            name: "Recall",
+            tier: "missing-interface",
+            score: 18,
+            priority_score: 67,
+            agent_status: "blocked",
+            blocker_level: "missing-data",
+            top_gap_codes: ["missing-callable-service"],
+            top_gaps: [
+              {
+                code: "missing-callable-service",
+                severity: "missing-data",
+                field: "surfaces",
+                next_action: "find an official callable surface",
+              },
+            ],
+            recommended_next_action: "find an official callable surface",
+            dimensions: {
+              callable_service_count: 0,
+              service_kinds: [],
+              schema_service_count: 0,
+              schema_missing_count: 0,
+              fixture_available_count: 0,
+              fixture_status_counts: {},
+              example_count: 0,
+              sdk_count: 0,
+              candidate_operational_count: 0,
+              official_surface_count: 0,
+              provider_claimed_surface_count: 0,
+            },
+          },
+        ],
+        ranked_queue: [
+          {
+            rank: 1,
+            netuid: 7,
+            tier: "machine-usable",
+            score: 77,
+            priority_score: 86,
+            severity: "missing-data",
+            top_gap_codes: ["missing-fixture", "partial-schema-coverage"],
+            recommended_next_action: "capture a sanitized fixture",
+          },
+          {
+            rank: 2,
+            netuid: 31,
+            tier: "missing-interface",
+            score: 18,
+            priority_score: 67,
+            severity: "missing-data",
+            top_gap_codes: ["missing-callable-service"],
+            recommended_next_action: "find an official callable surface",
+          },
+        ],
+      },
       "/metagraph/rpc/pools.json": {
         pools: {
           0: {
@@ -1023,6 +1124,55 @@ describe("MCP tools (injected deps)", () => {
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
+  });
+
+  test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
+    const res = await callTool(
+      "list_enrichment_targets",
+      { limit: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.targets[0].netuid, 7);
+    assert.equal(out.targets[0].rank, 1);
+    assert.equal(
+      out.targets[0].top_gap_codes.includes("missing-fixture"),
+      true,
+    );
+    assert.equal(out.targets[0].dimensions.callable_service_count, 13);
+    assert.match(out.note, /not live uptime/);
+  });
+
+  test("list_enrichment_targets filters by gap and returns a netuid row", async () => {
+    const filtered = await callTool(
+      "list_enrichment_targets",
+      { gap_code: "missing-callable-service" },
+      { deps },
+    );
+    const out = filtered.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.targets[0].netuid, 31);
+
+    const row = await callTool(
+      "list_enrichment_targets",
+      { netuid: 7, severity: "missing-data" },
+      { deps },
+    );
+    const rowOut = row.body.result.structuredContent;
+    assert.equal(rowOut.targets[0].netuid, 7);
+    assert.equal(rowOut.targets[0].rank, null);
+  });
+
+  test("list_enrichment_targets reports missing coverage-depth artifact", async () => {
+    const missingDeps = makeDeps({});
+    const res = await callTool(
+      "list_enrichment_targets",
+      {},
+      { deps: missingDeps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No resource/);
   });
 });
 
@@ -1426,6 +1576,8 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.deepEqual(out.services[0].auth.schemes, ["apiKey"]);
     assert.equal(out.services[0].schema.available, true);
     assert.match(out.services[0].schema.fetch_with, /get_api_schema/);
+    assert.equal(out.services[0].fixture.available, false);
+    assert.equal(out.services[0].fixture.status, "missing");
     // ready-to-run snippets (#351): curl/python/typescript for a first call
     assert.ok(out.services[0].snippets, "expected integration snippets");
     assert.match(
@@ -1436,6 +1588,38 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.match(out.services[0].snippets.python, /import requests/);
     assert.match(out.services[0].snippets.typescript, /await fetch/);
     assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
+  });
+
+  test("how_do_i_call surfaces fixture fetch instructions when available", async () => {
+    const fixtureDetail = structuredClone(callDetail);
+    const service =
+      fixtureDetail["/metagraph/agent-catalog/7.json"].services[0];
+    service.fixture = {
+      captured_at: "2026-06-18T00:00:00.000Z",
+      request: { method: "GET", url: "https://api.data.io" },
+      response: { status: 200, content_type: "application/json" },
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+    };
+    service.fixture_status = {
+      status: "available",
+      reason: null,
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+      captured_at: "2026-06-18T00:00:00.000Z",
+    };
+
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 7 },
+      { deps: makeDeps(fixtureDetail) },
+    );
+
+    const out = res.body.result.structuredContent;
+    assert.equal(out.services[0].fixture.available, true);
+    assert.equal(
+      out.services[0].fixture.fetch_with,
+      "get_fixture with surface_id sn-7-api",
+    );
+    assert.ok(out.next_steps.some((s) => /get_fixture/.test(s)));
   });
 
   test("how_do_i_call regenerates snippets without cleartext credentials", async () => {

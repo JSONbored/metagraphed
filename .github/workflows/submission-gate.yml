@@ -1,0 +1,65 @@
+name: Submission Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: submission-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metagraphed-submission-gate:
+    name: metagraphed-submission-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR input worktree
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+
+      - name: Checkout trusted base worktree
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          path: trusted
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture PR changed files
+        working-directory: pr
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: trusted/package-lock.json
+
+      - name: Install trusted dependencies
+        working-directory: trusted
+        run: npm ci
+
+      - name: Classify PR submission route with trusted code
+        id: route
+        working-directory: trusted
+        run: node scripts/ci-validate-route.mjs --changed-files ../pr/changed-files.txt --out ../pr/submission-route.json
+
+      - name: Run trusted UGC submission preflight against PR input
+        if: steps.route.outputs.mode == 'ugc'
+        working-directory: trusted
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node scripts/submission-pr.mjs --changed-files ../pr/changed-files.txt --input-root ../pr --out ../pr/submission-report.json --submitter "$PR_AUTHOR"
+
+      - name: Skip non-submission PRs
+        if: steps.route.outputs.mode != 'ugc'
+        run: echo "No direct community submission detected; full validation remains authoritative for this PR."
