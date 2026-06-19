@@ -409,6 +409,43 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   }
 }, 30_000);
 
+test("artifact build preserves committed schema index without R2 schema details", () => {
+  const schemaIndexPath = artifactFilePath("schemas/index.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const originalSchemaIndexJson = JSON.parse(originalSchemaIndex);
+  const supportArtifacts = snapshotSupportArtifacts();
+  const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-schema-r2-`);
+  const stagingBackup = `${backupDir}/metagraph-r2`;
+  const hadStagingRoot = existsSync(r2StagingRoot);
+  if (hadStagingRoot) {
+    cpSync(r2StagingRoot, stagingBackup, { recursive: true });
+  }
+
+  assert.equal(originalSchemaIndexJson.source, "openapi-snapshot");
+  assert.equal(originalSchemaIndexJson.schemas.length > 0, true);
+
+  try {
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+    assert.deepEqual(JSON.parse(rebuiltSchemaIndex), originalSchemaIndexJson);
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    if (hadStagingRoot) {
+      cpSync(stagingBackup, r2StagingRoot, { recursive: true });
+    }
+    restoreSupportArtifacts(supportArtifacts);
+    rmSync(backupDir, { recursive: true, force: true });
+  }
+}, 30_000);
+
 test("committed R2 manifest does not use fallback history keys", () => {
   const manifest = JSON.parse(
     readFileSync("public/metagraph/r2-manifest.json", "utf8"),
