@@ -21,6 +21,7 @@ import type {
   HealthState,
   HealthSummary,
   Lineage,
+  LineageLink,
   PrimaryAppSurface,
   ReadinessSummary,
   Provider,
@@ -319,14 +320,57 @@ export const coverageQuery = () =>
     staleTime: STALE_MED,
   });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function normalizeLineageLink(value: unknown): LineageLink | null {
+  if (!isRecord(value)) return null;
+  const { mainnet_netuid: mainnetNetuid, testnet_netuid: testnetNetuid } = value;
+  if (typeof mainnetNetuid !== "number" || typeof testnetNetuid !== "number") return null;
+
+  return {
+    mainnet_netuid: mainnetNetuid,
+    mainnet_name: optionalString(value.mainnet_name),
+    mainnet_slug: optionalString(value.mainnet_slug),
+    testnet_netuid: testnetNetuid,
+    testnet_name: optionalString(value.testnet_name),
+    testnet_slug: optionalString(value.testnet_slug),
+    matched_by: optionalString(value.matched_by),
+  };
+}
+
+function normalizeLineage(data: Partial<Lineage> | undefined): Lineage {
+  const d = isRecord(data) ? data : {};
+  const links = Array.isArray(d.links)
+    ? d.links.flatMap((link) => {
+        const normalized = normalizeLineageLink(link);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+
+  return {
+    source_network: typeof d.source_network === "string" ? d.source_network : "source",
+    target_network: typeof d.target_network === "string" ? d.target_network : "target",
+    link_count: typeof d.link_count === "number" ? d.link_count : links.length,
+    graduated_subnet_count:
+      typeof d.graduated_subnet_count === "number" ? d.graduated_subnet_count : 0,
+    testnet_only_count: typeof d.testnet_only_count === "number" ? d.testnet_only_count : 0,
+    broken_link_count: typeof d.broken_link_count === "number" ? d.broken_link_count : 0,
+    links,
+  };
+}
+
 export const lineageQuery = () =>
   queryOptions({
     queryKey: k("lineage"),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<Partial<Lineage>>("/api/v1/lineage", { signal });
-      const d = res.data ?? {};
-      const links = Array.isArray(d.links) ? d.links : [];
-      return { data: { ...d, links } as Lineage, meta: res.meta, url: res.url };
+      return { data: normalizeLineage(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_LONG,
   });
