@@ -339,12 +339,16 @@ function normalizeCoverage(raw: unknown): Coverage {
   const d = (raw ?? {}) as Record<string, unknown>;
   const num = (key: string) =>
     typeof d[key] === "number" && Number.isFinite(d[key]) ? d[key] : undefined;
+  const manifestedCount = num("manifested_count");
   return {
     ...(d as object),
     netuids_total: num("netuids_total") ?? num("chain_subnet_count"),
     netuids_active: num("netuids_active") ?? num("application_subnet_count") ?? num("probed_count"),
     adapter_backed: num("adapter_backed") ?? num("first_party_subnet_count"),
-    manifested: num("manifested") ?? num("manifested_count") ?? num("official_surface_count"),
+    manifested:
+      num("manifested") ??
+      (manifestedCount === 0 ? undefined : manifestedCount) ??
+      num("official_surface_count"),
     surfaces_total: num("surfaces_total") ?? num("official_surface_count") ?? num("surface_count"),
   } as Coverage;
 }
