@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Classify a PR's validation route for CI (UGC submission vs full validation).
 
-Reads ``changed-files.txt`` (one path per line, produced by the merge-base diff in
-the classify-validation-route composite action) and decides:
+Reads ``$CHANGED_FILES_PATH`` (or ``changed-files.txt`` when unset; one path per
+line, produced by the merge-base diff in the classify-validation-route composite
+action) and decides:
 
   * ``mode=ugc``   — the PR is a single community candidate/provider submission
                      (registry/{candidates,providers}/community/<slug>.json). The
@@ -22,11 +23,12 @@ import os
 import pathlib
 import re
 
+changed_files_path = pathlib.Path(os.environ.get("CHANGED_FILES_PATH", "changed-files.txt"))
+route_report_path = pathlib.Path(os.environ.get("ROUTE_REPORT_PATH", "validate-route.json"))
+
 changed_files = sorted(
     file.strip().replace("\\", "/").removeprefix("./")
-    for file in pathlib.Path("changed-files.txt")
-    .read_text(encoding="utf-8")
-    .splitlines()
+    for file in changed_files_path.read_text(encoding="utf-8").splitlines()
     if file.strip()
 )
 candidate_pattern = re.compile(r"^registry/candidates/community/[a-z0-9][a-z0-9-]*\.json$")
@@ -74,9 +76,7 @@ report = {
     "provider_files": provider_files,
     "errors": errors,
 }
-pathlib.Path("validate-route.json").write_text(
-    json.dumps(report, indent=2) + "\n", encoding="utf-8"
-)
+route_report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 output_path = os.environ.get("GITHUB_OUTPUT")
 if output_path:
     with open(output_path, "a", encoding="utf-8") as output:

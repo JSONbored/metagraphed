@@ -124,14 +124,19 @@ for (const workflow of workflows) {
     );
     check(
       routeAction.includes("git diff --name-only ") &&
-        routeAction.includes("> changed-files.txt") &&
+        routeAction.includes("$RUNNER_TEMP/metagraphed-validation-route") &&
+        routeAction.includes("> \"${{ steps.paths.outputs.changed-files }}\"") &&
         routeAction.includes("--diff-filter=d") &&
-        routeAction.includes("> submitted-artifact-files.txt"),
+        routeAction.includes(
+          "> \"${{ steps.paths.outputs.submitted-artifact-files }}\"",
+        ),
       workflow,
       "classify-validation-route action must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
     );
     check(
-      content.includes("--changed-files submitted-artifact-files.txt"),
+      content.includes(
+        '--changed-files "${{ steps.route.outputs.submitted-artifact-files }}"',
+      ),
       workflow,
       "validate workflow must verify submitted artifacts from the deletion-filtered list",
     );

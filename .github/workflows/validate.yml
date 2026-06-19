@@ -105,7 +105,7 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json --submitter "$PR_AUTHOR"
+        run: npm run submission:pr -- --changed-files "${{ steps.route.outputs.changed-files }}" --out "$RUNNER_TEMP/submission-report.json" --submitter "$PR_AUTHOR"
 
       - name: Validate UGC intake templates
         if: steps.route.outputs.mode == 'ugc'
@@ -148,7 +148,7 @@ jobs:
 
       - name: Verify submitted public artifacts are reproducible
         if: steps.route.outputs.mode == 'full' && github.event_name == 'pull_request'
-        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files submitted-artifact-files.txt
+        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files "${{ steps.route.outputs.submitted-artifact-files }}"
 
       - name: Validate registry
         if: steps.route.outputs.mode == 'full'
