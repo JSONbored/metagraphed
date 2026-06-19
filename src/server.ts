@@ -371,9 +371,9 @@ const OG_SECTION_TITLES: Record<string, string> = {
 };
 function ogCardTitle(pathname: string): string {
   const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
-  if (subnet) return `Subnet ${decodeURIComponent(subnet[1])}`;
+  if (subnet) return `Subnet ${safeDecodePathSegment(subnet[1])}`;
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
-  if (provider) return decodeURIComponent(provider[1]);
+  if (provider) return safeDecodePathSegment(provider[1]);
   return OG_SECTION_TITLES[pathname] ?? "Metagraphed";
 }
 
