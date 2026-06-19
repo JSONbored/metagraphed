@@ -33,6 +33,12 @@ export function applyQueryFilters(
 }
 
 function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
+  const csvWantedByKey = new Map(
+    Object.keys(csvFilters)
+      .filter((key) => params.has(key))
+      .map((key) => [key, new Set(params.get(key).split(","))]),
+  );
+
   return rows.filter((row) =>
     keys.every((key) => {
       if (!params.has(key)) {
@@ -42,13 +48,7 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
       // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid).
       const csvField = csvFilters[key];
       if (csvField) {
-        const wanted = new Set(
-          expected
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
-        );
-        return wanted.has(String(row[csvField]));
+        return csvWantedByKey.get(key)?.has(String(row[csvField])) ?? false;
       }
       // Array-membership filter over the UNION of one or more array fields
       // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
@@ -220,6 +220,12 @@ function validateListQuery(params, config) {
       return {
         parameter: key,
         message: `${key} is not supported for this route.`,
+      };
+    }
+    if (schema.maxLength && value.length > schema.maxLength) {
+      return {
+        parameter: key,
+        message: `${key} is too long.`,
       };
     }
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
