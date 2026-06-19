@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   buildTimestamp,
   isBrandImpersonationUrl,
+  isCredentialedUrl,
   isLikelyExampleLink,
   isUnsafeResolvedUrl,
   isUnsafeUrl,
@@ -1143,7 +1144,12 @@ function normalizePublicUrl(value) {
 
   try {
     const url = new URL(candidate);
-    if (!["http:", "https:"].includes(url.protocol)) {
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      isCredentialedUrl(url.toString())
+    ) {
       return null;
     }
     // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +

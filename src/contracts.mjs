@@ -541,7 +541,11 @@ export const API_QUERY_COLLECTIONS = {
     arrayFilters: { domain: ["categories", "derived_categories"] },
     filters: {
       netuid: integerSchema,
-      netuids: { type: "string", pattern: "^\\d+(,\\d+)*$" },
+      netuids: {
+        type: "string",
+        maxLength: 767,
+        pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+      },
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       domain: enumSchema(DOMAIN_TAGS),

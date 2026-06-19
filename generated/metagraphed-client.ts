@@ -471,15 +471,37 @@ function mergeRequestHeaders(
   return merged;
 }
 
+function hashCacheKeyPart(value: string): string {
+  let high = 0xdeadbeef;
+  let low = 0x41c6ce57;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    high = Math.imul(high ^ code, 2654435761);
+    low = Math.imul(low ^ code, 1597334677);
+  }
+  high =
+    Math.imul(high ^ (high >>> 16), 2246822507) ^
+    Math.imul(low ^ (low >>> 13), 3266489909);
+  low =
+    Math.imul(low ^ (low >>> 16), 2246822507) ^
+    Math.imul(high ^ (high >>> 13), 3266489909);
+  return (
+    (low >>> 0).toString(16).padStart(8, "0") +
+    (high >>> 0).toString(16).padStart(8, "0")
+  );
+}
+
 function buildEtagCacheKey(
   url: URL,
   requestHeaders: Record<string, string>,
 ): string {
-  const headerKey = Object.entries(requestHeaders)
-    .filter(([key]) => key !== "if-none-match")
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => key + ":" + value)
-    .join("\n");
+  const headerKey = hashCacheKeyPart(
+    Object.entries(requestHeaders)
+      .filter(([key]) => key !== "if-none-match")
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => key + ":" + value)
+      .join("\n"),
+  );
   return url.toString() + "\n" + headerKey;
 }
 
@@ -580,13 +602,16 @@ export function createMetagraphedClient(
       query as Record<string, unknown> | undefined,
     );
     let attempt = 0;
-    let skipConditional = false;
+    let retriedUncachedNotModified = false;
     for (;;) {
       const requestHeaders = mergeRequestHeaders(clientOptions.headers, headers);
       const key = buildEtagCacheKey(url, requestHeaders);
-      const cached = !skipConditional && store ? store.get(key) : undefined;
+      const cached = !retriedUncachedNotModified && store ? store.get(key) : undefined;
       if (cached) {
         requestHeaders["if-none-match"] = cached.etag;
+      } else if (retriedUncachedNotModified) {
+        delete requestHeaders["if-none-match"];
+        delete requestHeaders["if-modified-since"];
       }
       let response: Response;
       try {
@@ -615,9 +640,15 @@ export function createMetagraphedClient(
           return cached.body as JsonResponse<Path>;
         }
         // Not Modified, but the store no longer has the entry (a shared/evicting
-        // store can drop it between send and receipt). Re-issue once without the
-        // conditional header to get a full body instead of throwing on the 304.
-        skipConditional = true;
+        // store can drop it between send and receipt). Re-issue once without
+        // conditional headers to get a full body, but never loop on repeated 304s.
+        if (retriedUncachedNotModified) {
+          throw new MetagraphedError(
+            "GET " + url.pathname + " returned 304 without a cached response",
+            response.status,
+          );
+        }
+        retriedUncachedNotModified = true;
         continue;
       }
       if (

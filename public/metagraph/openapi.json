@@ -20840,7 +20840,8 @@
             "name": "netuids",
             "required": false,
             "schema": {
-              "pattern": "^\\d+(,\\d+)*$",
+              "maxLength": 767,
+              "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
               "type": "string"
             }
           },

@@ -22,6 +22,7 @@ import {
   createLocalArtifactEnv,
   flattenSurfaces,
   formatLlmMarkdownText,
+  fixtureCaptureFailureReason,
   formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
@@ -35,6 +36,7 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
+  resolvePublicUrlAddresses,
   latestArtifactDate,
   listJsonFiles,
   listJsonFilesRecursive,
@@ -109,6 +111,18 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("uses public-safe fixture capture parse failure reasons", () => {
+    const error = new SyntaxError(
+      `Unexpected token 'T', "TOKEN=abc" is not valid JSON`,
+    );
+
+    assert.equal(fixtureCaptureFailureReason(error), "invalid json response");
+    assert.equal(
+      fixtureCaptureFailureReason(error).includes("TOKEN=abc"),
+      false,
+    );
+  });
+
   test("classifies redirect-limit probes as unsupported", () => {
     assert.equal(
       classifyHttpProbe(
@@ -1402,6 +1416,13 @@ describe("script utility contracts", () => {
       await isUnsafeResolvedUrl("https://metagraph.example", publicResolver),
       false,
     );
+    assert.deepEqual(
+      await resolvePublicUrlAddresses(
+        "https://metagraph.example",
+        publicResolver,
+      ),
+      [{ address: "93.184.216.34", family: 4 }],
+    );
     assert.equal(
       await isUnsafeResolvedUrl("https://empty.example", emptyResolver),
       true,
@@ -2148,6 +2169,28 @@ describe("submission policy helpers", () => {
     });
     assert.equal(valid.public_state, "submit_pr");
     assert.equal(valid.import_allowed, false);
+
+    const endpointBody = validBody
+      .replace("### Interface kind", "### Endpoint kind")
+      .replace("### Provider or team", "### Provider or operator slug")
+      .replace(
+        "### Does this interface require authentication?",
+        "### Does this endpoint require authentication?",
+      );
+    const endpoint = buildIssueIntakeReport({
+      issue: {
+        number: 11,
+        title: "endpoint: docs",
+        user: { login: "jsonbored" },
+        labels: [{ name: "endpoint-submission" }],
+        body: endpointBody,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(endpoint.public_state, "submit_pr");
+    assert.equal(endpoint.candidate.auth_required, false);
 
     const manual = buildIssueIntakeReport({
       issue: {

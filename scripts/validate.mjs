@@ -575,7 +575,10 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
   assert(candidateStates.has(candidate.state), `${key}: invalid state`);
   assert(Boolean(candidate.name), `${key}: name is required`);
   assert(surfaceKinds.has(candidate.kind), `${key}: invalid kind`);
-  assert(isValidUrl(candidate.url), `${key}: url must be a URL`);
+  assert(
+    normalizePublicHttpUrl(candidate.url) && !isCredentialedUrl(candidate.url),
+    `${key}: url must be a public HTTP(S) URL without credentials`,
+  );
   assert(isValidUrl(candidate.source_url), `${key}: source_url must be a URL`);
   if (candidate.source_urls !== undefined) {
     assert(
@@ -1409,6 +1412,10 @@ function validateFreshnessForPublish(freshnessArtifact) {
     const observedAt = Date.parse(source.as_of);
     if (!Number.isFinite(observedAt)) {
       failures.push(`${source.id} has invalid as_of timestamp`);
+      continue;
+    }
+    if (observedAt > now) {
+      failures.push(`${source.id} as_of timestamp is in the future`);
       continue;
     }
     const ageHours = (now - observedAt) / 3_600_000;
