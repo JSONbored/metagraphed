@@ -195,6 +195,87 @@ describe("Metagraphed submission gate policy", () => {
     }
   });
 
+  test("blocks mixed candidate deletion and unrelated edits in the preflight", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-mixed-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      writeFileSync(
+        changedFilesPath,
+        [
+          "registry/candidates/community/removed-candidate.json",
+          "README.md",
+        ].join("\n"),
+      );
+
+      assert.throws(() =>
+        execFileSync(
+          process.execPath,
+          [
+            "scripts/submission-pr.mjs",
+            "--changed-files",
+            changedFilesPath,
+            "--out",
+            outputPath,
+            "--submitter",
+            "JSONbored",
+          ],
+          { stdio: "pipe" },
+        ),
+      );
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, true);
+      assert.equal(report.state, "schema-invalid");
+      assert.deepEqual(report.changed_files, [
+        "README.md",
+        "registry/candidates/community/removed-candidate.json",
+      ]);
+      assert.equal(
+        report.error_categories.includes("generated-artifact-tampering"),
+        true,
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("blocks direct submissions mixed with deleted direct files", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-submit-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      writeFileSync(
+        changedFilesPath,
+        [
+          "registry/candidates/community/removed-candidate.json",
+          "registry/candidates/community/community-sn-7-subnet-api-api-all-ways-io.json",
+        ].join("\n"),
+      );
+
+      assert.throws(() =>
+        execFileSync(
+          process.execPath,
+          [
+            "scripts/submission-pr.mjs",
+            "--changed-files",
+            changedFilesPath,
+            "--out",
+            outputPath,
+            "--submitter",
+            "JSONbored",
+          ],
+          { stdio: "pipe" },
+        ),
+      );
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, true);
+      assert.equal(report.state, "schema-invalid");
+      assert.equal(report.error_categories.includes("unsupported-shape"), true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   test("routes mixed direct candidate PRs through the UGC gate", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
@@ -1285,6 +1366,7 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.deepEqual(urlOwnerTokens("https://attacker.uc.r.appspot.com/api"), [
       "attacker",
     ]);
+    assert.deepEqual(urlOwnerTokens("https://abc.gitlab.io/api"), ["abc"]);
     assert.deepEqual(urlOwnerTokens("not a url"), []);
     assert.deepEqual(urlOwnerTokens(42), []);
     // a sub-4-char org is filtered out
@@ -1322,6 +1404,33 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.equal(
       ownerTokensMatch(["safescanai"], ["byzantium", "byzantiumai"]),
       false,
+    );
+  });
+
+  test("short multi-tenant URL owners still trigger owner mismatch review", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].kind = "subnet-api";
+    document.candidates[0].url = "https://abc.gitlab.io/api";
+    document.candidates[0].source_url =
+      "https://docs.all-ways.io/how-it-works.html";
+    document.candidates[0].source_urls = [
+      "https://docs.all-ways.io/how-it-works.html",
+    ];
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/abc-gitlab-api.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(
+      report.manual_reasons.includes(
+        "candidate url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
+      ),
+      true,
     );
   });
 
