@@ -2259,6 +2259,32 @@ describe("submission policy helpers", () => {
       duplicate.errors.filter((error) => error.category === "duplicate").length,
       2,
     );
+
+    const duplicateId = validateCandidateForSubmission({
+      candidate: baseCandidate,
+      document: {
+        submission: {
+          submitted_by: "jsonbored",
+          submitted_by_url: "https://github.com/jsonbored",
+        },
+      },
+      submitter: "jsonbored",
+      native,
+      providers,
+      existingCandidates: [
+        { ...baseCandidate, url: "https://docs.all-ways.io/other" },
+      ],
+      existingSubnets: [],
+    });
+    assert.equal(
+      duplicateId.errors.some(
+        (error) =>
+          error.category === "duplicate" &&
+          error.message ===
+            `candidate id duplicates existing candidate ${baseCandidate.id}`,
+      ),
+      true,
+    );
   });
 
   test("builds issue intake states for valid, manual, and invalid submissions", () => {

@@ -414,10 +414,13 @@ export async function loadNativeSnapshot() {
   return readJson(path.join(repoRoot, "registry/native/finney-subnets.json"));
 }
 
-export async function loadCandidates() {
-  const files = await listJsonFilesRecursive(
-    path.join(repoRoot, "registry/candidates"),
+export async function loadCandidates(options = {}) {
+  const excludeFiles = new Set(
+    (options.excludeFiles || []).map((file) => path.resolve(file)),
   );
+  const files = (
+    await listJsonFilesRecursive(path.join(repoRoot, "registry/candidates"))
+  ).filter((file) => !excludeFiles.has(path.resolve(file)));
   const documents = await Promise.all(files.map(readJson));
   const candidates = documents.flatMap((document) => {
     if (Array.isArray(document.candidates)) {

@@ -81,12 +81,9 @@ const directSubmissionRaw = new Map(
   ).map(([file, raw]) => [file, raw]),
 );
 const existingCandidates = directCandidateFile
-  ? (await loadCandidates()).filter(
-      (candidate) =>
-        !candidateDocument?.candidates?.some(
-          (submitted) => submitted.id === candidate.id,
-        ),
-    )
+  ? await loadCandidates({
+      excludeFiles: [path.join(inputRoot, directCandidateFile)],
+    })
   : await loadCandidates();
 const existingProviders = directProviderFile
   ? (await loadProviders()).filter(

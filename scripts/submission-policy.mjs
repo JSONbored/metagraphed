@@ -1289,6 +1289,16 @@ export function validateCandidateForSubmission({
     }),
   );
 
+  const idDuplicate = existingCandidates.find(
+    (existing) => existing.id === candidate.id,
+  );
+  if (idDuplicate) {
+    errors.push({
+      category: "duplicate",
+      message: `candidate id duplicates existing candidate ${idDuplicate.id}`,
+    });
+  }
+
   if (normalizedUrl && candidate.kind && Number.isInteger(candidate.netuid)) {
     const locator = registrySurfaceKey({
       netuid: candidate.netuid,
