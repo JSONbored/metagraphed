@@ -57,3 +57,47 @@ describe("adapter snapshot fetch redirect safety", () => {
     );
   });
 });
+
+describe("adapter snapshot fetch body limits", () => {
+  test("rejects OpenAPI responses with oversized content-length", async () => {
+    let bodyCanceled = false;
+    globalThis.fetch = async () =>
+      new Response("{}", {
+        status: 200,
+        headers: {
+          "content-length": String(2 * 1024 * 1024 + 1),
+          "content-type": "application/json",
+        },
+      });
+
+    const response = await globalThis.fetch();
+    const originalCancel = response.body.cancel.bind(response.body);
+    response.body.cancel = async () => {
+      bodyCanceled = true;
+      return originalCancel();
+    };
+    globalThis.fetch = async () => response;
+
+    const result = await fetchJson("http://1.1.1.1/openapi.json");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "too-large");
+    assert.equal(result.content_length, 2 * 1024 * 1024 + 1);
+    assert.equal(result.max_bytes, 2 * 1024 * 1024);
+    assert.equal(bodyCanceled, true);
+  });
+
+  test("rejects OpenAPI responses that stream beyond the byte cap", async () => {
+    globalThis.fetch = async () =>
+      new Response(`{"padding":"${"x".repeat(2 * 1024 * 1024)}"}`, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const result = await fetchJson("http://1.1.1.1/openapi.json");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "too-large");
+    assert.equal(result.max_bytes, 2 * 1024 * 1024);
+  });
+});
