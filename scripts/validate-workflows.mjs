@@ -135,6 +135,14 @@ for (const workflow of workflows) {
       workflow,
       "validate workflow must verify submitted artifacts from the deletion-filtered list",
     );
+    check(
+      content.includes(
+        "git status --porcelain --untracked-files=all -- public/",
+      ) &&
+        content.includes("Committed derived artifacts under public/ are stale"),
+      workflow,
+      "validate workflow must detect rebuilt-but-untracked public artifacts after build",
+    );
   }
   if (workflow === "submission-gate.yml") {
     check(

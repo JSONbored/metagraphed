@@ -176,8 +176,10 @@ jobs:
       - name: Verify committed derived artifacts are fresh
         if: steps.route.outputs.mode == 'full'
         run: |
-          if ! git diff --quiet -- public/ ':(exclude)public/metagraph/r2-manifest.json'; then
-            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed them). Run 'npm run build' and commit the result."
+          status=$(git status --porcelain --untracked-files=all -- public/ ':(exclude)public/metagraph/r2-manifest.json')
+          if [ -n "$status" ]; then
+            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed, deleted, or recreated them). Run 'npm run build' and commit the result."
+            printf '%s\n' "$status"
             git diff --name-only -- public/ ':(exclude)public/metagraph/r2-manifest.json'
             git diff --stat -- public/ ':(exclude)public/metagraph/r2-manifest.json'
             exit 1
