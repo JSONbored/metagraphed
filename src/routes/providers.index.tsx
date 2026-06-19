@@ -420,7 +420,14 @@ function ProviderOverview({
     acc[k] = (acc[k] ?? 0) + 1;
     return acc;
   }, {});
-  const kindPalette = ["#7aa2ff", "#34d399", "#f59e0b", "#c084fc", "#f472b6", "#94a3b8"];
+  const kindPalette = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+    "var(--chart-6)",
+  ];
   const kindSegs = Object.entries(kinds)
     .sort((a, b) => b[1] - a[1])
     .map(([label, value], i) => ({ label, value, color: kindPalette[i % kindPalette.length]! }));
