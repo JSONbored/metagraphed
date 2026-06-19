@@ -35,7 +35,7 @@ function sanitizeApiBase(value: string | null | undefined): string | null {
   // http(s) origin may reach the footer href. The leading-anchored regexp is
   // the taint barrier CodeQL js/xss-through-dom recognizes; the URL parse then
   // rejects anything malformed (e.g. "https:" with no host).
-  if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed)) return null;
+  if (!/^https?:\/\/[^\s/$.?#][^\s]*$/i.test(trimmed)) return null;
   try {
     new URL(trimmed);
   } catch {
