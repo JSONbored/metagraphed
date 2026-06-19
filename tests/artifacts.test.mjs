@@ -409,7 +409,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   }
 }, 30_000);
 
-test("artifact build preserves committed schema index without R2 schema details", () => {
+test("artifact build regenerates schema index without R2 schema details", () => {
   const schemaIndexPath = artifactFilePath("schemas/index.json");
   const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
   const originalSchemaIndexJson = JSON.parse(originalSchemaIndex);
@@ -424,8 +424,28 @@ test("artifact build preserves committed schema index without R2 schema details"
   assert.equal(originalSchemaIndexJson.source, "openapi-snapshot");
   assert.equal(originalSchemaIndexJson.schemas.length > 0, true);
 
+  const forgedMarker = "AUTOVALIDATOR_CLEAN_R2_SCHEMA_INDEX_FORGERY";
+  const tamperedSchemaIndex = JSON.parse(originalSchemaIndex);
+  const tamperedTarget = tamperedSchemaIndex.schemas.find(
+    (schema) => schema.status === "captured" && schema.snapshot,
+  );
+  assert(tamperedTarget, "expected a captured schema index entry to tamper");
+  tamperedTarget.hash = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+  tamperedTarget.snapshot = {
+    ...tamperedTarget.snapshot,
+    hash: tamperedTarget.hash,
+    title: forgedMarker,
+    auth_required: false,
+    path_count: 424242,
+    validation_forged_extra: { marker: forgedMarker },
+  };
+
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
+    writeFileSync(
+      schemaIndexPath,
+      `${JSON.stringify(tamperedSchemaIndex, null, 2)}\n`,
+    );
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
       encoding: "utf8",
@@ -433,8 +453,10 @@ test("artifact build preserves committed schema index without R2 schema details"
       stdio: "pipe",
     });
 
-    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-    assert.deepEqual(JSON.parse(rebuiltSchemaIndex), originalSchemaIndexJson);
+    const rebuiltSchemaIndexText = readFileSync(schemaIndexPath, "utf8");
+    const rebuiltSchemaIndex = JSON.parse(rebuiltSchemaIndexText);
+    assert.equal(rebuiltSchemaIndex.source, "artifact-build");
+    assert.equal(rebuiltSchemaIndexText.includes(forgedMarker), false);
   } finally {
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     rmSync(r2StagingRoot, { recursive: true, force: true });

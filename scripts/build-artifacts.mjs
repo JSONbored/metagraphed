@@ -5650,14 +5650,10 @@ function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
 
   const relativePath = schemaDetailArtifactRelativePath(entry.path);
   const captured = capturedDetails.get(relativePath);
-  // Clean local/CI builds do not have the R2-only per-surface schema detail
-  // files, so only enforce document-backed detail verification when such files
-  // were captured before the staging wipe.
   const detailMatches =
-    capturedDetails.size === 0 ||
-    (captured &&
-      captured.documentHash === entry.hash &&
-      stableStringify(captured.snapshot) === stableStringify(entry.snapshot));
+    captured &&
+    captured.documentHash === entry.hash &&
+    stableStringify(captured.snapshot) === stableStringify(entry.snapshot);
   return (
     entry.path === `/metagraph/schemas/${surface.id}.json` &&
     typeof entry.content_type === "string" &&
