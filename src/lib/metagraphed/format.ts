@@ -69,12 +69,15 @@ export function humaniseSeconds(sec: number | null | undefined, fallback = "—"
     return rs && m < 10 ? `${m}m ${rs}s` : `${m}m`;
   }
   if (s < 86400) {
-    const h = Math.floor(s / 3600);
-    const rm = Math.round((s % 3600) / 60);
+    const totalMinutes = Math.round(s / 60);
+    const h = Math.floor(totalMinutes / 60);
+    const rm = totalMinutes % 60;
+    if (h >= 24) return "1d";
     return rm && h < 10 ? `${h}h ${rm}m` : `${h}h`;
   }
-  const d = Math.floor(s / 86400);
-  const rh = Math.round((s % 86400) / 3600);
+  const totalHours = Math.round(s / 3600);
+  const d = Math.floor(totalHours / 24);
+  const rh = totalHours % 24;
   return rh && d < 10 ? `${d}d ${rh}h` : `${d}d`;
 }
 
