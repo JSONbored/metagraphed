@@ -19,6 +19,13 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.14.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.0...platform-v0.14.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* **ci:** keep submission gate outputs trusted ([#1207](https://github.com/JSONbored/metagraphed/issues/1207)) ([9178729](https://github.com/JSONbored/metagraphed/commit/9178729be72df0bb937ca647759eb28a3c0db8ea))
+
 ## [0.14.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.13.0...platform-v0.14.0) (2026-06-19)
 
 
