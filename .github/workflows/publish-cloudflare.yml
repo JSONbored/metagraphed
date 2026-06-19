@@ -60,9 +60,7 @@ jobs:
           echo "METAGRAPH_PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
 
       - name: Prepare reviewed publish artifacts
-        run: |
-          npm run build
-          npm run r2:manifest
+        run: npm run build
         env:
           # The production build re-snapshots adapters from live GitHub metadata
           # so the publish is fresh by construction. A token is always present
@@ -70,6 +68,7 @@ jobs:
           # shipping degraded adapter data (mirrors sync-subnets.yml).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METAGRAPH_BUILD_TIMESTAMP: ${{ env.METAGRAPH_PUBLISHED_AT }}
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters

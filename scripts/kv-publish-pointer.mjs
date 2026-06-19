@@ -29,7 +29,11 @@ const pointer = {
   // build stamp). The Worker surfaces this as meta.published_at so consumers
   // read true freshness instead of the epoch content marker.
   published_at: buildSummary.published_at || null,
-  latest_prefix: manifest.latest_prefix,
+  // The Worker resolves live artifacts through latest_prefix. Point it at the
+  // immutable run prefix so a failed KV sidecar publish after R2 upload keeps
+  // the previous pointer on the previous run instead of mixing stale metadata
+  // with newly overwritten latest/ objects.
+  latest_prefix: manifest.run_prefix,
   run_prefix: manifest.run_prefix,
   manifest_hash: hashJson(manifest),
   artifact_count: manifest.artifact_count,
@@ -64,11 +68,10 @@ const sourceFreshness = {
   source_health: sourceHealth.summary,
 };
 // Order matters: metagraph:latest is the pointer the Worker reads to resolve the
-// live R2 run, so it is written LAST. The sidecar records (feature-flags,
-// endpoint-pools, source-freshness) go first, so a mid-sequence wrangler failure
-// (process.exit in putKv) can never leave the pointer advanced ahead of its
-// sidecars — the Worker keeps serving the previous, internally-consistent run
-// until the final pointer write succeeds.
+// live immutable R2 run prefix, so it is written LAST. The sidecar records
+// (feature-flags, endpoint-pools, source-freshness) go first, so a mid-sequence
+// wrangler failure (process.exit in putKv) keeps the previous pointer and its
+// previous run-specific artifacts live until the final pointer write succeeds.
 const kvEntries = [
   ["metagraph:feature-flags", featureFlags],
   ["metagraph:endpoint-pools", endpointPoolStatus],
