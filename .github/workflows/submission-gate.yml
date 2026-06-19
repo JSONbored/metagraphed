@@ -34,7 +34,18 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+        run: |
+          changed_files="$RUNNER_TEMP/submission-gate-changed-files.txt"
+          route_report="$RUNNER_TEMP/submission-route.json"
+          preflight_report="$RUNNER_TEMP/submission-report.json"
+
+          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > "$changed_files"
+
+          {
+            echo "CHANGED_FILES=$changed_files"
+            echo "SUBMISSION_ROUTE_REPORT=$route_report"
+            echo "SUBMISSION_PREFLIGHT_REPORT=$preflight_report"
+          } >> "$GITHUB_ENV"
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -50,7 +61,7 @@ jobs:
       - name: Classify PR submission route with trusted code
         id: route
         working-directory: trusted
-        run: node scripts/ci-validate-route.mjs --changed-files ../pr/changed-files.txt --out ../pr/submission-route.json
+        run: node scripts/ci-validate-route.mjs --changed-files "$CHANGED_FILES" --out "$SUBMISSION_ROUTE_REPORT"
 
       - name: Run trusted UGC submission preflight against PR input
         if: steps.route.outputs.mode == 'ugc'
@@ -58,7 +69,7 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: node scripts/submission-pr.mjs --changed-files ../pr/changed-files.txt --input-root ../pr --out ../pr/submission-report.json --submitter "$PR_AUTHOR"
+        run: node scripts/submission-pr.mjs --changed-files "$CHANGED_FILES" --input-root ../pr --out "$SUBMISSION_PREFLIGHT_REPORT" --submitter "$PR_AUTHOR"
 
       - name: Skip non-submission PRs
         if: steps.route.outputs.mode != 'ugc'
