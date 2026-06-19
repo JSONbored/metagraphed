@@ -145,7 +145,8 @@ describe("captured-fixture body scan", () => {
 
   test("flags sensitive wallet/key wording hidden in a fixture body key", async () => {
     await writeTestFixture({
-      "seed phrase": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "seed phrase":
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     });
     const output = runScanOutput();
     assert.ok(

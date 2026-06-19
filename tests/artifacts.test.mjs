@@ -447,8 +447,15 @@ test("artifact build preserves committed schema index without R2 schema details"
 }, 30_000);
 
 test("committed R2 manifest does not use fallback history keys", () => {
+  // Read the git-committed manifest, not the working-tree copy: the Validate
+  // test/checks jobs run `npm run build` before the suite, which regenerates
+  // r2-manifest.json with the 1970 epoch placeholder (no METAGRAPH_BUILD_TIMESTAMP).
+  // This guard is about the committed publish lockfile, which must carry the real
+  // timestamp written by the publish workflow.
   const manifest = JSON.parse(
-    readFileSync("public/metagraph/r2-manifest.json", "utf8"),
+    execFileSync("git", ["show", "HEAD:public/metagraph/r2-manifest.json"], {
+      encoding: "utf8",
+    }),
   );
 
   assert.notEqual(manifest.generated_at, "1970-01-01T00:00:00.000Z");
@@ -960,18 +967,18 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     callableAgentServices.length,
-    71,
+    68,
     "agent-catalog callable-service count must stay deterministic",
   );
   assert.equal(
     callableWithoutSchema.length,
-    33,
+    31,
     "schema projection should reduce callable services without schema artifacts",
   );
   assert.equal(
     callableWithoutSchema.filter((service) => service.kind === "subnet-api")
       .length,
-    8,
+    6,
     "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
   );
   assert.equal(

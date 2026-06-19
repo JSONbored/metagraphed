@@ -3477,7 +3477,8 @@
               "timeout",
               "transient",
               "unsupported",
-              "unsafe"
+              "unsafe",
+              "wrong-chain"
             ],
             "type": "string"
           }
@@ -3603,7 +3604,8 @@
               "timeout",
               "transient",
               "unsupported",
-              "unsafe"
+              "unsafe",
+              "wrong-chain"
             ],
             "type": "string"
           }

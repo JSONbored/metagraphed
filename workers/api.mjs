@@ -1122,7 +1122,11 @@ async function handleApiRequest(
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
-async function handleBulkHealthTrends(request, env, url = new URL(request.url)) {
+async function handleBulkHealthTrends(
+  request,
+  env,
+  url = new URL(request.url),
+) {
   for (const key of url.searchParams.keys()) {
     return errorResponse(
       "invalid_query",

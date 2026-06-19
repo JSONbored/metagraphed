@@ -858,9 +858,7 @@ export function isBrandImpersonationUrl(value) {
 
   const userinfo = `${url.username}:${url.password}`.toLowerCase();
   return (
-    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(
-      host,
-    ) ||
+    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host) ||
     /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
   );
 }
