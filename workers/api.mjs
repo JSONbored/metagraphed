@@ -3160,6 +3160,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "subnet-overview": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayOverviewHealth(
         staticData,
         await getLive(),
@@ -3168,6 +3172,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "agent-catalog-subnet": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayCatalogDetail(
         staticData,
         await getLive(),

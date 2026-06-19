@@ -1490,6 +1490,29 @@ describe("composed-artifact health overlays", () => {
 });
 
 describe("worker live health overlay on composed routes", () => {
+  const seedComposedArchive = ({
+    overview = { netuid: 7, health: null },
+    catalog = { netuid: 7, services: [] },
+  } = {}) => ({
+    async get(key) {
+      if (String(key).includes("overview/7.json")) {
+        return {
+          async json() {
+            return overview;
+          },
+        };
+      }
+      if (String(key).includes("agent-catalog/7.json")) {
+        return {
+          async json() {
+            return catalog;
+          },
+        };
+      }
+      return null;
+    },
+  });
+
   test("/api/v1/subnets/7/overview overlays live health from KV", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
@@ -1501,6 +1524,7 @@ describe("worker live health overlay on composed routes", () => {
           surfaces: [],
         },
       }),
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     assert.equal(res.status, 200);
@@ -1519,6 +1543,7 @@ describe("worker live health overlay on composed routes", () => {
           surfaces: [],
         },
       }),
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
     const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
     assert.equal(res.status, 200);
@@ -1542,8 +1567,43 @@ describe("worker live health overlay on composed routes", () => {
     assert.equal((await res.json()).meta.source, "live-cron-prober");
   });
 
+  test("live overlays preserve missing composed artifact 404s", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: kvWith({
+        "health:current": {
+          last_run_at: "2026-06-13T00:00:00.000Z",
+          subnets: [{ netuid: 1, status: "ok" }],
+          surfaces: [],
+        },
+      }),
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return null;
+        },
+      },
+    });
+
+    const overview = await handleRequest(
+      req("/api/v1/subnets/999999/overview"),
+      env,
+      {},
+    );
+    assert.equal(overview.status, 404);
+    assert.equal((await overview.json()).ok, false);
+
+    const catalog = await handleRequest(
+      req("/api/v1/agent-catalog/999999"),
+      env,
+      {},
+    );
+    assert.equal(catalog.status, 404);
+    assert.equal((await catalog.json()).ok, false);
+  });
+
   test("composed routes fall back to the static artifact when KV+D1 are cold", async () => {
-    const env = createLocalArtifactEnv();
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
+    });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     assert.equal(res.status, 200);
     assert.notEqual((await res.json()).meta.source, "live-cron-prober");
@@ -1721,7 +1781,9 @@ describe("worker live health overlay on composed routes", () => {
   test("composed overview no longer embeds a baked health status", async () => {
     // The built artifact carries health:null; cold reads must not surface a
     // stale status (the overlay would set it live in prod).
-    const env = createLocalArtifactEnv();
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: seedComposedArchive(),
+    });
     const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
     const body = await res.json();
     assert.equal(body.data.health, null);
