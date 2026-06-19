@@ -129,16 +129,29 @@ async function handleStatsProxy(request: Request): Promise<Response | null> {
 const API_ORIGIN = "https://api.metagraph.sh";
 const SITE_ORIGIN = "https://metagraph.sh";
 
-// Resources the backend serves canonically — proxied verbatim from the API origin to the apex.
-const DISCOVERY_PROXY_PATHS = new Set([
-  "/.well-known/api-catalog",
-  "/.well-known/mcp/server-card.json",
-  "/.well-known/agent-skills/index.json",
-  "/.well-known/security.txt",
-  "/llms.txt",
-  "/llms-full.txt",
-  "/agent.md",
-]);
+// Resources the backend serves canonically. The apex proxies them with a tight
+// response-header and media-type policy so API-origin cookies or active content
+// are never re-scoped to metagraph.sh.
+const DISCOVERY_CONTENT_TYPES = {
+  "/.well-known/api-catalog": ["application/linkset+json", "application/json"],
+  "/.well-known/mcp/server-card.json": ["application/json"],
+  "/.well-known/agent-skills/index.json": ["application/json"],
+  "/.well-known/security.txt": ["text/plain"],
+  "/llms.txt": ["text/plain"],
+  "/llms-full.txt": ["text/plain"],
+  "/agent.md": ["text/markdown", "text/plain"],
+} as const satisfies Record<string, readonly string[]>;
+
+const DISCOVERY_PROXY_PATHS = new Set(Object.keys(DISCOVERY_CONTENT_TYPES));
+
+const DISCOVERY_SAFE_RESPONSE_HEADERS = [
+  "cache-control",
+  "content-language",
+  "etag",
+  "expires",
+  "last-modified",
+  "vary",
+] as const;
 
 // RFC 8288 Link header advertising the API catalog + machine-readable descriptions, added to every
 // HTML response (mirrors the backend's homepage Link header, with absolute API-origin targets).
@@ -178,9 +191,37 @@ async function handleDiscovery(request: Request): Promise<Response | null> {
   const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
     headers: { accept: request.headers.get("accept") ?? "*/*" },
   });
-  const headers = new Headers(upstream.headers);
-  headers.set("x-discovery-origin", "api.metagraph.sh");
+  const headers = buildDiscoveryResponseHeaders(url.pathname, upstream.headers);
+  if (!headers) {
+    return new Response("Bad Gateway", {
+      status: 502,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "x-discovery-origin": "api.metagraph.sh",
+      },
+    });
+  }
   return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+function buildDiscoveryResponseHeaders(pathname: string, upstreamHeaders: Headers): Headers | null {
+  const allowedTypes: readonly string[] | undefined =
+    DISCOVERY_CONTENT_TYPES[pathname as keyof typeof DISCOVERY_CONTENT_TYPES];
+  if (!allowedTypes) return null;
+
+  const upstreamContentType = upstreamHeaders.get("content-type") ?? "";
+  const normalizedContentType = upstreamContentType.toLowerCase().split(";", 1)[0].trim();
+  if (!allowedTypes.includes(normalizedContentType)) return null;
+
+  const headers = new Headers();
+  headers.set("content-type", upstreamContentType);
+  for (const name of DISCOVERY_SAFE_RESPONSE_HEADERS) {
+    const value = upstreamHeaders.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-discovery-origin", "api.metagraph.sh");
+  return headers;
 }
 
 // robots.txt for the apex. metagraphed is a public, agent-ready registry, so all
