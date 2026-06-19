@@ -541,7 +541,7 @@ export const fixtureDetailQuery = (surfaceId: string) =>
   queryOptions({
     queryKey: k("fixture-detail", surfaceId),
     queryFn: async ({ signal }) =>
-      apiFetch<Fixture>(`/metagraph/fixtures/${surfaceId}.json`, { signal }),
+      apiFetch<Fixture>(`/metagraph/fixtures/${encodePathSegment(surfaceId)}.json`, { signal }),
     staleTime: STALE_LONG,
   });
 
