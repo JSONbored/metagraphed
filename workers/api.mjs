@@ -100,6 +100,7 @@ import {
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
+  MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -362,7 +363,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (bulkTrendsMatch) {
-      return handleBulkHealthTrends(request, env);
+      return handleBulkHealthTrends(request, env, resolved.url);
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
@@ -1091,41 +1092,48 @@ async function handleApiRequest(
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
-async function handleBulkHealthTrends(request, env) {
-  const db = env.METAGRAPH_HEALTH_DB;
+async function handleBulkHealthTrends(request, env, url = new URL(request.url)) {
+  for (const key of url.searchParams.keys()) {
+    return errorResponse(
+      "invalid_query",
+      `${key} is not supported for this route.`,
+      400,
+      { parameter: key },
+    );
+  }
+
   const nowMs = Date.now();
-  const windows = {};
-  const windowRows = await Promise.all(
-    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-      if (!db?.prepare) {
-        return [label, []];
-      }
-      try {
-        const result = await withTimeout(
-          db
-            .prepare(
-              `SELECT netuid,
-                    date(checked_at / 1000, 'unixepoch') AS date,
-                    COUNT(*) AS total,
-                    SUM(ok) AS ok_count,
-                    AVG(latency_ms) AS avg_latency_ms
-             FROM surface_checks
-             WHERE checked_at >= ?
-             GROUP BY netuid, date
-             ORDER BY netuid, date`,
-            )
-            .bind(nowMs - days * DAY_MS)
-            .all(),
-          d1TimeoutMs(env),
-        );
-        return [label, result?.results || []];
-      } catch {
-        return [label, []];
-      }
-    }),
+  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
+  const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    `SELECT netuid,
+            day AS date,
+            SUM(samples) AS total,
+            SUM(ok_count) AS ok_count,
+            CASE
+              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                     SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+              ELSE NULL
+            END AS avg_latency_ms
+     FROM surface_uptime_daily
+     WHERE day >= ?
+     GROUP BY netuid, day
+     ORDER BY netuid, day
+     LIMIT ?`,
+    [cutoffDay, MAX_BULK_TREND_ROWS],
   );
-  for (const [label, rows] of windowRows) {
-    windows[label] = rows;
+  const windows = {};
+  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+    const windowCutoff = new Date(nowMs - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    windows[label] = rows.filter(
+      (row) => String(row.day || row.date) >= windowCutoff,
+    );
   }
   const meta = await readHealthKv(env, KV_HEALTH_META);
   const data = formatBulkTrends({

@@ -29,6 +29,7 @@ export const TRAJECTORY_PATH_PATTERN =
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
+export const MAX_BULK_TREND_ROWS = 10000;
 export const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
 export const ANALYTICS_WINDOW_PARAM = "window";
 export const RPC_USAGE_BUCKETS = {
