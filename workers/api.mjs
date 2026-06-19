@@ -484,7 +484,7 @@ async function handleNetworkScopedRequest(
     }
     return errorResponse(
       "not_found",
-      "The local network is a client-side developer chain — metagraphed hosts no data for it. GET /api/v1/local for setup (point your SDK/RPC at ws://127.0.0.1:9944).",
+      "The local network is a client-side developer chain — metagraphed hosts no data for it. GET /api/v1/local for setup guidance before pointing your SDK/RPC at your own local node.",
       404,
       { network: "local" },
     );
@@ -649,7 +649,7 @@ const LOCAL_NETWORK_INFO = {
   network: "local",
   mode: "client-side",
   note: "Local is a per-developer subtensor you run yourself — metagraphed hosts no subnet data for it. Point your Bittensor SDK / RPC at your local node; use the mainnet and testnet registries here as the reference.",
-  rpc: { ws: "ws://127.0.0.1:9944", network_arg: "local" },
+  rpc: { network_arg: "local" },
   // The full develop-before-mainnet path (issue #354): stand up a local chain,
   // create a subnet on it, point your code at it, then graduate to testnet and
   // mainnet. Uses the official opentensor/subtensor localnet (it generates the
@@ -663,7 +663,7 @@ const LOCAL_NETWORK_INFO = {
         title: "Run a local chain",
         run: "git clone https://github.com/opentensor/subtensor && cd subtensor && ./scripts/localnet.sh --no-purge",
         detail:
-          "Starts a local subtensor at ws://127.0.0.1:9944 with sudo, fast blocks, and pre-funded Alice/Bob keys (free TAO). First run compiles the node (needs the Rust toolchain + build deps).",
+          "Starts a local subtensor WebSocket endpoint with sudo, fast blocks, and pre-funded Alice/Bob keys (free TAO). First run compiles the node (needs the Rust toolchain + build deps).",
       },
       {
         step: 2,
@@ -703,7 +703,7 @@ const LOCAL_NETWORK_INFO = {
   setup: {
     sdk: "Python bittensor SDK: bt.SubtensorApi(network='local') (or bt.subtensor(network='local')).",
     run_local_chain:
-      "Run a local subtensor node (the Subtensor repo's localnet script) to expose ws://127.0.0.1:9944 with sudo + fast blocks and free TAO.",
+      "Run a local subtensor node (the Subtensor repo's localnet script) to expose your own local WebSocket endpoint with sudo + fast blocks and free TAO.",
   },
   guide: "/skills/bittensor/SKILL.md",
 };
