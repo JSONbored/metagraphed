@@ -60,9 +60,7 @@ jobs:
           echo "METAGRAPH_PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
 
       - name: Prepare reviewed publish artifacts
-        run: |
-          npm run build
-          npm run r2:manifest
+        run: npm run build
         env:
           # The production build re-snapshots adapters from live GitHub metadata
           # so the publish is fresh by construction. A token is always present

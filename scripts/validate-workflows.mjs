@@ -203,10 +203,14 @@ for (const workflow of workflows) {
     );
     check(
       refreshJob.includes('METAGRAPH_PRODUCTION_BUILD: "1"') &&
-        refreshJob.includes("npm run build") &&
-        refreshJob.includes("npm run r2:manifest"),
+        refreshJob.includes("npm run build"),
       workflow,
       "publish workflow refresh job must prepare R2 artifacts with the production probe-health build path",
+    );
+    check(
+      !refreshJob.includes("npm run r2:manifest"),
+      workflow,
+      "publish workflow refresh job must not regenerate the R2 manifest outside the production build timestamp context",
     );
     check(
       /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),
