@@ -19,6 +19,14 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.14.3](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.2...platform-v0.14.3) (2026-06-19)
+
+
+### Bug Fixes
+
+* **ci:** allowlist documented local subtensor RPC in public-safety scan ([#1214](https://github.com/JSONbored/metagraphed/issues/1214)) ([0f072bd](https://github.com/JSONbored/metagraphed/commit/0f072bdbe25a68fe97d65e7b44c37039ee612075))
+* **ci:** repair main Validate — dedup SN64 candidate, fix r2-manifest guard, refresh artifacts, format ([#1211](https://github.com/JSONbored/metagraphed/issues/1211)) ([e13f009](https://github.com/JSONbored/metagraphed/commit/e13f009bfa02315eca2bfda4f8526bfc66f9b746))
+
 ## [0.14.2](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.1...platform-v0.14.2) (2026-06-19)
 
 
