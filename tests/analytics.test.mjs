@@ -382,7 +382,7 @@ function rowsForSql(sql) {
   if (sql.includes("SUM(ok) AS ok_count")) {
     return [{ surface_id: "s1", total: 100, ok_count: 98 }];
   }
-  if (sql.includes("WITH failures") || sql.includes("failures AS")) {
+  if (sql.includes("WITH checks") || sql.includes("checks AS")) {
     return [
       {
         netuid: 7,
@@ -545,6 +545,15 @@ describe("analytics routes (fake D1 with data)", () => {
       /GROUP BY COALESCE\(surface_key, surface_id\)/,
     );
     assert.match(queries[1].sql, /PARTITION BY surface_key/);
+    assert.doesNotMatch(
+      queries[1].sql,
+      /WHERE netuid = \? AND checked_at >= \? AND ok = 0/,
+    );
+    assert.match(
+      queries[1].sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(queries[1].sql, /FROM grouped\n {7}WHERE ok = 0/);
   });
   test("incidents SQL uses a hard incident row cap", async () => {
     const queries = [];
@@ -554,7 +563,7 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH failures"),
+      query.sql.includes("WITH checks"),
     );
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
@@ -609,9 +618,15 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH recent_failures"),
+      query.sql.includes("WITH recent_checks"),
     );
     assert.ok(incidentQuery.sql.includes("ORDER BY checked_at DESC"));
+    assert.doesNotMatch(incidentQuery.sql, /WHERE checked_at >= \? AND ok = 0/);
+    assert.match(
+      incidentQuery.sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(incidentQuery.sql, /FROM grouped\n {5}WHERE ok = 0/);
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params[1], 5000);
     assert.equal(incidentQuery.params.at(-1), 1000);

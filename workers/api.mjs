@@ -1352,23 +1352,24 @@ async function handleHealthIncidents(request, env, netuid, url) {
     // flapping endpoints cannot force unbounded result sets/responses.
     d1All(
       env,
-      `WITH failures AS (
+      `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
                 surface_id,
                 checked_at,
+                ok,
                 checked_at - LAG(checked_at)
                   OVER (
                     PARTITION BY COALESCE(surface_key, surface_id)
                     ORDER BY checked_at
                   ) AS gap
          FROM surface_checks
-         WHERE netuid = ? AND checked_at >= ? AND ok = 0
+         WHERE netuid = ? AND checked_at >= ?
        ),
        grouped AS (
-         SELECT surface_key, surface_id, checked_at,
-                SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+         SELECT surface_key, surface_id, checked_at, ok,
+                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                   OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
-         FROM failures
+         FROM checks
        )
        SELECT MAX(surface_id) AS surface_id,
               surface_key,
@@ -1376,6 +1377,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
               MAX(checked_at) AS ended_at,
               COUNT(*) AS failed_samples
        FROM grouped
+       WHERE ok = 0
        GROUP BY surface_key, grp
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
@@ -1418,27 +1420,27 @@ async function handleGlobalIncidents(request, env, url) {
   const since = Date.now() - days * DAY_MS;
   const incidentRows = await d1All(
     env,
-    `WITH recent_failures AS (
-       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at
+    `WITH recent_checks AS (
+       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
        FROM surface_checks
-       WHERE checked_at >= ? AND ok = 0
+       WHERE checked_at >= ?
        ORDER BY checked_at DESC
        LIMIT ?
      ),
-     failures AS (
-       SELECT netuid, surface_key, surface_id, checked_at,
+     checks AS (
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
               checked_at - LAG(checked_at)
                 OVER (
                   PARTITION BY netuid, surface_key
                   ORDER BY checked_at
                 ) AS gap
-       FROM recent_failures
+       FROM recent_checks
      ),
      grouped AS (
-       SELECT netuid, surface_key, surface_id, checked_at,
-              SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
+              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                 OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
-       FROM failures
+       FROM checks
      )
      SELECT netuid,
             MAX(surface_id) AS surface_id,
@@ -1447,6 +1449,7 @@ async function handleGlobalIncidents(request, env, url) {
             MAX(checked_at) AS ended_at,
             COUNT(*) AS failed_samples
      FROM grouped
+     WHERE ok = 0
      GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
