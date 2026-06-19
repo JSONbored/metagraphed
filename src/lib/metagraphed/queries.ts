@@ -877,7 +877,7 @@ export const rpcEndpointsQuery = () =>
 function normalizePool(raw: unknown): RpcPool {
   if (!raw || typeof raw !== "object") return raw as RpcPool;
   const p = raw as Record<string, unknown>;
-  const endpoints = Array.isArray(p.endpoints) ? (p.endpoints as Record<string, unknown>[]) : [];
+  const endpoints = Array.isArray(p.endpoints) ? p.endpoints.filter(isPlainRecord) : [];
   return {
     ...(p as object),
     id: p.id as string,
