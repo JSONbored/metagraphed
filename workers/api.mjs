@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -47,11 +48,15 @@ import {
   pruneHealthHistory,
   rollupDailyUptime,
   runHealthProber,
+  workerResolvedUrlSafetyGuard,
+  workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
+import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
 import {
   buildGlobalHealth,
+  formatBulkTrends,
   formatGlobalIncidents,
   formatIncidents,
   formatLeaderboards,
@@ -76,6 +81,7 @@ import {
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
+import { handleOgImage } from "../src/og-image.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -86,6 +92,7 @@ import {
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
+  BULK_TRENDS_PATH_PATTERN,
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
@@ -94,6 +101,7 @@ import {
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
+  MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -101,6 +109,7 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -153,6 +162,30 @@ function isStaticEdgeCacheEligible(matched, network) {
 // overlay output is fully determined by (contract_version, last_run_at) — the
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
 const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
+
+function canonicalOverlayCacheSearch(url, matched) {
+  const config = API_QUERY_COLLECTIONS[matched.queryCollection];
+  if (!config) return "";
+  const filterNames =
+    matched.queryFilterNames?.length > 0
+      ? matched.queryFilterNames
+      : Object.keys(config.filters);
+  const cacheableNames = [
+    "q",
+    "fields",
+    "limit",
+    "cursor",
+    "sort",
+    "order",
+    ...filterNames,
+  ];
+  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
+  for (const name of cacheableNames) {
+    const value = url.searchParams.get(name);
+    if (value !== null) canonicalUrl.searchParams.set(name, value);
+  }
+  return canonicalUrl.search;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -264,6 +297,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleBadgeRequest(request, env, url, { readArtifact });
   }
 
+  // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
+  // link-unfurl. Worker-computed PNG with live registry counts; workers-og's
+  // wasm is lazy-loaded inside the handler so this never weighs on other routes.
+  if (url.pathname === "/og.png" || url.pathname === "/og") {
+    return handleOgImage(request, env, url, { readArtifact });
+  }
+
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
   // via RFC 8288 Link headers; /.well-known/api-catalog is the RFC 9727 linkset.
   // Both are worker-owned (see wrangler `run_worker_first`) so they carry the
@@ -344,6 +384,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     // D1-backed health trends (slug-aware after resolution). Special-handled
     // rather than artifact-backed, like /api/v1/events.
+    const bulkTrendsMatch = BULK_TRENDS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (bulkTrendsMatch) {
+      return handleBulkHealthTrends(request, env, resolved.url);
+    }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
       return handleHealthTrends(request, env, Number(trendsMatch[1]));
@@ -370,7 +416,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(request, env, Number(trajectoryMatch[1]));
+      return handleTrajectory(
+        request,
+        env,
+        Number(trajectoryMatch[1]),
+        resolved.url,
+      );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
@@ -414,6 +465,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname.startsWith("/api/v1/webhooks/") ||
+    BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
     INCIDENTS_PATH_PATTERN.test(pathname) ||
@@ -463,7 +515,7 @@ async function handleNetworkScopedRequest(
     }
     return errorResponse(
       "not_found",
-      "The local network is a client-side developer chain — metagraphed hosts no data for it. GET /api/v1/local for setup (point your SDK/RPC at ws://127.0.0.1:9944).",
+      "The local network is a client-side developer chain — metagraphed hosts no data for it. GET /api/v1/local for setup guidance before pointing your SDK/RPC at your own local node.",
       404,
       { network: "local" },
     );
@@ -628,7 +680,7 @@ const LOCAL_NETWORK_INFO = {
   network: "local",
   mode: "client-side",
   note: "Local is a per-developer subtensor you run yourself — metagraphed hosts no subnet data for it. Point your Bittensor SDK / RPC at your local node; use the mainnet and testnet registries here as the reference.",
-  rpc: { ws: "ws://127.0.0.1:9944", network_arg: "local" },
+  rpc: { network_arg: "local" },
   // The full develop-before-mainnet path (issue #354): stand up a local chain,
   // create a subnet on it, point your code at it, then graduate to testnet and
   // mainnet. Uses the official opentensor/subtensor localnet (it generates the
@@ -642,7 +694,7 @@ const LOCAL_NETWORK_INFO = {
         title: "Run a local chain",
         run: "git clone https://github.com/opentensor/subtensor && cd subtensor && ./scripts/localnet.sh --no-purge",
         detail:
-          "Starts a local subtensor at ws://127.0.0.1:9944 with sudo, fast blocks, and pre-funded Alice/Bob keys (free TAO). First run compiles the node (needs the Rust toolchain + build deps).",
+          "Starts a local subtensor WebSocket endpoint with sudo, fast blocks, and pre-funded Alice/Bob keys (free TAO). First run compiles the node (needs the Rust toolchain + build deps).",
       },
       {
         step: 2,
@@ -682,7 +734,7 @@ const LOCAL_NETWORK_INFO = {
   setup: {
     sdk: "Python bittensor SDK: bt.SubtensorApi(network='local') (or bt.subtensor(network='local')).",
     run_local_chain:
-      "Run a local subtensor node (the Subtensor repo's localnet script) to expose ws://127.0.0.1:9944 with sudo + fast blocks and free TAO.",
+      "Run a local subtensor node (the Subtensor repo's localnet script) to expose your own local WebSocket endpoint with sudo + fast blocks and free TAO.",
   },
   guide: "/skills/bittensor/SKILL.md",
 };
@@ -897,7 +949,7 @@ async function handleApiRequest(
       overlayCacheKey = new Request(
         `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${url.search}`,
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalOverlayCacheSearch(url, matched)}`,
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
@@ -1067,6 +1119,79 @@ async function handleApiRequest(
   return response;
 }
 
+// D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
+// compact matrix feed for UI dashboards and agents, so it groups by netuid/day
+// instead of returning every surface series.
+async function handleBulkHealthTrends(
+  request,
+  env,
+  url = new URL(request.url),
+) {
+  for (const key of url.searchParams.keys()) {
+    return errorResponse(
+      "invalid_query",
+      `${key} is not supported for this route.`,
+      400,
+      { parameter: key },
+    );
+  }
+
+  const nowMs = Date.now();
+  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
+  const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    `SELECT netuid,
+            day AS date,
+            SUM(samples) AS total,
+            SUM(ok_count) AS ok_count,
+            CASE
+              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                     SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+              ELSE NULL
+            END AS avg_latency_ms
+     FROM surface_uptime_daily
+     WHERE day >= ?
+     GROUP BY netuid, day
+     ORDER BY netuid, day
+     LIMIT ?`,
+    [cutoffDay, MAX_BULK_TREND_ROWS],
+  );
+  const windows = {};
+  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+    const windowCutoff = new Date(nowMs - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    windows[label] = rows.filter(
+      (row) => String(row.day || row.date) >= windowCutoff,
+    );
+  }
+  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const data = formatBulkTrends({
+    observedAt: meta?.last_run_at || null,
+    windows,
+    windowDays: HEALTH_TREND_WINDOWS,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/health/trends.json",
+        cache: "short",
+        contract_version: contractVersion(env),
+        generated_at: data.observed_at,
+        published_at: await publishedAt(env),
+        source: "live-cron-prober",
+      },
+    },
+    "short",
+  );
+}
+
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
@@ -1086,13 +1211,14 @@ async function handleHealthTrends(request, env, netuid) {
         const result = await withTimeout(
           db
             .prepare(
-              `SELECT surface_id,
+              `SELECT MAX(surface_id) AS surface_id,
+                    COALESCE(surface_key, surface_id) AS surface_key,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
                     AVG(latency_ms) AS avg_latency_ms
              FROM surface_checks
              WHERE netuid = ? AND checked_at >= ?
-             GROUP BY surface_id`,
+             GROUP BY COALESCE(surface_key, surface_id)`,
             )
             .bind(netuid, nowMs - days * DAY_MS)
             .all(),
@@ -1130,17 +1256,29 @@ async function handleHealthTrends(request, env, netuid) {
   );
 }
 
-function analyticsWindow(url) {
+function validateQueryParams(url, allowedParams) {
+  const seen = new Set();
   for (const key of url.searchParams.keys()) {
-    if (key !== ANALYTICS_WINDOW_PARAM) {
+    if (!allowedParams.includes(key)) {
       return {
-        error: {
-          parameter: key,
-          message: `${key} is not supported for this route.`,
-        },
+        parameter: key,
+        message: `${key} is not supported for this route.`,
       };
     }
+    if (seen.has(key)) {
+      return {
+        parameter: key,
+        message: `${key} may only be provided once.`,
+      };
+    }
+    seen.add(key);
   }
+  return null;
+}
+
+function analyticsWindow(url) {
+  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
   if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
@@ -1199,14 +1337,22 @@ async function handleHealthPercentiles(request, env, netuid, url) {
   const rows = await d1All(
     env,
     `WITH ranked AS (
-       SELECT surface_id, latency_ms,
-              ROW_NUMBER() OVER (PARTITION BY surface_id ORDER BY latency_ms) AS rn,
-              COUNT(*) OVER (PARTITION BY surface_id) AS cnt
+       SELECT COALESCE(surface_key, surface_id) AS surface_key,
+              surface_id,
+              latency_ms,
+              ROW_NUMBER() OVER (
+                PARTITION BY COALESCE(surface_key, surface_id)
+                ORDER BY latency_ms
+              ) AS rn,
+              COUNT(*) OVER (
+                PARTITION BY COALESCE(surface_key, surface_id)
+              ) AS cnt
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ? AND latency_ms IS NOT NULL
      )
-     SELECT surface_id,
-            cnt AS samples,
+     SELECT MAX(surface_id) AS surface_id,
+            surface_key,
+            MAX(cnt) AS samples,
             MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
             MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95,
             MAX(CASE WHEN rn = CAST(0.99 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p99,
@@ -1214,7 +1360,7 @@ async function handleHealthPercentiles(request, env, netuid, url) {
             MIN(latency_ms) AS min_latency_ms,
             MAX(latency_ms) AS max_latency_ms
      FROM ranked
-     GROUP BY surface_id`,
+     GROUP BY surface_key`,
     [netuid, Date.now() - days * DAY_MS],
   );
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -1246,10 +1392,13 @@ async function handleHealthIncidents(request, env, netuid, url) {
   const [slaRows, incidentRows] = await Promise.all([
     d1All(
       env,
-      `SELECT surface_id, COUNT(*) AS total, SUM(ok) AS ok_count
+      `SELECT MAX(surface_id) AS surface_id,
+              COALESCE(surface_key, surface_id) AS surface_key,
+              COUNT(*) AS total,
+              SUM(ok) AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
-       GROUP BY surface_id`,
+       GROUP BY COALESCE(surface_key, surface_id)`,
       [netuid, since],
     ),
     // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
@@ -1257,25 +1406,33 @@ async function handleHealthIncidents(request, env, netuid, url) {
     // flapping endpoints cannot force unbounded result sets/responses.
     d1All(
       env,
-      `WITH failures AS (
-         SELECT surface_id, checked_at,
+      `WITH checks AS (
+         SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                surface_id,
+                checked_at,
+                ok,
                 checked_at - LAG(checked_at)
-                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS gap
+                  OVER (
+                    PARTITION BY COALESCE(surface_key, surface_id)
+                    ORDER BY checked_at
+                  ) AS gap
          FROM surface_checks
-         WHERE netuid = ? AND checked_at >= ? AND ok = 0
+         WHERE netuid = ? AND checked_at >= ?
        ),
        grouped AS (
-         SELECT surface_id, checked_at,
-                SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                  OVER (PARTITION BY surface_id ORDER BY checked_at) AS grp
-         FROM failures
+         SELECT surface_key, surface_id, checked_at, ok,
+                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
+         FROM checks
        )
-       SELECT surface_id,
+       SELECT MAX(surface_id) AS surface_id,
+              surface_key,
               MIN(checked_at) AS started_at,
               MAX(checked_at) AS ended_at,
               COUNT(*) AS failed_samples
        FROM grouped
-       GROUP BY surface_id, grp
+       WHERE ok = 0
+       GROUP BY surface_key, grp
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
        LIMIT ?`,
@@ -1317,31 +1474,37 @@ async function handleGlobalIncidents(request, env, url) {
   const since = Date.now() - days * DAY_MS;
   const incidentRows = await d1All(
     env,
-    `WITH recent_failures AS (
-       SELECT netuid, surface_id, checked_at
+    `WITH recent_checks AS (
+       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
        FROM surface_checks
-       WHERE checked_at >= ? AND ok = 0
+       WHERE checked_at >= ?
        ORDER BY checked_at DESC
        LIMIT ?
      ),
-     failures AS (
-       SELECT netuid, surface_id, checked_at,
+     checks AS (
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
               checked_at - LAG(checked_at)
-                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS gap
-       FROM recent_failures
+                OVER (
+                  PARTITION BY netuid, surface_key
+                  ORDER BY checked_at
+                ) AS gap
+       FROM recent_checks
      ),
      grouped AS (
-       SELECT netuid, surface_id, checked_at,
-              SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                OVER (PARTITION BY netuid, surface_id ORDER BY checked_at) AS grp
-       FROM failures
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
+              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
+       FROM checks
      )
-     SELECT netuid, surface_id,
+     SELECT netuid,
+            MAX(surface_id) AS surface_id,
+            surface_key,
             MIN(checked_at) AS started_at,
             MAX(checked_at) AS ended_at,
             COUNT(*) AS failed_samples
      FROM grouped
-     GROUP BY netuid, surface_id, grp
+     WHERE ok = 0
+     GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
      LIMIT ?`,
@@ -1375,7 +1538,9 @@ async function handleGlobalIncidents(request, env, url) {
 }
 
 // Week-over-week structural trajectory from daily snapshots.
-async function handleTrajectory(request, env, netuid) {
+async function handleTrajectory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
   // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
   // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
@@ -1407,9 +1572,10 @@ async function handleTrajectory(request, env, netuid) {
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
 // yet (mirrors the other D1-backed analytics routes).
 async function handleUptime(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
-  const days = UPTIME_WINDOWS[windowParam];
-  if (!days) {
+  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
     return errorResponse(
       "invalid_query",
       "Query parameter `window` must be one of: 90d, 1y.",
@@ -1417,14 +1583,38 @@ async function handleUptime(request, env, netuid, url) {
       { parameter: "window" },
     );
   }
+  const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
   const rows = await d1All(
     env,
-    `SELECT surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status
+    `SELECT MAX(surface_id) AS surface_id,
+            COALESCE(surface_key, surface_id) AS surface_key,
+            day,
+            SUM(samples) AS samples,
+            SUM(ok_count) AS ok_count,
+            CASE
+              WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
+              ELSE NULL
+            END AS uptime_ratio,
+            CASE
+              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                THEN CAST(ROUND(
+                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+                ) AS INTEGER)
+              ELSE NULL
+            END AS avg_latency_ms,
+            CASE
+              WHEN SUM(samples) = 0 THEN 'unknown'
+              WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
+              WHEN SUM(ok_count) = 0 THEN 'failed'
+              ELSE 'degraded'
+            END AS status
      FROM surface_uptime_daily
      WHERE netuid = ? AND day >= ?
+     GROUP BY COALESCE(surface_key, surface_id), day
      ORDER BY day DESC
      LIMIT ?`,
     [netuid, cutoff, MAX_UPTIME_ROWS],
@@ -1488,6 +1678,8 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
 // Registry leaderboards: healthiest / fastest-rpc / most-complete /
 // fastest-growing. Combines live D1 status with registry projections.
 async function handleLeaderboards(request, env, url) {
+  const validationError = validateQueryParams(url, ["board", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
   if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
     return errorResponse(
@@ -1635,7 +1827,8 @@ async function handleRpcUsage(request, env, url) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   const since = Date.now() - days * DAY_MS;
-  const [totalsRows, latencyRows, endpointRows, networkRows] =
+  const bucketConfig = RPC_USAGE_BUCKETS[label];
+  const [totalsRows, latencyRows, endpointRows, networkRows, bucketRows] =
     await Promise.all([
       d1All(
         env,
@@ -1686,6 +1879,24 @@ async function handleRpcUsage(request, env, url) {
          ORDER BY requests DESC`,
         [since],
       ),
+      d1All(
+        env,
+        `SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
+                COUNT(*) AS requests,
+                SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
+                AVG(latency_ms) AS avg_latency_ms
+         FROM rpc_proxy_events
+         WHERE observed_at >= ?
+         GROUP BY ts
+         ORDER BY ts ASC
+         LIMIT ?`,
+        [
+          bucketConfig.bucketMs,
+          bucketConfig.bucketMs,
+          since,
+          bucketConfig.maxBuckets,
+        ],
+      ),
     ]);
   const meta = await readHealthKv(env, KV_HEALTH_META);
   const data = formatRpcUsage({
@@ -1695,6 +1906,8 @@ async function handleRpcUsage(request, env, url) {
     latency: latencyRows[0],
     endpointRows,
     networkRows,
+    bucketRows,
+    bucketGranularity: bucketConfig.granularity,
   });
   return envelopeResponse(
     request,
@@ -1757,20 +1970,27 @@ async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
       503,
     );
   }
-  const surface = findSurface(catalog.data?.surfaces, surfaceId);
+  let surface = findSurface(catalog.data?.surfaces, surfaceId);
+  if (!surface) {
+    const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
+    if (aliases.ok) {
+      surface = findSurface(catalog.data?.surfaces, surfaceId, aliases.data);
+    }
+  }
   if (!surface) {
     return errorResponse(
       "surface_not_found",
-      `No catalogued surface with id "${surfaceId}".`,
+      `No catalogued surface with id, key, or deprecated id "${surfaceId}".`,
       404,
       { surface_id: surfaceId },
     );
   }
 
+  const canonicalSurfaceId = surface.surface_key || surface.surface_id;
   const cache = globalThis.caches?.default || null;
   const cacheKey = cache
     ? new Request(
-        `https://verify.metagraph.sh/${encodeURIComponent(surfaceId)}`,
+        `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
       )
     : null;
   if (cache) {
@@ -1785,7 +2005,10 @@ async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
     }
   }
 
-  const result = await verifySurface(surface);
+  const result = await verifySurface(surface, {
+    isUnsafeUrl: workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch }),
+    connect: workerWebSocketConnector(globalThis.fetch),
+  });
   if (cache) {
     const stored = new Response(JSON.stringify(result), {
       headers: {
@@ -3000,6 +3223,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "subnet-overview": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayOverviewHealth(
         staticData,
         await getLive(),
@@ -3008,6 +3235,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "agent-catalog-subnet": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayCatalogDetail(
         staticData,
         await getLive(),

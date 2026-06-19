@@ -12,13 +12,18 @@
 // R2/ASSETS resolution the REST routes use.
 import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
-import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
+import {
+  KV_HEALTH_RPC_POOL,
+  workerResolvedUrlSafetyGuard,
+  workerWebSocketConnector,
+} from "./health-prober.mjs";
 import {
   findSurface,
   primarySurfaceForNetuid,
   verifySurface,
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
+import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
 import {
   loadSubnetReliability,
   overlayCatalogDetail,
@@ -104,6 +109,8 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
+  "fixtures, examples, provenance, and candidate-review gaps. " +
   "For goal-shaped flows, find_subnet_for_task turns a plain-language task into " +
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. All data is public and " +
@@ -333,6 +340,89 @@ function queryTerms(query) {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((term) => term.length > 0);
+}
+
+const COVERAGE_DEPTH_TIERS = [
+  "agent-ready",
+  "machine-usable",
+  "candidate-review",
+  "needs-evidence",
+  "hard-blocked",
+  "missing-interface",
+];
+const COVERAGE_DEPTH_SEVERITIES = ["hard", "missing-data", "needs-review"];
+
+function optionalEnum(args, key, allowed) {
+  const value = args?.[key];
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be one of: ${allowed.join(", ")}.`,
+    );
+  }
+  return value;
+}
+
+function optionalGapCode(args) {
+  const value = args?.gap_code;
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !/^[a-z0-9-]+$/.test(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `gap_code` must be a stable lowercase gap code.",
+    );
+  }
+  return value;
+}
+
+function coverageDepthTarget(row, rank = null) {
+  return {
+    rank,
+    netuid: row.netuid,
+    slug: row.slug,
+    name: row.name,
+    tier: row.tier,
+    score: row.score,
+    priority_score: row.priority_score,
+    agent_status: row.agent_status,
+    blocker_level: row.blocker_level,
+    top_gap_codes: row.top_gap_codes || [],
+    top_gaps: (row.top_gaps || []).map((gap) => ({
+      code: gap.code,
+      severity: gap.severity,
+      field: gap.field,
+      next_action: gap.next_action,
+    })),
+    recommended_next_action: row.recommended_next_action || null,
+    dimensions: {
+      callable_service_count: row.dimensions?.callable_service_count ?? 0,
+      service_kinds: row.dimensions?.service_kinds || [],
+      schema_service_count: row.dimensions?.schema_service_count ?? 0,
+      schema_missing_count: row.dimensions?.schema_missing_count ?? 0,
+      fixture_available_count: row.dimensions?.fixture_available_count ?? 0,
+      fixture_status_counts: row.dimensions?.fixture_status_counts || {},
+      example_count: row.dimensions?.example_count ?? 0,
+      sdk_count: row.dimensions?.sdk_count ?? 0,
+      candidate_operational_count:
+        row.dimensions?.candidate_operational_count ?? 0,
+      official_surface_count: row.dimensions?.official_surface_count ?? 0,
+      provider_claimed_surface_count:
+        row.dimensions?.provider_claimed_surface_count ?? 0,
+    },
+  };
+}
+
+function coverageDepthMatches(row, { tier, severity, gapCode }) {
+  if (tier && row.tier !== tier) return false;
+  if (gapCode && !(row.top_gap_codes || []).includes(gapCode)) return false;
+  if (
+    severity &&
+    !(row.top_gaps || []).some((gap) => gap.severity === severity)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -683,7 +773,8 @@ export const MCP_TOOLS = [
     title: "Get a surface's API schema",
     description:
       "Fetch the captured OpenAPI/Swagger schema for a subnet surface by its " +
-      "surface_id (from list_subnet_apis). Returns a sanitized full spec " +
+      "schema surface_id (from list_subnet_apis service.schema_source.surface_id " +
+      "when present, otherwise the service surface_id). Returns a sanitized full spec " +
       "under `document` (paths, components, securitySchemes) plus capture " +
       "metadata (auth_required, auth_schemes, drift_status). Use it to " +
       "generate a typed client or understand endpoints; prefer the curated " +
@@ -866,6 +957,109 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadArtifactData(ctx, "/metagraph/registry-summary.json");
+    },
+  },
+  {
+    name: "list_enrichment_targets",
+    title: "List ranked enrichment targets",
+    description:
+      "Fetch the coverage-depth scorecard's ranked enrichment targets: which " +
+      "subnets need schema, fixture, example/SDK, provenance, candidate-review, " +
+      "or hard-blocker follow-up next. Use this for curation/work-planning, not " +
+      "live uptime; call get_subnet_health for current health.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: "Max targets to return (1-50, default 10).",
+          minimum: 1,
+          maximum: 50,
+        },
+        tier: {
+          type: "string",
+          enum: COVERAGE_DEPTH_TIERS,
+          description:
+            "Optional coverage-depth tier filter, e.g. machine-usable.",
+        },
+        severity: {
+          type: "string",
+          enum: COVERAGE_DEPTH_SEVERITIES,
+          description:
+            "Optional gap severity filter: missing-data, needs-review, or hard.",
+        },
+        gap_code: {
+          type: "string",
+          description:
+            "Optional stable gap code filter, e.g. missing-fixture or missing-schema.",
+          pattern: "^[a-z0-9-]+$",
+        },
+        netuid: {
+          type: "integer",
+          description:
+            "Optional subnet netuid. When present, returns that subnet's scorecard row instead of only ranked-queue entries.",
+          minimum: 0,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const limit = clampLimit(args?.limit, 10, 50);
+      const tier = optionalEnum(args, "tier", COVERAGE_DEPTH_TIERS);
+      const severity = optionalEnum(
+        args,
+        "severity",
+        COVERAGE_DEPTH_SEVERITIES,
+      );
+      const gapCode = optionalGapCode(args);
+      const netuid =
+        args?.netuid === undefined || args?.netuid === null
+          ? null
+          : requireNetuid(args);
+      const scorecard = await loadArtifactData(
+        ctx,
+        "/metagraph/coverage-depth.json",
+      );
+      const rows = Array.isArray(scorecard.rows) ? scorecard.rows : [];
+      const rowsByNetuid = new Map(rows.map((row) => [row.netuid, row]));
+      const queue = Array.isArray(scorecard.ranked_queue)
+        ? scorecard.ranked_queue
+        : [];
+      let candidates;
+      if (netuid !== null) {
+        const row = rowsByNetuid.get(netuid);
+        if (!row) {
+          throw toolError(
+            "not_found",
+            `No coverage-depth scorecard row exists for netuid ${netuid}.`,
+          );
+        }
+        candidates = [{ row, rank: null }];
+      } else {
+        candidates = queue
+          .map((entry) => ({
+            row: rowsByNetuid.get(entry.netuid) || entry,
+            rank: entry.rank ?? null,
+          }))
+          .filter((entry) => Number.isInteger(entry.row?.netuid));
+      }
+      const filters = { tier, severity, gap_code: gapCode, netuid };
+      const targets = candidates
+        .filter(({ row }) =>
+          coverageDepthMatches(row, { tier, severity, gapCode }),
+        )
+        .slice(0, limit)
+        .map(({ row, rank }) => coverageDepthTarget(row, rank));
+      return {
+        generated_at: scorecard.generated_at || null,
+        coverage_depth_version: scorecard.coverage_depth_version || null,
+        total_rows: rows.length,
+        queue_count: queue.length,
+        returned: targets.length,
+        filters,
+        targets,
+        note: "Coverage depth is deterministic build-time prioritization, not live uptime. Use get_subnet_health for current operational status.",
+      };
     },
   },
   {
@@ -1057,10 +1251,27 @@ export const MCP_TOOLS = [
         schema: s.schema_artifact
           ? {
               available: true,
-              fetch_with: `get_api_schema with surface_id ${s.surface_id}`,
+              fetch_with: `get_api_schema with surface_id ${
+                s.schema_source?.surface_id || s.surface_id
+              }`,
               schema_url: s.schema_url || null,
             }
           : { available: false, schema_url: s.schema_url || null },
+        fixture: s.fixture
+          ? {
+              available: true,
+              fetch_with: `get_fixture with surface_id ${s.surface_id}`,
+              artifact_path: s.fixture.artifact_path,
+              captured_at: s.fixture.captured_at,
+              response_status: s.fixture.response?.status ?? null,
+              content_type: s.fixture.response?.content_type ?? null,
+            }
+          : {
+              available: false,
+              status: s.fixture_status?.status || "missing",
+              reason:
+                s.fixture_status?.reason || "no captured fixture available",
+            },
         health: {
           status: s.health?.status ?? "unknown",
           stale: s.health?.stale ?? false,
@@ -1069,6 +1280,7 @@ export const MCP_TOOLS = [
       }));
       const isCallable = callable.length > 0;
       const schemaStep = steps.find((s) => s.schema.available);
+      const fixtureStep = steps.find((s) => s.fixture.available);
       return {
         netuid,
         name: detail.name,
@@ -1086,6 +1298,7 @@ export const MCP_TOOLS = [
           ? [
               `get_subnet_health with netuid ${netuid} for live status`,
               ...(schemaStep ? [schemaStep.schema.fetch_with] : []),
+              ...(fixtureStep ? [fixtureStep.fixture.fetch_with] : []),
             ]
           : [`get_subnet with netuid ${netuid}`],
       };
@@ -1095,14 +1308,14 @@ export const MCP_TOOLS = [
     name: "verify_integration",
     title: "Verify a surface is callable right now",
     description:
-      'Live-probe a single catalogued surface (by surface_id) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
+      'Live-probe a single catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
     inputSchema: {
       type: "object",
       properties: {
         surface_id: {
           type: "string",
           description:
-            'Surface id to verify, e.g. "7:subnet-api:x" or "nodies-finney-rpc".',
+            'Surface id, stable surface_key, or deprecated surface_id alias to verify, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
         },
         netuid: {
           type: "integer",
@@ -1126,9 +1339,16 @@ export const MCP_TOOLS = [
         }
         surface = findSurface(surfaces, args.surface_id);
         if (!surface) {
+          const aliases = await loadArtifactData(
+            ctx,
+            SURFACE_ALIASES_PATH,
+          ).catch(() => null);
+          surface = findSurface(surfaces, args.surface_id, aliases);
+        }
+        if (!surface) {
           throw toolError(
             "not_found",
-            `No catalogued surface with id "${args.surface_id}".`,
+            `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
           );
         }
       } else if (Number.isInteger(args?.netuid)) {
@@ -1145,7 +1365,12 @@ export const MCP_TOOLS = [
           "Provide either surface_id or netuid.",
         );
       }
-      return await verifySurface(surface);
+      return await verifySurface(surface, {
+        isUnsafeUrl: workerResolvedUrlSafetyGuard({
+          fetchImpl: globalThis.fetch,
+        }),
+        connect: workerWebSocketConnector(globalThis.fetch),
+      });
     },
   },
 ];
@@ -1354,6 +1579,35 @@ const TOOL_OUTPUT_SCHEMAS = {
       generated_at: NULLABLE_STRING,
     },
   },
+  list_enrichment_targets: {
+    type: "object",
+    additionalProperties: true,
+    required: ["total_rows", "queue_count", "returned", "targets"],
+    properties: {
+      generated_at: NULLABLE_STRING,
+      coverage_depth_version: ANY,
+      total_rows: { type: "integer" },
+      queue_count: { type: "integer" },
+      returned: { type: "integer" },
+      filters: { type: "object" },
+      note: { type: "string" },
+      targets: objectItems({
+        rank: NULLABLE_INT,
+        netuid: { type: "integer" },
+        slug: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        tier: { type: "string" },
+        score: { type: "integer" },
+        priority_score: { type: "integer" },
+        agent_status: { type: "string" },
+        blocker_level: { type: "string" },
+        top_gap_codes: { type: "array" },
+        top_gaps: { type: "array", items: { type: "object" } },
+        recommended_next_action: NULLABLE_STRING,
+        dimensions: { type: "object" },
+      }),
+    },
+  },
   find_subnet_for_task: {
     type: "object",
     additionalProperties: true,
@@ -1427,6 +1681,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: ["surface_id", "status", "callable"],
     properties: {
       surface_id: { type: "string" },
+      surface_key: NULLABLE_STRING,
       netuid: NULLABLE_INT,
       kind: { type: "string" },
       url: { type: "string" },
@@ -1523,6 +1778,15 @@ const FIXED_RESOURCES = [
       "Every subnet with a callable service, with capabilities + base URLs.",
     mimeType: "application/json",
     artifact: "/metagraph/agent-catalog.json",
+  },
+  {
+    uri: "metagraph://registry/coverage-depth",
+    name: "coverage-depth",
+    title: "Coverage depth scorecard",
+    description:
+      "Per-subnet machine-usable coverage depth rows and ranked enrichment queue.",
+    mimeType: "application/json",
+    artifact: "/metagraph/coverage-depth.json",
   },
   {
     uri: "metagraph://registry/schemas",

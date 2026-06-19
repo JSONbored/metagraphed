@@ -6,6 +6,7 @@ import {
   socialAccounts,
   subnetContact,
   flattenSurfaces,
+  withSurfaceFreshness,
   loadCandidates,
   loadVerification,
   loadNativeSnapshot,
@@ -104,6 +105,7 @@ const verificationClassifications = new Set([
   "transient",
   "timeout",
   "content-mismatch",
+  "wrong-chain",
 ]);
 const reviewDecisions = new Set([
   "maintainer-reviewed",
@@ -573,7 +575,10 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
   assert(candidateStates.has(candidate.state), `${key}: invalid state`);
   assert(Boolean(candidate.name), `${key}: name is required`);
   assert(surfaceKinds.has(candidate.kind), `${key}: invalid kind`);
-  assert(isValidUrl(candidate.url), `${key}: url must be a URL`);
+  assert(
+    normalizePublicHttpUrl(candidate.url) && !isCredentialedUrl(candidate.url),
+    `${key}: url must be a public HTTP(S) URL without credentials`,
+  );
   assert(isValidUrl(candidate.source_url), `${key}: source_url must be a URL`);
   if (candidate.source_urls !== undefined) {
     assert(
@@ -900,16 +905,31 @@ async function validateGeneratedArtifacts(
   const overlayByNetuid = new Map(
     overlays.map((overlay) => [overlay.netuid, overlay]),
   );
-  const candidatesByNetuid = Map.groupBy(
-    candidates,
-    (candidate) => candidate.netuid,
-  );
   const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const activeNetuids = new Set(nativeNetuids);
   const activeOverlays = overlays.filter((overlay) =>
     activeNetuids.has(overlay.netuid),
   );
-  const surfaces = flattenSurfaces(activeOverlays);
+  // #1006: mirror the build's per-surface freshness stamp (last_verified_at is
+  // added inside flattenSurfaces; `stale` is computed against the same committed
+  // captured_at) so the per-subnet detail artifact stays reproducible.
+  const surfaces = withSurfaceFreshness(
+    flattenSurfaces(activeOverlays),
+    Date.parse(nativeSnapshot.captured_at),
+  );
+  // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate
+  // sharing a curated surface's registrySurfaceKey is already promoted, so the
+  // per-subnet detail artifact counts/lists only the non-superseded candidates.
+  const curatedSurfaceIdByRegistryKey = new Map(
+    surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+  );
+  const activeCandidatesByNetuid = Map.groupBy(
+    candidates.filter(
+      (candidate) =>
+        !curatedSurfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+    ),
+    (candidate) => candidate.netuid,
+  );
   const endpointsByNetuid = Map.groupBy(
     endpointsArtifact.endpoints || [],
     (endpoint) => endpoint.netuid,
@@ -925,7 +945,7 @@ async function validateGeneratedArtifacts(
           subnet: nativeSubnet,
         },
         overlayByNetuid.get(nativeSubnet.netuid),
-        candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+        activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
       ),
     ]),
   );
@@ -942,7 +962,8 @@ async function validateGeneratedArtifacts(
     const detailPath = artifactPath(`subnets/${subnet.netuid}.json`);
     try {
       const detailArtifact = await readJson(detailPath);
-      const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+      const subnetCandidates =
+        activeCandidatesByNetuid.get(subnet.netuid) || [];
       const subnetSurfaces = surfaces.filter(
         (surface) => surface.netuid === subnet.netuid,
       );
@@ -1127,6 +1148,7 @@ async function validateGeneratedArtifacts(
   for (const expectedArtifact of [
     "changelog",
     "source-snapshots",
+    "surface-aliases",
     "rpc-pools",
     "r2-manifest",
     "type-definitions",
@@ -1390,6 +1412,10 @@ function validateFreshnessForPublish(freshnessArtifact) {
     const observedAt = Date.parse(source.as_of);
     if (!Number.isFinite(observedAt)) {
       failures.push(`${source.id} has invalid as_of timestamp`);
+      continue;
+    }
+    if (observedAt > now) {
+      failures.push(`${source.id} as_of timestamp is in the future`);
       continue;
     }
     const ageHours = (now - observedAt) / 3_600_000;

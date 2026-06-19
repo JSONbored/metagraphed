@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-64-data-artifact-chutes-boosted-api-chutes-ai",
+      "kind": "data-artifact",
+      "name": "Chutes community boosted data-artifact",
+      "netuid": 64,
+      "provider": "chutes",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.chutes.ai/openapi.json",
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.chutes.ai/chutes/boosted"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jaso0n0818",
+    "submitted_by_url": "https://github.com/jaso0n0818"
+  }
+}

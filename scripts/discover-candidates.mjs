@@ -2,8 +2,11 @@ import path from "node:path";
 import {
   buildTimestamp,
   isBrandImpersonationUrl,
+  isCredentialedUrl,
+  isLikelyExampleLink,
   isUnsafeResolvedUrl,
   isUnsafeUrl,
+  listJsonFilesRecursive,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
@@ -70,6 +73,27 @@ const candidatesByKey = new Map();
 const candidateIds = new Set();
 const warnings = [];
 const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
+// A committed community/curated candidate already pins a locator that the live
+// OpenAPI/website probes can rediscover under a different id — which trips
+// validate's candidate-locator uniqueness in the production publish (#1026
+// follow-up). CI builds from committed data only, so it never sees the live
+// collision; that's why the publish failed while every PR's CI stayed green.
+// Reserve every committed community candidate's locator (same key format as
+// addCandidate, with the LOCAL normalizePublicUrl) so the discovery never emits
+// a duplicate of one — the committed candidate stands.
+const reservedCandidateLocators = new Set();
+for (const file of await listJsonFilesRecursive(
+  path.join(repoRoot, "registry/candidates/community"),
+)) {
+  const document = await readJson(file);
+  for (const candidate of document.candidates || []) {
+    const normalizedUrl = normalizePublicUrl(candidate.url);
+    if (!normalizedUrl) continue;
+    reservedCandidateLocators.add(
+      `${candidate.netuid}:${candidate.kind}:${normalizedUrl.toLowerCase()}`,
+    );
+  }
+}
 const restoredProviders = new Set();
 const TAOPEDIA_ARTICLE_PROBE_MAX_BYTES = 64 * 1024;
 
@@ -1020,6 +1044,12 @@ function addCandidate(candidate) {
   }
 
   const key = `${candidate.netuid}:${candidate.kind}:${normalizedUrl.toLowerCase()}`;
+  // A committed community candidate already pins this locator — re-emitting it as
+  // a generated candidate breaks the publish's candidate-locator uniqueness check
+  // (#1026 follow-up). Skip; the committed candidate stands.
+  if (reservedCandidateLocators.has(key)) {
+    return;
+  }
   const sourceUrl = normalizePublicUrl(candidate.source_url);
   if (!sourceUrl) {
     return;
@@ -1114,7 +1144,15 @@ function normalizePublicUrl(value) {
 
   try {
     const url = new URL(candidate);
-    if (!["http:", "https:"].includes(url.protocol)) {
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      isCredentialedUrl(url.toString())
+    ) {
+      return null;
+    }
+    if (url.username || url.password) {
       return null;
     }
     // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +
@@ -1327,6 +1365,13 @@ function classifyDiscoveredLink(url, label, baseUrl) {
 
   if (haystack.includes("openapi") || haystack.includes("swagger")) {
     return { kind: "openapi", label: "OpenAPI surface" };
+  }
+  // #1008: code-examples — quickstarts, example dirs, SDK snippets, notebooks.
+  // Checked ahead of the generic api/docs heuristics so an `/examples/` path or a
+  // "quickstart" link is indexed as an example, not mis-bucketed as a docs/API
+  // surface. Shared predicate (isLikelyExampleLink) so the test pins the logic.
+  if (isLikelyExampleLink(haystack)) {
+    return { kind: "example", label: "code example" };
   }
   if (
     haystack.includes("leaderboard") ||

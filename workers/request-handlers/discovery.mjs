@@ -143,6 +143,7 @@ const DISCOVERY_LINK_HEADER = [
   `<${DISCOVERY_LINK_BASE}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
   `<${DISCOVERY_LINK_BASE}/llms.txt>; rel="service-doc"; type="text/plain"`,
   `<${DISCOVERY_LINK_BASE}/agent.md>; rel="service-doc"; type="text/markdown"`,
+  `<${DISCOVERY_LINK_BASE}/agent-workflows.md>; rel="service-doc"; type="text/markdown"`,
   `<${DISCOVERY_LINK_BASE}/health>; rel="status"; type="application/json"`,
   `<${DISCOVERY_LINK_BASE}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
   // Content feeds (#741) — registry changes, content-negotiated (json/rss/atom).
@@ -156,10 +157,27 @@ const HOMEPAGE_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>metagraphed API — Bittensor subnet operational registry</title>
 <meta name="description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0B1F1A">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="metagraphed">
+<meta property="og:title" content="metagraphed API — Bittensor subnet operational registry">
+<meta property="og:description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
+<meta property="og:url" content="https://${PRIMARY_DOMAIN}/">
+<meta property="og:image" content="https://${PRIMARY_DOMAIN}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Metagraphed — Bittensor subnet operational layer · data hub · API">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://${PRIMARY_DOMAIN}/og.png">
 <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json">
 <link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
 <link rel="service-doc" href="/llms.txt" type="text/plain">
 <link rel="service-doc" href="/agent.md" type="text/markdown">
+<link rel="service-doc" href="/agent-workflows.md" type="text/markdown">
 <link rel="status" href="/health" type="application/json">
 <link rel="describedby" href="/.well-known/mcp/server-card.json" type="application/json">
 <link rel="alternate" href="/api/v1/feeds/registry.rss" type="application/rss+xml" title="metagraphed registry changes">
@@ -172,6 +190,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <ul>
 <li><a href="/llms.txt">llms.txt</a> — LLM/agent discovery index</li>
 <li><a href="/agent.md">agent.md</a> — copyable agent system prompt</li>
+<li><a href="/agent-workflows.md">agent-workflows.md</a> — REST, MCP, npm, and Python workflows</li>
 <li><a href="/metagraph/openapi.json">OpenAPI 3.1 contract</a></li>
 <li><a href="/.well-known/api-catalog">API catalog</a> (RFC 9727 linkset)</li>
 <li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
@@ -228,6 +247,7 @@ export function apiCatalogResponse(request) {
         "service-doc": [
           { href: `${base}/llms.txt`, type: "text/plain" },
           { href: `${base}/agent.md`, type: "text/markdown" },
+          { href: `${base}/agent-workflows.md`, type: "text/markdown" },
         ],
         status: [{ href: `${base}/health`, type: "application/json" }],
         describedby: [

@@ -46,6 +46,7 @@ export const QUERY_ENUMS = {
     "transient",
     "unsupported",
     "unsafe",
+    "wrong-chain",
   ],
   healthStatus: ["ok", "degraded", "failed", "unknown"],
   providerAuthority: [
@@ -84,6 +85,22 @@ export const QUERY_ENUMS = {
     "disabled",
     "rejected",
   ],
+  coverageDepthTier: [
+    "agent-ready",
+    "machine-usable",
+    "candidate-review",
+    "needs-evidence",
+    "hard-blocked",
+    "missing-interface",
+  ],
+  agentReadinessStatus: [
+    "callable",
+    "base-layer",
+    "candidate",
+    "needs-evidence",
+    "blocked",
+  ],
+  agentBlockerLevel: ["none", "hard-blocked", "needs-review", "missing-data"],
   endpointIncidentSeverity: ["critical", "warning", "info"],
   endpointIncidentState: ["active", "resolved"],
   recommendedAdapterKind: [
@@ -112,6 +129,10 @@ export const QUERY_ENUMS = {
 
 const integerSchema = { type: "integer", minimum: 0 };
 const textSchema = { type: "string" };
+const fieldListSchema = {
+  type: "string",
+  pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+};
 
 export const API_QUERY_COLLECTIONS = {
   candidates: queryCollection("candidates", {
@@ -133,6 +154,24 @@ export const API_QUERY_COLLECTIONS = {
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
     },
     sort: ["coverage_level", "curation_level", "name", "netuid"],
+  }),
+  "coverage-depth": queryCollection("rows", {
+    filters: {
+      netuid: integerSchema,
+      tier: enumSchema(QUERY_ENUMS.coverageDepthTier),
+      agent_status: enumSchema(QUERY_ENUMS.agentReadinessStatus),
+      blocker_level: enumSchema(QUERY_ENUMS.agentBlockerLevel),
+    },
+    search: ["name", "slug", "top_gap_codes", "recommended_next_action"],
+    sort: [
+      "agent_status",
+      "blocker_level",
+      "name",
+      "netuid",
+      "priority_score",
+      "score",
+      "tier",
+    ],
   }),
   "curated-surfaces": queryCollection("surfaces", {
     filters: {
@@ -502,7 +541,11 @@ export const API_QUERY_COLLECTIONS = {
     arrayFilters: { domain: ["categories", "derived_categories"] },
     filters: {
       netuid: integerSchema,
-      netuids: { type: "string", pattern: "^\\d+(,\\d+)*$" },
+      netuids: {
+        type: "string",
+        maxLength: 767,
+        pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+      },
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       domain: enumSchema(DOMAIN_TAGS),
@@ -619,6 +662,12 @@ export const PUBLIC_ARTIFACTS = [
     "SurfacesArtifact",
   ),
   artifact(
+    "surface-aliases",
+    "/metagraph/surface-aliases.json",
+    "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+    "SurfaceAliasesArtifact",
+  ),
+  artifact(
     "surfaces-subnet",
     "/metagraph/surfaces/{netuid}.json",
     "Curated public interface surfaces for one subnet.",
@@ -665,6 +714,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/coverage.json",
     "Registry coverage counts and source precedence.",
     "CoverageArtifact",
+  ),
+  artifact(
+    "coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+    "CoverageDepthArtifact",
   ),
   artifact(
     "economics",
@@ -793,6 +848,12 @@ export const PUBLIC_ARTIFACTS = [
     "HealthTrendsArtifact",
   ),
   artifact(
+    "health-trends-bulk",
+    "/metagraph/health/trends.json",
+    "Compact all-subnet 7d/30d daily uptime + latency trend matrix. Served live from D1 at /api/v1/health/trends (no static file).",
+    "BulkHealthTrendsArtifact",
+  ),
+  artifact(
     "health-percentiles",
     "/metagraph/health/percentiles/{netuid}.json",
     "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
@@ -831,7 +892,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
-    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
     "RpcUsageArtifact",
   ),
   artifact(
@@ -1156,6 +1217,16 @@ export const API_ROUTES = [
     ["registry"],
   ),
   route(
+    "coverage-depth",
+    "GET",
+    "/api/v1/coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+    "standard",
+    ["registry", "review", "api-dx"],
+    listQuery("coverage-depth"),
+  ),
+  route(
     "economics",
     "GET",
     "/api/v1/economics",
@@ -1329,6 +1400,15 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "health-trends-bulk",
+    "GET",
+    "/api/v1/health/trends",
+    "/metagraph/health/trends.json",
+    "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+    "short",
+    ["health", "analytics"],
+  ),
+  route(
     "subnet-health-trends",
     "GET",
     "/api/v1/subnets/{netuid}/health/trends",
@@ -1414,7 +1494,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/rpc/usage",
     "/metagraph/rpc/usage.json",
-    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
     "short",
     ["rpc", "analytics", "operations"],
     [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
@@ -1912,6 +1992,10 @@ function listQuery(collection, options = {}) {
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      {
+        name: "fields",
+        schema: fieldListSchema,
+      },
       {
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 1000 },

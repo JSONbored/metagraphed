@@ -27,6 +27,7 @@ const R2_ONLY_PATTERNS = [
   // Health trends are computed live from D1 by the Worker, never written as a
   // file. Marked R2-only so the contract maps a schema to the route without the
   // build expecting a committed/staged artifact.
+  /^health\/trends\.json$/,
   /^health\/trends\/(?:\d+|\{netuid\})\.json$/,
   // AI-4 analytics: also computed live from D1, never written as files.
   /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,
@@ -93,6 +94,7 @@ const R2_ONLY_PATTERNS = [
   // (scripts/build-changelog.mjs), not a committed baseline.
   /^subnets\.json$/,
   /^coverage\.json$/,
+  /^coverage-depth\.json$/,
   // #1009: per-subnet validator/economic entity. Pure chain-state (stake,
   // emission share, registration cost) that changes every block — republished
   // each sync, never a committed seed.
@@ -123,6 +125,7 @@ const R2_ONLY_PATTERNS = [
   /^review\/profile-completeness\.json$/,
   /^schema-drift\.json$/,
   /^search\.json$/,
+  /^surface-aliases\.json$/,
   /^surfaces\.json$/,
 ];
 

@@ -289,7 +289,8 @@ assert.ok(
 const schemaService = apis.services.find((service) => service.schema_artifact);
 if (schemaService) {
   const schema = await callOk("get_api_schema", {
-    surface_id: schemaService.surface_id,
+    surface_id:
+      schemaService.schema_source?.surface_id || schemaService.surface_id,
   });
   assert.ok(schema, "get_api_schema must return the captured schema artifact");
 } else {

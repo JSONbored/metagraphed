@@ -56,6 +56,8 @@
     "contract:summary": "node scripts/contract-change-summary.mjs",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:readme-catalog": "node scripts/generate-registry-readme-section.mjs --check",
+    "readme:catalog": "node scripts/generate-registry-readme-section.mjs",
     "validate:adapters": "node scripts/validate-adapters.mjs",
     "assert:probe-health": "node scripts/assert-published-probe-health.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
@@ -84,6 +86,8 @@
     "r2:upload": "node scripts/r2-upload.mjs --write",
     "changelog:publish": "node scripts/build-changelog.mjs",
     "changelog:publish:dry-run": "node scripts/build-changelog.mjs --dry-run",
+    "surface-aliases:publish": "node scripts/build-surface-aliases.mjs",
+    "surface-aliases:publish:dry-run": "node scripts/build-surface-aliases.mjs --dry-run",
     "kv:publish:dry-run": "node scripts/kv-publish-pointer.mjs --dry-run",
     "kv:publish": "node scripts/kv-publish-pointer.mjs --write",
     "webhooks:dispatch:dry-run": "node scripts/dispatch-webhooks.mjs --dry-run",
@@ -102,6 +106,9 @@
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs",
     "endpoint:ops:brief": "node scripts/endpoint-ops-brief.mjs"
   },
+  "dependencies": {
+    "workers-og": "^0.0.27"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.8",
@@ -111,7 +118,7 @@
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.4",
     "vitest": "^4.1.8",
-    "wrangler": "4.100.0"
+    "wrangler": "4.102.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",

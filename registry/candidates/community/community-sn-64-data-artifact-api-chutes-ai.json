@@ -17,7 +17,7 @@
       "source_url": "https://api.chutes.ai/openapi.json",
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "state": "schema-valid",
-      "url": "https://api.chutes.ai/daily_revenue_summary"
+      "url": "https://api.chutes.ai/chutes/gpu_count_history"
     }
   ],
   "schema_version": 1,

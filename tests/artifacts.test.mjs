@@ -25,6 +25,7 @@ import {
   publicMetagraphRoot,
   r2StagingRoot,
   registrySurfaceKey,
+  isSurfaceStale,
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -308,24 +309,30 @@ test("artifact build does not preserve forged endpoint index health", () => {
 test("artifact build does not preserve forged schema snapshot metadata", () => {
   const schemaDriftPath = artifactFilePath("schema-drift.json");
   const schemaIndexPath = artifactFilePath("schemas/index.json");
-  const originalSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+  const originalSchemaDrift = existsSync(schemaDriftPath)
+    ? readFileSync(schemaDriftPath, "utf8")
+    : null;
   const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
   const supportArtifacts = snapshotSupportArtifacts();
-  const schemaDrift = JSON.parse(originalSchemaDrift);
+  const schemaDrift = originalSchemaDrift
+    ? JSON.parse(originalSchemaDrift)
+    : null;
   const schemaIndex = JSON.parse(originalSchemaIndex);
-  const driftTarget = schemaDrift.surfaces?.[0];
-  const indexTarget = schemaIndex.schemas?.find(
-    (schema) => schema.surface_id === driftTarget?.surface_id,
-  );
-  assert(driftTarget, "expected a schema drift surface entry to tamper");
+  const driftTarget = schemaDrift?.surfaces?.[0];
+  const indexTarget =
+    schemaIndex.schemas?.find(
+      (schema) => schema.surface_id === driftTarget?.surface_id,
+    ) || schemaIndex.schemas?.find((schema) => schema.status === "captured");
   assert(indexTarget, "expected a schema index entry to tamper");
 
   const forgedMarker = "AUTOVALIDATOR_FORGED_METADATA_SHOULD_NOT_SURVIVE_BUILD";
-  driftTarget.netuid = 999999;
-  driftTarget.subnet_slug = forgedMarker;
-  driftTarget.url = "https://attacker.invalid/openapi";
-  driftTarget.schema_url = "https://attacker.invalid/openapi.json";
-  driftTarget.hash = "forged-hash";
+  if (driftTarget) {
+    driftTarget.netuid = 999999;
+    driftTarget.subnet_slug = forgedMarker;
+    driftTarget.url = "https://attacker.invalid/openapi";
+    driftTarget.schema_url = "https://attacker.invalid/openapi.json";
+    driftTarget.hash = "forged-hash";
+  }
   indexTarget.netuid = 999999;
   indexTarget.subnet_slug = forgedMarker;
   indexTarget.url = "https://attacker.invalid/openapi";
@@ -343,7 +350,12 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   };
 
   try {
-    writeFileSync(schemaDriftPath, `${JSON.stringify(schemaDrift, null, 2)}\n`);
+    if (schemaDrift) {
+      writeFileSync(
+        schemaDriftPath,
+        `${JSON.stringify(schemaDrift, null, 2)}\n`,
+      );
+    }
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
@@ -352,14 +364,22 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       stdio: "pipe",
     });
 
-    const rebuiltSchemaDrift = readFileSync(schemaDriftPath, "utf8");
+    const rebuiltSchemaDrift = existsSync(schemaDriftPath)
+      ? readFileSync(schemaDriftPath, "utf8")
+      : "";
     const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
     assert.equal(rebuiltSchemaDrift.includes(forgedMarker), false);
     assert.equal(rebuiltSchemaIndex.includes(forgedMarker), false);
-    assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
+    if (rebuiltSchemaDrift) {
+      assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
+    }
     assert.equal(JSON.parse(rebuiltSchemaIndex).source, "artifact-build");
   } finally {
-    writeFileSync(schemaDriftPath, originalSchemaDrift);
+    if (originalSchemaDrift) {
+      writeFileSync(schemaDriftPath, originalSchemaDrift);
+    } else {
+      rmSync(schemaDriftPath, { force: true });
+    }
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
@@ -388,6 +408,64 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
     restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
+
+test("artifact build preserves committed schema index without R2 schema details", () => {
+  const schemaIndexPath = artifactFilePath("schemas/index.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const originalSchemaIndexJson = JSON.parse(originalSchemaIndex);
+  const supportArtifacts = snapshotSupportArtifacts();
+  const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-schema-r2-`);
+  const stagingBackup = `${backupDir}/metagraph-r2`;
+  const hadStagingRoot = existsSync(r2StagingRoot);
+  if (hadStagingRoot) {
+    cpSync(r2StagingRoot, stagingBackup, { recursive: true });
+  }
+
+  assert.equal(originalSchemaIndexJson.source, "openapi-snapshot");
+  assert.equal(originalSchemaIndexJson.schemas.length > 0, true);
+
+  try {
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+    assert.deepEqual(JSON.parse(rebuiltSchemaIndex), originalSchemaIndexJson);
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    rmSync(r2StagingRoot, { recursive: true, force: true });
+    if (hadStagingRoot) {
+      cpSync(stagingBackup, r2StagingRoot, { recursive: true });
+    }
+    restoreSupportArtifacts(supportArtifacts);
+    rmSync(backupDir, { recursive: true, force: true });
+  }
+}, 30_000);
+
+test("committed R2 manifest does not use fallback history keys", () => {
+  // Read the git-committed manifest, not the working-tree copy: the Validate
+  // test/checks jobs run `npm run build` before the suite, which regenerates
+  // r2-manifest.json with the 1970 epoch placeholder (no METAGRAPH_BUILD_TIMESTAMP).
+  // This guard is about the committed publish lockfile, which must carry the real
+  // timestamp written by the publish workflow.
+  const manifest = JSON.parse(
+    execFileSync("git", ["show", "HEAD:public/metagraph/r2-manifest.json"], {
+      encoding: "utf8",
+    }),
+  );
+
+  assert.notEqual(manifest.generated_at, "1970-01-01T00:00:00.000Z");
+  assert.notEqual(manifest.run_prefix, "runs/1970-01-01T00-00-00-000Z/");
+  assert.ok(
+    manifest.artifacts.every(
+      (artifact) => !artifact.key.startsWith("runs/1970-01-01T00-00-00-000Z/"),
+    ),
+  );
+});
 
 test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
   const timestamp = "2026-06-08T12:34:56.789Z";
@@ -457,6 +535,7 @@ test("public artifacts are internally consistent", () => {
   const subnetProfile = readArtifact("profiles/7.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
   const coverage = readArtifact("coverage.json");
+  const coverageDepth = readArtifact("coverage-depth.json");
   const economics = readArtifact("economics.json");
   const contracts = readArtifact("contracts.json");
   const apiIndex = readArtifact("api-index.json");
@@ -747,6 +826,217 @@ test("public artifacts are internally consistent", () => {
     "agent-catalog must carry a deterministic content_hash",
   );
   assert.ok(agentCatalog.content_hash.length >= 16);
+  assert.equal(
+    agentCatalog.total_subnet_count,
+    agentCatalog.subnet_count + agentCatalog.blocked_subnet_count,
+    "agent-catalog callable + blocked counts must cover every subnet",
+  );
+  assert.ok(
+    Array.isArray(agentCatalog.blocked_subnets) &&
+      agentCatalog.blocked_subnets.length > 0,
+    "agent-catalog must explain blocked/non-callable subnets",
+  );
+  assert.equal(
+    agentCatalog.blocked_subnet_count,
+    agentCatalog.blocked_subnets.length,
+    "blocked_subnet_count must match blocked_subnets length",
+  );
+  assert.ok(
+    agentCatalog.subnets.every(
+      (entry) => entry.agent_readiness?.status === "callable",
+    ),
+    "callable agent-catalog entries must carry callable readiness status",
+  );
+  const blockedRecall = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.ok(blockedRecall, "SN31 should be represented as a blocked subnet");
+  assert.equal(blockedRecall.agent_readiness.status, "blocked");
+  assert.ok(
+    blockedRecall.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "missing-callable-service",
+    ),
+    "blocked subnets must explain the missing callable service",
+  );
+  const rootBlocker = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 0,
+  );
+  assert.equal(rootBlocker.agent_readiness.status, "base-layer");
+  assert.ok(
+    rootBlocker.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "base-layer-only",
+    ),
+    "root subnet must explain the base-layer-only boundary",
+  );
+  assert.ok(
+    agentCatalog.blocker_summary.by_code["missing-callable-service"] > 0,
+    "blocker summary must count missing callable service blockers",
+  );
+  assert.equal(
+    coverageDepth.subnet_count,
+    subnets.subnets.length,
+    "coverage-depth must score every subnet",
+  );
+  assert.equal(
+    coverageDepth.summary.row_count,
+    coverageDepth.rows.length,
+    "coverage-depth row summary must match rows",
+  );
+  assert.ok(
+    coverageDepth.rows.every(
+      (row, index, rows) => index === 0 || rows[index - 1].netuid < row.netuid,
+    ),
+    "coverage-depth rows must be sorted by netuid",
+  );
+  assert.equal(
+    Object.values(coverageDepth.summary.tier_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    coverageDepth.rows.length,
+    "coverage-depth tier counts must cover every row",
+  );
+  assert.equal(
+    coverageDepth.summary.queue_count,
+    coverageDepth.ranked_queue.length,
+    "coverage-depth queue_count must match the ranked queue",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.every(
+      (entry, index, rows) =>
+        index === 0 ||
+        rows[index - 1].priority_score > entry.priority_score ||
+        (rows[index - 1].priority_score === entry.priority_score &&
+          (rows[index - 1].score < entry.score ||
+            (rows[index - 1].score === entry.score &&
+              rows[index - 1].netuid < entry.netuid))),
+    ),
+    "coverage-depth ranked_queue must have deterministic priority order",
+  );
+  assert.ok(
+    coverageDepth.summary.severity_counts["missing-data"] > 0,
+    "coverage-depth must summarize missing-data gaps",
+  );
+  assert.ok(
+    coverageDepth.summary.tier_counts["hard-blocked"] > 0,
+    "coverage-depth must separate hard-blocked subnets",
+  );
+  const coverageDepthAllways = coverageDepth.rows.find(
+    (entry) => entry.netuid === 7,
+  );
+  assert.ok(coverageDepthAllways, "SN7 must have a coverage-depth row");
+  assert.equal(coverageDepthAllways.agent_status, "callable");
+  assert.ok(
+    coverageDepthAllways.dimensions.callable_service_count > 0,
+    "SN7 coverage-depth row must count callable services",
+  );
+  assert.ok(
+    coverageDepthAllways.top_gap_codes.includes("missing-fixture"),
+    "SN7 coverage-depth row must expose deterministic fixture absence",
+  );
+  const coverageDepthRecall = coverageDepth.rows.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.equal(coverageDepthRecall.agent_status, "blocked");
+  assert.ok(
+    coverageDepthRecall.top_gap_codes.includes("missing-callable-service"),
+    "SN31 coverage-depth row must carry missing callable-service blocker",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.some(
+      (entry) =>
+        entry.top_gap_codes.includes("missing-fixture") ||
+        entry.top_gap_codes.includes("missing-schema") ||
+        entry.top_gap_codes.includes("candidate-api-needs-review"),
+    ),
+    "coverage-depth queue must contain actionable enrichment gaps",
+  );
+  const catalog31 = readArtifact("agent-catalog/31.json");
+  assert.equal(catalog31.agent_readiness.status, "blocked");
+  assert.ok(
+    catalog31.agent_readiness.missing_fields.includes("surfaces"),
+    "per-subnet detail must expose blocker missing_fields",
+  );
+  const callableAgentServices = agentCatalog.subnets.flatMap((subnet) =>
+    readArtifact(`agent-catalog/${subnet.netuid}.json`).services.filter(
+      (service) => service.eligibility?.callable,
+    ),
+  );
+  const callableWithoutSchema = callableAgentServices.filter(
+    (service) => !service.schema_artifact,
+  );
+  assert.equal(
+    callableAgentServices.length,
+    68,
+    "agent-catalog callable-service count must stay deterministic",
+  );
+  assert.equal(
+    callableWithoutSchema.length,
+    31,
+    "schema projection should reduce callable services without schema artifacts",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "subnet-api")
+      .length,
+    6,
+    "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "sse").length,
+    1,
+    "SSE streams should not inherit same-origin OpenAPI schemas implicitly",
+  );
+  const serviceById = (catalog, surfaceId) =>
+    catalog.services.find((service) => service.surface_id === surfaceId);
+  const catalog7 = readArtifact("agent-catalog/7.json");
+  const allwaysHealth = serviceById(catalog7, "allways-api-health");
+  assert.equal(
+    allwaysHealth.schema_artifact,
+    "/metagraph/schemas/allways-swagger.json",
+    "SN7 endpoint rows should inherit the same-origin captured OpenAPI artifact",
+  );
+  assert.equal(allwaysHealth.schema_source.match, "same-origin-openapi");
+  assert.equal(
+    allwaysHealth.schema_source.url,
+    "https://api.all-ways.io/swagger-json",
+  );
+  const allwaysSse = serviceById(catalog7, "allways-sse");
+  assert.equal(
+    allwaysSse.schema_artifact,
+    null,
+    "SSE streams require an explicit schema match",
+  );
+  const catalog56 = readArtifact("agent-catalog/56.json");
+  const gradientsPerformance = serviceById(
+    catalog56,
+    "sn-56-gradients-last-boss-battle",
+  );
+  assert.equal(
+    gradientsPerformance.schema_source.match,
+    "schema-url",
+    "SN56 endpoint rows with schema_url should resolve by exact schema URL",
+  );
+  const catalog110 = readArtifact("agent-catalog/110.json");
+  const greenComputeChat = serviceById(
+    catalog110,
+    "sn-110-green-compute-chat-completions-api",
+  );
+  assert.equal(
+    greenComputeChat.schema_source.match,
+    "same-origin-openapi",
+    "SN110 endpoint rows should resolve through same-origin OpenAPI",
+  );
+  const catalog64ForSchemas = readArtifact("agent-catalog/64.json");
+  const chutesPricing = serviceById(
+    catalog64ForSchemas,
+    "sn-64-chutes-pricing-api",
+  );
+  assert.equal(
+    chutesPricing.schema_artifact,
+    null,
+    "explicit not-captured schema statuses must not be overridden",
+  );
+  assert.equal(chutesPricing.schema_status, "not-captured");
 
   // Cross-network lineage (issue #353): mainnet ↔ testnet mapping, with the
   // profile's lineage reconciled against the standalone artifact.
@@ -770,6 +1060,41 @@ test("public artifacts are internally consistent", () => {
   assert.equal(typeof fixturesIndex.fixture_count, "number");
   assert.equal(Array.isArray(fixturesIndex.fixtures), true);
   assert.equal(fixturesIndex.fixture_count, fixturesIndex.fixtures.length);
+  assert.equal(
+    fixturesIndex.candidate_count,
+    fixturesIndex.coverage.length,
+    "fixture candidate_count must match coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.missing_count,
+    fixturesIndex.coverage.filter((entry) => entry.status !== "available")
+      .length,
+    "fixture missing_count must summarize non-available coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.status_counts.missing,
+    fixturesIndex.candidate_count,
+    "deterministic no-capture builds should classify fixture candidates as missing",
+  );
+  const allwaysFixtureCandidate = fixturesIndex.coverage.find(
+    (entry) => entry.surface_id === "allways-api-health",
+  );
+  assert.equal(allwaysFixtureCandidate.status, "missing");
+  const allwaysFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-api-health");
+  assert.equal(allwaysFixtureService.fixture_status.status, "missing");
+  const allwaysSseFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-sse");
+  assert.equal(
+    allwaysSseFixtureService.fixture_status.status,
+    "unsupported-kind",
+  );
+  const allwaysHistoryFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-crown-history");
+  assert.equal(allwaysHistoryFixtureService.fixture_status.status, "non-get");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
   assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);
@@ -782,6 +1107,10 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     agentResources.resources.some((r) => r.id === "agent"),
     "resources must include the copyable agent",
+  );
+  assert.ok(
+    agentResources.resources.some((r) => r.id === "agent-workflows"),
+    "resources must include the public agent workflow guide",
   );
   assert.ok(agentResources.resources.every((r) => r.id && r.title && r.url));
   // every profile that claims to have graduated appears in the lineage artifact
@@ -960,6 +1289,77 @@ test("public artifacts are internally consistent", () => {
     healthHistory.surfaces.every((surface) => !Object.hasOwn(surface, "url")),
     true,
   );
+  // #1006: per-field provenance. Every served surface exposes last_verified_at
+  // (string|null) + a `stale` boolean, and `stale` is reproducible from the
+  // helper against the committed native-snapshot captured_at.
+  const surfaceNowMs = Date.parse(native.captured_at);
+  for (const surface of surfaces.surfaces) {
+    assert.ok(
+      surface.last_verified_at === null ||
+        typeof surface.last_verified_at === "string",
+      `surface ${surface.id} last_verified_at must be a string or null`,
+    );
+    assert.equal(
+      typeof surface.stale,
+      "boolean",
+      `surface ${surface.id} must carry a boolean stale flag`,
+    );
+    assert.equal(
+      surface.stale,
+      isSurfaceStale(surface.last_verified_at, surface.kind, surfaceNowMs),
+      `surface ${surface.id} stale flag must match the freshness helper`,
+    );
+  }
+  // The curation→surface verified_at join must actually populate timestamps, not
+  // leave every surface unverified (guard against a silent no-op).
+  assert.ok(
+    surfaces.surfaces.some((surface) => surface.last_verified_at !== null),
+    "expected at least one surface to carry a last_verified_at timestamp",
+  );
+  // #1008: code-examples entity. example-kind surfaces are indexed + surfaced in
+  // the agent-catalog (per-subnet `examples` + `example_count`); they also flow
+  // into every subnet's profile via supported_interface_kinds.
+  const exampleSurfaces = surfaces.surfaces.filter(
+    (surface) => surface.kind === "example",
+  );
+  assert.ok(
+    exampleSurfaces.length >= 5,
+    `expected >=5 example surfaces, got ${exampleSurfaces.length}`,
+  );
+  assert.equal(
+    exampleSurfaces.every((surface) => /^https?:\/\//.test(surface.url)),
+    true,
+    "example surfaces must carry an http(s) url",
+  );
+  // The agent-catalog index carries example_count, and the per-subnet detail
+  // lists the examples. SN64 (chutes) has both a callable service and an example.
+  assert.equal(
+    agentCatalog.subnets.every((entry) =>
+      Number.isInteger(entry.example_count),
+    ),
+    true,
+    "every agent-catalog index entry must carry an integer example_count",
+  );
+  const catalog64 = readArtifact("agent-catalog/64.json");
+  assert.ok(
+    catalog64.example_count >= 1 && catalog64.examples.length >= 1,
+    "SN64 agent-catalog must surface its example",
+  );
+  assert.equal(catalog64.examples.length, catalog64.example_count);
+  assert.equal(
+    catalog64.examples.every(
+      (example) => example.surface_id && /^https?:\/\//.test(example.url),
+    ),
+    true,
+    "agent-catalog examples must carry a surface_id + http(s) url",
+  );
+  // Examples reach the subnet profile through supported_interface_kinds.
+  const profile64 = readArtifact("profiles/64.json").profile;
+  assert.equal(
+    profile64.supported_interface_kinds.includes("example"),
+    true,
+    "a subnet with an example surface must list it in supported_interface_kinds",
+  );
   assert.equal(coverage.chain_subnet_count, native.subnets.length);
   assert.equal(coverage.curated_overlay_count, native.subnets.length);
   assert.equal(coverage.native_only_count, 0);
@@ -1038,6 +1438,120 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     candidates.candidates.some((candidate) => candidate.superseded_by),
     "expected at least one candidate to be superseded by a curated surface",
+  );
+  // #1002 PR2: count propagation. A surface-superseded candidate is the curated
+  // surface already present in `surfaces`, so it must not be counted or listed as
+  // a distinct candidate. coverage keeps the raw registry totals (mirroring
+  // candidates.json), but every per-subnet count/list, profile, overview, and the
+  // enrichment/curation leaderboards drop the dupe.
+  const activeCandidates = candidates.candidates.filter(
+    (candidate) => !candidate.superseded_by,
+  );
+  const activeByNetuid = new Map();
+  for (const candidate of activeCandidates) {
+    activeByNetuid.set(
+      candidate.netuid,
+      (activeByNetuid.get(candidate.netuid) || 0) + 1,
+    );
+  }
+  const subnetNetuids = new Set(subnets.subnets.map((subnet) => subnet.netuid));
+  const perSubnetCandidateTotal = subnets.subnets.reduce(
+    (sum, subnet) => sum + subnet.candidate_count,
+    0,
+  );
+  assert.equal(
+    perSubnetCandidateTotal,
+    activeCandidates.filter((candidate) => subnetNetuids.has(candidate.netuid))
+      .length,
+    "per-subnet candidate_count must sum to the active (non-superseded) candidate count",
+  );
+  assert.ok(
+    perSubnetCandidateTotal < candidates.candidates.length,
+    "per-subnet candidate_count must exclude superseded candidates (dedup must fire)",
+  );
+  // coverage stays raw — its candidate_count mirrors the full candidates.json
+  // registry, so it is intentionally larger than the deduplicated per-subnet sum.
+  assert.ok(
+    coverage.candidate_count > perSubnetCandidateTotal,
+    "coverage.candidate_count (raw registry) must exceed the deduplicated per-subnet sum",
+  );
+  // Every subnet's index candidate_count equals its non-superseded candidate count.
+  for (const subnet of subnets.subnets) {
+    assert.equal(
+      subnet.candidate_count,
+      activeByNetuid.get(subnet.netuid) || 0,
+      `subnet ${subnet.netuid} candidate_count must equal its non-superseded candidate count`,
+    );
+  }
+  // Detail, profile, and overview agree on the deduplicated count and never
+  // re-list a candidate that collides with a curated surface. netuid 7 has
+  // superseded candidates, so this exercises the dedup, not a vacuous pass.
+  const subnetDetail7 = readArtifact("subnets/7.json");
+  const overview7 = readArtifact("overview/7.json");
+  const subnet7Index = subnets.subnets.find((subnet) => subnet.netuid === 7);
+  const rawCandidateCount7 = candidates.candidates.filter(
+    (candidate) => candidate.netuid === 7,
+  ).length;
+  assert.ok(
+    subnet7Index.candidate_count < rawCandidateCount7,
+    "netuid 7 candidate_count must drop its superseded candidates",
+  );
+  assert.equal(
+    subnetDetail7.candidate_surfaces.length,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(subnetDetail7.candidates.length, subnet7Index.candidate_count);
+  assert.equal(overview7.counts.candidates, subnet7Index.candidate_count);
+  assert.equal(
+    subnetProfile.profile.candidate_count,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(
+    subnetProfile.candidate_surfaces.length,
+    subnet7Index.candidate_count,
+  );
+  assert.equal(
+    subnetProfile.candidate_surfaces.every(
+      (candidate) => !candidate.superseded_by,
+    ),
+    true,
+    "profile candidate_surfaces must exclude superseded candidates",
+  );
+  for (const candidate of subnetDetail7.candidate_surfaces) {
+    assert.equal(
+      surfaceIdByRegistryKey.has(registrySurfaceKey(candidate)),
+      false,
+      `subnets/7 candidate_surfaces must exclude candidate ${candidate.id} colliding with a curated surface`,
+    );
+  }
+  // Leaderboards: the curation review counts the active candidates exactly; the
+  // enrichment queue never exceeds them (it further drops baseline-excluded ids).
+  for (const priority of reviewCuration.gap_priorities) {
+    assert.equal(
+      priority.candidate_count,
+      activeByNetuid.get(priority.netuid) || 0,
+      `curation review netuid ${priority.netuid} candidate_count must equal its non-superseded candidate count`,
+    );
+  }
+  for (const entry of enrichmentQueue.queue) {
+    assert.ok(
+      entry.candidate_count <= (activeByNetuid.get(entry.netuid) || 0),
+      `enrichment queue netuid ${entry.netuid} candidate_count must not exceed its non-superseded candidate count`,
+    );
+  }
+  // #1007: corroboration — every candidate carries confirmed_by (distinct
+  // discovery sources from source_urls); some are corroborated by 2+ sources.
+  for (const candidate of candidates.candidates) {
+    assert.ok(
+      Array.isArray(candidate.confirmed_by),
+      `candidate ${candidate.id} confirmed_by must be an array`,
+    );
+  }
+  assert.ok(
+    candidates.candidates.some(
+      (candidate) => (candidate.confirmed_by || []).length >= 2,
+    ),
+    "expected at least one candidate corroborated by 2+ distinct sources",
   );
   // #1009: economics entity — per-subnet validator/economic rows + summary.
   assert.ok(Array.isArray(economics.subnets), "economics.subnets is an array");

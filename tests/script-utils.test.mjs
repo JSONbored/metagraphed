@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
@@ -22,14 +22,22 @@ import {
   createLocalArtifactEnv,
   flattenSurfaces,
   formatLlmMarkdownText,
+  fixtureCaptureFailureReason,
   formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
+  isLikelyExampleLink,
+  isSurfaceStale,
+  surfaceFreshnessTtlDays,
+  withSurfaceFreshness,
+  SURFACE_FRESHNESS_DEFAULT_TTL_DAYS,
   isHtmlContentType,
   isJsonContentType,
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
+  resolvePublicUrlAddresses,
+  latestArtifactDate,
   listJsonFiles,
   listJsonFilesRecursive,
   loadCandidates,
@@ -45,6 +53,7 @@ import {
   registrySurfaceKey,
   repoRoot,
   isReviewableReadmeLink,
+  sanitizeFixtureBody,
   selectReviewableReadmeLinks,
   sha256Hex,
   slugify,
@@ -102,6 +111,18 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("uses public-safe fixture capture parse failure reasons", () => {
+    const error = new SyntaxError(
+      `Unexpected token 'T', "TOKEN=abc" is not valid JSON`,
+    );
+
+    assert.equal(fixtureCaptureFailureReason(error), "invalid json response");
+    assert.equal(
+      fixtureCaptureFailureReason(error).includes("TOKEN=abc"),
+      false,
+    );
+  });
+
   test("classifies redirect-limit probes as unsupported", () => {
     assert.equal(
       classifyHttpProbe(
@@ -638,6 +659,10 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
+      artifactStorageTierForRelativePath("coverage-depth.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
       false,
     );
@@ -670,6 +695,10 @@ describe("script utility contracts", () => {
     );
     assert.equal(
       artifactStorageTierForRelativePath("operational-surfaces.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("surface-aliases.json"),
       ARTIFACT_STORAGE_TIERS.r2,
     );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
@@ -721,6 +750,7 @@ describe("script utility contracts", () => {
         artifactFilePath("health/history/2099-01-01.json"),
         stagedPath,
       );
+      assert.equal(await latestArtifactDate("health/history"), "2099-01-01");
       const env = createLocalArtifactEnv();
       const object = await env.METAGRAPH_ARCHIVE.get(
         "latest/health/history/2099-01-01.json",
@@ -754,6 +784,28 @@ describe("script utility contracts", () => {
     } finally {
       await rm(stagedPath, { force: true });
     }
+
+    assert.equal(await latestArtifactDate("__missing-date-fixtures__"), null);
+
+    const noDateDir = path.join(
+      repoRoot,
+      "public/metagraph/__latest-date-no-matches__",
+    );
+    try {
+      await rm(noDateDir, { recursive: true, force: true });
+      await mkdir(noDateDir, { recursive: true });
+      await writeFile(path.join(noDateDir, "not-a-date.json"), "{}\n");
+      assert.equal(
+        await latestArtifactDate("__latest-date-no-matches__"),
+        null,
+      );
+    } finally {
+      await rm(noDateDir, { recursive: true, force: true });
+    }
+
+    await assert.rejects(() => latestArtifactDate("types.d.ts"), {
+      code: "ENOTDIR",
+    });
   });
 
   test("augments manual overlays with verified baseline surfaces", async () => {
@@ -980,6 +1032,125 @@ describe("script utility contracts", () => {
     assert.equal(surface.rate_limit_notes, "See docs for tier details.");
   });
 
+  test("does not promote owner-mismatched source repository candidates", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 53, name: "EfficientFrontier", status: "active" }],
+    };
+    const candidates = [
+      {
+        auth_required: false,
+        confidence: "medium",
+        id: "community-sn-53-source-repo-github-com",
+        kind: "source-repo",
+        name: "EfficientFrontier community source-repo",
+        netuid: 53,
+        provider: "signalplus",
+        public_safe: true,
+        schema_version: 1,
+        source_tier: "community-docs",
+        source_type: "community-pr-intake",
+        source_url:
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
+        source_urls: [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
+        ],
+        state: "schema-valid",
+        url: "https://github.com/oxylok/53-EfficientFrontier",
+      },
+      {
+        id: "sn-53-signalplus-source-repo",
+        kind: "source-repo",
+        name: "SignalPlus source repository",
+        netuid: 53,
+        provider: "signalplus",
+        source_tier: "provider-claimed",
+        source_type: "provider-website-link",
+        source_url: "https://www.signalplus.com/",
+        source_urls: ["https://www.signalplus.com/"],
+        state: "schema-valid",
+        url: "https://github.com/signalplus/example",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: candidates.map((candidate) => ({
+        candidate_id: candidate.id,
+        classification: "live",
+        content_type: "text/html",
+        quality_signals: { public_safe: true },
+      })),
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      providers: [
+        {
+          id: "signalplus",
+          name: "SignalPlus",
+          website_url: "https://www.signalplus.com/",
+        },
+      ],
+      verification,
+    });
+
+    assert.deepEqual(
+      overlaySet.generatedOverlays[0].surfaces.map((surface) => surface.id),
+      ["sn-53-signalplus-source-repo"],
+    );
+    assert.equal(
+      overlaySet.generatedOverlays[0].source_repo,
+      "https://github.com/signalplus/example",
+    );
+  });
+
+  test("does not promote candidates that already require review by state", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 89, name: "ReviewState", status: "active" }],
+    };
+    const candidates = [
+      {
+        id: "sn-89-review-state-docs",
+        kind: "docs",
+        name: "ReviewState docs",
+        netuid: 89,
+        provider: "reviewstate",
+        source_tier: "provider-claimed",
+        source_type: "project-website-link",
+        source_url: "https://reviewstate.example.com/",
+        source_urls: ["https://reviewstate.example.com/"],
+        state: "needs-review",
+        url: "https://reviewstate.example.com/docs",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: [
+        {
+          candidate_id: "sn-89-review-state-docs",
+          classification: "live",
+          content_type: "text/html",
+          quality_signals: { public_safe: true },
+        },
+      ],
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      providers: [{ id: "reviewstate", name: "ReviewState" }],
+      verification,
+    });
+
+    assert.deepEqual(overlaySet.generatedOverlays[0].surfaces, []);
+  });
+
   test("does not promote HTML-only Swagger pages as OpenAPI surfaces", async () => {
     const nativeSnapshot = {
       captured_at: "2026-06-08T00:00:00.000Z",
@@ -1190,6 +1361,8 @@ describe("script utility contracts", () => {
     assert.equal(isValidUrl("not a url"), false);
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
     assert.equal(isUnsafeUrl("http://metadata.localhost"), true);
+    assert.equal(isUnsafeUrl("https://taochat.testnet.local"), true);
+    assert.equal(isUnsafeUrl("https://local"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://100.64.0.1"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
@@ -1237,6 +1410,116 @@ describe("script utility contracts", () => {
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
   });
 
+  test("surface freshness TTL + staleness flag (#1006)", () => {
+    // Per-kind TTL map with a default fallback for unlisted kinds.
+    assert.equal(surfaceFreshnessTtlDays("subnet-api"), 30);
+    assert.equal(surfaceFreshnessTtlDays("source-repo"), 120);
+    assert.equal(
+      surfaceFreshnessTtlDays("totally-unknown-kind"),
+      SURFACE_FRESHNESS_DEFAULT_TTL_DAYS,
+    );
+
+    const now = Date.parse("2026-06-14T00:00:00.000Z");
+    const daysAgo = (n) => new Date(now - n * 86_400_000).toISOString();
+
+    // Unverified surfaces are NOT stale — null is a distinct state the agent reads.
+    assert.equal(isSurfaceStale(null, "subnet-api", now), false);
+    assert.equal(isSurfaceStale(undefined, "docs", now), false);
+    // Unparseable inputs never throw and never flag stale.
+    assert.equal(isSurfaceStale("not-a-date", "docs", now), false);
+    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), false);
+    // Fresh: age below the kind TTL.
+    assert.equal(isSurfaceStale(daysAgo(10), "subnet-api", now), false);
+    // Boundary: exactly at the TTL is still fresh (strict greater-than).
+    assert.equal(isSurfaceStale(daysAgo(30), "subnet-api", now), false);
+    // Just over the TTL flips stale.
+    assert.equal(isSurfaceStale(daysAgo(31), "subnet-api", now), true);
+    // The window is per-kind: the same age is stale for a callable surface but
+    // fresh for a long-lived identity surface.
+    assert.equal(isSurfaceStale(daysAgo(45), "openapi", now), true);
+    assert.equal(isSurfaceStale(daysAgo(45), "source-repo", now), false);
+
+    // withSurfaceFreshness stamps `stale` from last_verified_at + kind, leaving
+    // the other surface fields intact.
+    const stamped = withSurfaceFreshness(
+      [
+        { id: "a", kind: "openapi", last_verified_at: daysAgo(45) },
+        { id: "b", kind: "source-repo", last_verified_at: daysAgo(45) },
+        { id: "c", kind: "docs", last_verified_at: null },
+      ],
+      now,
+    );
+    assert.deepEqual(
+      stamped.map((s) => [s.id, s.stale]),
+      [
+        ["a", true],
+        ["b", false],
+        ["c", false],
+      ],
+    );
+    assert.equal(stamped[0].kind, "openapi");
+  });
+
+  test("classifies code-example / quickstart links (#1008)", () => {
+    // The haystack is "<label> <hostname> <pathname>", lowercased.
+    assert.equal(
+      isLikelyExampleLink("code example github.com /repo/tree/main/examples"),
+      true,
+    );
+    assert.equal(isLikelyExampleLink("github.com /repo/example/foo.py"), true);
+    assert.equal(
+      isLikelyExampleLink("quickstart docs.example.io /quickstart"),
+      true,
+    );
+    assert.equal(
+      isLikelyExampleLink("getting started site /getting-started"),
+      true,
+    );
+    assert.equal(isLikelyExampleLink("tutorial site /tutorial/intro"), true);
+    assert.equal(
+      isLikelyExampleLink("notebook github.com /repo/demo.ipynb"),
+      true,
+    );
+    assert.equal(
+      isLikelyExampleLink("open in colab colab.research.google.com /drive/x"),
+      true,
+    );
+    // Non-example links (docs, api, generic) must not be mislabeled.
+    assert.equal(
+      isLikelyExampleLink("api docs.example.io /api/v1/health"),
+      false,
+    );
+    assert.equal(isLikelyExampleLink("documentation site /docs/intro"), false);
+    assert.equal(isLikelyExampleLink(""), false);
+    assert.equal(isLikelyExampleLink(undefined), false);
+  });
+
+  test("sanitizeFixtureBody redacts private/loopback URLs in captured bodies", () => {
+    // A captured OpenAPI spec can carry dev servers (localhost / private IPs) the
+    // publish public-safety scan rejects; the fixture sanitizer must strip them.
+    const out = sanitizeFixtureBody({
+      openapi: "3.0.0",
+      servers: [
+        { url: "https://api.example.com" },
+        { url: "http://10.0.0.5:8000" },
+        { url: "http://localhost:3000/v1" },
+        { url: "http://192.168.1.4/api" },
+      ],
+      note: "callbacks hit http://127.0.0.1:9000/cb internally",
+    });
+    const json = JSON.stringify(out);
+    assert.equal(
+      /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/i.test(
+        json,
+      ),
+      false,
+      "no private/loopback URL may survive in a captured fixture body",
+    );
+    // Public server URLs are preserved.
+    assert.equal(out.servers[0].url, "https://api.example.com");
+    assert.equal(out.servers[1].url, "[redacted-unsafe-url]");
+  });
+
   test("resolves hostnames before treating probe URLs as safe", async () => {
     const privateResolver = async () => [
       { address: "192.168.1.10", family: 4 },
@@ -1253,6 +1536,13 @@ describe("script utility contracts", () => {
     assert.equal(
       await isUnsafeResolvedUrl("https://metagraph.example", publicResolver),
       false,
+    );
+    assert.deepEqual(
+      await resolvePublicUrlAddresses(
+        "https://metagraph.example",
+        publicResolver,
+      ),
+      [{ address: "93.184.216.34", family: 4 }],
     );
     assert.equal(
       await isUnsafeResolvedUrl("https://empty.example", emptyResolver),
@@ -1433,6 +1723,14 @@ describe("script utility contracts", () => {
       source: "fixture",
     });
     assert.equal(endpointResources.summary.endpoint_count, 7);
+    const rootRpcSurface = surfaces.find(
+      (surface) => surface.id === "root-rpc",
+    );
+    const rootRpcEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-rpc",
+    );
+    assert.equal(rootRpcEndpoint.surface_key, rootRpcSurface.key);
+    assert.equal(rootRpcEndpoint.id, `endpoint-${rootRpcSurface.key}`);
     assert.equal(
       endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-docs",
@@ -1550,6 +1848,13 @@ describe("script utility contracts", () => {
       ),
       true,
     );
+    assert.equal(
+      generalizedPools.pools
+        .find((pool) => pool.id === "finney-rpc")
+        .endpoints.find((endpoint) => endpoint.surface_id === "root-rpc")
+        .surface_key,
+      rootRpcSurface.key,
+    );
 
     const incidents = buildEndpointIncidentArtifact({
       endpointArtifact: endpointResources,
@@ -1557,14 +1862,21 @@ describe("script utility contracts", () => {
       contractVersion: "test",
     });
     assert.equal(incidents.summary.incident_count, 2);
+    const failedEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-failed-rpc",
+    );
+    const degradedEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-degraded-rpc",
+    );
+    assert.equal(incidents.incidents[0].endpoint_id, failedEndpoint.id);
     assert.equal(
-      incidents.incidents[0].endpoint_id,
-      "endpoint-root-failed-rpc",
+      incidents.incidents[0].surface_key,
+      failedEndpoint.surface_key,
     );
     assert.equal(incidents.incidents[0].severity, "critical");
     assert.equal(
       incidents.incidents.find(
-        (incident) => incident.endpoint_id === "endpoint-root-degraded-rpc",
+        (incident) => incident.endpoint_id === degradedEndpoint.id,
       ).severity,
       "warning",
     );
@@ -1574,6 +1886,70 @@ describe("script utility contracts", () => {
     assert.equal(
       incidents.incidents[0].observed_at,
       "1970-01-01T00:00:00.000Z",
+    );
+  });
+
+  test("endpoint resources keep stable ids across display slug renames", () => {
+    const buildRenamedEndpoint = (surfaceId) =>
+      buildEndpointResourceArtifact({
+        surfaces: flattenSurfaces([
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            surfaces: [
+              {
+                id: surfaceId,
+                kind: "subnet-api",
+                url: "https://api.allways.example.com/v1",
+                provider: "allways",
+                authority: "official",
+                auth_required: false,
+                public_safe: true,
+                probe: { enabled: true, method: "GET", expect: "json" },
+              },
+            ],
+          },
+        ]),
+        generatedAt: "1970-01-01T00:00:00.000Z",
+        contractVersion: "test",
+        source: "fixture",
+      }).endpoints[0];
+
+    const before = buildRenamedEndpoint("sn-7-allways-api");
+    const afterRename = buildRenamedEndpoint("sn-7-allways-public-api");
+
+    assert.equal(before.surface_id, "sn-7-allways-api");
+    assert.equal(afterRename.surface_id, "sn-7-allways-public-api");
+    assert.equal(before.surface_key, afterRename.surface_key);
+    assert.equal(before.id, afterRename.id);
+    assert.match(before.id, /^endpoint-srf-[a-f0-9]{16}$/);
+
+    const rawSurfaceEndpoint = buildEndpointResourceArtifact({
+      surfaces: [
+        {
+          id: "sn-7-raw-api",
+          netuid: 7,
+          subnet_slug: "allways",
+          subnet_name: "Allways",
+          kind: "subnet-api",
+          url: "https://api.allways.example.com/v1",
+          provider: "allways",
+          authority: "official",
+          auth_required: false,
+          public_safe: true,
+          probe: { enabled: true, method: "GET", expect: "json" },
+        },
+      ],
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      contractVersion: "test",
+      source: "fixture",
+    }).endpoints[0];
+
+    assert.match(rawSurfaceEndpoint.surface_key, /^srf-[a-f0-9]{16}$/);
+    assert.equal(
+      rawSurfaceEndpoint.id,
+      `endpoint-${rawSurfaceEndpoint.surface_key}`,
     );
   });
 
@@ -1914,6 +2290,28 @@ describe("submission policy helpers", () => {
     });
     assert.equal(valid.public_state, "submit_pr");
     assert.equal(valid.import_allowed, false);
+
+    const endpointBody = validBody
+      .replace("### Interface kind", "### Endpoint kind")
+      .replace("### Provider or team", "### Provider or operator slug")
+      .replace(
+        "### Does this interface require authentication?",
+        "### Does this endpoint require authentication?",
+      );
+    const endpoint = buildIssueIntakeReport({
+      issue: {
+        number: 11,
+        title: "endpoint: docs",
+        user: { login: "jsonbored" },
+        labels: [{ name: "endpoint-submission" }],
+        body: endpointBody,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(endpoint.public_state, "submit_pr");
+    assert.equal(endpoint.candidate.auth_required, false);
 
     const manual = buildIssueIntakeReport({
       issue: {

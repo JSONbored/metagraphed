@@ -16,13 +16,16 @@ describe("formatRpcUsage", () => {
     assert.equal(out.summary.error_rate, null); // no requests → undefined rate
     assert.equal(out.summary.cache_hit_rate, null);
     assert.equal(out.summary.latency_ms.p50, null);
+    assert.equal(out.bucket_granularity, null);
+    assert.deepEqual(out.buckets, []);
     assert.deepEqual(out.endpoints, []);
     assert.deepEqual(out.networks, []);
   });
 
-  test("computes rates, ranks endpoints, and rounds latency", () => {
+  test("computes rates, ranks endpoints, and rounds latency/buckets", () => {
     const out = formatRpcUsage({
       window: "30d",
+      bucketGranularity: "6h",
       observedAt: "2026-06-14T00:00:00Z",
       totals: {
         total: 1000,
@@ -52,7 +55,28 @@ describe("formatRpcUsage", () => {
         { network: "finney", requests: 900, ok_count: 870 },
         { network: "test", requests: 100, ok_count: 80 },
       ],
+      bucketRows: [
+        {
+          ts: 1_718_323_200_000,
+          requests: 100,
+          errors: 3,
+          avg_latency_ms: 120.4,
+        },
+        {
+          ts: 1_718_344_800_000,
+          requests: undefined,
+          errors: undefined,
+          avg_latency_ms: null,
+        },
+        {
+          ts: "bad",
+          requests: 10,
+          errors: 10,
+          avg_latency_ms: 999,
+        },
+      ],
     });
+    assert.equal(out.bucket_granularity, "6h");
     assert.equal(out.summary.error_requests, 50);
     assert.equal(out.summary.error_rate, 0.05);
     assert.equal(out.summary.failover_rate, 0.04);
@@ -70,6 +94,20 @@ describe("formatRpcUsage", () => {
     assert.equal(out.endpoints[1].avg_latency_ms, 221);
     assert.equal(out.networks[1].network, "test");
     assert.equal(out.networks[1].error_rate, 0.2);
+    assert.deepEqual(out.buckets, [
+      {
+        ts: 1_718_323_200_000,
+        requests: 100,
+        errors: 3,
+        avg_latency_ms: 120,
+      },
+      {
+        ts: 1_718_344_800_000,
+        requests: 0,
+        errors: 0,
+        avg_latency_ms: null,
+      },
+    ]);
   });
 
   test("a zero-request endpoint/network row reports a null rate (no divide-by-zero)", () => {
@@ -155,6 +193,18 @@ describe("/api/v1/rpc/usage route", () => {
                 results: [{ network: "finney", requests: 500, ok_count: 480 }],
               };
             }
+            if (sql.includes("GROUP BY ts")) {
+              return {
+                results: [
+                  {
+                    ts: 1_718_323_200_000,
+                    requests: 120,
+                    errors: 5,
+                    avg_latency_ms: 155.6,
+                  },
+                ],
+              };
+            }
             return { results: [] };
           },
         }),
@@ -172,6 +222,41 @@ describe("/api/v1/rpc/usage route", () => {
     assert.equal(body.data.summary.latency_ms.p95, 430);
     assert.equal(body.data.endpoints[0].endpoint_id, "fx");
     assert.equal(body.data.networks[0].network, "finney");
+    assert.equal(body.data.bucket_granularity, "6h");
+    assert.deepEqual(body.data.buckets, [
+      {
+        ts: 1_718_323_200_000,
+        requests: 120,
+        errors: 5,
+        avg_latency_ms: 156,
+      },
+    ]);
+  });
+
+  test("uses bounded bucket params per window", async () => {
+    const calls = [];
+    const usageDb = {
+      prepare: (sql) => ({
+        bind: (...params) => ({
+          async all() {
+            calls.push({ sql, params });
+            return { results: [] };
+          },
+        }),
+      }),
+    };
+    const env = { ...createLocalArtifactEnv(), METAGRAPH_HEALTH_DB: usageDb };
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/rpc/usage",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.bucket_granularity, "1h");
+    const bucketCall = calls.find((call) => call.sql.includes("GROUP BY ts"));
+    assert.ok(bucketCall);
+    assert.equal(bucketCall.params[0], 60 * 60 * 1000);
+    assert.equal(bucketCall.params[1], 60 * 60 * 1000);
+    assert.equal(bucketCall.params[3], 7 * 24);
   });
 });
 

@@ -38,7 +38,83 @@ jobs:
 
       - name: Classify validation route
         id: route
-        uses: ./.github/actions/classify-validation-route
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          # Keep route classification in the trusted workflow instead of a
+          # checkout-local action/script. Pull request contents are untrusted and
+          # must not be able to force the reduced UGC lane.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+              git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+              git diff --name-only --diff-filter=d "$BASE_SHA"..."$HEAD_SHA" > submitted-artifact-files.txt
+            else
+              git fetch origin "$BASE_REF"
+              git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+              git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > submitted-artifact-files.txt
+            fi
+          else
+            : > changed-files.txt
+            : > submitted-artifact-files.txt
+          fi
+
+          python3 - <<'PY_ROUTE'
+          import json
+          import os
+          import pathlib
+          import re
+
+          changed_files = sorted(
+              file.strip().replace("\\", "/").removeprefix("./")
+              for file in pathlib.Path("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if file.strip()
+          )
+          candidate_pattern = re.compile(r"^registry/candidates/community/[a-z0-9][a-z0-9-]*\.json$")
+          provider_pattern = re.compile(r"^registry/providers/community/[a-z0-9][a-z0-9-]*\.json$")
+          candidate_files = [file for file in changed_files if candidate_pattern.fullmatch(file)]
+          provider_files = [file for file in changed_files if provider_pattern.fullmatch(file)]
+          touched_community = [
+              file
+              for file in changed_files
+              if file.startswith("registry/candidates/community/")
+              or file.startswith("registry/providers/community/")
+          ]
+          errors = []
+          submission_files = candidate_files + provider_files
+          if not submission_files and not touched_community:
+              scope = "normal-pr"
+          else:
+              scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
+              if len(submission_files) != 1:
+                  errors.append({"category": "unsupported-shape"})
+              unrelated = [
+                  file
+                  for file in changed_files
+                  if not candidate_pattern.fullmatch(file) and not provider_pattern.fullmatch(file)
+              ]
+              if unrelated:
+                  errors.append({"category": "generated-artifact-tampering"})
+          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} and not errors else "full"
+          report = {
+              "schema_version": 1,
+              "mode": mode,
+              "scope": scope,
+              "changed_files": changed_files,
+              "candidate_files": candidate_files,
+              "provider_files": provider_files,
+              "errors": errors,
+          }
+          pathlib.Path("validate-route.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          output_path = os.environ.get("GITHUB_OUTPUT")
+          if output_path:
+              with open(output_path, "a", encoding="utf-8") as output:
+                  output.write(f"mode={mode}\n")
+                  output.write(f"scope={scope}\n")
+          print(json.dumps(report, indent=2))
+          PY_ROUTE
 
       - name: Setup Node
         if: steps.route.outputs.mode == 'full'
@@ -88,7 +164,83 @@ jobs:
 
       - name: Classify validation route
         id: route
-        uses: ./.github/actions/classify-validation-route
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          # Keep route classification in the trusted workflow instead of a
+          # checkout-local action/script. Pull request contents are untrusted and
+          # must not be able to force the reduced UGC lane.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+              git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+              git diff --name-only --diff-filter=d "$BASE_SHA"..."$HEAD_SHA" > submitted-artifact-files.txt
+            else
+              git fetch origin "$BASE_REF"
+              git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+              git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > submitted-artifact-files.txt
+            fi
+          else
+            : > changed-files.txt
+            : > submitted-artifact-files.txt
+          fi
+
+          python3 - <<'PY_ROUTE'
+          import json
+          import os
+          import pathlib
+          import re
+
+          changed_files = sorted(
+              file.strip().replace("\\", "/").removeprefix("./")
+              for file in pathlib.Path("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if file.strip()
+          )
+          candidate_pattern = re.compile(r"^registry/candidates/community/[a-z0-9][a-z0-9-]*\.json$")
+          provider_pattern = re.compile(r"^registry/providers/community/[a-z0-9][a-z0-9-]*\.json$")
+          candidate_files = [file for file in changed_files if candidate_pattern.fullmatch(file)]
+          provider_files = [file for file in changed_files if provider_pattern.fullmatch(file)]
+          touched_community = [
+              file
+              for file in changed_files
+              if file.startswith("registry/candidates/community/")
+              or file.startswith("registry/providers/community/")
+          ]
+          errors = []
+          submission_files = candidate_files + provider_files
+          if not submission_files and not touched_community:
+              scope = "normal-pr"
+          else:
+              scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
+              if len(submission_files) != 1:
+                  errors.append({"category": "unsupported-shape"})
+              unrelated = [
+                  file
+                  for file in changed_files
+                  if not candidate_pattern.fullmatch(file) and not provider_pattern.fullmatch(file)
+              ]
+              if unrelated:
+                  errors.append({"category": "generated-artifact-tampering"})
+          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} and not errors else "full"
+          report = {
+              "schema_version": 1,
+              "mode": mode,
+              "scope": scope,
+              "changed_files": changed_files,
+              "candidate_files": candidate_files,
+              "provider_files": provider_files,
+              "errors": errors,
+          }
+          pathlib.Path("validate-route.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          output_path = os.environ.get("GITHUB_OUTPUT")
+          if output_path:
+              with open(output_path, "a", encoding="utf-8") as output:
+                  output.write(f"mode={mode}\n")
+                  output.write(f"scope={scope}\n")
+          print(json.dumps(report, indent=2))
+          PY_ROUTE
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -176,8 +328,10 @@ jobs:
       - name: Verify committed derived artifacts are fresh
         if: steps.route.outputs.mode == 'full'
         run: |
-          if ! git diff --quiet -- public/ ':(exclude)public/metagraph/r2-manifest.json'; then
-            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed them). Run 'npm run build' and commit the result."
+          status=$(git status --porcelain --untracked-files=all -- public/ ':(exclude)public/metagraph/r2-manifest.json')
+          if [ -n "$status" ]; then
+            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed, deleted, or recreated them). Run 'npm run build' and commit the result."
+            printf '%s\n' "$status"
             git diff --name-only -- public/ ':(exclude)public/metagraph/r2-manifest.json'
             git diff --stat -- public/ ':(exclude)public/metagraph/r2-manifest.json'
             exit 1
@@ -215,6 +369,10 @@ jobs:
       - name: Validate documentation contracts
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:docs
+
+      - name: Validate README subnet catalog (#1020)
+        if: steps.route.outputs.mode == 'full'
+        run: npm run validate:readme-catalog
 
       - name: Validate intake templates
         if: steps.route.outputs.mode == 'full'

@@ -198,6 +198,14 @@
             "type": "string",
             "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it."
           },
+          "last_verified_at": {
+            "type": ["string", "null"],
+            "description": "Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it."
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified."
+          },
           "name": {
             "type": "string"
           },
@@ -579,6 +587,11 @@
             "type": ["string", "null"],
             "description": "When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface."
           },
+          "confirmed_by": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one."
+          },
           "verification": {
             "oneOf": [
               {
@@ -614,6 +627,57 @@
       },
       "SubnetSurfacesArtifact": {
         "$ref": "#/components/schemas/SurfacesArtifact"
+      },
+      "SurfaceAliasesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["source", "summary", "aliases"],
+            "properties": {
+              "source": {
+                "const": "generated-surface-rename-aliases"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "alias_count",
+                  "carried_alias_count",
+                  "new_alias_count",
+                  "previous_surface_count",
+                  "current_surface_count"
+                ],
+                "properties": {
+                  "alias_count": { "type": "integer", "minimum": 0 },
+                  "carried_alias_count": { "type": "integer", "minimum": 0 },
+                  "new_alias_count": { "type": "integer", "minimum": 0 },
+                  "previous_surface_count": { "type": "integer", "minimum": 0 },
+                  "current_surface_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["deprecated_id", "surface_key", "current_id"],
+                  "properties": {
+                    "deprecated_id": { "type": "string" },
+                    "surface_key": { "type": "string" },
+                    "current_id": { "type": "string" },
+                    "netuid": { "type": ["integer", "null"], "minimum": 0 },
+                    "kind": { "type": ["string", "null"] },
+                    "url": { "type": ["string", "null"] }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
       },
       "CandidatesArtifact": {
         "allOf": [
@@ -729,6 +793,130 @@
           }
         }
       },
+      "AgentReadinessBlocker": {
+        "type": "object",
+        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
+        "required": ["code", "severity", "message", "field", "next_action"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["hard", "missing-data", "needs-review"]
+          },
+          "message": { "type": "string" },
+          "field": {
+            "type": "string",
+            "description": "Registry field, artifact family, or evidence surface that needs attention."
+          },
+          "next_action": {
+            "type": "string",
+            "description": "Concrete maintainer/contributor action to clear or explain the blocker."
+          }
+        }
+      },
+      "AgentReadinessStatus": {
+        "type": "object",
+        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
+        "required": ["status", "blocker_level", "blockers", "missing_fields"],
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ]
+          },
+          "blocker_level": {
+            "type": "string",
+            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            }
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "AgentServiceSchemaSource": {
+        "type": "object",
+        "description": "Source metadata for the schema artifact associated with an agent-catalog service.",
+        "required": [
+          "surface_id",
+          "match",
+          "url",
+          "artifact",
+          "status",
+          "observed_at",
+          "hash"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "surface_id": {
+            "type": "string",
+            "description": "Schema/OpenAPI surface that supplied the artifact."
+          },
+          "match": {
+            "type": "string",
+            "enum": ["surface-id", "schema-url", "same-origin-openapi"],
+            "description": "How the callable service was linked to the schema artifact."
+          },
+          "url": {
+            "type": ["string", "null"],
+            "description": "Machine-readable schema URL, when known."
+          },
+          "artifact": {
+            "type": ["string", "null"],
+            "description": "Metagraphed schema artifact path."
+          },
+          "status": {
+            "type": ["string", "null"],
+            "description": "Schema capture status from the schema index."
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "description": "When the schema snapshot was observed, if available."
+          },
+          "hash": {
+            "type": ["string", "null"],
+            "description": "Content hash for the captured schema artifact."
+          }
+        }
+      },
+      "AgentServiceFixtureStatus": {
+        "type": "object",
+        "description": "Fixture availability or absence reason for an agent-catalog service.",
+        "required": ["status", "reason", "artifact_path", "captured_at"],
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "missing",
+              "capture-failed",
+              "auth-required",
+              "non-get",
+              "unsupported-kind"
+            ]
+          },
+          "reason": { "type": ["string", "null"] },
+          "artifact_path": { "type": ["string", "null"] },
+          "captured_at": { "type": ["string", "null"] }
+        }
+      },
       "AgentCatalogArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -738,7 +926,12 @@
             "properties": {
               "total_subnet_count": { "type": "integer", "minimum": 0 },
               "subnet_count": { "type": "integer", "minimum": 0 },
+              "blocked_subnet_count": { "type": "integer", "minimum": 0 },
               "callable_service_count": { "type": "integer", "minimum": 0 },
+              "blocker_summary": {
+                "type": "object",
+                "additionalProperties": true
+              },
               "subnets": {
                 "type": "array",
                 "items": {
@@ -762,6 +955,9 @@
                     "readiness": {
                       "$ref": "#/components/schemas/IntegrationReadiness"
                     },
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
                     "service_count": { "type": "integer", "minimum": 0 },
                     "callable_count": { "type": "integer", "minimum": 0 },
                     "service_kinds": {
@@ -770,6 +966,36 @@
                     },
                     "base_url": { "type": ["string", "null"] },
                     "health": { "type": "string" }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "blocked_subnets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["netuid", "agent_readiness"],
+                  "properties": {
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "slug": { "type": "string" },
+                    "name": { "type": "string" },
+                    "categories": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "subnet_type": { "type": ["string", "null"] },
+                    "completeness_score": { "type": ["number", "null"] },
+                    "integration_readiness": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "readiness_tier": { "type": "string" },
+                    "service_count": { "type": "integer", "minimum": 0 },
+                    "callable_count": { "type": "integer", "minimum": 0 },
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    }
                   },
                   "additionalProperties": true
                 }
@@ -838,6 +1064,9 @@
               "readiness": {
                 "$ref": "#/components/schemas/IntegrationReadiness"
               },
+              "agent_readiness": {
+                "$ref": "#/components/schemas/AgentReadinessStatus"
+              },
               "service_count": { "type": "integer", "minimum": 0 },
               "services": {
                 "type": "array",
@@ -856,6 +1085,14 @@
                     "schema_url": { "type": ["string", "null"] },
                     "schema_status": { "type": ["string", "null"] },
                     "schema_artifact": { "type": ["string", "null"] },
+                    "schema_source": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AgentServiceSchemaSource"
+                        },
+                        { "type": "null" }
+                      ]
+                    },
                     "health": {
                       "type": "object",
                       "additionalProperties": true
@@ -866,6 +1103,9 @@
                     },
                     "fixture": {
                       "$ref": "#/components/schemas/SurfaceFixtureReference"
+                    },
+                    "fixture_status": {
+                      "$ref": "#/components/schemas/AgentServiceFixtureStatus"
                     }
                   },
                   "additionalProperties": true

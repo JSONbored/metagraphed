@@ -278,6 +278,28 @@ export function artifactDirectoryPath(relativePath) {
   return path.join(publicMetagraphRoot, normalized);
 }
 
+export async function latestArtifactDate(relativePath) {
+  const dirPath = artifactDirectoryPath(relativePath);
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  return (
+    entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
+      .map((file) => file.replace(/\.json$/, ""))
+      .sort()
+      .at(-1) || null
+  );
+}
+
 export function createLocalArtifactEnv(overrides = {}) {
   return {
     ASSETS: {
@@ -464,10 +486,69 @@ export function flattenSurfaces(subnets) {
         };
         // #1005: a stable identity decoupled from the hand-authored display id.
         flattened.key = surfaceStableKey(flattened);
+        // #1006: the as-of timestamp every served surface should carry. A
+        // per-surface verification wins; otherwise the subnet's curation
+        // verified_at (when a maintainer last vetted the overlay). null when
+        // neither exists — the agent then sees the surface is unverified.
+        flattened.last_verified_at =
+          surface.verification?.verified_at ??
+          subnet.curation?.verified_at ??
+          null;
         return flattened;
       }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// #1006: per-kind verification-freshness TTL (days). `last_verified_at` is the
+// curator's as-of; a surface is `stale` once it hasn't been re-verified within
+// its kind's window. Callable/operational surfaces drift fast (short window);
+// static identity surfaces are stable (long window). Any kind not listed uses
+// SURFACE_FRESHNESS_DEFAULT_TTL_DAYS. Fixed (not env-gated) so the build and the
+// validate reproduction compute byte-identical `stale` values.
+export const SURFACE_FRESHNESS_DEFAULT_TTL_DAYS = 90;
+export const SURFACE_FRESHNESS_TTL_DAYS = {
+  "subnet-api": 30,
+  openapi: 30,
+  sse: 30,
+  "data-artifact": 30,
+  "subtensor-rpc": 30,
+  "subtensor-wss": 30,
+  dashboard: 60,
+  website: 90,
+  docs: 90,
+  archive: 120,
+  example: 120,
+  sdk: 120,
+  "source-repo": 120,
+  "repo-registry": 120,
+};
+
+export function surfaceFreshnessTtlDays(kind) {
+  return SURFACE_FRESHNESS_TTL_DAYS[kind] ?? SURFACE_FRESHNESS_DEFAULT_TTL_DAYS;
+}
+
+// True when a surface's verification is older than its kind's TTL, measured
+// against `nowMs` (the dataset's native-snapshot captured_at, a committed +
+// deterministic reference — never wall-clock — so the flag is reproducible). A
+// surface with no last_verified_at is NOT stale: that's "unverified", a distinct
+// state the null timestamp already signals.
+export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
+  if (!lastVerifiedAt) return false;
+  const verifiedMs = Date.parse(lastVerifiedAt);
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
+}
+
+// Stamp the serve-time `stale` flag onto a flattened-surface list (the companion
+// to flattenSurfaces' static `last_verified_at`). Kept separate because `stale`
+// needs the `nowMs` reference flattenSurfaces does not carry; build + validate
+// both call this with the same captured_at so per-subnet artifacts reproduce.
+export function withSurfaceFreshness(surfaces, nowMs) {
+  return surfaces.map((surface) => ({
+    ...surface,
+    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
+  }));
 }
 
 // Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
@@ -694,6 +775,9 @@ export function isUnsafeUrl(value) {
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
+    if (url.username || url.password) {
+      return true;
+    }
 
     const host = normalizeHostname(url.hostname);
     return isUnsafeHostname(host);
@@ -702,30 +786,46 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
-      return true;
+      return [];
     }
 
     const host = normalizeHostname(url.hostname);
     if (isIP(host)) {
-      return false;
+      return [{ address: host, family: isIP(host) }];
     }
 
     const records = await resolver(host, { all: true, verbatim: true });
-    return (
+    if (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))
-    );
+    ) {
+      return [];
+    }
+    return records.map((record) => ({
+      address: record.address,
+      family: record.family,
+    }));
   } catch {
-    return true;
+    return [];
   }
 }
 
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+  return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
 function isUnsafeHostname(host) {
-  if (!host || host === "localhost" || host.endsWith(".localhost")) {
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "local" ||
+    host.endsWith(".local")
+  ) {
     return true;
   }
 
@@ -744,16 +844,23 @@ const SELF_DOMAIN = "metagraph.sh";
 // targets squats of our exact domain, not the generic "metagraph" Bittensor term
 // (a subnet legitimately named "…metagraph…" is unaffected).
 export function isBrandImpersonationUrl(value) {
-  let host;
+  let url;
   try {
-    host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
   if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
     return false;
   }
-  return /metagraph\.sh(?:\.|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host);
+
+  const userinfo = `${url.username}:${url.password}`.toLowerCase();
+  return (
+    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host) ||
+    /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
+  );
 }
 
 function isUnsafeIpAddress(address) {
@@ -825,7 +932,7 @@ export function redactCredentialedUrls(value) {
 // might echo back. Match common separator-delimited, camelCase, and compact
 // spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed|id|auth|client|secret)(?:Token|Key|Id|Secret|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|authToken|idToken|clientSecret|secretKey|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
@@ -839,7 +946,11 @@ export function sanitizeFixtureBody(
   const walk = (node, depth) => {
     if (depth > maxDepth) return "[truncated: max depth]";
     if (typeof node === "string") {
-      const redacted = redactCredentialedUrl(node);
+      // Redact credentials AND private/loopback URLs. A captured spec can carry a
+      // servers[].url pointing at localhost / 10.x / 192.168.x (operators leave
+      // dev servers in their public OpenAPI); the publish public-safety scan
+      // rejects those, so mirror the schema-snapshot sanitizer here too.
+      const redacted = sanitizeSchemaText(redactCredentialedUrl(node));
       return redacted.length > maxString
         ? `${redacted.slice(0, maxString)}…[truncated]`
         : redacted;
@@ -875,6 +986,23 @@ export function sanitizeFixtureBody(
 // body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
 // stays lean and the one already-sanitized copy is served from a single place.
 // Returns null when there is no fixture, so callers omit the field entirely.
+export function fixtureCaptureFailureReason(error) {
+  const name = error?.name || null;
+  if (name === "SyntaxError") {
+    return "invalid json response";
+  }
+  if (name === "AbortError") {
+    return "request timed out";
+  }
+  if (name === "FixtureCaptureLimitError") {
+    return "response exceeds byte limit";
+  }
+  if (name === "TypeError") {
+    return "request failed";
+  }
+  return "capture failed";
+}
+
 export function surfaceFixtureReference(surfaceId, fixture) {
   if (!surfaceId || !fixture || typeof fixture !== "object") {
     return null;
@@ -925,6 +1053,7 @@ export function normalizePublicUrl(value) {
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
       url.username ||
       url.password ||
+      isCredentialedUrl(url.toString()) ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
@@ -959,13 +1088,14 @@ export function isPlaceholderIdentityUrl(value) {
 }
 
 // Resolve a subnet identity link (source_repo / website_url / logo_url):
-// curated overlay wins; otherwise fall back to the cleaned on-chain value;
-// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
-// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
-// generator and the reproducibility validator.
+// an explicit curated overlay value wins (including null suppression); otherwise
+// fall back to the cleaned on-chain value; otherwise null. Shared by
+// build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
+// the chain backfill can't drift between the generator and the reproducibility
+// validator.
 export function backfilledIdentityUrl(overlayValue, chainValue) {
-  if (overlayValue) {
-    return overlayValue;
+  if (overlayValue !== undefined) {
+    return overlayValue || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
@@ -1062,7 +1192,12 @@ const CONTACT_JUNK_VALUES = new Set([
   "-",
   "null",
 ]);
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_ATOM = "[A-Z0-9!#$%&\\'*+/=?^_`{|}~-]+";
+const EMAIL_RE = new RegExp(
+  `^${EMAIL_ATOM}(?:\\.${EMAIL_ATOM})*@` +
+    "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+  "i",
+);
 export function subnetContact(overlayContact) {
   if (typeof overlayContact !== "string") return null;
   const value = overlayContact.trim();
@@ -1529,6 +1664,20 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// #1007: the distinct discovery sources (clustered domains) that independently
+// surfaced a candidate, from its source_urls. 2+ distinct sources is strong
+// corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
+// trustworthy than a single-source one — and feeds a `confirmed_by` field plus a
+// verification-score bonus (scoreCandidate). Pure + deterministic (sorted,
+// deduped); clusterDomainFromUrl folds api./docs. subdomains into one source so
+// two URLs on the same site never read as independent corroboration.
+export function corroboratingSources(candidate) {
+  const urls = Array.isArray(candidate?.source_urls)
+    ? candidate.source_urls
+    : [];
+  return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
+}
+
 // Build a fallback "what does it do" blurb from curated provider notes when a
 // subnet has no chain/overlay description (issue #346). Sanitized + truncated to
 // a word boundary. This populates a SEPARATE derived_description field — it never
@@ -1740,6 +1889,24 @@ export const README_KIND_LIMITS = {
   "subnet-api": 2,
   website: 1,
 };
+
+// #1008: detect a code-example / quickstart link from a normalized haystack
+// (`"<label> <hostname> <pathname>"`, lowercased). `/example` matches both
+// `/example/` and `/examples/`. Pure + exported so the discovery classifier and
+// its tests share one definition. Callers check this AHEAD of the generic
+// api/docs heuristics so an examples dir is not mis-bucketed.
+export function isLikelyExampleLink(haystack) {
+  if (typeof haystack !== "string") return false;
+  return (
+    haystack.includes("/example") ||
+    haystack.includes("quickstart") ||
+    haystack.includes("quick-start") ||
+    haystack.includes("getting-started") ||
+    haystack.includes("/tutorial") ||
+    haystack.includes(".ipynb") ||
+    haystack.includes("colab.research.google")
+  );
+}
 
 const GENERIC_README_REFERENCE_HOSTS = [
   "arxiv.org",
@@ -2095,6 +2262,7 @@ export function buildEndpointResourceArtifact({
     healthSurfaces.map((surface) => [surface.surface_id, surface]),
   );
   const endpoints = surfaces.map((surface) => {
+    const surfaceKey = surface.key || surfaceStableKey(surface);
     const health = healthBySurface.get(surface.id) || {};
     const monitored = surface.probe?.enabled === true && surface.public_safe;
     const healthMeta = endpointHealthMetadata({
@@ -2112,8 +2280,9 @@ export function buildEndpointResourceArtifact({
     });
 
     return {
-      id: `endpoint-${surface.id}`,
+      id: `endpoint-${surfaceKey}`,
       surface_id: surface.id,
+      surface_key: surfaceKey,
       netuid: surface.netuid,
       subnet_slug: surface.subnet_slug,
       subnet_name: surface.subnet_name,
@@ -2308,6 +2477,8 @@ function endpointPool(id, kind, endpoints) {
     endpoints: poolEndpoints.map((endpoint) => ({
       archive_support: endpoint.archive_support,
       id: endpoint.id,
+      surface_id: endpoint.surface_id,
+      surface_key: endpoint.surface_key,
       kind: endpoint.kind,
       layer: endpoint.layer || endpointLayer(endpoint.kind),
       health_source: endpoint.health_source || "missing-probe",
@@ -2360,6 +2531,7 @@ export function buildEndpointIncidentArtifact({
         id: `incident-${endpoint.id}`,
         endpoint_id: endpoint.id,
         surface_id: endpoint.surface_id,
+        surface_key: endpoint.surface_key,
         netuid: endpoint.netuid,
         subnet_slug: endpoint.subnet_slug,
         subnet_name: endpoint.subnet_name,

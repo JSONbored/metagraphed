@@ -280,7 +280,13 @@ export async function loadOperationalSurfaces(env) {
   try {
     if (env.METAGRAPH_ARCHIVE?.get) {
       const prefix = env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-      const key = `${prefix}metagraph/operational-surfaces.json`;
+      // R2 artifact keys are FLAT under the prefix (latest/<file>.json), NOT
+      // latest/metagraph/<file>.json — the manifest's latest_key is
+      // "latest/operational-surfaces.json". The "/metagraph/" segment is only
+      // the public HTTP path, not the R2 key. This fallback went unexercised
+      // until #1017 made operational-surfaces.json R2-only; the stray
+      // "metagraph/" segment then 404'd every read and silently froze the prober.
+      const key = `${prefix}operational-surfaces.json`;
       const object = await env.METAGRAPH_ARCHIVE.get(key);
       if (object) {
         const body = JSON.parse(await object.text());
@@ -354,15 +360,22 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   const priorStatus = new Map();
   if (db) {
     try {
+      const keys = surfaces.map((s) => s.surface_key || s.surface_id);
       const ids = surfaces.map((s) => s.surface_id);
-      const placeholders = ids.map(() => "?").join(",");
+      const keyPlaceholders = keys.map(() => "?").join(",");
+      const idPlaceholders = ids.map(() => "?").join(",");
       const { results } = await db
         .prepare(
-          `SELECT surface_id, last_ok, consecutive_failures FROM surface_status WHERE surface_id IN (${placeholders})`,
+          `SELECT surface_id, surface_key, last_ok, consecutive_failures
+           FROM surface_status
+           WHERE surface_key IN (${keyPlaceholders})
+              OR surface_id IN (${idPlaceholders})`,
         )
-        .bind(...ids)
+        .bind(...keys, ...ids)
         .all();
-      for (const row of results || []) priorStatus.set(row.surface_id, row);
+      for (const row of results || []) {
+        priorStatus.set(row.surface_key || row.surface_id, row);
+      }
     } catch {
       // First run / cold table — treat all as having no prior state.
     }
@@ -395,11 +408,14 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       };
     }
     const ok = base.status === "ok";
-    const prior = priorStatus.get(surface.surface_id);
+    const stableLookupKey = surface.surface_key || surface.surface_id;
+    const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
     const consecutiveFailures = ok ? 0 : (prior?.consecutive_failures ?? 0) + 1;
     return {
       surface_id: surface.surface_id,
+      // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.
+      surface_key: surface.surface_key ?? null,
       netuid: surface.netuid,
       kind: surface.kind,
       provider: surface.provider || null,
@@ -437,14 +453,26 @@ async function persistToD1(db, probed, runAt) {
   try {
     const checkStmt = db.prepare(
       `INSERT INTO surface_checks
-       (surface_id, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (surface_id, surface_key, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    // #1005: surface_status now keys latest rows on surface_key, so a display
+    // id/slug rename updates the alias in-place instead of creating a new latest
+    // row and resetting breaker continuity.
     const statusStmt = db.prepare(
       `INSERT INTO surface_status
-       (surface_id, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (surface_id, surface_key, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(surface_key) WHERE surface_key IS NOT NULL DO UPDATE SET
+         surface_id=excluded.surface_id,
+         netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
+         provider=excluded.provider, status=excluded.status,
+         classification=excluded.classification, latency_ms=excluded.latency_ms,
+         status_code=excluded.status_code, last_checked=excluded.last_checked,
+         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
+         updated_at=excluded.updated_at
        ON CONFLICT(surface_id) DO UPDATE SET
+         surface_key=excluded.surface_key,
          netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
@@ -457,6 +485,7 @@ async function persistToD1(db, probed, runAt) {
       statements.push(
         checkStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.status,
@@ -468,6 +497,7 @@ async function persistToD1(db, probed, runAt) {
         ),
         statusStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.url,
@@ -496,6 +526,7 @@ async function persistToKv(kv, probed, runAt) {
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
+    surface_key: row.surface_key,
     netuid: row.netuid,
     kind: row.kind,
     provider: row.provider,
@@ -598,10 +629,11 @@ export async function rollupDailyUptime(env, overrides = {}) {
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
   const stmt = db.prepare(
     `INSERT INTO surface_uptime_daily
-       (surface_id, netuid, day, samples, ok_count, uptime_ratio,
+       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
         avg_latency_ms, status, updated_at)
      SELECT
-       surface_id,
+       MAX(surface_id) AS surface_id,
+       COALESCE(surface_key, surface_id) AS surface_key,
        netuid,
        ? AS day,
        COUNT(*) AS samples,
@@ -616,8 +648,18 @@ export async function rollupDailyUptime(env, overrides = {}) {
        ? AS updated_at
      FROM surface_checks
      WHERE checked_at >= ? AND checked_at < ?
-     GROUP BY surface_id, netuid
+     GROUP BY COALESCE(surface_key, surface_id), netuid
+     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
+       surface_id = excluded.surface_id,
+       netuid = excluded.netuid,
+       samples = excluded.samples,
+       ok_count = excluded.ok_count,
+       uptime_ratio = excluded.uptime_ratio,
+       avg_latency_ms = excluded.avg_latency_ms,
+       status = excluded.status,
+       updated_at = excluded.updated_at
      ON CONFLICT(surface_id, day) DO UPDATE SET
+       surface_key = excluded.surface_key,
        netuid = excluded.netuid,
        samples = excluded.samples,
        ok_count = excluded.ok_count,

@@ -60,6 +60,101 @@ score:
 | `identity-only` | neither of the above, but `has_source_repo` or `active_lifecycle` |
 | `dormant`       | none — no interface, no candidate, no docs, no repo, not active   |
 
+## Blocker reasons (`agent_readiness`)
+
+The agent catalog keeps its existing `subnets` array as the callable subset, and
+adds `blocked_subnets` for the rest of the registry. Each callable and blocked
+row carries an `agent_readiness` object:
+
+- `status`: `callable`, `base-layer`, `candidate`, `needs-evidence`, or
+  `blocked`.
+- `blocker_level`: `none`, `hard-blocked`, `needs-review`, or `missing-data`.
+- `blockers[]`: stable `{ code, severity, message, field, next_action }`
+  objects.
+- `missing_fields[]`: deduplicated fields/evidence families from
+  `missing-data` blockers.
+
+The blocker model is not a second score. It is a deterministic explanation of
+the same readiness facts, shaped for agents and UI filters. Use it when a subnet
+is absent from the callable subset and the user asks why.
+
+## Coverage depth scorecard
+
+`GET /api/v1/coverage-depth` publishes the registry-wide prioritization view.
+It is generated from the same public-safe build data as `agent-catalog`,
+`fixtures.json`, schema snapshots, profiles, candidates, and surface authority.
+
+Use it when the question is "what should we enrich next and why?". It provides:
+
+- `summary`: row counts, tier counts, blocker-level counts, severity counts,
+  and gap-code counts.
+- `rows[]`: one row per subnet, sorted by `netuid`, with a deterministic
+  `score`, `tier`, `dimensions`, `top_gaps`, and `recommended_next_action`.
+- `ranked_queue[]`: the highest-priority actionable rows, sorted by
+  `priority_score`, then lower score, then `netuid`.
+
+The scorecard intentionally separates three classes of work:
+
+- `missing-data`: data we should add or explicitly mark absent, such as schemas,
+  fixtures, examples, docs, source repos, or profile fields.
+- `needs-review`: evidence exists, but a maintainer needs to verify authority or
+  promote a candidate surface.
+- `hard`: the subnet should not be recommended for application integration in
+  its current state, such as root/base-layer-only or inactive lifecycle.
+
+The score is deterministic and build-time only. Live up/down remains the health
+overlay and should not be inferred from `coverage-depth`.
+
+Common blocker codes:
+
+| Code                         | Meaning                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `base-layer-only`            | root/base-layer surfaces are not application-subnet APIs                 |
+| `inactive-lifecycle`         | the subnet is not marked active in the registry snapshot                 |
+| `missing-callable-service`   | no public-safe callable service is catalogued yet                        |
+| `service-not-callable`       | services exist, but none are structurally callable                       |
+| `candidate-api-needs-review` | an unpromoted candidate operational surface needs maintainer review      |
+| `no-candidate-api`           | no candidate API surface has been found                                  |
+| `missing-schema`             | callable services exist but no captured schema artifact is available     |
+| `unclear-auth`               | callable services exist but auth metadata is not machine-readable enough |
+| `missing-docs`               | no public documentation link is recorded                                 |
+| `missing-source-repo`        | no public source repository is recorded                                  |
+| `profile-incomplete`         | the subnet profile is below the completeness threshold                   |
+
+## Schema projection (`schema_source`)
+
+Agent-catalog services expose `schema_artifact` when Metagraphed has a captured
+machine-readable schema for the service. The schema can be linked three ways:
+
+| Match type            | Meaning                                                                |
+| --------------------- | ---------------------------------------------------------------------- |
+| `surface-id`          | the service row is itself the captured schema/OpenAPI surface          |
+| `schema-url`          | the service row declares the same machine-readable `schema_url`        |
+| `same-origin-openapi` | a captured OpenAPI surface for the same subnet and origin is available |
+
+`schema_source` carries the source surface id, schema URL, artifact path,
+capture status, observed timestamp, and content hash. Agents should prefer
+exact `surface-id` and `schema-url` matches for endpoint-specific code
+generation. Treat `same-origin-openapi` as a strong pointer to the canonical
+API contract, then inspect the schema artifact before claiming a specific path
+or request shape is supported.
+
+## Fixture status (`fixture_status`)
+
+Agent-catalog services expose fixture availability separately from schemas:
+
+| Status             | Meaning                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `available`        | a sanitized request/response fixture exists               |
+| `missing`          | no fixture has been captured yet                          |
+| `capture-failed`   | the capture run tried the service and could not save JSON |
+| `auth-required`    | capture is skipped because credentials are required       |
+| `non-get`          | capture is skipped because the probe is disabled/non-GET  |
+| `unsupported-kind` | capture is skipped because the service kind is not JSON   |
+
+Use `fixture_status` to explain absence. Use `fixture.artifact_path` only when
+the status is `available`.
+
 ## Live verification (`readiness.readiness_verified`)
 
 The numeric `score` is deliberately build-time and deterministic, so

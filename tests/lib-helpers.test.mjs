@@ -33,6 +33,7 @@ import {
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
   buildEconomicsArtifact,
+  corroboratingSources,
   surfaceStableKey,
   sanitizeFixtureBody,
   surfaceFixtureReference,
@@ -169,6 +170,52 @@ describe("buildEconomicsArtifact", () => {
     });
     assert.equal(out.network, null);
     assert.equal(out.captured_at, null);
+  });
+});
+
+describe("corroboratingSources", () => {
+  test("returns sorted distinct source domains (2+ = corroboration)", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/1",
+          "https://github.com/macrocosm-os/apex",
+        ],
+      }),
+      ["github.com", "taomarketcap.com"],
+    );
+  });
+
+  test("folds api./docs. subdomains of one site into a single source", () => {
+    // two URLs on the same site are NOT independent corroboration
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/v1/subnets/1",
+          "https://docs.taomarketcap.com/subnet/1",
+        ],
+      }),
+      ["taomarketcap.com"],
+    );
+  });
+
+  test("drops unparseable URLs and dedupes", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "not-a-url",
+          "https://github.com/a",
+          "https://github.com/b",
+        ],
+      }),
+      ["github.com"],
+    );
+  });
+
+  test("returns [] when source_urls is missing or not an array", () => {
+    assert.deepEqual(corroboratingSources({}), []);
+    assert.deepEqual(corroboratingSources({ source_urls: null }), []);
+    assert.deepEqual(corroboratingSources(null), []);
   });
 });
 
@@ -316,9 +363,12 @@ describe("isBrandImpersonationUrl", () => {
   test("blocks squats of the exact domain", () => {
     for (const url of [
       "https://metagraph.sh.evil.com/api",
+      "https://metagraph.sh-evil.com/api",
       "https://metagraphsh.com",
       "https://metagraph-sh.io/call",
       "https://api.metagraphsh.net",
+      "https://metagraph.sh@evil.com/api",
+      "https://user:metagraph-sh@evil.com/api",
     ]) {
       assert.equal(isBrandImpersonationUrl(url), true, url);
     }
@@ -537,9 +587,15 @@ describe("backfilledIdentityUrl", () => {
       "https://curated.example/repo",
     );
   });
-  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+  test("preserves explicit curated null suppression", () => {
     assert.equal(
       backfilledIdentityUrl(null, "github.com/opentensor/bittensor"),
+      null,
+    );
+  });
+  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/opentensor/bittensor"),
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
@@ -549,10 +605,20 @@ describe("backfilledIdentityUrl", () => {
     );
   });
   test("rejects placeholder junk and unusable chain values", () => {
-    assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
-    assert.equal(backfilledIdentityUrl(null, "github.com/username/repo"), null);
-    assert.equal(backfilledIdentityUrl(null, null), null);
-    assert.equal(backfilledIdentityUrl(null, "not a url"), null);
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://deprecated.png"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/username/repo"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://glyph.testnet.local"),
+      null,
+    );
+    assert.equal(backfilledIdentityUrl(undefined, null), null);
+    assert.equal(backfilledIdentityUrl(undefined, "not a url"), null);
   });
 });
 
@@ -954,6 +1020,10 @@ describe("sanitizeFixtureBody (#352)", () => {
   test("redacts common compact and camelCase sensitive keys", () => {
     const out = sanitizeFixtureBody({
       accessToken: "access-token",
+      idToken: "id-token",
+      authToken: "auth-token",
+      clientSecret: "client-secret",
+      secretKey: "secret-key",
       sessionId: "session-id",
       cookieValue: "cookie-value",
       passwordHash: "password-hash",
@@ -964,6 +1034,10 @@ describe("sanitizeFixtureBody (#352)", () => {
     });
 
     assert.equal(out.accessToken, "[redacted]");
+    assert.equal(out.idToken, "[redacted]");
+    assert.equal(out.authToken, "[redacted]");
+    assert.equal(out.clientSecret, "[redacted]");
+    assert.equal(out.secretKey, "[redacted]");
     assert.equal(out.sessionId, "[redacted]");
     assert.equal(out.cookieValue, "[redacted]");
     assert.equal(out.passwordHash, "[redacted]");
@@ -1339,6 +1413,10 @@ describe("subnetContact", () => {
     assert.equal(subnetContact("None"), null);
     assert.equal(subnetContact("deprecated@gmail.com"), null); // junk local-part
     assert.equal(subnetContact("not an email"), null);
+    assert.equal(subnetContact("javascript:alert(1)@example.com"), null);
+    assert.equal(subnetContact("<|system|>@example.com"), null);
+    assert.equal(subnetContact("https://evil.com@127.0.0.1/x"), null);
+    assert.equal(subnetContact("mailto:javascript:alert(1)@example.com"), null);
     assert.equal(subnetContact("http://127.0.0.1/x"), null); // not public
     assert.equal(subnetContact(""), null);
     assert.equal(subnetContact(null), null);

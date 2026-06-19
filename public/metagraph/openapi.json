@@ -70,6 +70,74 @@
           {
             "additionalProperties": true,
             "properties": {
+              "blocked_subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "blocked_subnets": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
+                    "callable_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "categories": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "completeness_score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "integration_readiness": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "readiness_tier": {
+                      "type": "string"
+                    },
+                    "service_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "subnet_type": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "agent_readiness"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "blocker_summary": {
+                "additionalProperties": true,
+                "type": "object"
+              },
               "callable_service_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -82,6 +150,9 @@
                 "items": {
                   "additionalProperties": true,
                   "properties": {
+                    "agent_readiness": {
+                      "$ref": "#/components/schemas/AgentReadinessStatus"
+                    },
                     "base_url": {
                       "type": [
                         "string",
@@ -171,6 +242,9 @@
           {
             "additionalProperties": true,
             "properties": {
+              "agent_readiness": {
+                "$ref": "#/components/schemas/AgentReadinessStatus"
+              },
               "categories": {
                 "items": {
                   "type": "string"
@@ -234,6 +308,9 @@
                     "fixture": {
                       "$ref": "#/components/schemas/SurfaceFixtureReference"
                     },
+                    "fixture_status": {
+                      "$ref": "#/components/schemas/AgentServiceFixtureStatus"
+                    },
                     "health": {
                       "additionalProperties": true,
                       "type": "object"
@@ -251,6 +328,16 @@
                       "type": [
                         "string",
                         "null"
+                      ]
+                    },
+                    "schema_source": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AgentServiceSchemaSource"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "schema_status": {
@@ -296,6 +383,87 @@
             "type": "object"
           }
         ]
+      },
+      "AgentReadinessBlocker": {
+        "additionalProperties": false,
+        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
+        "properties": {
+          "code": {
+            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema.",
+            "type": "string"
+          },
+          "field": {
+            "description": "Registry field, artifact family, or evidence surface that needs attention.",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "next_action": {
+            "description": "Concrete maintainer/contributor action to clear or explain the blocker.",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "hard",
+              "missing-data",
+              "needs-review"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "field",
+          "next_action"
+        ],
+        "type": "object"
+      },
+      "AgentReadinessStatus": {
+        "additionalProperties": false,
+        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
+        "properties": {
+          "blocker_level": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            },
+            "type": "array"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "blocker_level",
+          "blockers",
+          "missing_fields"
+        ],
+        "type": "object"
       },
       "AgentResourcesArtifact": {
         "allOf": [
@@ -430,6 +598,112 @@
             "type": "object"
           }
         ]
+      },
+      "AgentServiceFixtureStatus": {
+        "additionalProperties": false,
+        "description": "Fixture availability or absence reason for an agent-catalog service.",
+        "properties": {
+          "artifact_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "available",
+              "missing",
+              "capture-failed",
+              "auth-required",
+              "non-get",
+              "unsupported-kind"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "artifact_path",
+          "captured_at"
+        ],
+        "type": "object"
+      },
+      "AgentServiceSchemaSource": {
+        "additionalProperties": false,
+        "description": "Source metadata for the schema artifact associated with an agent-catalog service.",
+        "properties": {
+          "artifact": {
+            "description": "Metagraphed schema artifact path.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hash": {
+            "description": "Content hash for the captured schema artifact.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match": {
+            "description": "How the callable service was linked to the schema artifact.",
+            "enum": [
+              "surface-id",
+              "schema-url",
+              "same-origin-openapi"
+            ],
+            "type": "string"
+          },
+          "observed_at": {
+            "description": "When the schema snapshot was observed, if available.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "Schema capture status from the schema index.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surface_id": {
+            "description": "Schema/OpenAPI surface that supplied the artifact.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Machine-readable schema URL, when known.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "surface_id",
+          "match",
+          "url",
+          "artifact",
+          "status",
+          "observed_at",
+          "hash"
+        ],
+        "type": "object"
       },
       "ApiIndexArtifact": {
         "allOf": [
@@ -767,6 +1041,135 @@
           }
         ]
       },
+      "BulkHealthTrendsArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "windows": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "granularity": {
+                  "enum": [
+                    "1d"
+                  ],
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "subnets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "avg_latency_ms": {
+                        "minimum": 0,
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "netuid": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "points": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "avg_latency_ms": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "date": {
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                              "type": "string"
+                            },
+                            "samples": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "uptime_ratio": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "date",
+                            "samples",
+                            "uptime_ratio",
+                            "avg_latency_ms"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "samples": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "uptime_ratio": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "netuid",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms",
+                      "points"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "days",
+                "granularity",
+                "subnet_count",
+                "subnets"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "windows"
+        ],
+        "type": "object"
+      },
       "CacheProfile": {
         "enum": [
           "short",
@@ -868,6 +1271,13 @@
               "medium",
               "high"
             ]
+          },
+          "confirmed_by": {
+            "description": "Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "id": {
             "type": "string"
@@ -1147,6 +1557,7 @@
           "transient",
           "timeout",
           "content-mismatch",
+          "wrong-chain",
           "unknown"
         ]
       },
@@ -1390,6 +1801,420 @@
           "after",
           "before",
           "delta"
+        ],
+        "type": "object"
+      },
+      "CoverageDepthArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "coverage_depth_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "ranked_queue": {
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthQueueEntry"
+                },
+                "type": "array"
+              },
+              "rows": {
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthRow"
+                },
+                "type": "array"
+              },
+              "scoring": {
+                "additionalProperties": true,
+                "properties": {
+                  "methodology": {
+                    "type": "string"
+                  },
+                  "weights": {
+                    "additionalProperties": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "methodology",
+                  "weights"
+                ],
+                "type": "object"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "agent_ready_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "average_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blocked_subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blocker_level_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "callable_subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "gap_code_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "queue_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "row_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "severity_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  },
+                  "tier_counts": {
+                    "additionalProperties": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "row_count",
+                  "agent_ready_count",
+                  "callable_subnet_count",
+                  "blocked_subnet_count",
+                  "queue_count",
+                  "average_score",
+                  "tier_counts",
+                  "blocker_level_counts",
+                  "severity_counts",
+                  "gap_code_counts"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "coverage_depth_version",
+              "subnet_count",
+              "summary",
+              "scoring",
+              "rows",
+              "ranked_queue"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "CoverageDepthQueueEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rank": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "recommended_next_action": {
+            "type": "string"
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "severity": {
+            "enum": [
+              "hard",
+              "missing-data",
+              "needs-review"
+            ],
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "top_gap_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rank",
+          "netuid",
+          "slug",
+          "name",
+          "tier",
+          "score",
+          "priority_score",
+          "severity",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "type": "object"
+      },
+      "CoverageDepthRow": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_status": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          },
+          "blocker_level": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          },
+          "completeness_score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "curation_level": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dimensions": {
+            "additionalProperties": true,
+            "properties": {
+              "callable_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "candidate_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "candidate_operational_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "data_artifact_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "docs_url_present": {
+                "type": "boolean"
+              },
+              "example_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixture_available_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fixture_status_counts": {
+                "additionalProperties": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              "official_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "provider_claimed_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "registry_observed_surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "schema_missing_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "schema_service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sdk_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "service_kinds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "source_repo_present": {
+                "type": "boolean"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "surface_count",
+              "official_surface_count",
+              "registry_observed_surface_count",
+              "provider_claimed_surface_count",
+              "service_count",
+              "callable_service_count",
+              "service_kinds",
+              "schema_service_count",
+              "schema_missing_count",
+              "fixture_available_count",
+              "fixture_status_counts",
+              "example_count",
+              "sdk_count",
+              "candidate_count",
+              "candidate_operational_count",
+              "data_artifact_count",
+              "source_repo_present",
+              "docs_url_present"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readiness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recommended_next_action": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subnet_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tier": {
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ],
+            "type": "string"
+          },
+          "top_gap_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "top_gaps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "score",
+          "tier",
+          "priority_score",
+          "agent_status",
+          "blocker_level",
+          "readiness_score",
+          "dimensions",
+          "top_gaps",
+          "top_gap_codes",
+          "recommended_next_action"
         ],
         "type": "object"
       },
@@ -1700,6 +2525,10 @@
           "surface_id": {
             "type": "string"
           },
+          "surface_key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url for the affected surface.",
+            "type": "string"
+          },
           "user_reported": {
             "type": "boolean"
           }
@@ -1708,6 +2537,7 @@
           "id",
           "endpoint_id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -2081,6 +2911,10 @@
           "surface_id": {
             "type": "string"
           },
+          "surface_key": {
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links.",
+            "type": "string"
+          },
           "url": {
             "format": "uri",
             "type": "string"
@@ -2089,6 +2923,7 @@
         "required": [
           "id",
           "surface_id",
+          "surface_key",
           "netuid",
           "layer",
           "kind",
@@ -2308,6 +3143,72 @@
           {
             "additionalProperties": true,
             "properties": {
+              "candidate_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "coverage": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "artifact_path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "captured_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "response_status": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "available",
+                        "missing",
+                        "capture-failed"
+                      ],
+                      "type": "string"
+                    },
+                    "subnet_slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "surface_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface_id",
+                    "netuid",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "fixture_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -2353,11 +3254,22 @@
                 },
                 "type": "array"
               },
+              "missing_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
               "published_at": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "status_counts": {
+                "additionalProperties": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "object"
               }
             },
             "required": [
@@ -6571,6 +7483,14 @@
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
           },
+          "surface_id": {
+            "description": "Human-readable surface alias retained for display/back-compat.",
+            "type": "string"
+          },
+          "surface_key": {
+            "description": "Stable surface identity (#1005) when the pool endpoint came from a catalogued surface.",
+            "type": "string"
+          },
           "url": {
             "format": "uri",
             "type": "string"
@@ -6682,8 +7602,47 @@
       },
       "RpcUsageArtifact": {
         "additionalProperties": true,
-        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file).",
+        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, per-endpoint request distribution, and bounded time buckets for heatmaps. Computed live from the rpc_proxy_events telemetry (no static file).",
         "properties": {
+          "bucket_granularity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buckets": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "avg_latency_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "errors": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "requests": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ts": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "ts",
+                "requests",
+                "errors",
+                "avg_latency_ms"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "endpoints": {
             "items": {
               "additionalProperties": true,
@@ -6862,7 +7821,8 @@
           "source",
           "summary",
           "endpoints",
-          "networks"
+          "networks",
+          "buckets"
         ],
         "type": "object"
       },
@@ -9295,6 +10255,13 @@
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
+          "last_verified_at": {
+            "description": "Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -9407,6 +10374,10 @@
             },
             "type": "array"
           },
+          "stale": {
+            "description": "Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified.",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
           },
@@ -9515,6 +10486,102 @@
           "public_safe"
         ],
         "type": "object"
+      },
+      "SurfaceAliasesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "aliases": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "current_id": {
+                      "type": "string"
+                    },
+                    "deprecated_id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "surface_key": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "deprecated_id",
+                    "surface_key",
+                    "current_id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source": {
+                "const": "generated-surface-rename-aliases"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "carried_alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "current_surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "new_alias_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "previous_surface_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "alias_count",
+                  "carried_alias_count",
+                  "new_alias_count",
+                  "previous_surface_count",
+                  "current_surface_count"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "source",
+              "summary",
+              "aliases"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "SurfaceFixtureReference": {
         "additionalProperties": false,
@@ -10270,6 +11337,29 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "blocked_subnet_count": 5000000,
+                    "blocked_subnets": [
+                      {
+                        "agent_readiness": {
+                          "blocker_level": "none",
+                          "blockers": [
+                            {
+                              "code": "example",
+                              "field": "example",
+                              "message": "example",
+                              "next_action": "example",
+                              "severity": "hard"
+                            }
+                          ],
+                          "missing_fields": [
+                            "example"
+                          ],
+                          "status": "callable"
+                        },
+                        "netuid": 7
+                      }
+                    ],
+                    "blocker_summary": {},
                     "callable_service_count": 1,
                     "contract_version": "2026-06-06.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
@@ -10410,6 +11500,22 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "agent_readiness": {
+                      "blocker_level": "none",
+                      "blockers": [
+                        {
+                          "code": "example",
+                          "field": "example",
+                          "message": "example",
+                          "next_action": "example",
+                          "severity": "hard"
+                        }
+                      ],
+                      "missing_fields": [
+                        "example"
+                      ],
+                      "status": "callable"
+                    },
                     "categories": [
                       "example"
                     ],
@@ -10888,6 +11994,15 @@
                 "stale",
                 "rejected"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -11510,6 +12625,329 @@
         ]
       }
     },
+    "/api/v1/coverage-depth": {
+      "get": {
+        "operationId": "coverageDepth",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tier",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agent-ready",
+                "machine-usable",
+                "candidate-review",
+                "needs-evidence",
+                "hard-blocked",
+                "missing-interface"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "callable",
+                "base-layer",
+                "candidate",
+                "needs-evidence",
+                "blocked"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "blocker_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "none",
+                "hard-blocked",
+                "needs-review",
+                "missing-data"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agent_status",
+                "blocker_level",
+                "name",
+                "netuid",
+                "priority_score",
+                "score",
+                "tier"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "contract_version": "2026-06-06.1",
+                    "coverage_depth_version": 1,
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "notes": "Example description.",
+                    "ranked_queue": [
+                      {
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "priority_score": 100,
+                        "rank": 1,
+                        "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                        "score": 100,
+                        "severity": "hard",
+                        "slug": "example-subnet",
+                        "tier": "example",
+                        "top_gap_codes": [
+                          "example"
+                        ]
+                      }
+                    ],
+                    "rows": [
+                      {
+                        "agent_status": "callable",
+                        "blocker_level": "none",
+                        "dimensions": {
+                          "callable_service_count": 1,
+                          "candidate_count": 1,
+                          "candidate_operational_count": 1,
+                          "data_artifact_count": 1,
+                          "docs_url_present": false,
+                          "example_count": 1,
+                          "fixture_available_count": 1,
+                          "fixture_status_counts": {},
+                          "official_surface_count": 1,
+                          "provider_claimed_surface_count": 1,
+                          "registry_observed_surface_count": 1,
+                          "schema_missing_count": 1,
+                          "schema_service_count": 1,
+                          "sdk_count": 1,
+                          "service_count": 1,
+                          "service_kinds": [
+                            "example"
+                          ],
+                          "source_repo_present": false,
+                          "surface_count": 1
+                        },
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "priority_score": 100,
+                        "readiness_score": 100,
+                        "recommended_next_action": "2026-06-01T00:00:00.000Z",
+                        "score": 100,
+                        "slug": "example-subnet",
+                        "tier": "agent-ready",
+                        "top_gap_codes": [
+                          "example"
+                        ],
+                        "top_gaps": [
+                          {
+                            "code": "example",
+                            "field": "example",
+                            "message": "example",
+                            "next_action": "example",
+                            "severity": "hard"
+                          }
+                        ]
+                      }
+                    ],
+                    "schema_version": 1,
+                    "scoring": {
+                      "methodology": "GET",
+                      "weights": {}
+                    },
+                    "subnet_count": 1,
+                    "summary": {
+                      "agent_ready_count": 1,
+                      "average_score": 100,
+                      "blocked_subnet_count": 5000000,
+                      "blocker_level_counts": {},
+                      "callable_subnet_count": 1,
+                      "gap_code_counts": {},
+                      "queue_count": 1,
+                      "row_count": 1,
+                      "severity_counts": {},
+                      "tier_counts": {}
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CoverageDepthArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+        "tags": [
+          "registry",
+          "review",
+          "api-dx"
+        ]
+      }
+    },
     "/api/v1/curation": {
       "get": {
         "operationId": "curation",
@@ -11533,6 +12971,15 @@
                 "manifested",
                 "probed"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -11961,6 +13408,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -12040,6 +13496,7 @@
                         "state": "active",
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "user_reported": false
                       }
                     ],
@@ -12183,6 +13640,15 @@
                 "subtensor-wss",
                 "archive"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -12508,6 +13974,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -12590,6 +14065,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -12721,6 +14197,15 @@
             "name": "q",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -12907,7 +14392,15 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "candidate_count": 1,
                     "contract_version": "2026-06-06.1",
+                    "coverage": [
+                      {
+                        "netuid": 7,
+                        "status": "available",
+                        "surface_id": "example"
+                      }
+                    ],
                     "fixture_count": 1,
                     "fixtures": [
                       {
@@ -12916,9 +14409,13 @@
                       }
                     ],
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "missing_count": 1,
                     "notes": "Example description.",
                     "published_at": "2026-06-01T00:00:00.000Z",
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "status_counts": {
+                      "example": 1
+                    }
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -13223,6 +14720,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -13427,6 +14933,15 @@
                 "failed",
                 "unknown"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -13695,8 +15210,18 @@
                 "timeout",
                 "transient",
                 "unsupported",
-                "unsafe"
+                "unsafe",
+                "wrong-chain"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -13884,6 +15409,149 @@
         "summary": "Fetch compact daily health history.",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/health/trends": {
+      "get": {
+        "operationId": "healthTrendsBulk",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "source": "live-cron-prober",
+                    "windows": {
+                      "example": {
+                        "days": 1,
+                        "granularity": "1d",
+                        "subnet_count": 1,
+                        "subnets": [
+                          {
+                            "avg_latency_ms": 120,
+                            "netuid": 7,
+                            "points": [
+                              {
+                                "avg_latency_ms": 120,
+                                "date": "2026-06-01",
+                                "samples": 1,
+                                "uptime_ratio": 0.9966
+                              }
+                            ],
+                            "samples": 1,
+                            "uptime_ratio": 0.9966
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BulkHealthTrendsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+        "tags": [
+          "health",
+          "analytics"
         ]
       }
     },
@@ -14394,6 +16062,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -14738,6 +16415,15 @@
                 "provider-claimed",
                 "registry-observed"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -15169,6 +16855,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -15251,6 +16946,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -15773,6 +17469,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -16074,6 +17779,15 @@
             "name": "q",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -16453,6 +18167,15 @@
             "name": "q",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -16927,6 +18650,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -17232,6 +18964,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -17502,6 +19243,15 @@
                 "placeholder",
                 "empty"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -17857,6 +19607,15 @@
                 "failed",
                 "unknown"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -18251,6 +20010,15 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "bucket_granularity": "example",
+                    "buckets": [
+                      {
+                        "avg_latency_ms": 120,
+                        "errors": 1,
+                        "requests": 1,
+                        "ts": 1
+                      }
+                    ],
                     "endpoints": [
                       {
                         "endpoint_id": "https://api.metagraph.sh/example",
@@ -18380,7 +20148,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+        "summary": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
         "tags": [
           "rpc",
           "analytics",
@@ -18526,6 +20294,15 @@
             "name": "q",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -18859,6 +20636,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -19054,7 +20840,8 @@
             "name": "netuids",
             "required": false,
             "schema": {
-              "pattern": "^\\d+(,\\d+)*$",
+              "maxLength": 767,
+              "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
               "type": "string"
             }
           },
@@ -19131,6 +20918,15 @@
                 "root",
                 "application"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -19402,6 +21198,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -19664,6 +21461,15 @@
                 "stale",
                 "rejected"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -19950,6 +21756,15 @@
           },
           {
             "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -20032,6 +21847,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -20176,6 +21992,15 @@
             "name": "q",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -20386,6 +22211,15 @@
             "name": "review_state",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -20722,8 +22556,18 @@
                 "timeout",
                 "transient",
                 "unsupported",
-                "unsafe"
+                "unsafe",
+                "wrong-chain"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -21765,6 +23609,7 @@
                         "score": 100,
                         "status": "ok",
                         "surface_id": "example",
+                        "surface_key": "example",
                         "url": "https://api.metagraph.sh/example"
                       }
                     ],
@@ -22143,6 +23988,15 @@
             "name": "provider",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },
@@ -22672,6 +24526,15 @@
             "name": "provider",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
               "type": "string"
             }
           },

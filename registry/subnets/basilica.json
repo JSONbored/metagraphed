@@ -72,6 +72,23 @@
         "timeout_ms": 10000
       },
       "notes": "Website linked from the Basilica repository homepage."
+    },
+    {
+      "id": "sn-39-basilica-examples",
+      "name": "Basilica code examples",
+      "kind": "example",
+      "url": "https://github.com/one-covenant/basilica/tree/main/examples",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/basilica"],
+      "probe": {
+        "enabled": false,
+        "method": "HEAD",
+        "expect": "any"
+      },
+      "notes": "Official Basilica examples — hello-world, storage, and FastAPI quickstarts."
     }
   ]
 }

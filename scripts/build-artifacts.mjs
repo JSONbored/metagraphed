@@ -22,6 +22,7 @@ import {
   stripUrls,
   buildRpcEndpointArtifact,
   flattenSurfaces,
+  withSurfaceFreshness,
   formatLlmMarkdownText,
   hashJson,
   listJsonFilesRecursive,
@@ -41,12 +42,14 @@ import {
   publishedAt,
   readJson,
   registrySurfaceKey,
+  corroboratingSources,
   clusterDomainFromUrl,
   redactCredentialedUrls,
   sanitizeOpenApiDocument,
   repoRoot,
   sha256Hex,
   slugify,
+  stableStringify,
   staleOperationalKinds,
   subnetLifecycle,
   surfaceFixtureReference,
@@ -71,6 +74,10 @@ import {
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
 import { buildChangelog } from "./changelog.mjs";
+import {
+  buildSurfaceAliasArtifact,
+  SURFACE_ALIASES_RELATIVE_PATH,
+} from "../src/surface-aliases.mjs";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
@@ -108,21 +115,50 @@ const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),
 );
 const chainSubnets = nativeSnapshot.subnets;
-const candidatesByNetuid = groupByNetuid(candidates);
-const mergedSubnets = chainSubnets.map((nativeSubnet) =>
-  mergeSubnet(
-    nativeSubnet,
-    overlayByNetuid.get(nativeSubnet.netuid),
-    candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
-  ),
-);
 const activeOverlayNetuids = new Set(
   chainSubnets.map((subnet) => subnet.netuid),
 );
 const activeOverlays = overlays.filter((overlay) =>
   activeOverlayNetuids.has(overlay.netuid),
 );
-const surfaces = flattenSurfaces(activeOverlays);
+// #1006: stamp the per-surface `stale` flag against the committed native-snapshot
+// captured_at — a deterministic reference (never wall-clock), so the flag stays
+// reproducible across builds. `last_verified_at` is added inside flattenSurfaces.
+const surfaces = withSurfaceFreshness(
+  flattenSurfaces(activeOverlays),
+  Date.parse(nativeSnapshot.captured_at),
+);
+// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
+// surface's (netuid | kind | normalized-url) identity is the same thing already
+// promoted to the registry — flag it `superseded_by` the surface (stamped onto
+// candidateIndex below) so it is neither queued for enrichment nor counted as a
+// separate, unverified duplicate. Computed here, ahead of the per-subnet counts,
+// so PR2's count propagation (candidate_count, coverage facets, per-subnet
+// candidate lists, the enrichment + curation leaderboards) excludes the dupe.
+// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
+const curatedSurfaceIdByRegistryKey = new Map(
+  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
+);
+const supersededBySurfaceId = (candidate) =>
+  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
+// Raw grouping: registry-wide intake stats (coverage.candidate_count /
+// candidate_subnet_count) describe every candidate record, matching the full
+// candidates.json registry which retains superseded records (flagged).
+const candidatesByNetuid = groupByNetuid(candidates);
+// Dedup'd grouping: per-subnet candidate_count + candidate lists drop superseded
+// duplicates — a superseded candidate IS the curated surface already in
+// `surfaces`, so counting/listing it again is the "shown twice" bug (#1002).
+const activeCandidates = candidates.filter(
+  (candidate) => !supersededBySurfaceId(candidate),
+);
+const activeCandidatesByNetuid = groupByNetuid(activeCandidates);
+const mergedSubnets = chainSubnets.map((nativeSubnet) =>
+  mergeSubnet(
+    nativeSubnet,
+    overlayByNetuid.get(nativeSubnet.netuid),
+    activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+  ),
+);
 const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
@@ -168,6 +204,7 @@ const previousSchemaIndexArtifact = await readOptionalJson(
 // rebuild can re-attach it (the index stays light, but the files carry the
 // spec for get_api_schema).
 const capturedSchemaDocuments = new Map();
+const capturedSchemaDetails = new Map();
 {
   const schemasDir = path.join(r2OutputRoot, "schemas");
   let schemaFiles;
@@ -179,20 +216,27 @@ const capturedSchemaDocuments = new Map();
   for (const file of schemaFiles) {
     if (!file.endsWith(".json") || file === "index.json") continue;
     const existing = await readOptionalJson(path.join(schemasDir, file));
-    if (existing?.document)
-      capturedSchemaDocuments.set(
-        `schemas/${file}`,
-        sanitizeOpenApiDocument(existing.document),
-      );
+    if (!existing?.document) {
+      continue;
+    }
+    const relativePath = `schemas/${file}`;
+    const document = sanitizeOpenApiDocument(existing.document);
+    const { document: _document, ...snapshot } = existing;
+    capturedSchemaDocuments.set(relativePath, document);
+    capturedSchemaDetails.set(relativePath, {
+      documentHash: hashJson(document),
+      snapshot,
+    });
   }
 }
 
 // Captured live request/response fixtures (issue #352), written to R2 staging by
 // the network capture:fixtures step. Preserve them across the wipe so the build
-// can re-serve fixtures/{surface_id}.json + index them in the committed
-// fixtures.json. Absent on a pure deterministic build (no capture run) → an
-// empty index, populated on the next refresh (same model as schemas).
+// can re-serve fixtures/{surface_id}.json + index them in R2 fixtures.json.
+// Absent on a pure deterministic build (no capture run) → an empty index,
+// populated on the next refresh (same model as schemas).
 const capturedFixtures = new Map();
+let capturedFixtureReport = null;
 {
   const fixturesDir = path.join(r2OutputRoot, "fixtures");
   let fixtureFiles;
@@ -204,6 +248,10 @@ const capturedFixtures = new Map();
   for (const file of fixtureFiles) {
     if (!file.endsWith(".json") || file === "index.json") continue;
     const existing = await readOptionalJson(path.join(fixturesDir, file));
+    if (file === "_capture-report.json") {
+      capturedFixtureReport = existing;
+      continue;
+    }
     if (existing?.surface_id) {
       capturedFixtures.set(existing.surface_id, existing);
     }
@@ -459,7 +507,9 @@ const endpointIncidents = buildEndpointIncidentArtifact({
 const curationReview = buildCurationReview(
   mergedSubnets,
   surfaces,
-  candidates,
+  // #1002: the curation/adapter review leaderboard counts un-promoted candidates
+  // only — a surface-superseded candidate is already curated, not a review target.
+  activeCandidates,
   verification,
   reviewDecisions,
 );
@@ -467,8 +517,11 @@ const schemaDriftArtifact =
   reusableSchemaDriftArtifact(surfaces, previousSchemaDriftArtifact) ||
   buildSchemaDriftPlaceholder(surfaces);
 const schemaIndexArtifact =
-  reusableSchemaIndexArtifact(surfaces, previousSchemaIndexArtifact) ||
-  buildSchemaIndexPlaceholder();
+  reusableSchemaIndexArtifact(
+    surfaces,
+    previousSchemaIndexArtifact,
+    capturedSchemaDetails,
+  ) || buildSchemaIndexPlaceholder();
 const contracts = buildContractsArtifact(generatedAt);
 const openApi = await buildCanonicalOpenApiArtifact(generatedAt);
 
@@ -574,19 +627,17 @@ const coverage = {
   ),
 };
 
-// #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
-// surface's (netuid | kind | normalized-url) identity is the same thing already
-// promoted to the registry — flag it `superseded_by` the surface so it is not
-// presented or queued for enrichment as a separate, unverified duplicate.
-// Keyed on registrySurfaceKey (same key flattenSurfaces hashes into surface.id).
-const curatedSurfaceIdByRegistryKey = new Map(
-  surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
-);
-const supersededBySurfaceId = (candidate) =>
-  curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
+// #1002: superseded_by is computed once above (curatedSurfaceIdByRegistryKey /
+// supersededBySurfaceId), ahead of the per-subnet counts; stamp it onto every
+// candidate here. The full candidates.json registry keeps superseded records,
+// flagged, for transparency + the dedup link; the *_active indexes below drop
+// them so per-subnet counts/lists, profiles, and the enrichment/curation
+// leaderboards present each (netuid, kind, url) exactly once.
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
+  // #1007: distinct discovery sources that corroborate this candidate.
+  confirmed_by: corroboratingSources(candidate),
   verification:
     fullVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -597,6 +648,7 @@ const candidateIndex = candidates.map((candidate) => ({
 const canonicalCandidateIndex = candidates.map((candidate) => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
+  confirmed_by: corroboratingSources(candidate),
   verification:
     canonicalVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
@@ -604,9 +656,22 @@ const canonicalCandidateIndex = candidates.map((candidate) => ({
     nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
       ?.name || null,
 }));
+// Dedup'd projections of the candidate index (drop surface-superseded dupes) for
+// the per-subnet detail/profile candidate lists + the enrichment queue (#1002).
+const activeCandidateIndex = candidateIndex.filter(
+  (candidate) => !candidate.superseded_by,
+);
+const activeCanonicalCandidateIndex = canonicalCandidateIndex.filter(
+  (candidate) => !candidate.superseded_by,
+);
 
 const profileArtifacts = buildSubnetProfileArtifacts({
-  candidates: canonicalCandidateIndex,
+  // #1002: profile candidate_count + identity_evidence (promotion targeting) read
+  // only un-promoted candidates — a surface-superseded candidate is already a
+  // curated surface, so it neither inflates the count nor "needs promotion".
+  // completeness_score ignores candidates entirely, so the SN74 flywheel is
+  // untouched.
+  candidates: activeCanonicalCandidateIndex,
   endpoints: endpointResources.endpoints,
   healthSurfaces: healthArtifacts.latest.surfaces,
   nativeIdentitiesByNetuid: new Map(
@@ -636,14 +701,45 @@ const AGENT_SERVICE_KINDS = new Set([
   "sse",
   "data-artifact",
 ]);
+const FIXTURE_SERVICE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "data-artifact",
+]);
 const overviewSurfacesByNetuid = groupByNetuid(surfaces);
 const agentSchemaBySurfaceId = new Map(
   (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
 );
+const agentSchemaEntries = (schemaIndexArtifact.schemas || []).filter(
+  (entry) => entry.status === "captured" && entry.path,
+);
+const agentSchemaByUrl = new Map();
+const agentSchemasByNetuidOrigin = new Map();
+for (const entry of agentSchemaEntries) {
+  for (const url of [
+    entry.schema_url,
+    entry.url,
+    entry.snapshot?.surface_url,
+  ]) {
+    if (url && !agentSchemaByUrl.has(url)) agentSchemaByUrl.set(url, entry);
+  }
+  for (const origin of schemaOriginKeys(entry)) {
+    const key = `${entry.netuid}|${origin}`;
+    if (!agentSchemasByNetuidOrigin.has(key)) {
+      agentSchemasByNetuidOrigin.set(key, []);
+    }
+    agentSchemasByNetuidOrigin.get(key).push(entry);
+  }
+}
 const agentEndpointBySurfaceId = new Map(
   endpointResources.endpoints
     .filter((endpoint) => endpoint.surface_id)
     .map((endpoint) => [endpoint.surface_id, endpoint]),
+);
+const capturedFixtureStatusBySurfaceId = new Map(
+  (capturedFixtureReport?.surfaces || [])
+    .filter((entry) => entry?.surface_id)
+    .map((entry) => [entry.surface_id, entry]),
 );
 
 // Integration readiness (objective 0-100) for EVERY subnet — surfaced inline on
@@ -688,6 +784,12 @@ const readinessByNetuid = new Map(
         ?.completeness_score,
       sourceRepo: subnet.source_repo,
       docsUrl: subnet.docs_url,
+      // Intentionally the raw grouping (not activeCandidatesByNetuid): readiness
+      // is a score, not a count. has_candidate_api credits that a community
+      // operational surface was flagged for this subnet; once it's promoted to a
+      // curated surface it's already captured by has_callable_api, so excluding
+      // the superseded candidate would only drop a redundant +4 from an
+      // already-more-ready subnet. Counts dedup (#1002); this score does not.
       candidates: candidatesByNetuid.get(subnet.netuid),
     }),
   ]),
@@ -703,7 +805,8 @@ for (const profile of profileArtifacts.profiles) {
   profile.readiness = readiness;
 }
 const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
-  candidates: canonicalCandidateIndex,
+  // #1002: the enrichment leaderboard counts un-promoted candidates only.
+  candidates: activeCanonicalCandidateIndex,
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
@@ -894,7 +997,10 @@ await writeJson(artifactFile("lineage.json"), {
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
 await fs.rm(r2ArtifactDir("profiles"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
-  const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+  // #1002: per-subnet candidate lists drop surface-superseded dupes so an agent
+  // sees each (netuid, kind, url) once — as a verified surface, not also as a
+  // candidate. The full candidates.json registry still carries the flagged dupe.
+  const subnetCandidates = activeCandidatesByNetuid.get(subnet.netuid) || [];
   const subnetSurfaces = surfaces.filter(
     (surface) => surface.netuid === subnet.netuid,
   );
@@ -918,7 +1024,7 @@ for (const subnet of mergedSubnets) {
     generated_at: generatedAt,
     profile: profileArtifacts.byNetuid.get(subnet.netuid),
     subnet,
-    candidate_surfaces: candidateIndex.filter(
+    candidate_surfaces: activeCandidateIndex.filter(
       (candidate) => candidate.netuid === subnet.netuid,
     ),
     endpoints: subnetEndpoints,
@@ -944,6 +1050,16 @@ await writeJson(artifactFile("surfaces.json"), {
     "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
   surfaces,
 });
+await writeJson(
+  artifactFile(SURFACE_ALIASES_RELATIVE_PATH),
+  buildSurfaceAliasArtifact({
+    contractVersion,
+    currentSurfaces: surfaces,
+    generatedAt,
+    previousAliases: null,
+    previousSurfaces: null,
+  }),
+);
 await fs.rm(r2ArtifactDir("surfaces"), {
   recursive: true,
   force: true,
@@ -1142,7 +1258,8 @@ const overviewGapPriorities = groupByNetuid(
   curationReview.gap_priorities || [],
 );
 const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
-const overviewCandidatesByNetuid = groupByNetuid(candidateIndex);
+// #1002: overview counts.candidates is a per-subnet count → exclude superseded.
+const overviewCandidatesByNetuid = groupByNetuid(activeCandidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
   const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
@@ -1178,6 +1295,184 @@ for (const subnet of mergedSubnets) {
 // AGENT_SERVICE_KINDS + agentSchemaBySurfaceId + agentEndpointBySurfaceId are
 // declared earlier (service-resolution indices, alongside integration readiness)
 // and reused here.
+function urlOrigin(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function schemaOriginKeys(entry) {
+  return [
+    ...new Set(
+      [entry.schema_url, entry.url, entry.snapshot?.surface_url]
+        .map((value) => (value ? urlOrigin(value) : null))
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function firstDeterministicSchemaEntry(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+  const bySchemaUrl = new Map();
+  for (const entry of entries) {
+    const key = entry.schema_url || entry.path;
+    if (!bySchemaUrl.has(key)) bySchemaUrl.set(key, []);
+    bySchemaUrl.get(key).push(entry);
+  }
+  if (bySchemaUrl.size !== 1) return null;
+  return [...entries].sort((a, b) =>
+    String(a.surface_id).localeCompare(String(b.surface_id)),
+  )[0];
+}
+
+function resolveAgentServiceSchema(surface) {
+  const direct = agentSchemaBySurfaceId.get(surface.id);
+  if (direct) return { entry: direct, match: "surface-id" };
+
+  if (surface.schema_url) {
+    const exactUrl = agentSchemaByUrl.get(surface.schema_url);
+    if (exactUrl) return { entry: exactUrl, match: "schema-url" };
+  }
+
+  // A curated `not-captured` status is an explicit maintainer classification.
+  // Do not override it with same-origin projection.
+  if (surface.schema_status === "not-captured") {
+    return { entry: null, match: null };
+  }
+
+  if (surface.kind !== "subnet-api") {
+    return { entry: null, match: null };
+  }
+
+  const origin = urlOrigin(surface.url);
+  if (!origin) return { entry: null, match: null };
+  const sameOrigin = firstDeterministicSchemaEntry(
+    agentSchemasByNetuidOrigin.get(`${surface.netuid}|${origin}`),
+  );
+  if (sameOrigin) return { entry: sameOrigin, match: "same-origin-openapi" };
+  return { entry: null, match: null };
+}
+
+function serviceSchemaSource(schemaResolution) {
+  const schema = schemaResolution?.entry || null;
+  if (!schema) return null;
+  return {
+    surface_id: schema.surface_id,
+    match: schemaResolution.match,
+    url: schema.schema_url || schema.url || null,
+    artifact: schema.path || null,
+    status: schema.status || null,
+    observed_at: schema.snapshot?.observed_at || null,
+    hash: schema.hash || null,
+  };
+}
+
+function fixtureProbeMethod(surface) {
+  return (surface.probe?.method || "GET").toUpperCase();
+}
+
+function isFixtureCaptureCandidateSurface(surface) {
+  return (
+    FIXTURE_SERVICE_KINDS.has(surface.kind) &&
+    surface.public_safe &&
+    !surface.auth_required &&
+    surface.probe?.enabled !== false &&
+    fixtureProbeMethod(surface) === "GET"
+  );
+}
+
+function fixtureCoverageEntry(surface) {
+  const fixtureRef = surfaceFixtureReference(
+    surface.id,
+    capturedFixtures.get(surface.id),
+  );
+  const report = capturedFixtureStatusBySurfaceId.get(surface.id);
+  const status = fixtureRef
+    ? "available"
+    : report && report.status !== "captured"
+      ? "capture-failed"
+      : "missing";
+  return {
+    surface_id: surface.id,
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug || null,
+    kind: surface.kind,
+    status,
+    reason:
+      status === "capture-failed"
+        ? report.reason || "capture failed"
+        : status === "missing"
+          ? "no captured fixture available"
+          : null,
+    captured_at: fixtureRef?.captured_at || null,
+    response_status:
+      fixtureRef?.response?.status ?? report?.response_status ?? null,
+    artifact_path: fixtureRef?.artifact_path || null,
+  };
+}
+
+function fixtureCoverageEntries(surfacesForFixtures) {
+  return surfacesForFixtures
+    .filter(isFixtureCaptureCandidateSurface)
+    .map(fixtureCoverageEntry)
+    .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+}
+
+function serviceFixtureStatus(surface, fixtureRef, authRequired) {
+  if (fixtureRef) {
+    return {
+      status: "available",
+      reason: null,
+      artifact_path: fixtureRef.artifact_path,
+      captured_at: fixtureRef.captured_at,
+    };
+  }
+  if (authRequired) {
+    return {
+      status: "auth-required",
+      reason: "fixture capture skips credentialed services",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  if (!FIXTURE_SERVICE_KINDS.has(surface.kind)) {
+    return {
+      status: "unsupported-kind",
+      reason: "fixture capture only samples JSON-returning service kinds",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  if (
+    surface.probe?.enabled === false ||
+    fixtureProbeMethod(surface) !== "GET"
+  ) {
+    return {
+      status: "non-get",
+      reason: "fixture capture only samples enabled GET probes",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  const report = capturedFixtureStatusBySurfaceId.get(surface.id);
+  if (report && report.status !== "captured") {
+    return {
+      status: "capture-failed",
+      reason: report.reason || "capture failed",
+      artifact_path: null,
+      captured_at: null,
+    };
+  }
+  return {
+    status: "missing",
+    reason: "no captured fixture available",
+    artifact_path: null,
+    captured_at: null,
+  };
+}
+
 function buildSubnetServices(netuid) {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
@@ -1185,7 +1480,8 @@ function buildSubnetServices(netuid) {
     )
     .map((surface) => {
       const endpoint = agentEndpointBySurfaceId.get(surface.id) || null;
-      const schema = agentSchemaBySurfaceId.get(surface.id) || null;
+      const schemaResolution = resolveAgentServiceSchema(surface);
+      const schema = schemaResolution.entry || null;
       const classification = endpoint?.classification || null;
       const authRequired = Boolean(
         surface.auth_required || schema?.snapshot?.auth_required,
@@ -1201,6 +1497,11 @@ function buildSubnetServices(netuid) {
       const fixtureRef = surfaceFixtureReference(
         surface.id,
         capturedFixtures.get(surface.id),
+      );
+      const fixtureStatus = serviceFixtureStatus(
+        surface,
+        fixtureRef,
+        authRequired,
       );
       return {
         surface_id: surface.id,
@@ -1225,9 +1526,12 @@ function buildSubnetServices(netuid) {
           auth: authDetail,
         }),
         ...(fixtureRef ? { fixture: fixtureRef } : {}),
-        schema_url: surface.schema_url || null,
-        schema_status: surface.schema_status || null,
+        fixture_status: fixtureStatus,
+        schema_url: surface.schema_url || schema?.schema_url || null,
+        schema_status:
+          surface.schema_status || (schema ? "machine-readable" : null),
         schema_artifact: schema?.path || null,
+        schema_source: serviceSchemaSource(schemaResolution),
         // Live-only: status/latency/last_ok are overlaid from KV/D1 on read.
         // No build-time status is stored — cold reads report `unknown`.
         // (`classification` stays a structural input to eligibility below, but
@@ -1326,14 +1630,609 @@ function subnetIntegrationReadiness({
   };
 }
 
+function buildAgentReadiness({
+  subnet,
+  profile,
+  services,
+  readiness,
+  callableCount,
+}) {
+  const components = readiness?.components || {};
+  const subnetType = profile?.subnet_type || subnet.subnet_type || null;
+  const blockers = [];
+  const add = (code, severity, message, field, nextAction) => {
+    blockers.push({
+      code,
+      severity,
+      message,
+      field,
+      next_action: nextAction,
+    });
+  };
+
+  if (subnetType === "root") {
+    add(
+      "base-layer-only",
+      "hard",
+      "Root/base-layer surfaces are not application-subnet APIs.",
+      "subnet_type",
+      "Use get_best_rpc_endpoint or /api/v1/rpc/endpoints for chain RPC access.",
+    );
+  }
+  if (!components.active_lifecycle) {
+    add(
+      "inactive-lifecycle",
+      "hard",
+      "The subnet is not marked active in the registry snapshot.",
+      "lifecycle",
+      "Wait for an active mainnet subnet before recommending it for integrations.",
+    );
+  }
+  if ((services || []).length === 0) {
+    add(
+      "missing-callable-service",
+      "missing-data",
+      "No public-safe callable service is catalogued for this subnet yet.",
+      "surfaces",
+      "Find and verify an official subnet-api, OpenAPI, SSE, or data-artifact surface.",
+    );
+  } else if (callableCount === 0) {
+    add(
+      "service-not-callable",
+      "hard",
+      "Catalogued services exist, but none are structurally callable.",
+      "services.eligibility.callable",
+      "Review unsafe/dead service classifications before recommending this subnet.",
+    );
+  }
+  if (components.has_candidate_api && callableCount === 0) {
+    add(
+      "candidate-api-needs-review",
+      "needs-review",
+      "A candidate operational surface exists but has not been promoted into the callable catalog.",
+      "registry.candidates",
+      "Verify the candidate surface and promote it if it is public, safe, and subnet-owned.",
+    );
+  }
+  if (!components.has_candidate_api && callableCount === 0) {
+    add(
+      "no-candidate-api",
+      "missing-data",
+      "No candidate API surface has been found for this subnet.",
+      "registry.candidates",
+      "Search official docs, source repos, and project sites for a public integration surface.",
+    );
+  }
+  if (!components.documented && callableCount > 0) {
+    add(
+      "missing-schema",
+      "missing-data",
+      "At least one callable service exists, but no captured schema artifact is available.",
+      "schemas",
+      "Capture an official OpenAPI/Swagger/JSON Schema source or document that no schema exists.",
+    );
+  }
+  if (!components.auth_clarity && callableCount > 0) {
+    add(
+      "unclear-auth",
+      "missing-data",
+      "Callable services exist, but auth requirements are not fully machine-readable.",
+      "auth",
+      "Declare auth_required/auth_schemes or capture auth metadata from the service schema.",
+    );
+  }
+  if (!components.has_public_docs) {
+    add(
+      "missing-docs",
+      "missing-data",
+      "No public documentation link is recorded.",
+      "docs_url",
+      "Add an official docs URL or document that no public docs exist.",
+    );
+  }
+  if (!components.has_source_repo) {
+    add(
+      "missing-source-repo",
+      "missing-data",
+      "No public source repository is recorded.",
+      "source_repo",
+      "Add an official source repo or document that no public repo exists.",
+    );
+  }
+  if (!components.profile_complete) {
+    add(
+      "profile-incomplete",
+      "missing-data",
+      "The subnet profile is below the completeness threshold used by integration readiness.",
+      "completeness_score",
+      "Fill the missing required and operational registry fields for this subnet.",
+    );
+  }
+
+  const status =
+    callableCount > 0
+      ? "callable"
+      : subnetType === "root"
+        ? "base-layer"
+        : components.has_candidate_api
+          ? "candidate"
+          : components.has_public_docs || components.has_source_repo
+            ? "needs-evidence"
+            : "blocked";
+  const blockerLevel = blockers.some((blocker) => blocker.severity === "hard")
+    ? "hard-blocked"
+    : blockers.some((blocker) => blocker.severity === "needs-review")
+      ? "needs-review"
+      : blockers.length > 0
+        ? "missing-data"
+        : "none";
+
+  return {
+    status,
+    blocker_level: blockerLevel,
+    blockers,
+    missing_fields: [
+      ...new Set(
+        blockers
+          .filter((blocker) => blocker.severity === "missing-data")
+          .map((blocker) => blocker.field),
+      ),
+    ].sort(),
+  };
+}
+
+function summarizeAgentReadinessBlockers(blockedSubnets) {
+  const blockers = blockedSubnets.flatMap(
+    (subnet) => subnet.agent_readiness?.blockers || [],
+  );
+  return {
+    by_status: countBy(
+      blockedSubnets,
+      (subnet) => subnet.agent_readiness?.status || "unknown",
+    ),
+    by_level: countBy(
+      blockedSubnets,
+      (subnet) => subnet.agent_readiness?.blocker_level || "unknown",
+    ),
+    by_severity: countBy(blockers, "severity"),
+    by_code: countBy(blockers, "code"),
+  };
+}
+
+const COVERAGE_DEPTH_VERSION = 1;
+const COVERAGE_DEPTH_WEIGHTS = {
+  callable_service: 25,
+  schema_availability: 15,
+  fixture_state: 10,
+  examples_or_sdk: 10,
+  provenance: 15,
+  readiness_blockers: 15,
+  profile_completeness: 10,
+};
+const COVERAGE_DEPTH_QUEUE_LIMIT = 100;
+const COVERAGE_DEPTH_SEVERITY_RANK = {
+  hard: 0,
+  "needs-review": 1,
+  "missing-data": 2,
+};
+
+function coverageDepthTier({ agentReadiness, dimensions, gaps, score }) {
+  if (agentReadiness?.blocker_level === "hard-blocked") {
+    return "hard-blocked";
+  }
+  if (
+    dimensions.callable_service_count > 0 &&
+    agentReadiness?.blocker_level === "none" &&
+    gaps.length === 0 &&
+    score >= 80
+  ) {
+    return "agent-ready";
+  }
+  if (dimensions.callable_service_count > 0) {
+    return "machine-usable";
+  }
+  if (
+    agentReadiness?.status === "candidate" ||
+    dimensions.candidate_operational_count > 0
+  ) {
+    return "candidate-review";
+  }
+  if (agentReadiness?.status === "needs-evidence") {
+    return "needs-evidence";
+  }
+  return "missing-interface";
+}
+
+function addCoverageDepthGap(gaps, seenCodes, gap) {
+  if (seenCodes.has(gap.code)) return;
+  seenCodes.add(gap.code);
+  gaps.push(gap);
+}
+
+function sortCoverageDepthGaps(gaps) {
+  return [...gaps].sort((a, b) => {
+    const severityDelta =
+      (COVERAGE_DEPTH_SEVERITY_RANK[a.severity] ?? 9) -
+      (COVERAGE_DEPTH_SEVERITY_RANK[b.severity] ?? 9);
+    if (severityDelta !== 0) return severityDelta;
+    return a.code.localeCompare(b.code);
+  });
+}
+
+function scoreCoverageDepthDimensions({
+  dimensions,
+  agentReadiness,
+  completenessScore,
+}) {
+  const callableCoverage =
+    dimensions.callable_service_count > 0
+      ? 1
+      : dimensions.candidate_operational_count > 0
+        ? 0.3
+        : 0;
+  const schemaCoverage =
+    dimensions.callable_service_count > 0
+      ? dimensions.schema_service_count / dimensions.callable_service_count
+      : 0;
+  const explicitFixtureAbsenceCount = Object.values(
+    dimensions.fixture_status_counts,
+  ).reduce((sum, count) => sum + count, 0);
+  const fixtureCoverage =
+    dimensions.callable_service_count > 0
+      ? dimensions.fixture_available_count > 0
+        ? dimensions.fixture_available_count / dimensions.callable_service_count
+        : explicitFixtureAbsenceCount > 0
+          ? 0.4
+          : 0
+      : 0;
+  const exampleSdkCoverage =
+    dimensions.example_count + dimensions.sdk_count > 0 ? 1 : 0;
+  const provenanceCoverage =
+    dimensions.official_surface_count > 0
+      ? 1
+      : dimensions.provider_claimed_surface_count > 0
+        ? 0.6
+        : dimensions.registry_observed_surface_count > 0
+          ? 0.35
+          : 0;
+  const readinessCoverage =
+    agentReadiness?.blocker_level === "none"
+      ? 1
+      : agentReadiness?.blocker_level === "missing-data"
+        ? 0.65
+        : agentReadiness?.blocker_level === "needs-review"
+          ? 0.45
+          : 0;
+  const profileCoverage = Math.max(
+    0,
+    Math.min(1, Number(completenessScore || 0) / 100),
+  );
+
+  return Math.round(
+    COVERAGE_DEPTH_WEIGHTS.callable_service * callableCoverage +
+      COVERAGE_DEPTH_WEIGHTS.schema_availability * schemaCoverage +
+      COVERAGE_DEPTH_WEIGHTS.fixture_state * fixtureCoverage +
+      COVERAGE_DEPTH_WEIGHTS.examples_or_sdk * exampleSdkCoverage +
+      COVERAGE_DEPTH_WEIGHTS.provenance * provenanceCoverage +
+      COVERAGE_DEPTH_WEIGHTS.readiness_blockers * readinessCoverage +
+      COVERAGE_DEPTH_WEIGHTS.profile_completeness * profileCoverage,
+  );
+}
+
+function coverageDepthPriorityScore({ row, gaps }) {
+  const actionableGaps = gaps.filter((gap) => gap.severity !== "hard");
+  if (row.subnet_type === "root" || actionableGaps.length === 0) {
+    return 0;
+  }
+  const severityWeight = actionableGaps.reduce((sum, gap) => {
+    if (gap.severity === "needs-review") return sum + 18;
+    return sum + 12;
+  }, 0);
+  const base =
+    row.dimensions.callable_service_count > 0
+      ? 42
+      : row.dimensions.candidate_operational_count > 0
+        ? 30
+        : 14;
+  const deficitWeight = Math.round((100 - row.score) * 0.25);
+  const reviewWeight = row.curation_level === "maintainer-reviewed" ? 0 : 6;
+  const hardBlockerPenalty = row.blocker_level === "hard-blocked" ? 35 : 0;
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      base +
+        Math.min(32, severityWeight) +
+        deficitWeight +
+        reviewWeight -
+        hardBlockerPenalty,
+    ),
+  );
+}
+
+function buildCoverageDepthArtifact({
+  subnets,
+  profileByNetuid,
+  surfacesByNetuid,
+  servicesByNetuid,
+  candidatesByNetuid,
+  readinessByNetuid,
+  agentReadinessByNetuid,
+  examplesByNetuid,
+  generatedAt,
+  contractVersion,
+}) {
+  const rows = subnets
+    .map((subnet) => {
+      const profile = profileByNetuid.get(subnet.netuid) || null;
+      const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
+      const services = servicesByNetuid.get(subnet.netuid) || [];
+      const callableServices = services.filter(
+        (service) => service.eligibility?.callable,
+      );
+      const candidatesForSubnet = candidatesByNetuid.get(subnet.netuid) || [];
+      const agentReadiness = agentReadinessByNetuid.get(subnet.netuid) || {
+        status: "blocked",
+        blocker_level: "missing-data",
+        blockers: [],
+        missing_fields: [],
+      };
+      const readiness = readinessByNetuid.get(subnet.netuid) || {
+        score: 0,
+      };
+      const examples = examplesByNetuid.get(subnet.netuid) || [];
+      const sdkCount = subnetSurfaces.filter(
+        (surface) => surface.kind === "sdk",
+      ).length;
+      const fixtureStatusCounts = countBy(
+        callableServices,
+        (service) => service.fixture_status?.status || "missing",
+      );
+      const dimensions = {
+        surface_count: subnetSurfaces.length,
+        official_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "official",
+        ).length,
+        registry_observed_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "registry-observed",
+        ).length,
+        provider_claimed_surface_count: subnetSurfaces.filter(
+          (surface) => surface.authority === "provider-claimed",
+        ).length,
+        service_count: services.length,
+        callable_service_count: callableServices.length,
+        service_kinds: [
+          ...new Set(callableServices.map((service) => service.kind)),
+        ].sort(),
+        schema_service_count: callableServices.filter(
+          (service) => service.schema_artifact,
+        ).length,
+        schema_missing_count: callableServices.filter(
+          (service) => !service.schema_artifact,
+        ).length,
+        fixture_available_count: callableServices.filter(
+          (service) => service.fixture_status?.status === "available",
+        ).length,
+        fixture_status_counts: fixtureStatusCounts,
+        example_count: examples.length,
+        sdk_count: sdkCount,
+        candidate_count: candidatesForSubnet.length,
+        candidate_operational_count: candidatesForSubnet.filter((candidate) =>
+          OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
+        ).length,
+        data_artifact_count: callableServices.filter(
+          (service) => service.kind === "data-artifact",
+        ).length,
+        source_repo_present: Boolean(subnet.source_repo),
+        docs_url_present: Boolean(subnet.docs_url),
+      };
+      const score = scoreCoverageDepthDimensions({
+        dimensions,
+        agentReadiness,
+        completenessScore: profile?.completeness_score,
+      });
+      const gaps = [];
+      const seenGapCodes = new Set();
+      for (const blocker of agentReadiness.blockers || []) {
+        addCoverageDepthGap(gaps, seenGapCodes, blocker);
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.schema_missing_count > 0 &&
+        dimensions.schema_service_count > 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "partial-schema-coverage",
+          severity: "missing-data",
+          message:
+            "Some callable services have captured schemas, but at least one callable service is still schema-less.",
+          field: "schemas",
+          next_action:
+            "Capture or explicitly mark schema absence for the remaining callable services.",
+        });
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.fixture_available_count === 0 &&
+        ((dimensions.fixture_status_counts.missing || 0) > 0 ||
+          (dimensions.fixture_status_counts["capture-failed"] || 0) > 0)
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-fixture",
+          severity: "missing-data",
+          message:
+            "Callable services exist, but no sanitized request/response fixture is available.",
+          field: "fixtures",
+          next_action:
+            "Run fixture capture in write mode or document why the callable surface cannot publish a public sample.",
+        });
+      }
+      if (
+        dimensions.callable_service_count > 0 &&
+        dimensions.example_count + dimensions.sdk_count === 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-example-or-sdk",
+          severity: "missing-data",
+          message:
+            "Callable services exist, but no example or SDK surface is recorded.",
+          field: "examples",
+          next_action:
+            "Add an official quickstart, SDK, or minimal code example for this subnet.",
+        });
+      }
+      if (
+        dimensions.surface_count > 0 &&
+        dimensions.official_surface_count === 0
+      ) {
+        addCoverageDepthGap(gaps, seenGapCodes, {
+          code: "missing-official-provenance",
+          severity: "needs-review",
+          message:
+            "Surfaces are catalogued, but none are marked operator-official.",
+          field: "authority",
+          next_action:
+            "Verify whether any recorded surface is first-party, or add official evidence.",
+        });
+      }
+      const sortedGaps = sortCoverageDepthGaps(gaps);
+      const row = {
+        netuid: subnet.netuid,
+        slug: subnet.slug,
+        name: subnet.name,
+        subnet_type: profile?.subnet_type || subnet.subnet_type || null,
+        curation_level: profile?.curation_level || null,
+        profile_level: profile?.profile_level || null,
+        score,
+        tier: coverageDepthTier({
+          agentReadiness,
+          dimensions,
+          gaps: sortedGaps,
+          score,
+        }),
+        priority_score: 0,
+        agent_status: agentReadiness.status,
+        blocker_level: agentReadiness.blocker_level,
+        readiness_score: readiness.score,
+        completeness_score: profile?.completeness_score ?? null,
+        dimensions,
+        top_gaps: sortedGaps.slice(0, 6),
+        top_gap_codes: sortedGaps.slice(0, 6).map((gap) => gap.code),
+        recommended_next_action:
+          sortedGaps.find((gap) => gap.severity !== "hard")?.next_action ||
+          sortedGaps[0]?.next_action ||
+          null,
+      };
+      row.priority_score = coverageDepthPriorityScore({
+        row,
+        gaps: sortedGaps,
+      });
+      return row;
+    })
+    .sort((a, b) => a.netuid - b.netuid);
+
+  const rankedQueue = rows
+    .filter((row) => row.priority_score > 0 && row.top_gaps.length > 0)
+    .sort((a, b) => {
+      const priorityDelta = b.priority_score - a.priority_score;
+      if (priorityDelta !== 0) return priorityDelta;
+      const scoreDelta = a.score - b.score;
+      if (scoreDelta !== 0) return scoreDelta;
+      return a.netuid - b.netuid;
+    })
+    .slice(0, COVERAGE_DEPTH_QUEUE_LIMIT)
+    .map((row, index) => {
+      const primaryGap =
+        row.top_gaps.find((gap) => gap.severity !== "hard") || row.top_gaps[0];
+      return {
+        rank: index + 1,
+        netuid: row.netuid,
+        slug: row.slug,
+        name: row.name,
+        tier: row.tier,
+        score: row.score,
+        priority_score: row.priority_score,
+        severity: primaryGap.severity,
+        top_gap_codes: row.top_gap_codes,
+        recommended_next_action:
+          row.recommended_next_action || primaryGap.next_action,
+      };
+    });
+  const allTopGaps = rows.flatMap((row) => row.top_gaps);
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    coverage_depth_version: COVERAGE_DEPTH_VERSION,
+    subnet_count: rows.length,
+    summary: {
+      row_count: rows.length,
+      agent_ready_count: rows.filter((row) => row.tier === "agent-ready")
+        .length,
+      callable_subnet_count: rows.filter(
+        (row) => row.dimensions.callable_service_count > 0,
+      ).length,
+      blocked_subnet_count: rows.filter(
+        (row) => row.blocker_level === "hard-blocked",
+      ).length,
+      queue_count: rankedQueue.length,
+      average_score:
+        rows.length === 0
+          ? 0
+          : Math.round(
+              rows.reduce((sum, row) => sum + row.score, 0) / rows.length,
+            ),
+      tier_counts: countBy(rows, "tier"),
+      blocker_level_counts: countBy(rows, "blocker_level"),
+      severity_counts: countBy(allTopGaps, "severity"),
+      gap_code_counts: countBy(allTopGaps, "code"),
+    },
+    scoring: {
+      methodology:
+        "Deterministic build-time score over callable services, schema coverage, fixture state, examples/SDKs, provenance, readiness blockers, and profile completeness. Live health is intentionally separate.",
+      weights: COVERAGE_DEPTH_WEIGHTS,
+    },
+    rows,
+    ranked_queue: rankedQueue,
+  };
+}
+
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
+// #1008: code-examples (quickstarts / SDK snippets) per subnet, projected from
+// the curated `example`-kind surfaces. They are reference material, not callable
+// services, so they ride alongside `services` in the catalog rather than inside
+// it (no snippets/health) — the per-subnet file lists them, the index carries a
+// count. Examples also flow into surfaces.json + the profile via supported_kinds.
+const exampleSurfacesByNetuid = groupByNetuid(
+  surfaces.filter((surface) => surface.kind === "example"),
+);
+const subnetExamples = (netuid) =>
+  (exampleSurfacesByNetuid.get(netuid) || []).map((surface) => ({
+    surface_id: surface.id,
+    name: surface.name,
+    url: surface.url,
+    provider: surface.provider || null,
+    authority: surface.authority || null,
+  }));
 const agentCatalogIndex = [];
+const blockedAgentCatalogIndex = [];
+const agentReadinessByNetuid = new Map();
 let callableServiceCount = 0;
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = servicesByNetuid.get(subnet.netuid) || [];
+  const examples = subnetExamples(subnet.netuid);
   // Reuse the readiness computed once above for the index/profile surfaces.
   const readiness = readinessByNetuid.get(subnet.netuid);
+  const callable = services.filter((s) => s.eligibility.callable).length;
+  const agentReadiness = buildAgentReadiness({
+    subnet,
+    profile,
+    services,
+    readiness,
+    callableCount: callable,
+  });
+  agentReadinessByNetuid.set(subnet.netuid, agentReadiness);
   await writeJson(artifactFile(`agent-catalog/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1346,12 +2245,14 @@ for (const subnet of mergedSubnets) {
     completeness_score: profile?.completeness_score ?? null,
     integration_readiness: readiness.score,
     readiness,
+    agent_readiness: agentReadiness,
     service_count: services.length,
     services,
+    example_count: examples.length,
+    examples,
   });
-  if (services.length > 0) {
-    const callable = services.filter((s) => s.eligibility.callable).length;
-    callableServiceCount += callable;
+  callableServiceCount += callable;
+  if (callable > 0) {
     // Primary callable surface (first callable, else first overall) — gives the
     // index a "where do I call this + is it up" rollup so single-read consumers
     // (e.g. the /ask RAG join) don't have to fan out to per-subnet detail files.
@@ -1368,18 +2269,46 @@ for (const subnet of mergedSubnets) {
       completeness_score: profile?.completeness_score ?? null,
       integration_readiness: readiness.score,
       readiness,
+      agent_readiness: agentReadiness,
       service_count: services.length,
       callable_count: callable,
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
+      example_count: examples.length,
       base_url: primary?.base_url ?? null,
       // Live-only: overlaid from KV/D1 on read; `unknown` when the store is cold.
       health: "unknown",
+    });
+  } else {
+    blockedAgentCatalogIndex.push({
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      categories: Array.isArray(profile?.categories) ? profile.categories : [],
+      subnet_type: profile?.subnet_type || null,
+      completeness_score: profile?.completeness_score ?? null,
+      integration_readiness: readiness.score,
+      readiness_tier: readiness.readiness_tier,
+      service_count: services.length,
+      callable_count: callable,
+      agent_readiness: agentReadiness,
     });
   }
 }
 const agentCatalogSubnets = agentCatalogIndex.sort(
   (a, b) => a.netuid - b.netuid,
 );
+const blockedAgentCatalogSubnets = blockedAgentCatalogIndex.sort(
+  (a, b) => a.netuid - b.netuid,
+);
+const agentCatalogContent = {
+  total_subnet_count: mergedSubnets.length,
+  subnet_count: agentCatalogIndex.length,
+  blocked_subnet_count: blockedAgentCatalogIndex.length,
+  callable_service_count: callableServiceCount,
+  blocker_summary: summarizeAgentReadinessBlockers(blockedAgentCatalogSubnets),
+  subnets: agentCatalogSubnets,
+  blocked_subnets: blockedAgentCatalogSubnets,
+};
 await writeJson(artifactFile("agent-catalog.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -1389,12 +2318,23 @@ await writeJson(artifactFile("agent-catalog.json"), {
   // discerning agent reads honest freshness, not a 1970 stamp (issue #349).
   generated_at: generatedAt,
   published_at: publishedAt(),
-  content_hash: hashJson(agentCatalogSubnets),
-  total_subnet_count: mergedSubnets.length,
-  subnet_count: agentCatalogIndex.length,
-  callable_service_count: callableServiceCount,
-  subnets: agentCatalogSubnets,
+  content_hash: hashJson(agentCatalogContent),
+  ...agentCatalogContent,
 });
+
+const coverageDepthArtifact = buildCoverageDepthArtifact({
+  subnets: mergedSubnets,
+  profileByNetuid: profileArtifacts.byNetuid,
+  surfacesByNetuid: overviewSurfacesByNetuid,
+  servicesByNetuid,
+  candidatesByNetuid: activeCandidatesByNetuid,
+  readinessByNetuid,
+  agentReadinessByNetuid,
+  examplesByNetuid: exampleSurfacesByNetuid,
+  generatedAt,
+  contractVersion,
+});
+await writeJson(artifactFile("coverage-depth.json"), coverageDepthArtifact);
 
 // --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------
 // The emerging standard for making a site/API legible to LLMs. Served from the
@@ -1412,7 +2352,9 @@ const llmsHeader = [
   "## Machine entrypoints",
   `- [OpenAPI 3.1](${llmsApiBase}/metagraph/openapi.json): full machine contract for all routes`,
   `- [Agent capability catalog](${llmsApiBase}/api/v1/agent-catalog): per-subnet callable services + their schemas + health`,
+  `- [Coverage depth scorecard](${llmsApiBase}/api/v1/coverage-depth): one ranked view of which subnets are machine-usable, what is missing, and which enrichment actions should happen next`,
   `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
+  `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
   `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}). Content-negotiated via Accept, or append .rss/.atom/.json.`,
@@ -1666,6 +2608,12 @@ const agentResourcesContent = {
       url: `${llmsApiBase}/agent.md`,
     },
     {
+      id: "agent-workflows",
+      title: "Agent workflows",
+      kind: "guide",
+      url: `${llmsApiBase}/agent-workflows.md`,
+    },
+    {
       id: "skill",
       title: "Bittensor skill",
       kind: "skill",
@@ -1694,6 +2642,12 @@ const agentResourcesContent = {
       title: "Agent capability catalog",
       kind: "api",
       url: `${llmsApiBase}/api/v1/agent-catalog`,
+    },
+    {
+      id: "coverage-depth",
+      title: "Coverage depth scorecard",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/coverage-depth`,
     },
     {
       id: "semantic-search",
@@ -1778,6 +2732,7 @@ const sitemapUrls = [
   `${llmsApiBase}/llms.txt`,
   `${llmsApiBase}/llms-full.txt`,
   `${llmsApiBase}/agent.md`,
+  `${llmsApiBase}/agent-workflows.md`,
   `${llmsApiBase}/auth.md`,
   `${llmsApiBase}/metagraph/openapi.json`,
   `${llmsApiBase}/.well-known/api-catalog`,
@@ -1835,6 +2790,7 @@ Anonymous abuse-control limits apply per client IP (no key raises them):
 ## Discovery
 
 - Machine index: ${llmsApiBase}/llms.txt
+- Agent workflows: ${llmsApiBase}/agent-workflows.md
 - API catalog (RFC 9727): ${llmsApiBase}/.well-known/api-catalog
 - OpenAPI 3.1: ${llmsApiBase}/metagraph/openapi.json
 - MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
@@ -2010,14 +2966,26 @@ const fixtureIndexEntries = [...capturedFixtures.values()]
     response_status: fixture.response?.status ?? null,
   }))
   .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+const fixtureCoverage = fixtureCoverageEntries(surfaces);
 for (const fixture of capturedFixtures.values()) {
   await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
+}
+if (capturedFixtureReport) {
+  await writeJson(artifactFile("fixtures/_capture-report.json"), {
+    ...capturedFixtureReport,
+    mode: capturedFixtureReport.mode || "write",
+  });
 }
 await writeJson(artifactFile("fixtures.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   published_at: publishedAt(),
+  candidate_count: fixtureCoverage.length,
   fixture_count: fixtureIndexEntries.length,
+  missing_count: fixtureCoverage.filter((entry) => entry.status !== "available")
+    .length,
+  status_counts: countBy(fixtureCoverage, "status"),
+  coverage: fixtureCoverage,
   fixtures: fixtureIndexEntries,
 });
 
@@ -2162,6 +3130,11 @@ const operationalSurfaces = surfaces
   )
   .map((surface) => ({
     surface_id: surface.id,
+    // #1005: the stable identity (srf-<hash of netuid|kind|url>) the prober
+    // re-keys D1 health history onto, so a display-name/slug rename no longer
+    // orphans the surface's probe history. The hand-authored surface_id stays
+    // for back-compat + display.
+    surface_key: surface.key,
     netuid: surface.netuid,
     subnet_slug: surface.subnet_slug,
     subnet_name: surface.subnet_name,
@@ -4588,7 +5561,7 @@ function reusableSchemaDriftArtifact(surfaces, previous) {
   return previous;
 }
 
-function reusableSchemaIndexArtifact(surfaces, previous) {
+function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
@@ -4619,6 +5592,7 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
       schemaIndexEntryMatchesSurface(
         entry,
         currentSurfaces.get(entry.surface_id),
+        capturedDetails,
       ),
     )
   ) {
@@ -4662,7 +5636,7 @@ function schemaSurfaceEntryMatchesSurface(entry, surface) {
   );
 }
 
-function schemaIndexEntryMatchesSurface(entry, surface) {
+function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
   if (!schemaSurfaceEntryMatchesSurface(entry, surface)) {
     return false;
   }
@@ -4674,6 +5648,16 @@ function schemaIndexEntryMatchesSurface(entry, surface) {
     );
   }
 
+  const relativePath = schemaDetailArtifactRelativePath(entry.path);
+  const captured = capturedDetails.get(relativePath);
+  // Clean local/CI builds do not have the R2-only per-surface schema detail
+  // files, so only enforce document-backed detail verification when such files
+  // were captured before the staging wipe.
+  const detailMatches =
+    capturedDetails.size === 0 ||
+    (captured &&
+      captured.documentHash === entry.hash &&
+      stableStringify(captured.snapshot) === stableStringify(entry.snapshot));
   return (
     entry.path === `/metagraph/schemas/${surface.id}.json` &&
     typeof entry.content_type === "string" &&
@@ -4689,7 +5673,8 @@ function schemaIndexEntryMatchesSurface(entry, surface) {
     entry.snapshot.schema_url === entry.schema_url &&
     entry.snapshot.hash === entry.hash &&
     (entry.snapshot.previous_hash || null) === (entry.previous_hash || null) &&
-    entry.snapshot.drift_status === entry.drift_status
+    entry.snapshot.drift_status === entry.drift_status &&
+    detailMatches
   );
 }
 
@@ -5737,11 +6722,17 @@ function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
     ).length * 8;
   const machineReviewPenalty =
     subnet.curation.review_state === "maintainer-reviewed" ? -25 : 20;
-  return (
+  // Floor at 0: priority_score is a non-negative ranking signal (schema requires
+  // >= 0). A maintainer-reviewed subnet with no high-value gaps and few candidates
+  // is already lowest priority — the maintainer-reviewed penalty must not push it
+  // negative. (Pre-#1002 this never tripped only because superseded duplicates
+  // inflated candidatesForSubnet.length above the penalty; the dedup exposed it.)
+  return Math.max(
+    0,
     highValueMissing.length * 12 +
-    candidatesForSubnet.length +
-    adapterBonus +
-    machineReviewPenalty
+      candidatesForSubnet.length +
+      adapterBonus +
+      machineReviewPenalty,
   );
 }
 

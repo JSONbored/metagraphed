@@ -254,7 +254,15 @@ function buildControlArtifacts(manifest) {
       content_type: "application/json; charset=utf-8",
       key: `${manifest.run_prefix}build-summary.json`,
       latest_key: "latest/build-summary.json",
-      local_path: path.join(repoRoot, "public/metagraph/build-summary.json"),
+      // build-summary.json is R2-only (#1003): the build writes it to the R2
+      // staging tier, not public/metagraph/. Read it from staging like the full
+      // r2-manifest.json above — the old public/ path was left stale by #1003
+      // and broke every publish at the control-artifact upload step.
+      local_path: path.join(
+        repoRoot,
+        R2_STAGING_RELATIVE_ROOT,
+        "build-summary.json",
+      ),
       path: "/metagraph/build-summary.json",
     },
   ];

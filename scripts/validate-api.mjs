@@ -5,8 +5,8 @@ import path from "node:path";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import {
-  artifactFilePath,
   createLocalArtifactEnv,
+  latestArtifactDate,
   readJson,
   repoRoot,
 } from "./lib.mjs";
@@ -23,13 +23,14 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const env = createLocalArtifactEnv();
-// health/latest.json is no longer generated (live-only health). The
-// health/history artifact is keyed by the build's generated_at date in the
-// deterministic (no-live-probe) build that validate/CI run, so derive the date
-// from a stable committed artifact's generated_at.
-const latestHealthHistoryDate = String(
-  (await readJson(artifactFilePath("subnets.json"))).generated_at,
-).slice(0, 10);
+// health/latest.json is no longer generated (live-only health). Daily
+// health-history snapshots are R2-only locally, so validate against the newest
+// staged/public snapshot instead of inferring a date from an unrelated artifact.
+const latestHealthHistoryDate = await latestArtifactDate("health/history");
+assert.ok(
+  latestHealthHistoryDate,
+  "validate:api requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` before validating the API",
+);
 
 const checks = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
@@ -44,6 +45,15 @@ const checks = [
       assert.equal(body.data.netuid, 7);
       assert.equal(typeof body.data.windows, "object");
       assert.equal(typeof body.data.windows["7d"].samples, "number");
+    },
+  ],
+  [
+    "/api/v1/health/trends",
+    (body) => {
+      assert.equal(body.data.source, "live-cron-prober");
+      assert.equal(typeof body.data.windows, "object");
+      assert.equal(Array.isArray(body.data.windows["7d"].subnets), true);
+      assert.equal(typeof body.data.windows["7d"].subnet_count, "number");
     },
   ],
   [
@@ -88,6 +98,8 @@ const checks = [
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
       assert.equal(typeof body.data.summary.total_requests, "number");
+      assert.equal(typeof body.data.bucket_granularity, "string");
+      assert.equal(Array.isArray(body.data.buckets), true);
       assert.equal(Array.isArray(body.data.endpoints), true);
       assert.equal(Array.isArray(body.data.networks), true);
     },
@@ -216,6 +228,19 @@ const checks = [
     "/api/v1/coverage",
     (body) =>
       assert.equal(Number.isInteger(body.data.chain_subnet_count), true),
+  ],
+  [
+    "/api/v1/coverage-depth?tier=machine-usable&limit=3",
+    (body) => {
+      assert.equal(Number.isInteger(body.data.subnet_count), true);
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(body.data.rows.length <= 3, true);
+      assert.equal(
+        body.data.rows.every((row) => row.tier === "machine-usable"),
+        true,
+      );
+      assert.equal(Array.isArray(body.data.ranked_queue), true);
+    },
   ],
   [
     "/api/v1/economics",
