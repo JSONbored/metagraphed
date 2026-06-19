@@ -35,8 +35,8 @@ const BUCKETS: Bucket[] = [
   },
 ];
 
-function maskHost(url?: string): string {
-  if (!url) return "—";
+function maskHost(url?: unknown): string {
+  if (typeof url !== "string" || !url) return "—";
   try {
     return new URL(url).host;
   } catch {
