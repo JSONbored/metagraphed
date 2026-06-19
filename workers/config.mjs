@@ -12,10 +12,12 @@ export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Distinct minute (odd) so it never collides with the 2-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
-// Trend windows for /api/v1/subnets/{netuid}/health/trends.
+// Trend windows for /api/v1/subnets/{netuid}/health/trends and
+// /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
   /^\/metagraph\/health\/(?:latest\.json|summary\.json|subnets\/\d+\.json)$/;
 export const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
+export const BULK_TRENDS_PATH_PATTERN = /^\/api\/v1\/health\/trends$/;
 export const TRENDS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
 export const PERCENTILES_PATH_PATTERN =
@@ -29,6 +31,14 @@ export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
 export const ANALYTICS_WINDOW_PARAM = "window";
+export const RPC_USAGE_BUCKETS = {
+  "7d": { granularity: "1h", bucketMs: 60 * 60 * 1000, maxBuckets: 7 * 24 },
+  "30d": {
+    granularity: "6h",
+    bucketMs: 6 * 60 * 60 * 1000,
+    maxBuckets: 30 * 4,
+  },
+};
 export const MAX_INCIDENT_ROWS = 1000;
 export const MAX_GLOBAL_INCIDENT_SOURCE_ROWS = 5000;
 export const DAY_MS = 24 * 60 * 60 * 1000;

@@ -143,6 +143,7 @@ const DISCOVERY_LINK_HEADER = [
   `<${DISCOVERY_LINK_BASE}/metagraph/openapi.json>; rel="service-desc"; type="application/json"`,
   `<${DISCOVERY_LINK_BASE}/llms.txt>; rel="service-doc"; type="text/plain"`,
   `<${DISCOVERY_LINK_BASE}/agent.md>; rel="service-doc"; type="text/markdown"`,
+  `<${DISCOVERY_LINK_BASE}/agent-workflows.md>; rel="service-doc"; type="text/markdown"`,
   `<${DISCOVERY_LINK_BASE}/health>; rel="status"; type="application/json"`,
   `<${DISCOVERY_LINK_BASE}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
   // Content feeds (#741) — registry changes, content-negotiated (json/rss/atom).
@@ -176,6 +177,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
 <link rel="service-doc" href="/llms.txt" type="text/plain">
 <link rel="service-doc" href="/agent.md" type="text/markdown">
+<link rel="service-doc" href="/agent-workflows.md" type="text/markdown">
 <link rel="status" href="/health" type="application/json">
 <link rel="describedby" href="/.well-known/mcp/server-card.json" type="application/json">
 <link rel="alternate" href="/api/v1/feeds/registry.rss" type="application/rss+xml" title="metagraphed registry changes">
@@ -188,6 +190,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <ul>
 <li><a href="/llms.txt">llms.txt</a> — LLM/agent discovery index</li>
 <li><a href="/agent.md">agent.md</a> — copyable agent system prompt</li>
+<li><a href="/agent-workflows.md">agent-workflows.md</a> — REST, MCP, npm, and Python workflows</li>
 <li><a href="/metagraph/openapi.json">OpenAPI 3.1 contract</a></li>
 <li><a href="/.well-known/api-catalog">API catalog</a> (RFC 9727 linkset)</li>
 <li><a href="/.well-known/mcp/server-card.json">MCP server card</a> — <code>POST /mcp</code></li>
@@ -244,6 +247,7 @@ export function apiCatalogResponse(request) {
         "service-doc": [
           { href: `${base}/llms.txt`, type: "text/plain" },
           { href: `${base}/agent.md`, type: "text/markdown" },
+          { href: `${base}/agent-workflows.md`, type: "text/markdown" },
         ],
         status: [{ href: `${base}/health`, type: "application/json" }],
         describedby: [

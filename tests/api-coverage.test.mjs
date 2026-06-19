@@ -539,6 +539,18 @@ describe("invalid query handling", () => {
     assert.equal((await res.json()).meta.parameter, "order");
   });
 
+  test("400 invalid_query for an unsupported projected field", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?fields=netuid,not_a_field"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "fields");
+  });
+
   test("paginates with cursor + limit and reports next_cursor", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?limit=2&cursor=0&sort=netuid"),
@@ -1070,6 +1082,52 @@ describe("health trends D1 error handling", () => {
     const body = await res.json();
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
+  });
+
+  test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  throw new Error("d1 down");
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["7d"].subnets, []);
+  });
+
+  test("bulk route treats a D1 response without results as empty", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {};
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["30d"].subnets, []);
   });
 });
 

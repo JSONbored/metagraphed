@@ -36,8 +36,10 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/profiles/{netuid}.json`: per-subnet public-safe profile detail. R2-backed.
 - `/metagraph/surfaces.json`: curated public surfaces only.
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
-- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
-- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed.
+- `/metagraph/surface-aliases.json`: publish-time deprecated `surface_id` alias map for renamed surfaces. The deterministic build emits an empty placeholder; Cloudflare publish fills it from the previous R2 `surfaces.json` + prior alias map before upload.
+- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- Live health overlays, trends, percentiles, incidents, and uptime rollups join/group by `surface_key` when present and keep `surface_id` as the served display alias, so display-name/slug renames do not split probe history.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery. R2-backed.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
@@ -55,6 +57,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
 - `/metagraph/overview/{netuid}.json`: composed per-subnet overview (profile + health + curation + gaps + counts). R2-backed.
 - `/metagraph/registry-summary.json`: registry-wide summary (completeness, top subnets, level counts, latest changes). R2-backed.
+- `/metagraph/coverage-depth.json`: machine-usable coverage depth scorecard with one row per subnet, blocker/gap summaries, and a ranked enrichment queue. R2-backed.
 - `/metagraph/lineage.json`: cross-network subnet lineage — maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence, plus the testnet-only (deploying-soon) count.
 - `/metagraph/fixtures.json`: index of captured live request/response fixtures (which surfaces carry a sanitized sample).
 - `/metagraph/agent-resources.json`: machine index of every AI resource — the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.
@@ -66,11 +69,12 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers. R2-backed.
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
-- `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
+- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing; pool entries include `surface_id` and `surface_key` when backed by catalogued surfaces.
+- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures; incidents include the human `surface_id` alias plus stable `surface_key`.
+- `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's R2-backed input list.
 - `/metagraph/agent-catalog.json`: compact index of subnets exposing callable services for AI agents (per subnet: service kinds + callable count). Committed.
 - `/metagraph/agent-catalog/{netuid}.json`: per-subnet agent capability catalog — each callable service with base URL, auth, machine-readable schema, and build-time health/eligibility. R2-backed.
+- `/metagraph/health/trends.json`: schema for the compact all-subnet 7d/30d daily uptime + latency trend matrix served live from D1 at `GET /api/v1/health/trends` (no static file is written).
 - `/metagraph/health/trends/{netuid}.json`: schema for the computed 7d/30d uptime + latency trends served live from D1 at `GET /api/v1/subnets/{netuid}/health/trends` (no static file is written).
 - `/metagraph/health/percentiles/{netuid}.json`: schema for per-surface latency percentiles (p50/p95/p99) served live from D1 at `GET /api/v1/subnets/{netuid}/health/percentiles` (no static file).
 - `/metagraph/health/incidents/{netuid}.json`: schema for per-surface SLA + reconstructed downtime incidents served live from D1 at `GET /api/v1/subnets/{netuid}/health/incidents` (no static file).
@@ -78,7 +82,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/subnets/{netuid}/uptime.json`: schema for the long-term daily uptime history per operational surface (90d/1y window), served live from the `surface_uptime_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/uptime` (no static file).
 - `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
 - `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards served live from D1 + registry projections at `GET /api/v1/registry/leaderboards` (no static file).
-- `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file).
+- `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/schemas/{surface_id}.json`: captured machine-readable OpenAPI/Swagger schema snapshot detail. R2-backed.
@@ -106,6 +110,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/agent-catalog`: list subnets exposing callable services for AI agents (compact index: service kinds + callable count per subnet).
 - `/api/v1/agent-catalog/{netuid}`: fetch one subnet's agent capability catalog — each callable service with base URL, auth, machine-readable schema, and health/eligibility.
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
+- `/api/v1/coverage-depth`: fetch the machine-usable scorecard and ranked enrichment queue for prioritizing schema, fixture, example, provenance, and review work.
 - `/api/v1/lineage`: fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `/api/v1/fixtures`: fetch the index of captured live request/response fixtures (per-surface samples are at `/metagraph/fixtures/{surface_id}.json`, also via the `get_fixture` MCP tool).
 - `/api/v1/agent-resources`: fetch the AI-resources index (the copyable agent at `/agent.md`, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs).
@@ -114,7 +119,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}/trajectory`: fetch the week-over-week structural trajectory (completeness + counts) from daily snapshots (live from D1).
 - `/api/v1/subnets/{netuid}/uptime`: fetch long-term daily uptime history per operational surface over a 90d/1y window (live from the `surface_uptime_daily` D1 rollup).
 - `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|fastest-growing`, or omit for all).
-- `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry).
+- `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
 - `/api/v1/endpoints`: list generalized endpoint resources and monitored public surfaces.
@@ -138,6 +143,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/health`: fetch global health summary.
 - `/api/v1/health/history/{date}`: fetch compact daily health history.
 - `/api/v1/subnets/{netuid}/health`: fetch health detail for one subnet.
+- `/api/v1/health/trends`: fetch compact all-subnet 7d/30d daily uptime and latency trends (live from D1).
 - `/api/v1/freshness`: fetch freshness and staleness state.
 - `/api/v1/source-health`: fetch upstream source health.
 - `/api/v1/evidence`: fetch public evidence ledger.

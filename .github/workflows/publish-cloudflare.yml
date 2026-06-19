@@ -60,9 +60,7 @@ jobs:
           echo "METAGRAPH_PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
 
       - name: Prepare reviewed publish artifacts
-        run: |
-          npm run build
-          npm run r2:manifest
+        run: npm run build
         env:
           # The production build re-snapshots adapters from live GitHub metadata
           # so the publish is fresh by construction. A token is always present
@@ -70,6 +68,7 @@ jobs:
           # shipping degraded adapter data (mirrors sync-subnets.yml).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METAGRAPH_BUILD_TIMESTAMP: ${{ env.METAGRAPH_PUBLISHED_AT }}
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
@@ -269,13 +268,21 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # changelog:publish overwrote the staged changelog.json with the real diff,
-      # but the r2-manifest still records the build-time PLACEHOLDER changelog's
-      # hash — so r2:upload's per-artifact verification fails ("local artifact
-      # hash mismatch for /metagraph/changelog.json"). Re-stamp the manifest from
-      # the now-final staged artifacts before upload. Gated identically (dry-runs
-      # skip changelog:publish, so the manifest already matches the placeholder).
-      - name: Re-stamp R2 manifest after changelog
+      # Build the deprecated surface-id alias map from the same previous R2
+      # publish. The deterministic build emits an empty placeholder because
+      # surfaces.json is R2-only; this fills it before latest/ is overwritten.
+      - name: Compute publish surface aliases (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run surface-aliases:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # changelog:publish and surface-aliases:publish overwrite staged R2-only
+      # placeholder artifacts, but the r2-manifest still records the build-time
+      # placeholder hashes. Re-stamp the manifest from the final staged artifacts
+      # before upload.
+      - name: Re-stamp R2 manifest after publish metadata
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run r2:manifest
 

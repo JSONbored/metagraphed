@@ -14,6 +14,7 @@ describe("surface-verify core (#358)", () => {
   const surfaces = [
     {
       surface_id: "7:subnet-api:x",
+      surface_key: "srf-subnetapix0000",
       netuid: 7,
       kind: "subnet-api",
       url: "https://x",
@@ -47,6 +48,19 @@ describe("surface-verify core (#358)", () => {
 
   test("findSurface matches by surface_id", () => {
     assert.equal(findSurface(surfaces, "7:subnet-api:x")?.url, "https://x");
+    assert.equal(findSurface(surfaces, "srf-subnetapix0000")?.url, "https://x");
+    assert.equal(
+      findSurface(surfaces, "7:subnet-api:old", {
+        aliases: [
+          {
+            deprecated_id: "7:subnet-api:old",
+            surface_key: "srf-subnetapix0000",
+            current_id: "7:subnet-api:x",
+          },
+        ],
+      })?.url,
+      "https://x",
+    );
     assert.equal(findSurface(surfaces, "nope"), null);
     assert.equal(findSurface(null, "x"), null);
     assert.equal(findSurface(surfaces, 7), null);
@@ -89,6 +103,7 @@ describe("surface-verify core (#358)", () => {
     };
     const out = await verifySurface(surfaces[0], {}, okProber);
     assert.equal(out.surface_id, "7:subnet-api:x");
+    assert.equal(out.surface_key, "srf-subnetapix0000");
     assert.equal(out.callable, true);
     assert.equal(out.latency_ms, 42);
     assert.equal(out.netuid, 7);
@@ -130,6 +145,7 @@ describe("surface verify-now endpoint (#358)", () => {
   // handler reads it via the imported readArtifact → env.ASSETS, so we use the
   // local artifact env, not an injected readArtifact).
   const SURFACE_ID = "sn-6-numinous-api-health";
+  const SURFACE_KEY = "srf-4d92fe6304cbb843";
   const req = (id) =>
     new Request(`https://metagraph.sh/api/v1/surfaces/${id}/verify`);
 
@@ -226,6 +242,108 @@ describe("surface verify-now endpoint (#358)", () => {
       assert.equal((await res2.json()).data.from_cache, true);
     });
   });
+
+  test("accepts stable surface_key as the verify identifier", async () => {
+    await withGlobals({ fetchImpl: okFetch }, async () => {
+      const res = await handleRequest(
+        req(SURFACE_KEY),
+        createLocalArtifactEnv(),
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.surface_id, SURFACE_ID);
+      assert.equal(body.data.surface_key, SURFACE_KEY);
+    });
+  });
+
+  test("accepts deprecated surface_id aliases from the alias artifact", async () => {
+    const deprecatedId = "sn-6-numinous-api-health-before-rename";
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (key === "latest/operational-surfaces.json") {
+            return {
+              async json() {
+                return {
+                  surfaces: [
+                    {
+                      surface_id: SURFACE_ID,
+                      surface_key: SURFACE_KEY,
+                      netuid: 6,
+                      kind: "subnet-api",
+                      url: "https://api.numinouslabs.io/health",
+                      provider: "numinous",
+                      auth_required: false,
+                      probe: { method: "GET", expect: "json" },
+                    },
+                  ],
+                };
+              },
+            };
+          }
+          if (key === "latest/surface-aliases.json") {
+            return {
+              async json() {
+                return {
+                  aliases: [
+                    {
+                      deprecated_id: deprecatedId,
+                      surface_key: SURFACE_KEY,
+                      current_id: SURFACE_ID,
+                    },
+                  ],
+                };
+              },
+            };
+          }
+          return null;
+        },
+      },
+    });
+
+    await withGlobals({ fetchImpl: okFetch }, async () => {
+      const res = await handleRequest(req(deprecatedId), env, {});
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.surface_id, SURFACE_ID);
+      assert.equal(body.data.surface_key, SURFACE_KEY);
+    });
+  });
+
+  test("blocks catalogued hostnames that resolve to private addresses", async () => {
+    let surfaceFetches = 0;
+    await withGlobals(
+      {
+        fetchImpl: async (input) => {
+          const url = String(input);
+          if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
+            return new Response(
+              JSON.stringify({
+                Answer: [{ type: 1, data: "127.0.0.1" }],
+              }),
+              { headers: { "content-type": "application/dns-json" } },
+            );
+          }
+          surfaceFetches += 1;
+          return okFetch();
+        },
+      },
+      async () => {
+        const res = await handleRequest(
+          req(SURFACE_ID),
+          createLocalArtifactEnv(),
+          {},
+        );
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.data.callable, false);
+        assert.equal(body.data.classification, "unsafe");
+        assert.equal(body.data.error, "unsafe URL");
+      },
+    );
+    assert.equal(surfaceFetches, 0);
+  });
 });
 
 // --- MCP tool: verify_integration --------------------------------------------
@@ -234,6 +352,7 @@ describe("verify_integration MCP tool (#358)", () => {
     surfaces: [
       {
         surface_id: "x:api:1",
+        surface_key: "srf-xapi100000000",
         netuid: 5,
         kind: "subnet-api",
         url: "https://x.example/api",
@@ -244,10 +363,26 @@ describe("verify_integration MCP tool (#358)", () => {
     ],
   };
   const deps = {
-    readArtifact: async (_e, path) =>
-      path === "/metagraph/operational-surfaces.json"
-        ? { ok: true, data: CATALOG }
-        : { ok: false, status: 404 },
+    readArtifact: async (_e, path) => {
+      if (path === "/metagraph/operational-surfaces.json") {
+        return { ok: true, data: CATALOG };
+      }
+      if (path === "/metagraph/surface-aliases.json") {
+        return {
+          ok: true,
+          data: {
+            aliases: [
+              {
+                deprecated_id: "x:api:old",
+                surface_key: "srf-xapi100000000",
+                current_id: "x:api:1",
+              },
+            ],
+          },
+        };
+      }
+      return { ok: false, status: 404 };
+    },
   };
   const call = async (args) => {
     const of = globalThis.fetch;
@@ -281,8 +416,62 @@ describe("verify_integration MCP tool (#358)", () => {
     const bySurface = await call({ surface_id: "x:api:1" });
     assert.equal(bySurface.isError, false);
     assert.equal(bySurface.structuredContent.surface_id, "x:api:1");
+    const byKey = await call({ surface_id: "srf-xapi100000000" });
+    assert.equal(byKey.isError, false);
+    assert.equal(byKey.structuredContent.surface_id, "x:api:1");
+    assert.equal(byKey.structuredContent.surface_key, "srf-xapi100000000");
+    const byAlias = await call({ surface_id: "x:api:old" });
+    assert.equal(byAlias.isError, false);
+    assert.equal(byAlias.structuredContent.surface_id, "x:api:1");
     const byNetuid = await call({ netuid: 5 });
     assert.equal(byNetuid.structuredContent.surface_id, "x:api:1");
+  });
+
+  test("blocks rebinding catalogued hostnames before probing", async () => {
+    let surfaceFetches = 0;
+    const of = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
+        return new Response(
+          JSON.stringify({
+            Answer: [{ type: 1, data: "10.0.0.5" }],
+          }),
+          { headers: { "content-type": "application/dns-json" } },
+        );
+      }
+      surfaceFetches += 1;
+      return new Response("{}", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "verify_integration",
+              arguments: { surface_id: "x:api:1" },
+            },
+          }),
+        }),
+        {},
+        deps,
+      );
+      const result = (await response.json()).result;
+      assert.equal(result.isError, false);
+      assert.equal(result.structuredContent.callable, false);
+      assert.equal(result.structuredContent.classification, "unsafe");
+    } finally {
+      globalThis.fetch = of;
+    }
+    assert.equal(surfaceFetches, 0);
   });
 
   test("error paths require no probe", async () => {

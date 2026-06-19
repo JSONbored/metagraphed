@@ -112,28 +112,36 @@ for (const workflow of workflows) {
     );
   }
   if (workflow === "validate.yml") {
-    // The routing diff lives in the classify-validation-route composite action
-    // (shared by the parallel test + checks jobs); the deletion-filtered
-    // verification is consumed back in this workflow.
-    const routeAction = await fs.readFile(
-      path.join(
-        repoRoot,
-        ".github/actions/classify-validation-route/action.yml",
-      ),
-      "utf8",
+    // Route classification must stay in this trusted workflow. Running a
+    // checkout-local action/script would let pull requests forge `mode=ugc` and
+    // skip full validation. The deletion-filtered verification is consumed back
+    // in this workflow.
+    check(
+      !content.includes("uses: ./.github/actions/classify-validation-route"),
+      workflow,
+      "validate workflow must not route CI through PR-controlled local actions",
     );
     check(
-      routeAction.includes("git diff --name-only ") &&
-        routeAction.includes("> changed-files.txt") &&
-        routeAction.includes("--diff-filter=d") &&
-        routeAction.includes("> submitted-artifact-files.txt"),
+      content.includes("git diff --name-only ") &&
+        content.includes("> changed-files.txt") &&
+        content.includes("--diff-filter=d") &&
+        content.includes("> submitted-artifact-files.txt") &&
+        content.includes("python3 - <<'PY_ROUTE'"),
       workflow,
-      "classify-validation-route action must keep PR routing diffs unfiltered and filter deletions only for submitted-artifact verification",
+      "validate workflow must compute routing diffs and classify the route inline from trusted workflow code",
     );
     check(
       content.includes("--changed-files submitted-artifact-files.txt"),
       workflow,
       "validate workflow must verify submitted artifacts from the deletion-filtered list",
+    );
+    check(
+      content.includes(
+        "git status --porcelain --untracked-files=all -- public/",
+      ) &&
+        content.includes("Committed derived artifacts under public/ are stale"),
+      workflow,
+      "validate workflow must detect rebuilt-but-untracked public artifacts after build",
     );
   }
   if (workflow === "submission-gate.yml") {
@@ -203,10 +211,14 @@ for (const workflow of workflows) {
     );
     check(
       refreshJob.includes('METAGRAPH_PRODUCTION_BUILD: "1"') &&
-        refreshJob.includes("npm run build") &&
-        refreshJob.includes("npm run r2:manifest"),
+        refreshJob.includes("npm run build"),
       workflow,
       "publish workflow refresh job must prepare R2 artifacts with the production probe-health build path",
+    );
+    check(
+      !refreshJob.includes("npm run r2:manifest"),
+      workflow,
+      "publish workflow refresh job must not regenerate the R2 manifest outside the production build timestamp context",
     );
     check(
       /\brefresh:\n[\s\S]*\bpublish:\n[\s\S]*needs:\s+refresh/.test(content),

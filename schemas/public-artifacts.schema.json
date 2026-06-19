@@ -24,6 +24,9 @@
     "surfaces": {
       "$ref": "#/$defs/surfacesArtifact"
     },
+    "surface_aliases": {
+      "$ref": "#/$defs/surfaceAliasesArtifact"
+    },
     "endpoints": {
       "$ref": "#/$defs/endpointsArtifact"
     },
@@ -186,6 +189,43 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/surface"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "surfaceAliasesArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["source", "summary", "aliases"],
+          "properties": {
+            "source": {
+              "const": "generated-surface-rename-aliases"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "aliases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["deprecated_id", "surface_key", "current_id"],
+                "properties": {
+                  "deprecated_id": {
+                    "type": "string"
+                  },
+                  "surface_key": {
+                    "type": "string"
+                  },
+                  "current_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
               }
             }
           }

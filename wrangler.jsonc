@@ -28,6 +28,8 @@
       "/.well-known/api-catalog",
       "/.well-known/mcp/server-card.json",
       "/.well-known/agent-tools/*",
+      "/og.png",
+      "/og",
       "/api/*",
       "/rpc/*",
       "/metagraph/*",

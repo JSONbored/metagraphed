@@ -107,6 +107,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",
@@ -159,6 +166,13 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
       "storage_tier": "r2"
     },
     {
@@ -306,6 +320,13 @@
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -571,7 +592,8 @@
         {
           "name": "netuids",
           "schema": {
-            "pattern": "^\\d+(,\\d+)*$",
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
             "type": "string"
           }
         },
@@ -638,6 +660,13 @@
               "root",
               "application"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -785,6 +814,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -927,6 +963,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1004,6 +1047,13 @@
         {
           "name": "provider",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1149,6 +1199,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1287,6 +1344,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1396,6 +1460,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1494,6 +1565,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1577,6 +1655,13 @@
               "provider-claimed",
               "registry-observed"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1726,6 +1811,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1780,6 +1872,122 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/coverage-depth.json",
+      "cache": "standard",
+      "description": "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+      "id": "coverage-depth",
+      "method": "GET",
+      "path": "/api/v1/coverage-depth",
+      "public": true,
+      "query_collection": "coverage-depth",
+      "query_filter_names": [
+        "netuid",
+        "tier",
+        "agent_status",
+        "blocker_level"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "tier",
+          "schema": {
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "agent_status",
+          "schema": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "blocker_level",
+          "schema": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "agent_status",
+              "blocker_level",
+              "name",
+              "netuid",
+              "priority_score",
+              "score",
+              "tier"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/economics.json",
@@ -1874,6 +2082,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1958,6 +2173,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2038,6 +2260,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2109,6 +2338,13 @@
         {
           "name": "review_state",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2245,6 +2481,13 @@
               "placeholder",
               "empty"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2393,6 +2636,13 @@
               "generic-openapi-or-custom",
               "stream-adapter"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2607,6 +2857,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2756,6 +3013,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2998,6 +3262,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3074,6 +3345,13 @@
               "failed",
               "unknown"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3205,6 +3483,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3324,6 +3609,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3367,6 +3659,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/health/trends.json",
+      "cache": "short",
+      "description": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+      "id": "health-trends-bulk",
+      "method": "GET",
+      "path": "/api/v1/health/trends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",
@@ -3498,7 +3802,7 @@
     {
       "artifact_path": "/metagraph/rpc/usage.json",
       "cache": "short",
-      "description": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+      "description": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
       "id": "rpc-usage",
       "method": "GET",
       "path": "/api/v1/rpc/usage",
@@ -3560,6 +3864,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3611,6 +3922,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3678,6 +3996,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3822,6 +4147,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3905,6 +4237,13 @@
               "subtensor-wss",
               "archive"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -4033,6 +4372,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -4136,6 +4482,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },

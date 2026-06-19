@@ -17,6 +17,7 @@ const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const generatedAt = buildTimestamp();
 const contractVersion = "2026-06-06.1";
+const MAX_OPENAPI_SCHEMA_BYTES = 2 * 1024 * 1024;
 const outputRoot = path.join(repoRoot, "registry/adapters/latest");
 // GitHub token plumbing: accept either env name (the project convention used by
 // discover-candidates and the CI workflows) and ignore accidental whitespace.
@@ -441,6 +442,42 @@ async function fetchJsonSummary(url) {
   };
 }
 
+function parseContentLength(value) {
+  if (value === null) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+async function readResponseText(response, maxBytes) {
+  if (!response.body) {
+    return { ok: true, text: "" };
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      await reader.cancel();
+      return { ok: false };
+    }
+    chunks.push(value);
+  }
+  const bodyBytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bodyBytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, text: new TextDecoder().decode(bodyBytes) };
+}
+
 export async function fetchJson(url, redirectCount = 0) {
   if (await isUnsafeResolvedUrl(url)) {
     return {
@@ -486,7 +523,23 @@ export async function fetchJson(url, redirectCount = 0) {
       return fetchJson(redirectTarget, redirectCount + 1);
     }
     const contentType = response.headers.get("content-type") || "";
-    const text = await response.text();
+    const contentLength = parseContentLength(
+      response.headers.get("content-length"),
+    );
+    if (contentLength !== null && contentLength > MAX_OPENAPI_SCHEMA_BYTES) {
+      await response.body?.cancel();
+      return {
+        ok: false,
+        status: "too-large",
+        error: `response exceeded ${MAX_OPENAPI_SCHEMA_BYTES} bytes`,
+        status_code: response.status,
+        content_type: contentType || null,
+        content_length: contentLength,
+        max_bytes: MAX_OPENAPI_SCHEMA_BYTES,
+        latency_ms: Math.round(performance.now() - started),
+        captured_at: new Date().toISOString(),
+      };
+    }
     if (!response.ok) {
       return {
         ok: false,
@@ -503,6 +556,24 @@ export async function fetchJson(url, redirectCount = 0) {
         captured_at: new Date().toISOString(),
       };
     }
+    const limitedBody = await readResponseText(
+      response,
+      MAX_OPENAPI_SCHEMA_BYTES,
+    );
+    if (!limitedBody.ok) {
+      return {
+        ok: false,
+        status: "too-large",
+        error: `response exceeded ${MAX_OPENAPI_SCHEMA_BYTES} bytes`,
+        status_code: response.status,
+        content_type: contentType || null,
+        content_length: contentLength,
+        max_bytes: MAX_OPENAPI_SCHEMA_BYTES,
+        latency_ms: Math.round(performance.now() - started),
+        captured_at: new Date().toISOString(),
+      };
+    }
+    const text = limitedBody.text;
     let body = null;
     try {
       body = text ? JSON.parse(text) : null;

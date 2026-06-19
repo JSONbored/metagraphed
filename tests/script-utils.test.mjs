@@ -22,6 +22,7 @@ import {
   createLocalArtifactEnv,
   flattenSurfaces,
   formatLlmMarkdownText,
+  fixtureCaptureFailureReason,
   formatRepositoryJson,
   hashJson,
   isCredentialedUrl,
@@ -35,6 +36,7 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
+  resolvePublicUrlAddresses,
   latestArtifactDate,
   listJsonFiles,
   listJsonFilesRecursive,
@@ -109,6 +111,18 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("uses public-safe fixture capture parse failure reasons", () => {
+    const error = new SyntaxError(
+      `Unexpected token 'T', "TOKEN=abc" is not valid JSON`,
+    );
+
+    assert.equal(fixtureCaptureFailureReason(error), "invalid json response");
+    assert.equal(
+      fixtureCaptureFailureReason(error).includes("TOKEN=abc"),
+      false,
+    );
+  });
+
   test("classifies redirect-limit probes as unsupported", () => {
     assert.equal(
       classifyHttpProbe(
@@ -645,6 +659,10 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
+      artifactStorageTierForRelativePath("coverage-depth.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
       isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
       false,
     );
@@ -677,6 +695,10 @@ describe("script utility contracts", () => {
     );
     assert.equal(
       artifactStorageTierForRelativePath("operational-surfaces.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("surface-aliases.json"),
       ARTIFACT_STORAGE_TIERS.r2,
     );
     // Other dual artifacts stay committed-first; R2-only artifacts are not "dual".
@@ -1513,6 +1535,13 @@ describe("script utility contracts", () => {
       await isUnsafeResolvedUrl("https://metagraph.example", publicResolver),
       false,
     );
+    assert.deepEqual(
+      await resolvePublicUrlAddresses(
+        "https://metagraph.example",
+        publicResolver,
+      ),
+      [{ address: "93.184.216.34", family: 4 }],
+    );
     assert.equal(
       await isUnsafeResolvedUrl("https://empty.example", emptyResolver),
       true,
@@ -1692,6 +1721,14 @@ describe("script utility contracts", () => {
       source: "fixture",
     });
     assert.equal(endpointResources.summary.endpoint_count, 7);
+    const rootRpcSurface = surfaces.find(
+      (surface) => surface.id === "root-rpc",
+    );
+    const rootRpcEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-rpc",
+    );
+    assert.equal(rootRpcEndpoint.surface_key, rootRpcSurface.key);
+    assert.equal(rootRpcEndpoint.id, `endpoint-${rootRpcSurface.key}`);
     assert.equal(
       endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-docs",
@@ -1809,6 +1846,13 @@ describe("script utility contracts", () => {
       ),
       true,
     );
+    assert.equal(
+      generalizedPools.pools
+        .find((pool) => pool.id === "finney-rpc")
+        .endpoints.find((endpoint) => endpoint.surface_id === "root-rpc")
+        .surface_key,
+      rootRpcSurface.key,
+    );
 
     const incidents = buildEndpointIncidentArtifact({
       endpointArtifact: endpointResources,
@@ -1816,14 +1860,21 @@ describe("script utility contracts", () => {
       contractVersion: "test",
     });
     assert.equal(incidents.summary.incident_count, 2);
+    const failedEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-failed-rpc",
+    );
+    const degradedEndpoint = endpointResources.endpoints.find(
+      (endpoint) => endpoint.surface_id === "root-degraded-rpc",
+    );
+    assert.equal(incidents.incidents[0].endpoint_id, failedEndpoint.id);
     assert.equal(
-      incidents.incidents[0].endpoint_id,
-      "endpoint-root-failed-rpc",
+      incidents.incidents[0].surface_key,
+      failedEndpoint.surface_key,
     );
     assert.equal(incidents.incidents[0].severity, "critical");
     assert.equal(
       incidents.incidents.find(
-        (incident) => incident.endpoint_id === "endpoint-root-degraded-rpc",
+        (incident) => incident.endpoint_id === degradedEndpoint.id,
       ).severity,
       "warning",
     );
@@ -1833,6 +1884,70 @@ describe("script utility contracts", () => {
     assert.equal(
       incidents.incidents[0].observed_at,
       "1970-01-01T00:00:00.000Z",
+    );
+  });
+
+  test("endpoint resources keep stable ids across display slug renames", () => {
+    const buildRenamedEndpoint = (surfaceId) =>
+      buildEndpointResourceArtifact({
+        surfaces: flattenSurfaces([
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            surfaces: [
+              {
+                id: surfaceId,
+                kind: "subnet-api",
+                url: "https://api.allways.example.com/v1",
+                provider: "allways",
+                authority: "official",
+                auth_required: false,
+                public_safe: true,
+                probe: { enabled: true, method: "GET", expect: "json" },
+              },
+            ],
+          },
+        ]),
+        generatedAt: "1970-01-01T00:00:00.000Z",
+        contractVersion: "test",
+        source: "fixture",
+      }).endpoints[0];
+
+    const before = buildRenamedEndpoint("sn-7-allways-api");
+    const afterRename = buildRenamedEndpoint("sn-7-allways-public-api");
+
+    assert.equal(before.surface_id, "sn-7-allways-api");
+    assert.equal(afterRename.surface_id, "sn-7-allways-public-api");
+    assert.equal(before.surface_key, afterRename.surface_key);
+    assert.equal(before.id, afterRename.id);
+    assert.match(before.id, /^endpoint-srf-[a-f0-9]{16}$/);
+
+    const rawSurfaceEndpoint = buildEndpointResourceArtifact({
+      surfaces: [
+        {
+          id: "sn-7-raw-api",
+          netuid: 7,
+          subnet_slug: "allways",
+          subnet_name: "Allways",
+          kind: "subnet-api",
+          url: "https://api.allways.example.com/v1",
+          provider: "allways",
+          authority: "official",
+          auth_required: false,
+          public_safe: true,
+          probe: { enabled: true, method: "GET", expect: "json" },
+        },
+      ],
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      contractVersion: "test",
+      source: "fixture",
+    }).endpoints[0];
+
+    assert.match(rawSurfaceEndpoint.surface_key, /^srf-[a-f0-9]{16}$/);
+    assert.equal(
+      rawSurfaceEndpoint.id,
+      `endpoint-${rawSurfaceEndpoint.surface_key}`,
     );
   });
 
@@ -2173,6 +2288,28 @@ describe("submission policy helpers", () => {
     });
     assert.equal(valid.public_state, "submit_pr");
     assert.equal(valid.import_allowed, false);
+
+    const endpointBody = validBody
+      .replace("### Interface kind", "### Endpoint kind")
+      .replace("### Provider or team", "### Provider or operator slug")
+      .replace(
+        "### Does this interface require authentication?",
+        "### Does this endpoint require authentication?",
+      );
+    const endpoint = buildIssueIntakeReport({
+      issue: {
+        number: 11,
+        title: "endpoint: docs",
+        user: { login: "jsonbored" },
+        labels: [{ name: "endpoint-submission" }],
+        body: endpointBody,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(endpoint.public_state, "submit_pr");
+    assert.equal(endpoint.candidate.auth_required, false);
 
     const manual = buildIssueIntakeReport({
       issue: {

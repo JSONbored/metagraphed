@@ -12,7 +12,7 @@ The Bittensor subnet integration registry. For every subnet it answers: **what d
 [![PyPI](https://img.shields.io/pypi/v/metagraphed?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/metagraphed/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](./LICENSE)
 
-**[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
+**[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Agent workflows](https://api.metagraph.sh/agent-workflows.md) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
 
 </div>
 
@@ -32,7 +32,7 @@ Three ways to use Metagraphed. Pick one.
 
 #### 🤖 AI agent (MCP)
 
-Agent-native, public, read-only, Streamable-HTTP. 14 tools to discover a subnet, check if it's up, and learn how to call it.
+Agent-native, public, read-only, Streamable-HTTP. 16 tools to discover a subnet, check if it's up, and learn how to call it.
 
 ```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
@@ -40,7 +40,7 @@ claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 
 > Cursor / other clients: add an MCP server with url `https://api.metagraph.sh/mcp`, transport `streamable-http`.
 >
-> Tools: `search_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call`
+> Tools: `search_subnets` · `list_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call` · `verify_integration`
 
 #### 📦 Typed client
 
@@ -64,6 +64,7 @@ curl https://api.metagraph.sh/api/v1/subnets
 | Resource              | URL                                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Copyable agent prompt | [`/agent.md`](https://api.metagraph.sh/agent.md)                                                                                                                                      |
+| Agent workflows       | [`/agent-workflows.md`](https://api.metagraph.sh/agent-workflows.md)                                                                                                                  |
 | Machine index         | [`/llms.txt`](https://api.metagraph.sh/llms.txt)                                                                                                                                      |
 | Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)                                                                                                    |
 | Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json)                                                                                          |

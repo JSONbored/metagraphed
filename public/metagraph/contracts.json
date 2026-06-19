@@ -138,6 +138,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Curated public interface surfaces for one subnet.",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
@@ -205,6 +214,15 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
       "storage_tier": "r2"
     },
     {
@@ -399,6 +417,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Compact all-subnet 7d/30d daily uptime + latency trend matrix. Served live from D1 at /api/v1/health/trends (no static file).",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
@@ -453,7 +480,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",

@@ -48,6 +48,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/health/trends",
+    (body) => {
+      assert.equal(body.data.source, "live-cron-prober");
+      assert.equal(typeof body.data.windows, "object");
+      assert.equal(Array.isArray(body.data.windows["7d"].subnets), true);
+      assert.equal(typeof body.data.windows["7d"].subnet_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/health/percentiles",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -89,6 +98,8 @@ const checks = [
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
       assert.equal(typeof body.data.summary.total_requests, "number");
+      assert.equal(typeof body.data.bucket_granularity, "string");
+      assert.equal(Array.isArray(body.data.buckets), true);
       assert.equal(Array.isArray(body.data.endpoints), true);
       assert.equal(Array.isArray(body.data.networks), true);
     },
@@ -217,6 +228,19 @@ const checks = [
     "/api/v1/coverage",
     (body) =>
       assert.equal(Number.isInteger(body.data.chain_subnet_count), true),
+  ],
+  [
+    "/api/v1/coverage-depth?tier=machine-usable&limit=3",
+    (body) => {
+      assert.equal(Number.isInteger(body.data.subnet_count), true);
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(body.data.rows.length <= 3, true);
+      assert.equal(
+        body.data.rows.every((row) => row.tier === "machine-usable"),
+        true,
+      );
+      assert.equal(Array.isArray(body.data.ranked_queue), true);
+    },
   ],
   [
     "/api/v1/economics",

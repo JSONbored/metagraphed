@@ -458,6 +458,7 @@ test("public artifacts are internally consistent", () => {
   const subnetProfile = readArtifact("profiles/7.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
   const coverage = readArtifact("coverage.json");
+  const coverageDepth = readArtifact("coverage-depth.json");
   const economics = readArtifact("economics.json");
   const contracts = readArtifact("contracts.json");
   const apiIndex = readArtifact("api-index.json");
@@ -748,6 +749,217 @@ test("public artifacts are internally consistent", () => {
     "agent-catalog must carry a deterministic content_hash",
   );
   assert.ok(agentCatalog.content_hash.length >= 16);
+  assert.equal(
+    agentCatalog.total_subnet_count,
+    agentCatalog.subnet_count + agentCatalog.blocked_subnet_count,
+    "agent-catalog callable + blocked counts must cover every subnet",
+  );
+  assert.ok(
+    Array.isArray(agentCatalog.blocked_subnets) &&
+      agentCatalog.blocked_subnets.length > 0,
+    "agent-catalog must explain blocked/non-callable subnets",
+  );
+  assert.equal(
+    agentCatalog.blocked_subnet_count,
+    agentCatalog.blocked_subnets.length,
+    "blocked_subnet_count must match blocked_subnets length",
+  );
+  assert.ok(
+    agentCatalog.subnets.every(
+      (entry) => entry.agent_readiness?.status === "callable",
+    ),
+    "callable agent-catalog entries must carry callable readiness status",
+  );
+  const blockedRecall = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.ok(blockedRecall, "SN31 should be represented as a blocked subnet");
+  assert.equal(blockedRecall.agent_readiness.status, "blocked");
+  assert.ok(
+    blockedRecall.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "missing-callable-service",
+    ),
+    "blocked subnets must explain the missing callable service",
+  );
+  const rootBlocker = agentCatalog.blocked_subnets.find(
+    (entry) => entry.netuid === 0,
+  );
+  assert.equal(rootBlocker.agent_readiness.status, "base-layer");
+  assert.ok(
+    rootBlocker.agent_readiness.blockers.some(
+      (blocker) => blocker.code === "base-layer-only",
+    ),
+    "root subnet must explain the base-layer-only boundary",
+  );
+  assert.ok(
+    agentCatalog.blocker_summary.by_code["missing-callable-service"] > 0,
+    "blocker summary must count missing callable service blockers",
+  );
+  assert.equal(
+    coverageDepth.subnet_count,
+    subnets.subnets.length,
+    "coverage-depth must score every subnet",
+  );
+  assert.equal(
+    coverageDepth.summary.row_count,
+    coverageDepth.rows.length,
+    "coverage-depth row summary must match rows",
+  );
+  assert.ok(
+    coverageDepth.rows.every(
+      (row, index, rows) => index === 0 || rows[index - 1].netuid < row.netuid,
+    ),
+    "coverage-depth rows must be sorted by netuid",
+  );
+  assert.equal(
+    Object.values(coverageDepth.summary.tier_counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    coverageDepth.rows.length,
+    "coverage-depth tier counts must cover every row",
+  );
+  assert.equal(
+    coverageDepth.summary.queue_count,
+    coverageDepth.ranked_queue.length,
+    "coverage-depth queue_count must match the ranked queue",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.every(
+      (entry, index, rows) =>
+        index === 0 ||
+        rows[index - 1].priority_score > entry.priority_score ||
+        (rows[index - 1].priority_score === entry.priority_score &&
+          (rows[index - 1].score < entry.score ||
+            (rows[index - 1].score === entry.score &&
+              rows[index - 1].netuid < entry.netuid))),
+    ),
+    "coverage-depth ranked_queue must have deterministic priority order",
+  );
+  assert.ok(
+    coverageDepth.summary.severity_counts["missing-data"] > 0,
+    "coverage-depth must summarize missing-data gaps",
+  );
+  assert.ok(
+    coverageDepth.summary.tier_counts["hard-blocked"] > 0,
+    "coverage-depth must separate hard-blocked subnets",
+  );
+  const coverageDepthAllways = coverageDepth.rows.find(
+    (entry) => entry.netuid === 7,
+  );
+  assert.ok(coverageDepthAllways, "SN7 must have a coverage-depth row");
+  assert.equal(coverageDepthAllways.agent_status, "callable");
+  assert.ok(
+    coverageDepthAllways.dimensions.callable_service_count > 0,
+    "SN7 coverage-depth row must count callable services",
+  );
+  assert.ok(
+    coverageDepthAllways.top_gap_codes.includes("missing-fixture"),
+    "SN7 coverage-depth row must expose deterministic fixture absence",
+  );
+  const coverageDepthRecall = coverageDepth.rows.find(
+    (entry) => entry.netuid === 31,
+  );
+  assert.equal(coverageDepthRecall.agent_status, "blocked");
+  assert.ok(
+    coverageDepthRecall.top_gap_codes.includes("missing-callable-service"),
+    "SN31 coverage-depth row must carry missing callable-service blocker",
+  );
+  assert.ok(
+    coverageDepth.ranked_queue.some(
+      (entry) =>
+        entry.top_gap_codes.includes("missing-fixture") ||
+        entry.top_gap_codes.includes("missing-schema") ||
+        entry.top_gap_codes.includes("candidate-api-needs-review"),
+    ),
+    "coverage-depth queue must contain actionable enrichment gaps",
+  );
+  const catalog31 = readArtifact("agent-catalog/31.json");
+  assert.equal(catalog31.agent_readiness.status, "blocked");
+  assert.ok(
+    catalog31.agent_readiness.missing_fields.includes("surfaces"),
+    "per-subnet detail must expose blocker missing_fields",
+  );
+  const callableAgentServices = agentCatalog.subnets.flatMap((subnet) =>
+    readArtifact(`agent-catalog/${subnet.netuid}.json`).services.filter(
+      (service) => service.eligibility?.callable,
+    ),
+  );
+  const callableWithoutSchema = callableAgentServices.filter(
+    (service) => !service.schema_artifact,
+  );
+  assert.equal(
+    callableAgentServices.length,
+    71,
+    "agent-catalog callable-service count must stay deterministic",
+  );
+  assert.equal(
+    callableWithoutSchema.length,
+    33,
+    "schema projection should reduce callable services without schema artifacts",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "subnet-api")
+      .length,
+    8,
+    "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
+  );
+  assert.equal(
+    callableWithoutSchema.filter((service) => service.kind === "sse").length,
+    1,
+    "SSE streams should not inherit same-origin OpenAPI schemas implicitly",
+  );
+  const serviceById = (catalog, surfaceId) =>
+    catalog.services.find((service) => service.surface_id === surfaceId);
+  const catalog7 = readArtifact("agent-catalog/7.json");
+  const allwaysHealth = serviceById(catalog7, "allways-api-health");
+  assert.equal(
+    allwaysHealth.schema_artifact,
+    "/metagraph/schemas/allways-swagger.json",
+    "SN7 endpoint rows should inherit the same-origin captured OpenAPI artifact",
+  );
+  assert.equal(allwaysHealth.schema_source.match, "same-origin-openapi");
+  assert.equal(
+    allwaysHealth.schema_source.url,
+    "https://api.all-ways.io/swagger-json",
+  );
+  const allwaysSse = serviceById(catalog7, "allways-sse");
+  assert.equal(
+    allwaysSse.schema_artifact,
+    null,
+    "SSE streams require an explicit schema match",
+  );
+  const catalog56 = readArtifact("agent-catalog/56.json");
+  const gradientsPerformance = serviceById(
+    catalog56,
+    "sn-56-gradients-last-boss-battle",
+  );
+  assert.equal(
+    gradientsPerformance.schema_source.match,
+    "schema-url",
+    "SN56 endpoint rows with schema_url should resolve by exact schema URL",
+  );
+  const catalog110 = readArtifact("agent-catalog/110.json");
+  const greenComputeChat = serviceById(
+    catalog110,
+    "sn-110-green-compute-chat-completions-api",
+  );
+  assert.equal(
+    greenComputeChat.schema_source.match,
+    "same-origin-openapi",
+    "SN110 endpoint rows should resolve through same-origin OpenAPI",
+  );
+  const catalog64ForSchemas = readArtifact("agent-catalog/64.json");
+  const chutesPricing = serviceById(
+    catalog64ForSchemas,
+    "sn-64-chutes-pricing-api",
+  );
+  assert.equal(
+    chutesPricing.schema_artifact,
+    null,
+    "explicit not-captured schema statuses must not be overridden",
+  );
+  assert.equal(chutesPricing.schema_status, "not-captured");
 
   // Cross-network lineage (issue #353): mainnet ↔ testnet mapping, with the
   // profile's lineage reconciled against the standalone artifact.
@@ -771,6 +983,41 @@ test("public artifacts are internally consistent", () => {
   assert.equal(typeof fixturesIndex.fixture_count, "number");
   assert.equal(Array.isArray(fixturesIndex.fixtures), true);
   assert.equal(fixturesIndex.fixture_count, fixturesIndex.fixtures.length);
+  assert.equal(
+    fixturesIndex.candidate_count,
+    fixturesIndex.coverage.length,
+    "fixture candidate_count must match coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.missing_count,
+    fixturesIndex.coverage.filter((entry) => entry.status !== "available")
+      .length,
+    "fixture missing_count must summarize non-available coverage rows",
+  );
+  assert.equal(
+    fixturesIndex.status_counts.missing,
+    fixturesIndex.candidate_count,
+    "deterministic no-capture builds should classify fixture candidates as missing",
+  );
+  const allwaysFixtureCandidate = fixturesIndex.coverage.find(
+    (entry) => entry.surface_id === "allways-api-health",
+  );
+  assert.equal(allwaysFixtureCandidate.status, "missing");
+  const allwaysFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-api-health");
+  assert.equal(allwaysFixtureService.fixture_status.status, "missing");
+  const allwaysSseFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-sse");
+  assert.equal(
+    allwaysSseFixtureService.fixture_status.status,
+    "unsupported-kind",
+  );
+  const allwaysHistoryFixtureService = readArtifact(
+    "agent-catalog/7.json",
+  ).services.find((service) => service.surface_id === "allways-crown-history");
+  assert.equal(allwaysHistoryFixtureService.fixture_status.status, "non-get");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
   assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);
@@ -783,6 +1030,10 @@ test("public artifacts are internally consistent", () => {
   assert.ok(
     agentResources.resources.some((r) => r.id === "agent"),
     "resources must include the copyable agent",
+  );
+  assert.ok(
+    agentResources.resources.some((r) => r.id === "agent-workflows"),
+    "resources must include the public agent workflow guide",
   );
   assert.ok(agentResources.resources.every((r) => r.id && r.title && r.url));
   // every profile that claims to have graduated appears in the lineage artifact

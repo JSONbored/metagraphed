@@ -37,6 +37,10 @@ export const generatedOverlaySourcePath = path.join(
   "subnets/generated-overlays.json",
 );
 
+function overlayFieldOrFallback(overlay, field, fallback) {
+  return Object.hasOwn(overlay, field) ? overlay[field] : fallback;
+}
+
 export async function loadManualSubnetOverlays() {
   const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
   const overlays = await Promise.all(files.map(readJson));
@@ -177,10 +181,16 @@ export function augmentManualOverlaysWithBaseline(
         dashboard_url:
           manualOverlay.dashboard_url || firstUrl(manualSurfaces, "dashboard"),
         docs_url: manualOverlay.docs_url || firstUrl(manualSurfaces, "docs"),
-        source_repo:
-          manualOverlay.source_repo || firstUrl(manualSurfaces, "source-repo"),
-        website_url:
-          manualOverlay.website_url || firstUrl(manualSurfaces, "website"),
+        source_repo: overlayFieldOrFallback(
+          manualOverlay,
+          "source_repo",
+          firstUrl(manualSurfaces, "source-repo"),
+        ),
+        website_url: overlayFieldOrFallback(
+          manualOverlay,
+          "website_url",
+          firstUrl(manualSurfaces, "website"),
+        ),
         curation: {
           ...(manualOverlay.curation || {}),
           source_count: Math.max(

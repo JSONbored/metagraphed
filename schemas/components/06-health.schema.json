@@ -450,6 +450,85 @@
         },
         "additionalProperties": true
       },
+      "BulkHealthTrendsArtifact": {
+        "type": "object",
+        "required": ["schema_version", "source", "windows"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "windows": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["days", "granularity", "subnet_count", "subnets"],
+              "properties": {
+                "days": { "type": "integer", "minimum": 0 },
+                "granularity": { "type": "string", "enum": ["1d"] },
+                "subnet_count": { "type": "integer", "minimum": 0 },
+                "subnets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "netuid",
+                      "samples",
+                      "uptime_ratio",
+                      "avg_latency_ms",
+                      "points"
+                    ],
+                    "properties": {
+                      "netuid": { "type": "integer", "minimum": 0 },
+                      "samples": { "type": "integer", "minimum": 0 },
+                      "uptime_ratio": {
+                        "type": ["number", "null"],
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "avg_latency_ms": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      },
+                      "points": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "date",
+                            "samples",
+                            "uptime_ratio",
+                            "avg_latency_ms"
+                          ],
+                          "properties": {
+                            "date": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "samples": { "type": "integer", "minimum": 0 },
+                            "uptime_ratio": {
+                              "type": ["number", "null"],
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "avg_latency_ms": {
+                              "type": ["integer", "null"],
+                              "minimum": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "HealthPercentilesArtifact": {
         "type": "object",
         "required": ["schema_version", "netuid", "source", "surfaces"],
@@ -632,17 +711,19 @@
       },
       "RpcUsageArtifact": {
         "type": "object",
-        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, and the per-endpoint request distribution. Computed live from the rpc_proxy_events telemetry (no static file).",
+        "description": "RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, per-endpoint request distribution, and bounded time buckets for heatmaps. Computed live from the rpc_proxy_events telemetry (no static file).",
         "required": [
           "schema_version",
           "source",
           "summary",
           "endpoints",
-          "networks"
+          "networks",
+          "buckets"
         ],
         "properties": {
           "schema_version": { "type": "integer" },
           "window": { "type": ["string", "null"] },
+          "bucket_granularity": { "type": ["string", "null"] },
           "observed_at": { "type": ["string", "null"] },
           "source": { "type": "string" },
           "summary": {
@@ -696,6 +777,20 @@
                 "requests": { "type": "integer", "minimum": 0 },
                 "ok_requests": { "type": "integer", "minimum": 0 },
                 "error_rate": { "type": ["number", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["ts", "requests", "errors", "avg_latency_ms"],
+              "properties": {
+                "ts": { "type": "integer", "minimum": 0 },
+                "requests": { "type": "integer", "minimum": 0 },
+                "errors": { "type": "integer", "minimum": 0 },
+                "avg_latency_ms": { "type": ["integer", "null"] }
               },
               "additionalProperties": true
             }

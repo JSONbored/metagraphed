@@ -73,11 +73,11 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
       ? nativeSubnet.raw_name
       : nativeSubnet.name || null;
   const sourceRepo = backfilledIdentityUrl(
-    null,
+    undefined,
     nativeSubnet.chain_identity?.github_repo,
   );
   const websiteUrl = backfilledIdentityUrl(
-    null,
+    undefined,
     nativeSubnet.chain_identity?.subnet_url,
   );
   const supportedKinds = new Set();
@@ -128,7 +128,7 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
     },
     lifecycle: subnetLifecycle(nativeSubnet),
     logo_url: backfilledIdentityUrl(
-      null,
+      undefined,
       nativeSubnet.chain_identity?.logo_url,
     ),
     registered_at_block: nativeSubnet.registered_at_block,
