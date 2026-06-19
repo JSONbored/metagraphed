@@ -13,6 +13,8 @@ import {
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
 const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
+const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
+const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
 
 async function writeTestFixture(body) {
   await fs.mkdir(FIXTURE_DIR, { recursive: true });
@@ -115,6 +117,44 @@ describe("public URL safety checks", () => {
 describe("captured-fixture body scan", () => {
   afterEach(async () => {
     await fs.rm(TEST_FIXTURE_PATH, { force: true });
+    await fs.rm(TEST_PUBLIC_PATH, { force: true });
+  });
+
+  test("allows only the exact documented local subtensor endpoint", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "Use the documented local RPC at `ws://127.0.0.1:9944` for local development.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `the exact documented endpoint should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("flags local subtensor allowlist prefix bypass attempts", async () => {
+    const bypassAttempts = [
+      "ws://127.0.0.1:9944/admin",
+      "ws://127.0.0.1:9944?token=abcdefghijklmnop",
+      "ws://127.0.0.1:9944@10.0.0.1/private",
+    ];
+
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      `${bypassAttempts.join("\n")}\n`,
+      "utf8",
+    );
+    const output = runScanOutput();
+    for (const [index] of bypassAttempts.entries()) {
+      assert.ok(
+        output.includes(
+          `${TEST_PUBLIC_FILE}:${index + 1}: private or loopback URL`,
+        ),
+        `bypass attempt on line ${index + 1} must be flagged; got:\n${output}`,
+      );
+    }
   });
 
   test("does not flag soft Bittensor terminology in a mirrored fixture body", async () => {

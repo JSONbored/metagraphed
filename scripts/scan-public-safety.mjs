@@ -33,7 +33,7 @@ const patterns = [
     // the `local` network surface (llms.txt / setup docs), not a leaked internal
     // URL. Scoped to the exact well-known endpoint; any other loopback URL on the
     // same line is still flagged (allowlisted spans are stripped before testing).
-    allow: /wss?:\/\/127\.0\.0\.1:9944\b/gi,
+    allow: /wss?:\/\/127\.0\.0\.1:9944(?![A-Za-z0-9._~:/?#\]@!$&'()*+,;=%-])/gi,
   },
   {
     name: "token-like assignment",
