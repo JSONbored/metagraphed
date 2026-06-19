@@ -111,14 +111,14 @@
   --input: color-mix(in oklab, var(--ink-strong) 12%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
 
-  --health-ok: oklch(0.68 0.16 160);
-  --health-warn: oklch(0.72 0.16 75);
+  --health-ok: oklch(0.72 0.14 168); /* brand mint — same hue family as --accent */
+  --health-warn: oklch(0.76 0.12 80); /* softened amber, not neon */
   --health-down: oklch(0.58 0.22 28);
   --health-unknown: oklch(0.66 0.01 200);
 
   --curation-native: var(--ink-strong);
-  --curation-verified: oklch(0.68 0.16 160);
-  --curation-pilot: oklch(0.6 0.15 150);
+  --curation-verified: oklch(0.72 0.14 168); /* kept in lockstep with --health-ok */
+  --curation-pilot: oklch(0.64 0.13 165);
   --curation-candidate: var(--ink-muted);
   --curation-machine: oklch(0.54 0.14 250);
 
@@ -163,14 +163,14 @@
   --input: color-mix(in oklab, var(--ink-strong) 16%, transparent);
   --ring: color-mix(in oklab, var(--accent) 50%, transparent);
 
-  --health-ok: oklch(0.85 0.14 168);
-  --health-warn: oklch(0.82 0.15 75);
+  --health-ok: oklch(0.85 0.14 168); /* brand mint — already matches --accent */
+  --health-warn: oklch(0.84 0.12 80); /* softened amber, not neon */
   --health-down: oklch(0.72 0.2 28);
   --health-unknown: oklch(0.52 0.01 200);
 
   --curation-native: var(--ink-strong);
   --curation-verified: oklch(0.85 0.14 168);
-  --curation-pilot: oklch(0.8 0.14 150);
+  --curation-pilot: oklch(0.82 0.12 165);
   --curation-candidate: var(--ink-muted);
   --curation-machine: oklch(0.76 0.12 250);
 
