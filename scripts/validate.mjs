@@ -1410,6 +1410,10 @@ function validateFreshnessForPublish(freshnessArtifact) {
       failures.push(`${source.id} has invalid as_of timestamp`);
       continue;
     }
+    if (observedAt > now) {
+      failures.push(`${source.id} as_of timestamp is in the future`);
+      continue;
+    }
     const ageHours = (now - observedAt) / 3_600_000;
     if (ageHours > source.stale_after_hours) {
       failures.push(
