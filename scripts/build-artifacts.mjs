@@ -49,6 +49,7 @@ import {
   repoRoot,
   sha256Hex,
   slugify,
+  stableStringify,
   staleOperationalKinds,
   subnetLifecycle,
   surfaceFixtureReference,
@@ -203,6 +204,7 @@ const previousSchemaIndexArtifact = await readOptionalJson(
 // rebuild can re-attach it (the index stays light, but the files carry the
 // spec for get_api_schema).
 const capturedSchemaDocuments = new Map();
+const capturedSchemaDetails = new Map();
 {
   const schemasDir = path.join(r2OutputRoot, "schemas");
   let schemaFiles;
@@ -214,11 +216,17 @@ const capturedSchemaDocuments = new Map();
   for (const file of schemaFiles) {
     if (!file.endsWith(".json") || file === "index.json") continue;
     const existing = await readOptionalJson(path.join(schemasDir, file));
-    if (existing?.document)
-      capturedSchemaDocuments.set(
-        `schemas/${file}`,
-        sanitizeOpenApiDocument(existing.document),
-      );
+    if (!existing?.document) {
+      continue;
+    }
+    const relativePath = `schemas/${file}`;
+    const document = sanitizeOpenApiDocument(existing.document);
+    const { document: _document, ...snapshot } = existing;
+    capturedSchemaDocuments.set(relativePath, document);
+    capturedSchemaDetails.set(relativePath, {
+      documentHash: hashJson(document),
+      snapshot,
+    });
   }
 }
 
@@ -509,8 +517,11 @@ const schemaDriftArtifact =
   reusableSchemaDriftArtifact(surfaces, previousSchemaDriftArtifact) ||
   buildSchemaDriftPlaceholder(surfaces);
 const schemaIndexArtifact =
-  reusableSchemaIndexArtifact(surfaces, previousSchemaIndexArtifact) ||
-  buildSchemaIndexPlaceholder();
+  reusableSchemaIndexArtifact(
+    surfaces,
+    previousSchemaIndexArtifact,
+    capturedSchemaDetails,
+  ) || buildSchemaIndexPlaceholder();
 const contracts = buildContractsArtifact(generatedAt);
 const openApi = await buildCanonicalOpenApiArtifact(generatedAt);
 
@@ -5550,7 +5561,7 @@ function reusableSchemaDriftArtifact(surfaces, previous) {
   return previous;
 }
 
-function reusableSchemaIndexArtifact(surfaces, previous) {
+function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
@@ -5581,6 +5592,7 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
       schemaIndexEntryMatchesSurface(
         entry,
         currentSurfaces.get(entry.surface_id),
+        capturedDetails,
       ),
     )
   ) {
@@ -5624,7 +5636,7 @@ function schemaSurfaceEntryMatchesSurface(entry, surface) {
   );
 }
 
-function schemaIndexEntryMatchesSurface(entry, surface) {
+function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
   if (!schemaSurfaceEntryMatchesSurface(entry, surface)) {
     return false;
   }
@@ -5636,6 +5648,8 @@ function schemaIndexEntryMatchesSurface(entry, surface) {
     );
   }
 
+  const relativePath = schemaDetailArtifactRelativePath(entry.path);
+  const captured = capturedDetails.get(relativePath);
   return (
     entry.path === `/metagraph/schemas/${surface.id}.json` &&
     typeof entry.content_type === "string" &&
@@ -5651,7 +5665,10 @@ function schemaIndexEntryMatchesSurface(entry, surface) {
     entry.snapshot.schema_url === entry.schema_url &&
     entry.snapshot.hash === entry.hash &&
     (entry.snapshot.previous_hash || null) === (entry.previous_hash || null) &&
-    entry.snapshot.drift_status === entry.drift_status
+    entry.snapshot.drift_status === entry.drift_status &&
+    captured &&
+    captured.documentHash === entry.hash &&
+    stableStringify(captured.snapshot) === stableStringify(entry.snapshot)
   );
 }
 
