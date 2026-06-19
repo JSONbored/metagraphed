@@ -1147,7 +1147,12 @@ const CONTACT_JUNK_VALUES = new Set([
   "-",
   "null",
 ]);
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_ATOM = "[A-Z0-9!#$%&\\'*+/=?^_`{|}~-]+";
+const EMAIL_RE = new RegExp(
+  `^${EMAIL_ATOM}(?:\\.${EMAIL_ATOM})*@` +
+    "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+  "i",
+);
 export function subnetContact(overlayContact) {
   if (typeof overlayContact !== "string") return null;
   const value = overlayContact.trim();

@@ -1386,6 +1386,10 @@ describe("subnetContact", () => {
     assert.equal(subnetContact("None"), null);
     assert.equal(subnetContact("deprecated@gmail.com"), null); // junk local-part
     assert.equal(subnetContact("not an email"), null);
+    assert.equal(subnetContact("javascript:alert(1)@example.com"), null);
+    assert.equal(subnetContact("<|system|>@example.com"), null);
+    assert.equal(subnetContact("https://evil.com@127.0.0.1/x"), null);
+    assert.equal(subnetContact("mailto:javascript:alert(1)@example.com"), null);
     assert.equal(subnetContact("http://127.0.0.1/x"), null); // not public
     assert.equal(subnetContact(""), null);
     assert.equal(subnetContact(null), null);
