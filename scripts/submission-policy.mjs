@@ -1,6 +1,7 @@
 import {
   clusterDomainFromUrl,
   flattenSurfaces,
+  MULTI_TENANT_HOST_SUFFIXES,
   normalizePublicHttpUrl,
   normalizePublicUrl,
   registrySurfaceKey,
@@ -227,6 +228,7 @@ export function buildIssueIntakeReport({
 
   const auth = normalizeAuth(
     fields["does this interface require authentication?"] ||
+      fields["does this endpoint require authentication?"] ||
       fields.auth_required,
   );
   if (auth.value === null) {
@@ -970,10 +972,15 @@ const normIdentToken = (value) =>
   String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+const isMultiTenantClusterDomain = (domain) =>
+  typeof domain === "string" &&
+  [...MULTI_TENANT_HOST_SUFFIXES].some((suffix) =>
+    domain.toLowerCase().endsWith(`.${suffix}`),
+  );
 
 /** Owner token(s) a URL claims — a code host (github/gitlab/bitbucket) contributes its ORG; any other
- *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars (a 1-3 char slug
- *  matches anywhere). */
+ *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars except short
+ *  multi-tenant labels, which are still tenant-controlled owner claims and must not disappear. */
 export function urlOwnerTokens(value) {
   if (typeof value !== "string" || !value) return [];
   let url;
@@ -986,12 +993,18 @@ export function urlOwnerTokens(value) {
   const out = [];
   if (CODE_HOST_RE.test(host)) {
     const org = url.pathname.replace(/^\/+/, "").split("/")[0];
-    if (org) out.push(normIdentToken(org));
+    const token = normIdentToken(org);
+    if (token.length >= 4) out.push(token);
   } else {
     const domain = clusterDomainFromUrl(value);
-    if (domain) out.push(normIdentToken(domain.split(".")[0]));
+    if (domain) {
+      const token = normIdentToken(domain.split(".")[0]);
+      if (token.length >= 4 || isMultiTenantClusterDomain(domain)) {
+        out.push(token);
+      }
+    }
   }
-  return out.filter((token) => token.length >= 4);
+  return out.filter(Boolean);
 }
 
 /** Identity tokens for a candidate's declared provider — its name, id, and the owner tokens of its

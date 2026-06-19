@@ -82,6 +82,8 @@ function stubVectorize() {
             title: `Subnet ${i + 1}`,
             subtitle: `summary ${i + 1}`,
             url: `https://api.metagraph.sh/api/v1/subnets/${i + 1}/overview`,
+            categories: i === 0 ? ["inference"] : [],
+            service_kinds: i === 0 ? ["openapi", "sse"] : [],
           },
         })),
       });
@@ -372,6 +374,8 @@ describe("semanticSearch", () => {
     assert.equal(out.count, 3);
     assert.equal(out.results[0].netuid, 1);
     assert.equal(typeof out.results[0].score, "number");
+    assert.deepEqual(out.results[0].categories, ["inference"]);
+    assert.deepEqual(out.results[0].service_kinds, ["openapi", "sse"]);
   });
   test("rejects a blank query", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
@@ -629,6 +633,8 @@ describe("ai-search defensive branches", () => {
     const out = await semanticSearch(env, "x");
     assert.equal(out.results[0].score, 0);
     assert.equal(out.results[0].netuid, null);
+    assert.deepEqual(out.results[0].categories, []);
+    assert.deepEqual(out.results[0].service_kinds, []);
   });
 
   test("askQuestion frames retrieved descriptions as untrusted JSON data", async () => {

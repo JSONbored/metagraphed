@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -161,6 +162,30 @@ function isStaticEdgeCacheEligible(matched, network) {
 // overlay output is fully determined by (contract_version, last_run_at) — the
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
 const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
+
+function canonicalOverlayCacheSearch(url, matched) {
+  const config = API_QUERY_COLLECTIONS[matched.queryCollection];
+  if (!config) return "";
+  const filterNames =
+    matched.queryFilterNames?.length > 0
+      ? matched.queryFilterNames
+      : Object.keys(config.filters);
+  const cacheableNames = [
+    "q",
+    "fields",
+    "limit",
+    "cursor",
+    "sort",
+    "order",
+    ...filterNames,
+  ];
+  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
+  for (const name of cacheableNames) {
+    const value = url.searchParams.get(name);
+    if (value !== null) canonicalUrl.searchParams.set(name, value);
+  }
+  return canonicalUrl.search;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -391,7 +416,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(request, env, Number(trajectoryMatch[1]));
+      return handleTrajectory(
+        request,
+        env,
+        Number(trajectoryMatch[1]),
+        resolved.url,
+      );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
@@ -919,7 +949,7 @@ async function handleApiRequest(
       overlayCacheKey = new Request(
         `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${url.search}`,
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalOverlayCacheSearch(url, matched)}`,
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
@@ -1222,17 +1252,29 @@ async function handleHealthTrends(request, env, netuid) {
   );
 }
 
-function analyticsWindow(url) {
+function validateQueryParams(url, allowedParams) {
+  const seen = new Set();
   for (const key of url.searchParams.keys()) {
-    if (key !== ANALYTICS_WINDOW_PARAM) {
+    if (!allowedParams.includes(key)) {
       return {
-        error: {
-          parameter: key,
-          message: `${key} is not supported for this route.`,
-        },
+        parameter: key,
+        message: `${key} is not supported for this route.`,
       };
     }
+    if (seen.has(key)) {
+      return {
+        parameter: key,
+        message: `${key} may only be provided once.`,
+      };
+    }
+    seen.add(key);
   }
+  return null;
+}
+
+function analyticsWindow(url) {
+  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
   if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
@@ -1360,23 +1402,24 @@ async function handleHealthIncidents(request, env, netuid, url) {
     // flapping endpoints cannot force unbounded result sets/responses.
     d1All(
       env,
-      `WITH failures AS (
+      `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
                 surface_id,
                 checked_at,
+                ok,
                 checked_at - LAG(checked_at)
                   OVER (
                     PARTITION BY COALESCE(surface_key, surface_id)
                     ORDER BY checked_at
                   ) AS gap
          FROM surface_checks
-         WHERE netuid = ? AND checked_at >= ? AND ok = 0
+         WHERE netuid = ? AND checked_at >= ?
        ),
        grouped AS (
-         SELECT surface_key, surface_id, checked_at,
-                SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+         SELECT surface_key, surface_id, checked_at, ok,
+                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                   OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
-         FROM failures
+         FROM checks
        )
        SELECT MAX(surface_id) AS surface_id,
               surface_key,
@@ -1384,6 +1427,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
               MAX(checked_at) AS ended_at,
               COUNT(*) AS failed_samples
        FROM grouped
+       WHERE ok = 0
        GROUP BY surface_key, grp
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
@@ -1426,27 +1470,27 @@ async function handleGlobalIncidents(request, env, url) {
   const since = Date.now() - days * DAY_MS;
   const incidentRows = await d1All(
     env,
-    `WITH recent_failures AS (
-       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at
+    `WITH recent_checks AS (
+       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
        FROM surface_checks
-       WHERE checked_at >= ? AND ok = 0
+       WHERE checked_at >= ?
        ORDER BY checked_at DESC
        LIMIT ?
      ),
-     failures AS (
-       SELECT netuid, surface_key, surface_id, checked_at,
+     checks AS (
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
               checked_at - LAG(checked_at)
                 OVER (
                   PARTITION BY netuid, surface_key
                   ORDER BY checked_at
                 ) AS gap
-       FROM recent_failures
+       FROM recent_checks
      ),
      grouped AS (
-       SELECT netuid, surface_key, surface_id, checked_at,
-              SUM(CASE WHEN gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
+              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                 OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
-       FROM failures
+       FROM checks
      )
      SELECT netuid,
             MAX(surface_id) AS surface_id,
@@ -1455,6 +1499,7 @@ async function handleGlobalIncidents(request, env, url) {
             MAX(checked_at) AS ended_at,
             COUNT(*) AS failed_samples
      FROM grouped
+     WHERE ok = 0
      GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
@@ -1489,7 +1534,9 @@ async function handleGlobalIncidents(request, env, url) {
 }
 
 // Week-over-week structural trajectory from daily snapshots.
-async function handleTrajectory(request, env, netuid) {
+async function handleTrajectory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
   // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
   // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
@@ -1521,9 +1568,10 @@ async function handleTrajectory(request, env, netuid) {
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
 // yet (mirrors the other D1-backed analytics routes).
 async function handleUptime(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
-  const days = UPTIME_WINDOWS[windowParam];
-  if (!days) {
+  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
     return errorResponse(
       "invalid_query",
       "Query parameter `window` must be one of: 90d, 1y.",
@@ -1531,6 +1579,7 @@ async function handleUptime(request, env, netuid, url) {
       { parameter: "window" },
     );
   }
+  const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -1625,6 +1674,8 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
 // Registry leaderboards: healthiest / fastest-rpc / most-complete /
 // fastest-growing. Combines live D1 status with registry projections.
 async function handleLeaderboards(request, env, url) {
+  const validationError = validateQueryParams(url, ["board", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
   if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
     return errorResponse(
@@ -3168,6 +3219,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "subnet-overview": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayOverviewHealth(
         staticData,
         await getLive(),
@@ -3176,6 +3231,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "agent-catalog-subnet": {
+      if (!staticData) {
+        data = null;
+        break;
+      }
       data = overlayCatalogDetail(
         staticData,
         await getLive(),
