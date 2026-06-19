@@ -268,7 +268,7 @@ function SubnetsTable() {
   return (
     <ListShell
       filters={filters}
-      isEmpty={rows.length === 0}
+      isEmpty={rows.length === 0 && !hasNextPage}
       isStale={isFetching && !isFetchingNextPage}
       empty={
         <EmptyState
