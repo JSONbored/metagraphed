@@ -154,5 +154,8 @@
       },
       "notes": "Live alternate repository discovered through Tensorplex subnet docs. Kept as secondary evidence; DendriteHQ/SOMA remains the primary source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/somasubnet"
+  }
 }

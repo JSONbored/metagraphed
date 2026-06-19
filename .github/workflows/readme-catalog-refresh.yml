@@ -1,0 +1,62 @@
+name: README catalog refresh
+
+# Regenerate the README subnet catalog (#1020) from the curated overlays whenever
+# they change on main, and open a PR if it drifted. Normally a no-op: PRs that
+# touch an overlay are gated by `validate:readme-catalog`, so the catalog is
+# already fresh at merge. This is the safety net for admin-merges/direct pushes
+# that bypass the gate — the catalog is NOT regenerated on the 6h data refresh.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "registry/subnets/**"
+      - "scripts/generate-registry-readme-section.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readme-catalog-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22.22.3
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Regenerate README catalog
+        run: npm run readme:catalog
+
+      - name: Open catalog refresh PR (no-op if unchanged)
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/readme-catalog
+          delete-branch: true
+          add-paths: README.md
+          title: "docs(readme): refresh subnet catalog (#1020)"
+          commit-message: "docs(readme): refresh subnet catalog (#1020)"
+          body: |
+            Auto-regenerated the README subnet catalog from the curated overlays
+            in `registry/subnets/` (`npm run readme:catalog`, #1020). Opened
+            because the committed catalog drifted from the overlays.
+          labels: |
+            docs
+            automation

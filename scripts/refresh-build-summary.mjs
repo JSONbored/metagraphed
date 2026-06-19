@@ -18,7 +18,8 @@ import {
 
 const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
-const summaryPath = path.join(outputRoot, "build-summary.json");
+// build-summary.json is R2-only (#1003) — read/write it in the R2 staging tier.
+const summaryPath = path.join(r2OutputRoot, "build-summary.json");
 const existing = JSON.parse(await fs.readFile(summaryPath, "utf8"));
 const artifacts = await collectArtifactSizes({
   publicRoot: outputRoot,
@@ -104,6 +105,12 @@ async function walk(dirPath, onFile) {
   }
 
   for (const entry of entries) {
+    // #1028: skip hidden files (macOS .DS_Store, AppleDouble ._*) — not
+    // artifacts; their bytes vary and would pollute size sums. Hidden
+    // directories (e.g. .well-known) still hold real artifacts, so walk them.
+    if (entry.isFile() && entry.name.startsWith(".")) {
+      continue;
+    }
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
       await walk(entryPath, onFile);

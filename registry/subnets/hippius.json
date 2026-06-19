@@ -122,5 +122,8 @@
       },
       "notes": "Official Hippius storage miner repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/hippius_subnet"
+  }
 }

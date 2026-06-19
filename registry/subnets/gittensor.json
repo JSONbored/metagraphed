@@ -203,5 +203,8 @@
       "url": "https://gittensory.aethereal.dev/"
     }
   ],
-  "website_url": "https://gittensor.io/"
+  "website_url": "https://gittensor.io/",
+  "social": {
+    "x": "https://x.com/gittensor_io"
+  }
 }

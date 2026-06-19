@@ -70,7 +70,7 @@
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -79,7 +79,7 @@
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -133,6 +133,15 @@
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -205,7 +214,25 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+      "id": "economics",
+      "path": "/metagraph/economics.json",
+      "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -223,7 +250,7 @@
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -241,7 +268,7 @@
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -390,6 +417,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Compact all-subnet 7d/30d daily uptime + latency trend matrix. Served live from D1 at /api/v1/health/trends (no static file).",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
@@ -435,7 +471,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
@@ -444,7 +480,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
@@ -493,7 +529,7 @@
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -502,7 +538,7 @@
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -592,7 +628,7 @@
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -646,7 +682,7 @@
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     }
   ],
   "base_path": "/metagraph",

@@ -324,25 +324,20 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).endpoints[0].id, "local-fallback");
   });
 
-  test("serves coverage/subnets R2-first with a committed-asset fallback", async () => {
-    const committed = {
-      schema_version: 1,
-      generated_at: "1970-01-01T00:00:00.000Z",
-      native_snapshot_captured_at: "2026-06-14T09:03:28.000Z",
-    };
+  test("serves coverage/subnets from R2 (R2-only, no committed copy)", async () => {
     const fresh = {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
       native_snapshot_captured_at: "2026-06-14T14:06:28.000Z",
     };
 
-    // R2 warm → the fresh published copy wins over the stale committed asset.
+    // subnets/coverage are R2-only (#1003): R2 warm → the published copy serves.
     const warm = await handleRequest(
       new Request("https://metagraph.sh/metagraph/coverage.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -365,13 +360,15 @@ describe("Worker runtime", () => {
       "2026-06-14T14:06:28.000Z",
     );
 
-    // R2 cold → fall back to the committed baseline (local/dev/CI).
+    // R2 cold → 404. There is no committed copy to fall back to anymore, and the
+    // static-asset fallback is opt-in (METAGRAPH_ALLOW_R2_STATIC_FALLBACK),
+    // covered by the local-mode test above.
     const cold = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -382,11 +379,7 @@ describe("Worker runtime", () => {
       },
       {},
     );
-    assert.equal(cold.status, 200);
-    assert.equal(
-      cold.headers.get("x-metagraph-artifact-source"),
-      "static-assets",
-    );
+    assert.equal(cold.status, 404);
   });
 
   test("serves metagraph latest as an R2-backed raw artifact", async () => {
@@ -557,6 +550,7 @@ describe("Worker runtime", () => {
       ["/api/v1/subnets?cursor=nope", "cursor"],
       ["/api/v1/subnets?order=sideways", "order"],
       ["/api/v1/subnets?sort=nope", "sort"],
+      ["/api/v1/subnets?fields=netuid,nope", "fields"],
       ["/api/v1/subnets?netuid=nope", "netuid"],
       ["/api/v1/subnets?subnet_type=nope", "subnet_type"],
     ];
@@ -585,6 +579,29 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.pagination.collection, "subnets");
     assert.equal(body.meta.pagination.limit, 1);
     assert.equal(body.meta.pagination.sort, "netuid");
+  });
+
+  test("projects list rows with ?fields while preserving pagination and filters", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/subnets?domain=inference&fields=netuid,name,slug&limit=2&sort=netuid",
+      ),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.pagination.collection, "subnets");
+    assert.ok(body.meta.pagination.returned > 0);
+    assert.ok(body.meta.pagination.returned <= 2);
+    assert.deepEqual(body.meta.projection.fields, ["netuid", "name", "slug"]);
+    assert.equal(body.data.subnets.length, body.meta.pagination.returned);
+    assert.deepEqual(Object.keys(body.data.subnets[0]).sort(), [
+      "name",
+      "netuid",
+      "slug",
+    ]);
+    assert.equal("categories" in body.data.subnets[0], false);
   });
 
   test("returns deterministic API errors", async () => {
@@ -1285,9 +1302,13 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        // identity_promotion is a transient, drainable queue — once every
+        // subnet's source-repo identity is curated it is legitimately empty
+        // (as the SN20/53/89/95… enrichment did). Assert the filter only ever
+        // returns matching profiles, not that any remain.
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
         (body) =>
-          body.data.profiles.length > 0 &&
+          Array.isArray(body.data.profiles) &&
           body.data.profiles.every((profile) =>
             profile.identity_promotion_kinds.includes("source-repo"),
           ),
@@ -1365,6 +1386,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?cursor=-1",
       "https://metagraph.sh/api/v1/subnets?order=sideways",
       "https://metagraph.sh/api/v1/subnets?sort=unknown_field",
+      "https://metagraph.sh/api/v1/subnets?fields=netuid,unknown_field",
       "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
@@ -1385,6 +1407,95 @@ describe("Worker runtime", () => {
         "invalid_query",
       );
       assert.equal((await response.json()).error.code, "invalid_query");
+    }
+  });
+
+  test("canonicalizes overlay cache keys for ignored query parameters", async () => {
+    const store = new Map();
+    const cachePutKeys = [];
+    let r2Gets = 0;
+    const originalCaches = globalThis.caches;
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          return store.get(request.url)?.clone();
+        },
+        async put(request, response) {
+          cachePutKeys.push(request.url);
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    const endpointArtifact = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      endpoints: [
+        {
+          id: "endpoint-cache",
+          kind: "axon",
+          netuid: 1,
+          provider: "cache-test",
+          status: "ok",
+          surface_id: "surface-cache",
+        },
+      ],
+    };
+    const overlayEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-18T00:00:00.000Z" };
+          }
+          if (key === "health:current") {
+            return {
+              last_run_at: "2026-06-18T00:00:00.000Z",
+              surfaces: [],
+              subnets: [],
+            };
+          }
+          return null;
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          r2Gets += 1;
+          assert.equal(key, "latest/endpoints.json");
+          return {
+            async json() {
+              return endpointArtifact;
+            },
+          };
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+    try {
+      const first = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/endpoints?junk=a"),
+        overlayEnv,
+        ctx,
+      );
+      await Promise.resolve();
+      const second = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/endpoints?junk=b"),
+        overlayEnv,
+        ctx,
+      );
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.equal(await second.text(), await first.text());
+      assert.equal(
+        r2Gets,
+        1,
+        "ignored query params must not bust overlay cache",
+      );
+      assert.equal(store.size, 1, "ignored query params share one cache entry");
+      assert.deepEqual(cachePutKeys, [
+        "https://edge-cache.metagraph.sh/overlay/mainnet/2026-06-06.1/2026-06-18T00%3A00%3A00.000Z/api/v1/endpoints",
+      ]);
+    } finally {
+      globalThis.caches = originalCaches;
     }
   });
 
@@ -1554,6 +1665,11 @@ describe("Agent discovery surfaces", () => {
     assert.equal(
       context["service-doc"][0].href,
       "https://api.metagraph.sh/llms.txt",
+    );
+    assert.ok(
+      context["service-doc"].some(
+        (entry) => entry.href === "https://api.metagraph.sh/agent-workflows.md",
+      ),
     );
     assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
   });

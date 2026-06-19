@@ -127,5 +127,8 @@
       },
       "notes": "Public Grafana evaluation dashboard linked from the Templar repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/tplr_ai"
+  }
 }

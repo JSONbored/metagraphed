@@ -67,5 +67,8 @@
       },
       "notes": "Official Quantum Compute source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/qbittensorlabs"
+  }
 }

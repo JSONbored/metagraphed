@@ -220,5 +220,8 @@
       "url": "https://taomarketcap.com/subnets/49"
     }
   ],
-  "website_url": "https://nepher.ai"
+  "website_url": "https://nepher.ai",
+  "social": {
+    "x": "https://x.com/nepher_robotics"
+  }
 }

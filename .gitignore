@@ -184,3 +184,13 @@ vite.config.ts.timestamp-*
 # shared project slash commands in .claude/commands/ (e.g. /lineage-discovery).
 .claude/*
 !.claude/commands/
+
+# Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
+__pycache__/
+*.pyc
+
+# Transient route-classification artifacts written at the repo root by the
+# classify-validation-route action / scripts/classify-validation-route.py
+/changed-files.txt
+/submitted-artifact-files.txt
+/validate-route.json

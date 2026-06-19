@@ -175,5 +175,8 @@
       },
       "notes": "Official TrajectoryRL source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/trajectoryrl"
+  }
 }

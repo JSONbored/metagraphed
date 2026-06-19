@@ -1,0 +1,32 @@
+# Codecov — the primary PR coverage gate (replaces the fixed absolute-% pin that
+# vitest.config.mjs used to enforce; those thresholds are now just a backstop
+# floor). This is DELTA-based, so it never causes the "every PR must match a
+# near-peak absolute number and one merge pushes the others below it" churn:
+#   - `project` compares total coverage to the PR base, tolerating a small drop.
+#   - `patch` checks only the lines THIS PR changed (the real "test your new
+#     code" signal — PR-local, independent of global fluctuation).
+# The uploaded lcov is already scoped to runtime code (src/** + workers/** + 5
+# named scripts) by vitest's coverage.include, so Codecov reports only those.
+coverage:
+  status:
+    project:
+      default:
+        target: auto # compare against the PR base, not a fixed number
+        threshold: 1% # tolerate up to a 1% total drop before failing
+        informational: false
+    patch:
+      default:
+        target: 80% # 80% of the lines a PR changes must be covered
+        threshold: 0%
+        informational: false
+
+comment:
+  layout: "condensed_header, diff, files"
+  behavior: default
+  require_changes: false
+
+# Codecov's own status checks are only merge-blocking if added to branch
+# protection's required checks (metagraphed's are intentionally empty — the owner
+# admin-merges). Until then these are informative PR annotations + the dashboard.
+github_checks:
+  annotations: true

@@ -79,7 +79,7 @@ this same quickstart as JSON (`data.quickstart.steps`).
 1. **Run a local chain** — the official localnet generates the chain-spec +
    funded keys for you:
    `git clone https://github.com/opentensor/subtensor && cd subtensor && ./scripts/localnet.sh --no-purge`
-   → a local subtensor at `ws://127.0.0.1:9944` with sudo, fast blocks, and
+   → a local subtensor at your own local WebSocket endpoint with sudo, fast blocks, and
    pre-funded Alice/Bob (free TAO). First run compiles the node (Rust toolchain).
 2. **Install tooling** — `pip install bittensor bittensor-cli`.
 3. **Fund + create a subnet** —
@@ -98,5 +98,6 @@ the SDK, so code written against localnet runs unchanged on testnet and mainnet.
 ## More
 
 - Machine index: `https://api.metagraph.sh/llms.txt` (and `/llms-full.txt`)
+- Agent workflows: `https://api.metagraph.sh/agent-workflows.md`
 - OpenAPI 3.1: `https://api.metagraph.sh/metagraph/openapi.json`
 - Source: `https://github.com/JSONbored/metagraphed`

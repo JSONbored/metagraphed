@@ -19,11 +19,9 @@ coldint,Coldint,subnet-team,official,https://github.com/coldint/coldint_validato
 compelle,Compelle,subnet-team,official,https://github.com/compelle/compelle-validator,https://compelle.com/
 compute-horde,Compute Horde,subnet-team,official,https://github.com/backend-developers-ltd/ComputeHorde,https://computehorde.io/
 connito,Connito,subnet-team,official,https://github.com/Connito-AI/Connito,https://connito.ai/
-covenant,Covenant AI,subnet-team,community,,https://www.covenant.ai
 degenbrain,DegenBrain,subnet-team,provider-claimed,,https://subnet90.com/
 desearch,Desearch,subnet-team,official,https://github.com/Desearch-ai/subnet-22,https://www.desearch.ai/
 ditto-assistant,Ditto,subnet-team,official,https://github.com/orgs/ditto-assistant/repositories,https://heyditto.ai/
-ditto,Ditto,subnet-team,community,,https://heyditto.ai
 djinn,Djinn,subnet-team,official,https://github.com/Djinn-Inc/djinn,https://www.djinn.gg/
 dwellir,Dwellir,infrastructure-provider,provider-claimed,,https://www.dwellir.com
 eightball,8 Ball,subnet-team,official,https://github.com/Barbariandev/8Ball_miner,https://8ball125.com/
@@ -33,6 +31,7 @@ flamewire,FlameWire,infrastructure-provider,provider-claimed,,https://flamewire.
 forevermoney,ForeverMoney,subnet-team,official,https://github.com/SN98-ForeverMoney/forever-money,https://forevermoney.ai/
 getblock,GetBlock,infrastructure-provider,provider-claimed,,https://getblock.io
 gittensor,Gittensor,subnet-team,provider-claimed,,https://gittensor.io
+gittensory,Gittensory,data-provider,provider-claimed,https://github.com/JSONbored/gittensory,https://gittensory.aethereal.dev
 gopher-ai,Gopher AI,subnet-team,official,https://github.com/gopher-lab/subnet-42,https://developers.gopher-ai.com/
 gradients,Gradients,subnet-team,provider-claimed,https://github.com/gradients-ai/G.O.D,https://www.gradients.io/
 graphite-ai,Graphite AI,subnet-team,official,https://github.com/GraphiteAI/Graphite-Subnet,https://graphite-ai.net/
@@ -45,7 +44,6 @@ hone,Hone,subnet-team,official,https://github.com/manifold-inc/hone,https://www.
 inference-labs,Inference Labs,subnet-team,official,https://github.com/inference-labs-inc/subnet-2,https://subnet2.inferencelabs.com/
 infinitehash,InfiniteHash,subnet-team,official,https://github.com/backend-developers-ltd/InfiniteHash,https://github.com/backend-developers-ltd/InfiniteHash
 its-ai,ItsAI,subnet-team,official,https://github.com/It-s-AI/llm-detection,https://its-ai.org/en
-lium,Lium,subnet-team,community,,https://lium.io
 luminar-network,Luminar Network,subnet-team,official,,https://luminar.network/
 macrocosmos,Macrocosmos,subnet-team,official,https://github.com/macrocosm-os/data-universe,https://www.macrocosmos.ai/
 mantis,MANTIS,subnet-team,official,https://github.com/Barbariandev/MANTIS,https://github.com/Barbariandev/MANTIS

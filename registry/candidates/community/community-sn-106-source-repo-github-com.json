@@ -1,0 +1,30 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-106-source-repo-github-com",
+      "kind": "source-repo",
+      "name": "Nodexo community source-repo",
+      "netuid": 106,
+      "provider": "nodexo",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://github.com/oxylok/106-voidai/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/oxylok/106-voidai/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/oxylok/106-voidai"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "kiannidev",
+    "submitted_by_url": "https://github.com/kiannidev"
+  }
+}

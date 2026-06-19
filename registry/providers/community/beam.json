@@ -1,0 +1,20 @@
+{
+  "provider": {
+    "authority": "community",
+    "github_url": "https://github.com/Beam-Network",
+    "id": "beam",
+    "kind": "subnet-team",
+    "name": "Beam",
+    "public_notes": "Subnet 105 (Beam) team profile — decentralized bandwidth network. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+    "schema_version": 1,
+    "social": {
+      "x": "https://x.com/b1m_ai"
+    },
+    "website_url": "https://b1m.ai/"
+  },
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "oktofeesh1",
+    "submitted_by_url": "https://github.com/oktofeesh1"
+  }
+}

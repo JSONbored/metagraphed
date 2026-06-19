@@ -85,6 +85,38 @@ import { metagraphedRpc } from "@jsonbored/metagraphed";
 const healthInfo = await metagraphedRpc("finney", { method: "system_health" });
 ```
 
+### Configured client: retries, ETag caching, convenience methods
+
+`createMetagraphedClient` wraps the typed surface with opt-in retries/backoff,
+opt-in ETag conditional caching, ergonomic per-collection methods, and a
+`fetchAll` auto-pagination helper. Everything is opt-in and tree-shakeable — with
+no options it behaves exactly like `metagraphedFetch`.
+
+```ts
+import { createMetagraphedClient } from "@jsonbored/metagraphed";
+
+const client = createMetagraphedClient({
+  // Opt-in retries on 429/5xx + transport errors (network / timeout) — exponential
+  // backoff + jitter, honors Retry-After. Caller-initiated aborts are never retried.
+  retry: { retries: 3 }, // or `retry: true` for defaults
+  // Opt-in ETag conditional caching: revalidates with If-None-Match, serves the
+  // cached body on a 304. `true` uses a bounded in-memory LRU (size it with
+  // `createLruEtagCache(n)`); or pass your own `{ get, set }` store.
+  cache: true,
+});
+
+// Typed convenience methods for the v1 collections + single resources.
+const subnets = await client.subnets({ limit: 10 });
+const subnet7 = await client.getSubnet(7);
+const provider = await client.getProvider("allways");
+
+// fetchAll walks every page and returns the flattened rows.
+const all = await client.fetchAll("/api/v1/subnets", { query: { limit: 100 } });
+
+// request() / paginate() / rpc() share the same retry + cache config.
+const health = await client.request("/api/v1/health");
+```
+
 Every REST response is the standard envelope `{ ok, schema_version, data, meta }`
 (`meta.pagination` on list routes, `meta.published_at` for freshness). See the
 [API stability guide](https://github.com/JSONbored/metagraphed/blob/main/docs/api-stability.md)
