@@ -1886,13 +1886,15 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
 
   test("rejects an invalid window with 400", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(
-      req("/api/v1/subnets/7/uptime?window=5y"),
-      env,
-      {},
-    );
-    assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    for (const windowParam of ["5y", "constructor", "__proto__"]) {
+      const res = await handleRequest(
+        req(`/api/v1/subnets/7/uptime?window=${windowParam}`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal((await res.json()).error.code, "invalid_query");
+    }
   });
 });
 

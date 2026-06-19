@@ -1514,8 +1514,7 @@ async function handleTrajectory(request, env, netuid) {
 // yet (mirrors the other D1-backed analytics routes).
 async function handleUptime(request, env, netuid, url) {
   const windowParam = url.searchParams.get("window") || "90d";
-  const days = UPTIME_WINDOWS[windowParam];
-  if (!days) {
+  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
     return errorResponse(
       "invalid_query",
       "Query parameter `window` must be one of: 90d, 1y.",
@@ -1523,6 +1522,7 @@ async function handleUptime(request, env, netuid, url) {
       { parameter: "window" },
     );
   }
+  const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
