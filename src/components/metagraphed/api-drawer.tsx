@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useApiSourceCtx, type ApiSource } from "@/lib/metagraphed/api-source-context";
 import { apiFetch } from "@/lib/metagraphed/client";
+import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { CopyableCode } from "./copyable-code";
 import { Kbd } from "./kbd";
@@ -120,7 +121,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
   const curl = `curl -sS '${fullUrl}' | jq`;
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["api-drawer", source.path],
+    queryKey: metagraphedQueryKey("api-drawer", source.path),
     queryFn: ({ signal }) => apiFetch<unknown>(source.path, { signal }),
     staleTime: 30_000,
     retry: 0,

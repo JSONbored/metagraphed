@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Copy, Check, ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { apiFetch } from "@/lib/metagraphed/client";
+import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCopy } from "@/hooks/use-copy";
@@ -26,10 +27,11 @@ export function EvidenceClusters({ netuid, links, collapsedCount = 6 }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const query = useQuery({
-    queryKey: ["metagraphed", "evidence-cluster", netuid],
-    queryFn: async () => {
+    queryKey: metagraphedQueryKey("evidence-cluster", netuid),
+    queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>("/api/v1/evidence", {
         params: { netuid, limit: 80 },
+        signal,
       });
       const raw = res.data as unknown;
       let items: EvidenceItem[] = [];
