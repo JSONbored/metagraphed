@@ -80,6 +80,14 @@ function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
     /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
+    // Adapter snapshots are machine-generated, live-fetched from each subnet's own
+    // upstream API/repo each publish — the same "published docs" case as schemas:
+    // legitimate wallet/key API vocabulary (e.g. Hippius SN75 documents "private
+    // key"/"seed phrase") false-positives the SOFT terminology heuristic and
+    // wedges the publish. Exempt the source snapshot + its R2 mirror from the soft
+    // patterns only; the HARD secret-value patterns above still apply to them.
+    /^registry\/adapters\/latest\/[^/]+\.json$/,
+    /^dist\/metagraph-r2\/metagraph\/adapters\/[^/]+\.json$/,
     ...mirroredFixturePatterns,
   ].some((pattern) => pattern.test(relativePath));
 }
