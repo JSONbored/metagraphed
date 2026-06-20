@@ -19,6 +19,47 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.16.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.15.0...platform-v0.16.0) (2026-06-20)
+
+
+### Features
+
+* **discover:** probe api./docs. subdomains for OpenAPI specs ([#1004](https://github.com/JSONbored/metagraphed/issues/1004)) ([#1232](https://github.com/JSONbored/metagraphed/issues/1232)) ([f6fd848](https://github.com/JSONbored/metagraphed/commit/f6fd848a65ca6d672dd9f7c8932c90a724240d80))
+* **economics:** live economics tier (KV-primary, R2-fallback) decoupled from the 6h publish ([#1248](https://github.com/JSONbored/metagraphed/issues/1248)) ([a08e79c](https://github.com/JSONbored/metagraphed/commit/a08e79c2c8d7e853919722f3f2bd5945147e2e68))
+* **publish:** event-driven data publish + daily floor (replace the 6h cron) ([#1250](https://github.com/JSONbored/metagraphed/issues/1250)) ([e7c2f8a](https://github.com/JSONbored/metagraphed/commit/e7c2f8abaf95b518fe7450e872052619481f0fa5))
+* **reviews:** honor maintainer decisions for generated overlays + elevate SN59/SN107 ([#1238](https://github.com/JSONbored/metagraphed/issues/1238)) ([a8a47ef](https://github.com/JSONbored/metagraphed/commit/a8a47efa188d971a66350e9c373ec5f468480234))
+* **reviews:** make maintainer-reviewed.json the single source of truth for the trust tier ([#1234](https://github.com/JSONbored/metagraphed/issues/1234)) ([1277903](https://github.com/JSONbored/metagraphed/commit/1277903fab7009bb78deb83ffca87b464244c22e))
+* **reviews:** provenance review queue — auto-surface high-signal elevations ([#1235](https://github.com/JSONbored/metagraphed/issues/1235)) ([d35e5a9](https://github.com/JSONbored/metagraphed/commit/d35e5a90d699c5acf5ea70e6484b44653466dfac))
+* **submission:** hand all valid submissions to the autonomous reviewer (no maintainer pre-gating) ([#1251](https://github.com/JSONbored/metagraphed/issues/1251)) ([c15ea01](https://github.com/JSONbored/metagraphed/commit/c15ea01fa55d0d420a5240aa985758abc1336c4d))
+
+
+### Bug Fixes
+
+* **build:** regenerate stale committed datasets (unblock CI freshness gate) ([#1233](https://github.com/JSONbored/metagraphed/issues/1233)) ([7213101](https://github.com/JSONbored/metagraphed/commit/72131010fada5c076d96094abefd0d4bb03cedd8))
+* **discover:** skip derived probes for generic hosts ([#1244](https://github.com/JSONbored/metagraphed/issues/1244)) ([88507a6](https://github.com/JSONbored/metagraphed/commit/88507a66eb2d0dd69bb88fe1b138061830f35004))
+* **generated-overlays:** require reviewed evidence for elevation ([#1246](https://github.com/JSONbored/metagraphed/issues/1246)) ([2b4630a](https://github.com/JSONbored/metagraphed/commit/2b4630aa0866373ea63e199a1b135675e781953c))
+* **health:** commit operational-surfaces.json (DUAL) to decouple the live prober from the 6h publish ([#1247](https://github.com/JSONbored/metagraphed/issues/1247)) ([b3a4979](https://github.com/JSONbored/metagraphed/commit/b3a4979f3a85006feea0754e38b22cfbd09641d3))
+* **live-tier:** harden health/economics serving + writers (review findings) ([#1255](https://github.com/JSONbored/metagraphed/issues/1255)) ([2c53299](https://github.com/JSONbored/metagraphed/commit/2c5329993968d3a977c183664d6eff23e5b9e807))
+* **providers:** load community providers as first-class (debut-pair lane was broken on disk) ([#1254](https://github.com/JSONbored/metagraphed/issues/1254)) ([bde9bb4](https://github.com/JSONbored/metagraphed/commit/bde9bb4583ac19de11ff4faea05e289474b1345a))
+* **publish:** exempt adapter snapshots from soft wallet/key wording scan ([#1240](https://github.com/JSONbored/metagraphed/issues/1240)) ([bc5a94f](https://github.com/JSONbored/metagraphed/commit/bc5a94feefdae37359d18850389177b79f4f73ff))
+* **publish:** regenerate review-queue during candidate refresh ([#1237](https://github.com/JSONbored/metagraphed/issues/1237)) ([b7339e3](https://github.com/JSONbored/metagraphed/commit/b7339e36af06d504b9215dfc6efaf7d266908135))
+* **publish:** remove review-queue drift gate that breaks production publish ([#1239](https://github.com/JSONbored/metagraphed/issues/1239)) ([1e96688](https://github.com/JSONbored/metagraphed/commit/1e966888021e818547ce4c5ffd192de15a9eb99d))
+
+
+### Performance
+
+* **build:** group endpoints/candidates once instead of re-filtering per subnet/provider ([#1256](https://github.com/JSONbored/metagraphed/issues/1256)) ([3790498](https://github.com/JSONbored/metagraphed/commit/3790498c6889fdf4d261c24cfe91c06b0bdac75a))
+* **health:** probe every 15m instead of 2m + retune coupled thresholds ([#1242](https://github.com/JSONbored/metagraphed/issues/1242)) ([f59e7d0](https://github.com/JSONbored/metagraphed/commit/f59e7d012692aaa87fe3333516d6d12c71eb96f0))
+
+
+### Documentation
+
+* **curation:** document single-source-of-truth tier + review:queue ([#1236](https://github.com/JSONbored/metagraphed/issues/1236)) ([938c902](https://github.com/JSONbored/metagraphed/commit/938c902202cae96937ed8e058703364835dcad55))
+* **intake:** add EvolAI official website candidate (SN47) ([#1252](https://github.com/JSONbored/metagraphed/issues/1252)) ([a958463](https://github.com/JSONbored/metagraphed/commit/a95846377ee0b0bee521dfc7e629b0a5a9d2d5b7))
+* **intake:** add Graphite OpenAPI schema candidate (SN43) ([#1228](https://github.com/JSONbored/metagraphed/issues/1228)) ([02ba401](https://github.com/JSONbored/metagraphed/commit/02ba40184c9ed14e1b7706d839d562da8b2c9004))
+* **intake:** add Hippius API OpenAPI candidate (SN75) ([#1231](https://github.com/JSONbored/metagraphed/issues/1231)) ([96a7bb2](https://github.com/JSONbored/metagraphed/commit/96a7bb2e0faf7a440e0b3a7ca81431b6188f9d93))
+* **intake:** add Vidaio API OpenAPI candidate (SN85) ([#1230](https://github.com/JSONbored/metagraphed/issues/1230)) ([d27f799](https://github.com/JSONbored/metagraphed/commit/d27f79954ada87da038d4ace474ec6a7733d0c80))
+
 ## [0.15.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.3...platform-v0.15.0) (2026-06-19)
 
 
