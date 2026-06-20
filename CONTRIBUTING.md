@@ -41,7 +41,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 Community data becomes a reviewed **candidate**, not direct registry truth. PR-first is the simplest path:
 
-> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts.
+> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts. First-time team? Add **both** in one PR (an atomic provider+candidate pair): the inline provider counts as registered, so your debut provider and first surface land together — no separate, pre-approved provider PR needed.
 
 Generate a candidate locally — three steps:
 
@@ -65,7 +65,7 @@ npm run validate:candidate -- registry/candidates/community/<your-file>.json
 
 A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 
-**Routes to manual review** (still welcome, just won't auto-merge): provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes.
+**Higher-trust kinds** (provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes) are also welcome and no longer need a maintainer: they go to the same autonomous reviewer, which scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership) and they can merge like any other surface.
 
 **Hard boundaries:**
 
@@ -81,7 +81,7 @@ A good candidate PR is small: one public URL, one source URL proving the claim, 
 | Exactly one `registry/candidates/community/*.json` (or `providers/community/*.json`)                                 | Touches generated artifacts, scripts, or workflows ([#296](https://github.com/JSONbored/metagraphed/pull/296)) |
 | A public `url` **plus** a `source_url` that proves the claim                                                         | `source_url` 404s or doesn't back the claim ([#328](https://github.com/JSONbored/metagraphed/pull/328))        |
 | An auto-review `kind` (docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk, example) | A surface the subnet already exposes — duplicate ([#90](https://github.com/JSONbored/metagraphed/pull/90))     |
-| `auth_required: false`, `public_safe: true`, an active netuid, a registered provider                                 | Secrets/PATs/wallet paths, private/localhost URLs, or base-layer RPC/WSS/archive                               |
+| `auth_required: false`, `public_safe: true`, an active netuid, a registered provider (or one added in the same PR)   | Secrets/PATs/wallet paths, private/localhost URLs, or unproven ownership claims                                |
 
 A clean accepted example to copy: [#87](https://github.com/JSONbored/metagraphed/pull/87).
 

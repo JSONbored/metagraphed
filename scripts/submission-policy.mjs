@@ -541,31 +541,22 @@ export function buildPrSubmissionReport({
     };
   }
 
-  if (errors.length === 0 && scope.scope === "direct-candidate") {
+  if (
+    errors.length === 0 &&
+    (scope.scope === "direct-candidate" || scope.scope === "direct-pair")
+  ) {
     const extracted = extractSingleCandidate(candidateDocument);
     errors.push(...extracted.errors);
     candidate = extracted.candidate;
   }
 
-  if (errors.length === 0 && scope.scope === "direct-provider") {
+  if (
+    errors.length === 0 &&
+    (scope.scope === "direct-provider" || scope.scope === "direct-pair")
+  ) {
     const extracted = extractSingleProvider(providerDocument);
     errors.push(...extracted.errors);
     provider = extracted.provider;
-  }
-
-  if (candidate) {
-    const deterministic = validateCandidateForSubmission({
-      candidate,
-      document: candidateDocument,
-      submitter,
-      native,
-      providers,
-      existingCandidates,
-      existingSubnets,
-    });
-    errors.push(...deterministic.errors);
-    manual_reasons.push(...deterministic.manual_reasons);
-    warnings.push(...deterministic.warnings);
   }
 
   if (provider) {
@@ -580,12 +571,37 @@ export function buildPrSubmissionReport({
     warnings.push(...deterministic.warnings);
   }
 
-  const publicState =
-    errors.length > 0
-      ? "fix_required"
-      : manual_reasons.length > 0
-        ? "manual_review"
-        : "submit_pr";
+  if (candidate) {
+    // Atomic provider+candidate pair: the inline provider counts as registered
+    // for the candidate's provider checks, so a first-time team can land its
+    // debut provider + first surface in one PR (the build writes both in the
+    // same merge) without a prior, separately-reviewed provider PR.
+    const providersForCandidate =
+      provider && scope.scope === "direct-pair"
+        ? [...providers, provider]
+        : providers;
+    const deterministic = validateCandidateForSubmission({
+      candidate,
+      document: candidateDocument,
+      submitter,
+      native,
+      providers: providersForCandidate,
+      existingCandidates,
+      existingSubnets,
+    });
+    errors.push(...deterministic.errors);
+    manual_reasons.push(...deterministic.manual_reasons);
+    warnings.push(...deterministic.warnings);
+  }
+
+  // reviewbot owns the merge / close / manual-review decision and defaults to
+  // close-or-escalate when in doubt (it must almost never merge false data as
+  // real). The gate therefore no longer pre-escalates whole risk CLASSES to a
+  // maintainer lane: a schema-valid submission is handed to the autonomous
+  // reviewer (submit_pr) regardless of manual_reasons, which are now ADVISORY
+  // risk signals the reviewer weighs — not a human gate. Only genuine,
+  // contributor-fixable problems block the PR (fix_required).
+  const publicState = errors.length > 0 ? "fix_required" : "submit_pr";
   const terminalRecommendation = errors.some((error) =>
     TERMINAL_FIX_CATEGORIES.has(error.category),
   )
@@ -609,8 +625,7 @@ export function buildPrSubmissionReport({
     provider,
     publish_allowed: false,
     auto_merge_eligible: false,
-    private_review_required:
-      publicState === "submit_pr" || publicState === "manual_review",
+    private_review_required: publicState === "submit_pr",
     blocking: publicState === "fix_required",
     terminal_recommendation: terminalRecommendation,
     review_marker: SUBMISSION_REVIEW_MARKER,
@@ -623,9 +638,7 @@ export function buildPrSubmissionReport({
     next_action:
       publicState === "submit_pr"
         ? "private-review"
-        : publicState === "manual_review"
-          ? "manual-review"
-          : terminalRecommendation || "resubmission-needed",
+        : terminalRecommendation || "resubmission-needed",
   };
 }
 
@@ -660,11 +673,16 @@ export function classifyPrScope(changedFiles) {
   }
 
   const submissionFileCount = candidateFiles.length + providerFiles.length;
-  if (submissionFileCount !== 1) {
+  // Allowed shapes: exactly one candidate, exactly one provider, OR an atomic
+  // provider+candidate PAIR (one of each) so a first-time team can land its debut
+  // provider + first surface together without a prior, separately-reviewed
+  // provider PR. Anything else is out-of-shape.
+  const isPair = candidateFiles.length === 1 && providerFiles.length === 1;
+  if (submissionFileCount !== 1 && !isPair) {
     errors.push({
       category: "unsupported-shape",
       message:
-        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file",
+        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file, or an atomic provider+candidate pair (one of each)",
     });
   }
 
@@ -681,7 +699,11 @@ export function classifyPrScope(changedFiles) {
   }
 
   return {
-    scope: providerFiles.length === 1 ? "direct-provider" : "direct-candidate",
+    scope: isPair
+      ? "direct-pair"
+      : providerFiles.length === 1
+        ? "direct-provider"
+        : "direct-candidate",
     candidateFiles,
     providerFiles,
     errors,
@@ -1202,9 +1224,13 @@ export function validateCandidateForSubmission({
     );
   }
   if (!providerIds.has(candidate.provider)) {
+    // Non-terminal: a brand-new team's debut surface references a provider that
+    // isn't registered yet. Don't auto-close — tell the contributor to include
+    // the provider in the SAME PR (an atomic provider+candidate pair), which the
+    // gate accepts and counts as registered. A contributor fix, never a maintainer.
     errors.push({
-      category: "unsupported-shape",
-      message: `candidate provider ${candidate.provider || "<missing>"} is not registered`,
+      category: "provider-not-registered",
+      message: `candidate provider ${candidate.provider || "<missing>"} is not registered — include its registry/providers/community/<id>.json in the same PR`,
     });
   }
   // Placeholder/example identity URLs (example.com, github.com/username/repo, "deprecated") are never

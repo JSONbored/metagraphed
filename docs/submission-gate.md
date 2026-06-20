@@ -19,7 +19,13 @@ marker comment, no Discord notification, and no AI content verdict.
   scope.
 - `route_away`: the PR is not a direct UGC submission and should use normal
   backend review.
-- `manual_review`: the submission may be useful but needs human judgment.
+- `manual_review`: a state the **private reviewer** may assign when it chooses to
+  escalate a submission for human judgment. The public preflight no longer
+  pre-assigns it to whole risk classes — a schema-valid submission is handed to
+  the autonomous reviewer as `submit_pr` with advisory risk signals
+  (`manual_reasons`), and the reviewer decides merge / close / escalate (it
+  defaults to close-or-escalate when in doubt and must never merge false data as
+  real).
 
 ## Labels
 
@@ -39,12 +45,20 @@ The stable marker comment is:
 
 ## Direct PR Shape
 
-Direct UGC PRs must change exactly one candidate or provider review file:
+Direct UGC PRs must change exactly one candidate or provider review file, OR an
+atomic provider+candidate **pair** (one of each):
 
 ```text
 registry/candidates/community/<slug>.json
 registry/providers/community/<slug>.json
 ```
+
+The atomic pair is the **debut lane**: a first-time team registers its provider
+and lands its first surface in a single PR. The inline provider counts as
+registered for the candidate's checks, so no prior, separately-reviewed provider
+PR is required. (Submitting a candidate alone that references an unregistered
+provider is a non-terminal `fix_required` asking you to add the provider in the
+same PR — it is never auto-closed.)
 
 The file must contain exactly one candidate:
 
@@ -130,9 +144,11 @@ App after required public checks pass. Public preflight only decides whether a
 submission is shaped correctly enough for private review; it does not expose AI
 scoring, thresholds, prompts, examples, corpus weights, or model internals.
 
-Direct provider profile PRs always route to manual/private review. They are
-useful, but they identify operators and can affect future endpoint trust, so
-they are not direct-merge content.
+Direct provider profile PRs are handed to the private reviewer like any other
+submission (`submit_pr`), carrying the `provider profile submissions require
+review` advisory signal. They identify operators and can affect future endpoint
+trust, so the reviewer scrutinizes identity and defaults to close/escalate when
+in doubt — but a provider profile is no longer pre-blocked from autonomous merge.
 
 Maintainer automation branches such as `codex/*` are ignored before D1 state,
 labels, comments, AI review, or Discord notifications. Direct UGC examples
@@ -154,7 +170,11 @@ The public gate accepts or routes:
 - adapter requests and evidence/provenance corrections.
 
 Base-layer RPC/WSS/archive claims, unknown providers, authenticated APIs,
-adapter requests, and conflicting source claims route to manual/private review.
+adapter requests, and conflicting source claims are handed to the autonomous
+reviewer with advisory risk signals (`manual_reasons`) rather than pre-routed to
+a maintainer. These are the highest-trust surfaces, so the reviewer scrutinizes
+them hardest and defaults to close/escalate when evidence is thin — but the
+public preflight no longer forces a human gate on the whole class.
 
 Endpoint and status submissions can create candidates, reports, or re-probe
 work. They cannot directly set observed uptime, latency, status, health class,
@@ -181,11 +201,15 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
 
-The private runtime makes the final UGC decision. For low-risk direct candidate
-PRs, the AI reviewer returns a strict public-safe verdict object. Deterministic
-hard guards still win over AI: unsafe URLs, secrets, private endpoints,
-duplicates, generated artifact edits, unsupported file shapes, base-layer
-RPC/archive claims, and authenticated surfaces cannot be merged automatically.
+The private runtime makes the final UGC decision for every schema-valid
+submission (`submit_pr`), returning a strict public-safe verdict object.
+Deterministic hard guards still win over AI and block the PR at preflight
+(`fix_required`): unsafe/private URLs, secrets, duplicates, generated-artifact
+edits, and unsupported file shapes cannot reach the reviewer at all. Higher-trust
+classes — base-layer RPC/WSS/archive claims, authenticated surfaces, owner
+mismatches, and provider profiles — are NOT deterministic hard blocks; they reach
+the reviewer as advisory `manual_reasons` so it can scrutinize them and, when in
+doubt, close or escalate to `manual_review` rather than merge.
 
 Production GitHub writes must use a GitHub App installation token. A fallback
 `GITHUB_TOKEN` can exist for emergency/local testing only when the private
