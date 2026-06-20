@@ -707,6 +707,14 @@ const FIXTURE_SERVICE_KINDS = new Set([
   "data-artifact",
 ]);
 const overviewSurfacesByNetuid = groupByNetuid(surfaces);
+// Group once for the per-subnet / per-provider artifact writers below — O(N+M)
+// instead of re-filtering the full arrays inside each loop (N subnets/providers ×
+// M endpoints/candidates). Output-identical: groupBy preserves input order, so
+// `.get(key) || []` yields the same array as the prior `.filter()`.
+// (endpointsByProvider is declared lower down, before its first use.)
+const endpointsByNetuid = groupByNetuid(endpointResources.endpoints);
+const candidateIndexByNetuid = groupByNetuid(candidateIndex);
+const activeCandidateIndexByNetuid = groupByNetuid(activeCandidateIndex);
 const agentSchemaBySurfaceId = new Map(
   (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
 );
@@ -943,9 +951,7 @@ await fs.rm(r2ArtifactDir("providers"), {
   force: true,
 });
 for (const provider of enrichedProviders) {
-  const providerEndpoints = endpointResources.endpoints.filter(
-    (endpoint) => endpoint.provider === provider.id,
-  );
+  const providerEndpoints = endpointsByProvider.get(provider.id) || [];
   await writeJson(artifactFile(`providers/${provider.id}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1001,12 +1007,8 @@ for (const subnet of mergedSubnets) {
   // sees each (netuid, kind, url) once — as a verified surface, not also as a
   // candidate. The full candidates.json registry still carries the flagged dupe.
   const subnetCandidates = activeCandidatesByNetuid.get(subnet.netuid) || [];
-  const subnetSurfaces = surfaces.filter(
-    (surface) => surface.netuid === subnet.netuid,
-  );
-  const subnetEndpoints = endpointResources.endpoints.filter(
-    (endpoint) => endpoint.netuid === subnet.netuid,
-  );
+  const subnetSurfaces = overviewSurfacesByNetuid.get(subnet.netuid) || [];
+  const subnetEndpoints = endpointsByNetuid.get(subnet.netuid) || [];
   await writeJson(artifactFile(`subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     generated_at: generatedAt,
@@ -1024,9 +1026,7 @@ for (const subnet of mergedSubnets) {
     generated_at: generatedAt,
     profile: profileArtifacts.byNetuid.get(subnet.netuid),
     subnet,
-    candidate_surfaces: activeCandidateIndex.filter(
-      (candidate) => candidate.netuid === subnet.netuid,
-    ),
+    candidate_surfaces: activeCandidateIndexByNetuid.get(subnet.netuid) || [],
     endpoints: subnetEndpoints,
     gaps: subnet.gaps,
     surfaces: subnetSurfaces,
@@ -1072,7 +1072,7 @@ for (const subnet of mergedSubnets) {
     netuid: subnet.netuid,
     slug: subnet.slug,
     name: subnet.name,
-    surfaces: surfaces.filter((surface) => surface.netuid === subnet.netuid),
+    surfaces: overviewSurfacesByNetuid.get(subnet.netuid) || [],
   });
 }
 
@@ -1095,9 +1095,7 @@ for (const subnet of mergedSubnets) {
     netuid: subnet.netuid,
     slug: subnet.slug,
     name: subnet.name,
-    candidates: candidateIndex.filter(
-      (candidate) => candidate.netuid === subnet.netuid,
-    ),
+    candidates: candidateIndexByNetuid.get(subnet.netuid) || [],
   });
 }
 
@@ -1185,9 +1183,7 @@ await fs.rm(r2ArtifactDir("endpoints"), {
   force: true,
 });
 for (const subnet of mergedSubnets) {
-  const subnetEndpoints = endpointResources.endpoints.filter(
-    (endpoint) => endpoint.netuid === subnet.netuid,
-  );
+  const subnetEndpoints = endpointsByNetuid.get(subnet.netuid) || [];
   await writeJson(artifactFile(`endpoints/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1200,9 +1196,7 @@ for (const subnet of mergedSubnets) {
   });
 }
 for (const provider of providers) {
-  const providerEndpoints = endpointResources.endpoints.filter(
-    (endpoint) => endpoint.provider === provider.id,
-  );
+  const providerEndpoints = endpointsByProvider.get(provider.id) || [];
   await writeJson(artifactFile(`providers/${provider.id}/endpoints.json`), {
     schema_version: 1,
     contract_version: contractVersion,
