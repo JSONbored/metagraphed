@@ -196,7 +196,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[HashiChain](https://metagraph.sh/subnets/115)** `SN115` · [repo](https://github.com/hashi115/hashichain)
 - **[TaoLend](https://metagraph.sh/subnets/116)** `SN116` — `defi` `lending` · [site](https://taolend.io/)
 - **[BrainPlay](https://metagraph.sh/subnets/117)** `SN117` · [site](https://play.shiftlayer.ai/) · [repo](https://github.com/shiftlayer-llc/brainplay-subnet)
-- **[Ditto](https://metagraph.sh/subnets/118)** `SN118` — `agent-memory` · [site](https://heyditto.ai/) · [docs](https://heyditto.ai/docs/) · [repo](https://github.com/orgs/ditto-assistant/repositories)
+- **[Ditto](https://metagraph.sh/subnets/118)** `SN118` — `agent-memory` · [site](https://heyditto.ai/) · [docs](https://heyditto.ai/docs/) · [repo](https://github.com/ditto-assistant/dittobench-starter-kit)
 - **[Satori](https://metagraph.sh/subnets/119)** `SN119` — `virtual-world` · [repo](https://github.com/Satori119/Satori)
 - **[sundae_bar](https://metagraph.sh/subnets/121)** `SN121` · [site](https://www.sundaebar.ai/) · [repo](https://github.com/sundae-bar/bittensor-subnet)
 - **[Bitrecs](https://metagraph.sh/subnets/122)** `SN122` — `recommendations` · [site](https://www.bitrecs.ai/) · [docs](https://bitrecs.gitbook.io/bitrecs-docs/) · [repo](https://github.com/bitrecs/bitrecs-subnet)
