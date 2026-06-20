@@ -1797,6 +1797,7 @@ export function computeProvenanceElevations({
 // Deterministic (generated_at is the fixed build placeholder) so the committed
 // queue is drift-checked by validate.mjs. Pure — takes the already-loaded inputs.
 const TOP_TRUST_LEVELS = new Set(["maintainer-reviewed", "adapter-backed"]);
+const REVIEW_QUEUE_GENERATED_AT = "1970-01-01T00:00:00.000Z";
 export function buildProvenanceReviewQueue({
   candidates = [],
   nativeSubnets = [],
@@ -1832,7 +1833,7 @@ export function buildProvenanceReviewQueue({
   return {
     schema_version: 1,
     generated_by: "metagraphed-review-queue",
-    generated_at: buildTimestamp(),
+    generated_at: REVIEW_QUEUE_GENERATED_AT,
     notes:
       "Suggested maintainer-review elevations: provenance-strong, live callable " +
       "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +

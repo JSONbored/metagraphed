@@ -197,6 +197,28 @@ describe("buildProvenanceReviewQueue", () => {
     assert.equal(doc.queue[0].current_level, "machine-verified");
   });
 
+  test("keeps generated_at deterministic when refresh timestamps are set", () => {
+    const previous = process.env.METAGRAPH_BUILD_TIMESTAMP;
+    process.env.METAGRAPH_BUILD_TIMESTAMP = "2025-01-02T03:04:05.000Z";
+    try {
+      const doc = buildProvenanceReviewQueue({
+        candidates,
+        nativeSubnets,
+        verificationResults,
+        subnets: [
+          { netuid: 1, slug: "acme", curation: { level: "machine-verified" } },
+        ],
+      });
+      assert.equal(doc.generated_at, "1970-01-01T00:00:00.000Z");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.METAGRAPH_BUILD_TIMESTAMP;
+      } else {
+        process.env.METAGRAPH_BUILD_TIMESTAMP = previous;
+      }
+    }
+  });
+
   test("omits subnets already at maintainer-reviewed or adapter-backed", () => {
     for (const level of ["maintainer-reviewed", "adapter-backed"]) {
       const doc = buildProvenanceReviewQueue({
