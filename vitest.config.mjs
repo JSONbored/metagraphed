@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 
+const junitPath = process.env.VITEST_JUNIT_PATH;
+
 export default defineConfig({
   test: {
     environment: "node",
@@ -22,6 +24,8 @@ export default defineConfig({
     // is the clean, low-risk fix. Per-file fork isolation is preserved; only
     // filesystem-race concurrency is removed.
     fileParallelism: false,
+    reporters: junitPath ? ["default", "junit"] : ["default"],
+    ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
     coverage: {
       provider: "v8",
       // lcov for the Codecov upload (codecov/codecov-action reads

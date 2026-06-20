@@ -137,8 +137,14 @@ jobs:
           METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
 
+      - name: Prepare test reports dir
+        if: steps.route.outputs.mode == 'full'
+        run: mkdir -p reports/junit
+
       - name: Test (with coverage gate)
         if: steps.route.outputs.mode == 'full'
+        env:
+          VITEST_JUNIT_PATH: reports/junit/vitest.xml
         run: npm run test:coverage
 
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
@@ -151,6 +157,15 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+      - name: Upload Vitest results to Codecov
+        if: ${{ !cancelled() && steps.route.outputs.mode == 'full' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./reports/junit/vitest.xml
+          report_type: test_results
           fail_ci_if_error: false
 
   checks:
