@@ -100,7 +100,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**98 curated subnets** — 79 with a site, 44 with docs, 79 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**98 curated subnets** — 86 with a site, 44 with docs, 86 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -121,8 +121,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[Cacheon](https://metagraph.sh/subnets/14)** `SN14` — `inference` · [site](https://cacheon.ai/) · [docs](https://cacheon.ai/docs) · [repo](https://github.com/latent-to/cacheon)
 - **[ORO](https://metagraph.sh/subnets/15)** `SN15` · [site](https://oroagents.com/) · [docs](https://docs.oroagents.com/docs/miners/quick-start) · [repo](https://github.com/ORO-AI/oro)
 - **[BitAds](https://metagraph.sh/subnets/16)** `SN16` · [site](https://bitads.ai/) · [docs](https://bitads.ai/docs) · [repo](https://github.com/FirstTensorLabs/BitAds)
-- **[404—GEN](https://metagraph.sh/subnets/17)** `SN17`
-- **[Zeus](https://metagraph.sh/subnets/18)** `SN18`
+- **[404—GEN](https://metagraph.sh/subnets/17)** `SN17` · [site](https://www.404.xyz/) · [repo](https://github.com/404-Repo/404-gen-subnet)
+- **[Zeus](https://metagraph.sh/subnets/18)** `SN18` · [site](https://www.zeussubnet.com/) · [repo](https://github.com/Orpheus-AI/Zeus)
 - **[blockmachine](https://metagraph.sh/subnets/19)** `SN19` · [site](https://blockmachine.io/) · [docs](https://blockmachine.io/whitepaper) · [repo](https://github.com/taostat/blockmachine)
 - **[GroundLayer](https://metagraph.sh/subnets/20)** `SN20` — `capital-markets` · [site](https://www.groundlayer.xyz/) · [repo](https://github.com/RogueTensor/comingsoon)
 - **[AdTAO](https://metagraph.sh/subnets/21)** `SN21` — `advertising` · [site](https://adtao.io/) · [repo](https://github.com/ippcteam/SN21-adtao)
@@ -130,7 +130,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[Trishool](https://metagraph.sh/subnets/23)** `SN23` — `subnet-api-observed` · [site](https://trishool.ai/) · [repo](https://github.com/TrishoolAI/trishool-phase2)
 - **[Quasar](https://metagraph.sh/subnets/24)** `SN24` — `language-models` `model-artifacts` · [site](https://silxinc.com/) · [docs](https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md) · [repo](https://github.com/SILX-LABS/QUASAR-SUBNET)
 - **[Mainframe](https://metagraph.sh/subnets/25)** `SN25` — `compute` · [site](https://macrocosmos.ai/sn25) · [repo](https://github.com/macrocosm-os/mainframe)
-- **[Perturb](https://metagraph.sh/subnets/26)** `SN26`
+- **[Perturb](https://metagraph.sh/subnets/26)** `SN26` · [site](https://www.perturbai.io/) · [repo](https://github.com/0xsigurd/Perturb)
 - **[Nodexo](https://metagraph.sh/subnets/27)** `SN27` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/)
 - **[gm](https://metagraph.sh/subnets/28)** `SN28` — `llm-inference` `marketplace` `tee` · [site](https://saygm.com/)
 - **[Coldint](https://metagraph.sh/subnets/29)** `SN29` — `data` `distributed-training` · [site](https://coldint.io/) · [docs](https://github.com/coldint/coldint_validator/blob/main/README.md) · [repo](https://github.com/coldint/coldint_validator)
@@ -139,15 +139,15 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[ItsAI](https://metagraph.sh/subnets/32)** `SN32` · [site](https://its-ai.org/en) · [repo](https://github.com/It-s-AI/llm-detection)
 - **[ReadyAI](https://metagraph.sh/subnets/33)** `SN33` — `conversation-data` `data` · [site](https://readyai.ai/) · [docs](https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md) · [repo](https://github.com/afterpartyai/bittensor-conversation-genome-project)
 - **[BitMind](https://metagraph.sh/subnets/34)** `SN34` — `deepfake-detection` · [site](https://bitmind.ai/) · [docs](https://docs.bitmind.ai/) · [repo](https://github.com/BitMind-AI/bitmind-subnet)
-- **[OxMarkets](https://metagraph.sh/subnets/35)** `SN35`
-- **[Eirel](https://metagraph.sh/subnets/36)** `SN36`
-- **[Aurelius](https://metagraph.sh/subnets/37)** `SN37`
+- **[OxMarkets](https://metagraph.sh/subnets/35)** `SN35` · [site](https://www.0xmarkets.io/) · [repo](https://github.com/General-Tao-Ventures/cartha-validator)
+- **[Eirel](https://metagraph.sh/subnets/36)** `SN36` · [site](https://eirel.ai/) · [repo](https://github.com/RendixNetwork/eirel-ai)
+- **[Aurelius](https://metagraph.sh/subnets/37)** `SN37` · [site](https://aureliusaligned.ai/) · [repo](https://github.com/Aurelius-Protocol/Aurelius-Protocol)
 - **[colosseum](https://metagraph.sh/subnets/38)** `SN38` — `stale-source-cleanup` · [repo](https://github.com/TAO-Colosseum/tao-colosseum-subnet)
 - **[Basilica](https://metagraph.sh/subnets/39)** `SN39` — `compute` · [site](https://www.basilica.ai/) · [repo](https://github.com/one-covenant/basilica)
 - **[Chunking](https://metagraph.sh/subnets/40)** `SN40` — `data-pipeline` `rag` · [site](https://subnet.chunking.com/)
 - **[Gopher](https://metagraph.sh/subnets/42)** `SN42` — `data` `tee` · [site](https://developers.gopher-ai.com/) · [docs](https://developers.gopher-ai.com/docs/subnet/intro) · [repo](https://github.com/gopher-lab/subnet-42)
 - **[Graphite](https://metagraph.sh/subnets/43)** `SN43` — `optimization` `research` · [site](https://graphite-ai.net/) · [repo](https://github.com/GraphiteAI/Graphite-Subnet)
-- **[Score](https://metagraph.sh/subnets/44)** `SN44`
+- **[Score](https://metagraph.sh/subnets/44)** `SN44` · [site](https://www.wearescore.com/) · [repo](https://github.com/score-technologies/turbovision)
 - **[Talisman AI](https://metagraph.sh/subnets/45)** `SN45` · [site](https://ai.talisman.xyz/) · [repo](https://github.com/Team-Rizzo/talisman-ai)
 - **[EvolAI](https://metagraph.sh/subnets/47)** `SN47` — `data` · [repo](https://github.com/openevolai/evolai)
 - **[Quantum Compute](https://metagraph.sh/subnets/48)** `SN48` — `compute` `quantum` · [site](https://www.qbittensorlabs.com/) · [repo](https://github.com/qbittensor-labs/quantum-compute)
