@@ -100,7 +100,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**98 curated subnets** — 86 with a site, 44 with docs, 86 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**97 curated subnets** — 86 with a site, 44 with docs, 85 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -141,7 +141,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[OxMarkets](https://metagraph.sh/subnets/35)** `SN35` · [site](https://www.0xmarkets.io/) · [repo](https://github.com/General-Tao-Ventures/cartha-validator)
 - **[Eirel](https://metagraph.sh/subnets/36)** `SN36` · [site](https://eirel.ai/) · [repo](https://github.com/RendixNetwork/eirel-ai)
 - **[Aurelius](https://metagraph.sh/subnets/37)** `SN37` · [site](https://aureliusaligned.ai/) · [repo](https://github.com/Aurelius-Protocol/Aurelius-Protocol)
-- **[colosseum](https://metagraph.sh/subnets/38)** `SN38` — `stale-source-cleanup` · [repo](https://github.com/TAO-Colosseum/tao-colosseum-subnet)
 - **[Basilica](https://metagraph.sh/subnets/39)** `SN39` — `compute` · [site](https://www.basilica.ai/) · [repo](https://github.com/one-covenant/basilica)
 - **[Chunking](https://metagraph.sh/subnets/40)** `SN40` — `data-pipeline` `rag` · [site](https://subnet.chunking.com/)
 - **[Gopher](https://metagraph.sh/subnets/42)** `SN42` — `data` `tee` · [site](https://developers.gopher-ai.com/) · [docs](https://developers.gopher-ai.com/docs/subnet/intro) · [repo](https://github.com/gopher-lab/subnet-42)
