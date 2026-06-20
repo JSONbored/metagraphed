@@ -1533,6 +1533,26 @@ for (const decision of reviewDecisionsDocument.decisions || []) {
   validateReviewDecision(decision, nativeNetuids);
 }
 
+// Single source of truth for the maintainer-reviewed trust tier: an overlay may
+// only sit at curation.level "maintainer-reviewed" when an explicit decision in
+// registry/reviews/maintainer-reviewed.json backs it. Before this gate the level
+// was hand-edited directly in overlay files (89 overlays, only 3 backed) — silent,
+// unauditable drift. The decisions file is now the ONLY sanctioned way to reach
+// the tier, so the provenance of every top-tier subnet is recorded and reviewable.
+const maintainerReviewedNetuids = new Set(
+  (reviewDecisionsDocument.decisions || [])
+    .filter((decision) => decision.decision === "maintainer-reviewed")
+    .map((decision) => decision.netuid),
+);
+for (const subnet of subnets) {
+  if (subnet.curation?.level === "maintainer-reviewed") {
+    assert(
+      maintainerReviewedNetuids.has(subnet.netuid),
+      `${subnet.slug}: curation.level "maintainer-reviewed" (netuid ${subnet.netuid}) has no backing decision in registry/reviews/maintainer-reviewed.json — add a decision there instead of hand-editing the overlay level`,
+    );
+  }
+}
+
 await validateGeneratedArtifacts(nativeSnapshot, subnets, candidates);
 
 if (errors.length > 0) {
