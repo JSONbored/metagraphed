@@ -4,11 +4,7 @@
   "name": "Byzantium",
   "slug": "sn-76",
   "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed",
-    "official-website"
-  ],
+  "categories": ["baseline-curated", "identity-reviewed", "official-website"],
   "source_repo": "https://github.com/byzantiumaitao-arch/byzantium",
   "dashboard_url": "https://taomarketcap.com/subnets/76",
   "website_url": "https://www.byzantiumai.net/",
@@ -38,9 +34,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://www.byzantiumai.net/"
-      ],
+      "source_urls": ["https://www.byzantiumai.net/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
