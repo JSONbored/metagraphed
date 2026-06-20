@@ -64,7 +64,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - SN24 Quasar (sn-24) [baseline-augmented, baseline-curated, identity-reviewed, language-models, model-artifacts, official-docs, official-source-repo, official-website]; 3/3 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/24
 - SN25 Mainframe (sn-25); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/25
 - SN26 Perturb (sn-26); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/26
-- SN27 Nodexo (nodexo); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/27
+- SN27 Team TBC (sn-27); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/27
 - SN28 gm (gm); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/28
 - SN29 Coldint (sn-29) [baseline-augmented, baseline-curated, data, distributed-training, identity-reviewed, official-docs, official-source-repo, official-website]; 1/1 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/29
 - SN30 Endure Network (sn-30); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/30
@@ -143,7 +143,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - SN103 Djinn (sn-103); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/103
 - SN104 for sale \(burn to uid1\) (for-sale-uid1); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/104
 - SN105 Beam (sn-105); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/105
-- SN106 Nodexo (sn-106); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/106
+- SN106 Nodexo (nodexo); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/106
 - SN107 Minos (sn-107); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/107
 - SN108 TalkHead (sn-108); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/108
 - SN109 Academia (sn-109) [baseline-augmented, baseline-curated, data-artifact, identity-reviewed, official-source-repo]; 1/1 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/109
