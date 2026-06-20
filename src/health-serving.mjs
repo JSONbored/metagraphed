@@ -1043,12 +1043,25 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
     try {
       const current = await readHealthKv(env, "health:current");
       // The prober writes surfaces + subnets + summary; accept any live snapshot
-      // that carries the per-surface or per-subnet rows the overlays consume.
+      // that carries the per-surface or per-subnet rows the overlays consume —
+      // but freshness-gate it exactly like the D1 fallback below. KV health:current
+      // has NO TTL, so without this a wedged prober would serve its last snapshot
+      // as fresh forever. last_run_at older than the window → skip → fall through
+      // to the (freshness-gated) D1 path → null (caller serves `unknown`). A
+      // missing/unparseable last_run_at is treated as fresh (back-compat: a wedged
+      // prober still emits its real last_run_at, so the stale case is covered).
       if (
         current &&
         (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
       ) {
-        return { ...current, health_source: "live-cron-prober" };
+        const currentTime = typeof now === "function" ? now() : Date.now();
+        const lastRun = Date.parse(current.last_run_at);
+        if (
+          !Number.isFinite(lastRun) ||
+          lastRun >= currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS
+        ) {
+          return { ...current, health_source: "live-cron-prober" };
+        }
       }
     } catch {
       // fall through to D1

@@ -88,6 +88,7 @@ const CANDIDATE_SCHEMA_FIELDS = new Set([
   "confidence",
   "provider",
   "auth_required",
+  "auth",
   "public_safe",
   "verification",
   "rate_limit_notes",

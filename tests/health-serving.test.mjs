@@ -25,6 +25,12 @@ import { computeReliability, scoreFromStats } from "../src/reliability.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
+// A recent prober run time for live KV fixtures that must pass resolveLiveHealth's
+// freshness gate (KV health:current is rejected when last_run_at is older than the
+// 25-min window). Worker-route tests go through handleRequest and cannot inject a
+// clock, so the fixture must be fresh relative to Date.now().
+const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
+
 describe("overlaySubnetHealth", () => {
   test("builds per-subnet health from live rows without stale static surfaces", () => {
     const staticArtifact = {
@@ -821,7 +827,7 @@ describe("worker live health serving", () => {
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
           generated_at: "2026-06-11T00:00:00.000Z",
-          last_run_at: "2026-06-11T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           summary: {
             surface_count: 58,
             status_counts: { ok: 57, degraded: 1 },
@@ -835,7 +841,7 @@ describe("worker live health serving", () => {
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.data.scope, "operational");
-    assert.equal(body.meta.operational_observed_at, "2026-06-11T00:00:00.000Z");
+    assert.equal(body.meta.operational_observed_at, FRESH_RUN);
   });
 
   test("/api/v1/subnets/0/health/trends queries D1", async () => {
@@ -953,7 +959,7 @@ describe("worker live health serving", () => {
 
 describe("resolveLiveHealth (KV → D1 → null)", () => {
   const liveKv = {
-    last_run_at: "2026-06-13T00:00:00.000Z",
+    last_run_at: FRESH_RUN,
     surfaces: [
       {
         surface_id: "7:subnet-api:x",
@@ -973,6 +979,17 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     });
     assert.equal(live.health_source, "live-cron-prober");
     assert.equal(live.surfaces[0].status, "ok");
+  });
+
+  test("rejects a stale KV health:current (wedged prober) and falls through", async () => {
+    // KV has no TTL, so a wedged prober's last snapshot must not serve forever.
+    const stale = { ...liveKv, last_run_at: "2020-01-01T00:00:00.000Z" };
+    const live = await resolveLiveHealth({
+      readHealthKv: async (_e, key) =>
+        key === "health:current" ? stale : null,
+      env: {}, // no db → stale KV rejected → null (caller serves `unknown`)
+    });
+    assert.equal(live, null);
   });
 
   test("falls back to fresh D1 surface_status rows when KV is cold", async () => {
@@ -1571,7 +1588,7 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           subnets: [
             { netuid: 7, status: "failed", surface_count: 1, ok_count: 0 },
           ],
@@ -1585,14 +1602,14 @@ describe("worker live health overlay on composed routes", () => {
     const body = await res.json();
     assert.equal(body.data.health.status, "failed");
     assert.equal(body.meta.source, "live-cron-prober");
-    assert.equal(body.meta.operational_observed_at, "2026-06-13T00:00:00.000Z");
+    assert.equal(body.meta.operational_observed_at, FRESH_RUN);
   });
 
   test("/api/v1/agent-catalog/7 carries the live freshness contract", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           subnets: [{ netuid: 7, status: "ok" }],
           surfaces: [],
         },
@@ -1603,14 +1620,14 @@ describe("worker live health overlay on composed routes", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
-    assert.equal(body.meta.operational_observed_at, "2026-06-13T00:00:00.000Z");
+    assert.equal(body.meta.operational_observed_at, FRESH_RUN);
   });
 
   test("/api/v1/agent-catalog overlays the index per-subnet status", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           subnets: [{ netuid: 7, status: "degraded" }],
           surfaces: [],
         },
@@ -1625,7 +1642,7 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           subnets: [{ netuid: 1, status: "ok" }],
           surfaces: [],
         },
@@ -1706,7 +1723,7 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           health_source: "live-cron-prober",
           surfaces: [
             {
@@ -1786,7 +1803,7 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
-          last_run_at: "2026-06-13T00:00:00.000Z",
+          last_run_at: FRESH_RUN,
           health_source: "live-cron-prober",
           surfaces: [
             {

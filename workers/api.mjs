@@ -1084,6 +1084,16 @@ async function handleApiRequest(
   // intentionally the 1970 epoch in committed/local builds (issue #349) — this
   // is the genuine "last updated" timestamp.
   const pub = await publishedAt(env);
+  // A live tier whose blob carries its OWN freshness (economics' captured_at,
+  // refreshed on its own 3h schedule) should report that as published_at, not the
+  // unrelated 6h publish pointer — otherwise a fresh live-kv economics blob looks
+  // as stale as the last full publish.
+  const effectivePublishedAt =
+    matched.id === "economics" &&
+    live?.source === "live-kv" &&
+    baseData?.captured_at
+      ? baseData.captured_at
+      : pub;
   // Static-asset artifacts that DECLARE a `published_at` field (e.g.
   // build-summary, agent-catalog) carry it as null in the committed
   // deterministic build, so an agent reading the response BODY (not just the
@@ -1109,7 +1119,7 @@ async function handleApiRequest(
         cache: matched.cache,
         contract_version: contractVersion(env),
         generated_at: baseData?.generated_at || null,
-        published_at: pub,
+        published_at: effectivePublishedAt,
         source: baseSource,
         ...(staleContract ? { stale_contract: staleContract } : {}),
         ...(baseData?.operational_observed_at

@@ -16,6 +16,10 @@ import { handleRequest } from "../workers/api.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
+// Fresh prober run time for live KV fixtures — resolveLiveHealth rejects a
+// health:current whose last_run_at is older than the 25-min freshness window.
+const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
+
 // Build injectable deps with controlled artifact + KV responses.
 function makeDeps(artifacts = {}, kv = {}) {
   return {
@@ -1995,7 +1999,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       ],
     };
     const liveKv = {
-      last_run_at: "2026-06-13T00:00:00.000Z",
+      last_run_at: FRESH_RUN,
       surfaces: [
         {
           surface_id: "7:subnet-api:x",
@@ -2019,7 +2023,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       const out = res.body.result.structuredContent;
       assert.equal(out.surfaces[0].status, "failed");
       assert.equal(out.summary.status, "failed");
-      assert.equal(out.operational_observed_at, "2026-06-13T00:00:00.000Z");
+      assert.equal(out.operational_observed_at, FRESH_RUN);
     });
 
     test("list_subnet_apis overlays live health + recomputes callable", async () => {
