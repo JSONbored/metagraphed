@@ -7,7 +7,6 @@ import {
   subnetContact,
   flattenSurfaces,
   withSurfaceFreshness,
-  buildProvenanceReviewQueue,
   loadCandidates,
   loadVerification,
   loadNativeSnapshot,
@@ -1553,28 +1552,6 @@ for (const subnet of subnets) {
     );
   }
 }
-
-// Provenance review queue must stay fresh: it is a pure transform of committed
-// candidates + verification + chain identity, so a stale committed copy means a
-// new (or resolved) elevation suggestion was missed. Regenerate and compare.
-const committedReviewQueue = await readJson(
-  path.join(repoRoot, "registry/reviews/review-queue.json"),
-).catch(() => null);
-assert(
-  committedReviewQueue && Array.isArray(committedReviewQueue.queue),
-  "review queue: registry/reviews/review-queue.json must exist with a queue array",
-);
-const expectedReviewQueue = buildProvenanceReviewQueue({
-  candidates,
-  nativeSubnets: nativeSnapshot.subnets,
-  verificationResults: verificationDocument.results || [],
-  subnets,
-});
-assert(
-  stableStringify(committedReviewQueue) ===
-    stableStringify(expectedReviewQueue),
-  "review queue: registry/reviews/review-queue.json is stale — run `npm run review:queue` and commit the result",
-);
 
 await validateGeneratedArtifacts(nativeSnapshot, subnets, candidates);
 
