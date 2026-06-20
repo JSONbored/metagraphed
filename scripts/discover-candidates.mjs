@@ -885,6 +885,9 @@ function collectOpenApiBaseOrigins() {
     } catch {
       return;
     }
+    if (isGenericHost(new URL(origin).hostname)) {
+      return;
+    }
     pushOrigin(netuid, provider, origin);
     // #1004 — also probe the conventional api./docs. subdomains of the same
     // registrable domain; live specs frequently live there, not on the marketing
