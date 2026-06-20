@@ -1832,7 +1832,7 @@ export function buildProvenanceReviewQueue({
   return {
     schema_version: 1,
     generated_by: "metagraphed-review-queue",
-    generated_at: buildTimestamp(),
+    generated_at: "1970-01-01T00:00:00.000Z",
     notes:
       "Suggested maintainer-review elevations: provenance-strong, live callable " +
       "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +
