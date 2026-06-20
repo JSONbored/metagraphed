@@ -84,11 +84,20 @@ jobs:
           ]
           errors = []
           submission_files = candidate_files + provider_files
+          # Atomic debut pair: one candidate + one provider (and nothing else) so a
+          # first-time team lands its provider + first surface in one PR. Mirrors
+          # classifyPrScope in scripts/submission-policy.mjs.
+          is_pair = len(candidate_files) == 1 and len(provider_files) == 1
           if not submission_files and not touched_community:
               scope = "normal-pr"
           else:
-              scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
-              if len(submission_files) != 1:
+              if is_pair:
+                  scope = "direct-pair"
+              elif len(provider_files) == 1:
+                  scope = "direct-provider"
+              else:
+                  scope = "direct-candidate"
+              if len(submission_files) != 1 and not is_pair:
                   errors.append({"category": "unsupported-shape"})
               unrelated = [
                   file
@@ -97,7 +106,7 @@ jobs:
               ]
               if unrelated:
                   errors.append({"category": "generated-artifact-tampering"})
-          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} and not errors else "full"
+          mode = "ugc" if scope in {"direct-candidate", "direct-provider", "direct-pair"} and not errors else "full"
           report = {
               "schema_version": 1,
               "mode": mode,
@@ -225,11 +234,20 @@ jobs:
           ]
           errors = []
           submission_files = candidate_files + provider_files
+          # Atomic debut pair: one candidate + one provider (and nothing else) so a
+          # first-time team lands its provider + first surface in one PR. Mirrors
+          # classifyPrScope in scripts/submission-policy.mjs.
+          is_pair = len(candidate_files) == 1 and len(provider_files) == 1
           if not submission_files and not touched_community:
               scope = "normal-pr"
           else:
-              scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
-              if len(submission_files) != 1:
+              if is_pair:
+                  scope = "direct-pair"
+              elif len(provider_files) == 1:
+                  scope = "direct-provider"
+              else:
+                  scope = "direct-candidate"
+              if len(submission_files) != 1 and not is_pair:
                   errors.append({"category": "unsupported-shape"})
               unrelated = [
                   file
@@ -238,7 +256,7 @@ jobs:
               ]
               if unrelated:
                   errors.append({"category": "generated-artifact-tampering"})
-          mode = "ugc" if scope in {"direct-candidate", "direct-provider"} and not errors else "full"
+          mode = "ugc" if scope in {"direct-candidate", "direct-provider", "direct-pair"} and not errors else "full"
           report = {
               "schema_version": 1,
               "mode": mode,

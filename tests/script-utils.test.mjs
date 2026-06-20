@@ -42,6 +42,7 @@ import {
   listJsonFilesRecursive,
   loadCandidates,
   loadDetailedVerification,
+  loadProviders,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -1313,6 +1314,24 @@ describe("script utility contracts", () => {
       ),
       9,
     );
+  });
+
+  test("loadProviders loads community-submitted providers as first-class (regression: was non-recursive)", async () => {
+    // The debut provider+candidate lane depends on community providers being
+    // loaded/registered the same way community candidates are. loadProviders was
+    // non-recursive and skipped registry/providers/community/, so a merged
+    // community provider was invisible and any candidate referencing it failed
+    // validate ("unknown provider"). Assert they are loaded, unwrapped, and
+    // conform to the flat provider shape.
+    const providers = await loadProviders();
+    const ids = new Set(providers.map((provider) => provider.id));
+    assert.equal(ids.has("404-gen"), true); // a registry/providers/community/*.json id
+    assert.equal(ids.size, providers.length); // no duplicate ids (curated wins)
+    const community = providers.find((provider) => provider.id === "404-gen");
+    // Unwrapped to a flat provider object (no { provider, submission } wrapper).
+    assert.equal(community.provider, undefined);
+    assert.equal(community.submission, undefined);
+    assert.ok(community.id && community.name && community.website_url);
   });
 
   test("loads checked-in candidates and verification fallback contracts", async () => {

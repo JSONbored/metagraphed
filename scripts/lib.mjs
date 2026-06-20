@@ -390,8 +390,25 @@ export async function listJsonFilesRecursive(dirPath) {
 }
 
 export async function loadProviders() {
-  const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
-  return Promise.all(files.map(readJson));
+  // Top-level registry/providers/*.json are curated providers (flat objects).
+  // Community-submitted providers live in registry/providers/community/ as a
+  // { provider, submission } wrapper; they are first-class once merged — unwrap
+  // them so they load / validate / serve exactly like curated providers (mirrors
+  // how loadCandidates loads registry/candidates/community/). A curated provider
+  // wins over a community one of the same id (defensive — ids do not collide today).
+  const [flatFiles, communityFiles] = await Promise.all([
+    listJsonFiles(path.join(repoRoot, "registry/providers")),
+    listJsonFiles(path.join(repoRoot, "registry/providers/community")),
+  ]);
+  const flat = await Promise.all(flatFiles.map(readJson));
+  const community = (await Promise.all(communityFiles.map(readJson))).map(
+    (document) => document.provider || document,
+  );
+  const byId = new Map();
+  for (const provider of [...community, ...flat]) {
+    if (provider?.id) byId.set(provider.id, provider);
+  }
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export async function loadSubnets() {

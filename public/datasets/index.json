@@ -1,5 +1,5 @@
 {
-  "content_hash": "43208af73bb4484a35f63285fef934efe028596e53256d2aba6d9391d696492c",
+  "content_hash": "964e7e502d8a1c9a1aa88394994a7c52b365a31621356701fa114a1ba901ea77",
   "contract_version": "2026-06-06.1",
   "dataset_count": 3,
   "datasets": [
@@ -76,7 +76,7 @@
       "format": "csv",
       "id": "providers",
       "path": "/datasets/providers.csv",
-      "rows": 92,
+      "rows": 123,
       "title": "Providers"
     }
   ],

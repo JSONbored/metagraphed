@@ -1,20 +1,30 @@
 id,name,kind,authority,github_url,website_url
+404-gen,404-GEN,subnet-team,community,https://github.com/404-Repo/404-gen-subnet,https://www.404.xyz/
 academia,Academia,subnet-team,official,https://github.com/fx-integral/academia,https://github.com/fx-integral/academia
 actual-computer,Actual Computer,subnet-team,provider-claimed,,https://actual.inc/
 adtao,AdTAO,subnet-team,official,https://github.com/ippcteam/SN21-adtao,https://adtao.io/
+affine,Affine,subnet-team,community,https://github.com/AffineFoundation/affine,https://www.affine.io/
+albedo,Albedo,subnet-team,community,https://github.com/unarbos/albedo,https://us-east-1.hippius.com/albedo/index.html
 allways,Allways,subnet-team,provider-claimed,,https://all-ways.io
 alphacore,AlphaCore,subnet-team,official,https://github.com/AlphaCoreBittensor/alphacore,https://alpha-core.ai/
+astrid,Astrid,subnet-team,community,https://github.com/astridintelligence/sn-127,https://www.astrid.global/
+aurelius,Aurelius,subnet-team,community,https://github.com/Aurelius-Protocol/Aurelius-Protocol,https://aureliusaligned.ai/
+babelbit,Babelbit,subnet-team,community,https://github.com/babelbit/babelbit_subnet,https://babelbit.ai/
 backprop-finance,Backprop Finance,data-provider,provider-claimed,,https://backprop.finance
+beam,Beam,subnet-team,community,https://github.com/Beam-Network,https://b1m.ai/
 bitads,BitAds,subnet-team,official,https://github.com/FirstTensorLabs/BitAds,https://bitads.ai/
+bitcast,Bitcast,subnet-team,community,https://github.com/bitcast-network/bitcast,https://stats.bitcast.network/
 bitcast-network,Bitcast,subnet-team,community,,https://www.bitcast.network
 bitmind,BitMind,subnet-team,official,https://github.com/BitMind-AI,https://bitmind.ai/
 bitrecs,Bitrecs,subnet-team,official,https://github.com/bitrecs/bitrecs-subnet,https://www.bitrecs.ai/
+bitsec-ai,Bitsec.ai,subnet-team,community,https://github.com/Bitsec-AI/sandbox,https://bitsec.ai/
 bitstarter,Bitstarter,subnet-team,official,,https://bitstarter.ai/
 blockmachine,BlockMachine,infrastructure-provider,provider-claimed,,https://blockmachine.io
 byzantium,Byzantium,subnet-team,official,https://github.com/safe-scan-ai,https://www.byzantiumai.net/
 cacheon,Cacheon,subnet-team,official,https://github.com/latent-to/cacheon,https://cacheon.ai/
 chipforge,ChipForge,subnet-team,official,https://github.com/TatsuProject/ChipForge_SN84,https://www.chipforge.io/
 chutes,Chutes,subnet-team,official,https://github.com/chutesai/chutes,https://chutes.ai/
+cliqueai,CliqueAI,subnet-team,community,https://github.com/toptensor/CliqueAI,https://cliqueai.toptensor.ai/
 coldint,Coldint,subnet-team,official,https://github.com/coldint/coldint_validator,https://coldint.io/
 compelle,Compelle,subnet-team,official,https://github.com/compelle/compelle-validator,https://compelle.com/
 compute-horde,Compute Horde,subnet-team,official,https://github.com/backend-developers-ltd/ComputeHorde,https://computehorde.io/
@@ -23,8 +33,10 @@ degenbrain,DegenBrain,subnet-team,provider-claimed,,https://subnet90.com/
 desearch,Desearch,subnet-team,official,https://github.com/Desearch-ai/subnet-22,https://www.desearch.ai/
 ditto-assistant,Ditto,subnet-team,official,https://github.com/orgs/ditto-assistant/repositories,https://heyditto.ai/
 djinn,Djinn,subnet-team,official,https://github.com/Djinn-Inc/djinn,https://www.djinn.gg/
+dogelayer,dogelayer,subnet-team,community,https://github.com/dogelayer-ai/dogelayer,https://dogelayer.ai/
 dwellir,Dwellir,infrastructure-provider,provider-claimed,,https://www.dwellir.com
 eightball,8 Ball,subnet-team,official,https://github.com/Barbariandev/8Ball_miner,https://8ball125.com/
+eirel,Eirel,subnet-team,community,https://github.com/RendixNetwork/eirel-ai,https://eirel.ai/
 endure,Endure,subnet-team,official,,https://endure.network/
 evolai,EvolAI,subnet-team,official,https://github.com/openevolai/evolai,https://evolai.ai/
 flamewire,FlameWire,infrastructure-provider,provider-claimed,,https://flamewire.io
@@ -38,32 +50,44 @@ graphite-ai,Graphite AI,subnet-team,official,https://github.com/GraphiteAI/Graph
 green-compute,Green Compute,subnet-team,official,,https://www.green-compute.com/
 groundlayer,GroundLayer,subnet-team,official,,https://www.groundlayer.xyz/
 handshake58,Handshake58,subnet-team,official,https://github.com/Handshake58/HS58,https://handshake58.com
+harnyx,Harnyx,subnet-team,community,https://github.com/harnyx/harnyx,https://harnyx.ai/
 hashichain,HashiChain,subnet-team,official,https://github.com/hashi115/hashichain,https://github.com/hashi115/hashichain
 hippius,Hippius,subnet-team,official,https://github.com/thenervelab/hippius-validator,https://hippius.com/
 hone,Hone,subnet-team,official,https://github.com/manifold-inc/hone,https://www.hone.training/
 inference-labs,Inference Labs,subnet-team,official,https://github.com/inference-labs-inc/subnet-2,https://subnet2.inferencelabs.com/
 infinitehash,InfiniteHash,subnet-team,official,https://github.com/backend-developers-ltd/InfiniteHash,https://github.com/backend-developers-ltd/InfiniteHash
 its-ai,ItsAI,subnet-team,official,https://github.com/It-s-AI/llm-detection,https://its-ai.org/en
+leadpoet,Leadpoet,subnet-team,community,https://github.com/leadpoet/leadpoet,https://leadpoet.com/
+leoma,Leoma,subnet-team,community,https://github.com/RendixNetwork/leoma,https://leoma.ai/
+liquidity,Liquidity,subnet-team,community,https://github.com/creativebuilds/sn77,https://sn77.xyz/
 luminar-network,Luminar Network,subnet-team,official,,https://luminar.network/
 macrocosmos,Macrocosmos,subnet-team,official,https://github.com/macrocosm-os/data-universe,https://www.macrocosmos.ai/
 mantis,MANTIS,subnet-team,official,https://github.com/Barbariandev/MANTIS,https://github.com/Barbariandev/MANTIS
 metagraphed,Metagraphed,registry,registry-observed,,https://metagraph.sh
+minos,Minos,subnet-team,community,https://github.com/minos-protocol/minos_subnet,https://theminos.ai/
+minotaur,minotaur,subnet-team,community,https://github.com/subnet112/minotaur_subnet,https://minotaursubnet.com/
 mobiusfund,Mobius Fund,subnet-team,official,https://github.com/mobiusfund/investing,https://investing88.ai/
 natix,NATIX,subnet-team,official,https://github.com/natixnetwork/streetvision-subnet,https://www.natix.network/
 nepher-robotics,Nepher Robotics,subnet-team,official,https://github.com/nepher-ai/nepher-subnet,https://nepher.ai
+niome,NIOME,subnet-team,community,https://github.com/genomesio/subnet-niome,https://niome.genomes.io/
 nodexo,Nodexo,subnet-team,provider-claimed,,https://nodexo.ai/
 nodies,Nodies,infrastructure-provider,provider-claimed,,https://nodies.app
+nova,NOVA,subnet-team,community,https://github.com/metanova-labs/nova,https://www.metanova-labs.ai/
 numinous,Numinous,subnet-team,official,https://github.com/numinouslabs/numinous,https://numinouslabs.io/
 one-covenant,One Covenant,subnet-team,provider-claimed,https://github.com/one-covenant,https://www.tplr.ai/
 oneoneone,oneoneone,subnet-team,official,https://github.com/oneoneone-io/subnet-111,https://oneoneone.io/
 onfinality,OnFinality,infrastructure-provider,provider-claimed,,https://onfinality.io
 opentensor,OpenTensor,infrastructure-provider,official,,https://bittensor.com
 oro,ORO,subnet-team,official,https://github.com/ORO-AI/oro,https://oroagents.com/
+oxmarkets,OxMarkets,subnet-team,community,https://github.com/General-Tao-Ventures/cartha-validator,https://www.0xmarkets.io/
+perturb,Perturb,subnet-team,community,https://github.com/0xsigurd/Perturb,https://www.perturbai.io/
 platform-network,Platform Network,subnet-team,official,https://github.com/PlatformNetwork/platform,https://www.platform.network/
+poker44,Poker44,subnet-team,community,https://github.com/Poker44/Poker44-subnet,https://poker44.net/
 qbittensor-labs,qBittensor Labs,subnet-team,official,https://github.com/qbittensor-labs/quantum-compute,https://www.qbittensorlabs.com/
 readyai,ReadyAI,subnet-team,official,https://github.com/afterpartyai/bittensor-conversation-genome-project,https://readyai.ai/
 redteam,RedTeam,subnet-team,official,https://github.com/RedTeamSubnet/RedTeam,https://www.theredteam.io/
 ridges,Ridges,subnet-team,official,https://github.com/ridgesai/ridges,https://www.ridges.ai/
+score,Score,subnet-team,community,https://github.com/score-technologies/turbovision,https://www.wearescore.com/
 shiftlayer,Shiftlayer,subnet-team,provider-claimed,https://github.com/shiftlayer-llc/brainplay-subnet,https://play.shiftlayer.ai/
 signalplus,SignalPlus,subnet-team,provider-claimed,,https://www.signalplus.com/
 silx-labs,SILX Labs,subnet-team,official,https://github.com/SILX-LABS/QUASAR-SUBNET,https://silxinc.com/
@@ -71,8 +95,12 @@ soma,SOMA,subnet-team,official,https://github.com/DendriteHQ/SOMA,https://thesom
 sparket,Sparket,subnet-team,official,https://github.com/sparket-ai/sparket-ai,https://sparket.ai/
 subnetradar,SubnetRadar,data-provider,provider-claimed,,https://subnetradar.com/
 sundae-bar,Sundae Bar,subnet-team,official,https://github.com/sundae-bar/bittensor-subnet,https://www.sundaebar.ai/
+swarm,Swarm,subnet-team,community,https://github.com/swarm-subnet/swarm,https://www.swarm124.com/
+synth,Synth,subnet-team,community,https://github.com/mode-network/synth-subnet,https://synthdata.co/
 talisman-ai,Talisman AI,subnet-team,official,https://github.com/Team-Rizzo/talisman-ai,https://ai.talisman.xyz/
+talkhead,TalkHead,subnet-team,community,https://github.com/talkheadai/talkhead-subnet,https://www.talkhead.ai/
 tao-colosseum,TAO Colosseum,subnet-team,official,https://github.com/TAO-Colosseum/tao-colosseum-subnet,https://github.com/TAO-Colosseum/tao-colosseum-subnet
+tao-private-network,TAO Private Network,subnet-team,community,https://github.com/taofu-labs/tpn-subnet,https://tpn.taofu.xyz/
 taofi,TaoFi,subnet-team,official,https://github.com/Swap-Subnet/swap-subnet,https://www.taofi.com/pool
 taolend,TaoLend,subnet-team,provider-claimed,,https://taolend.io/
 taomarketcap,TaoMarketCap,data-provider,provider-claimed,,https://taomarketcap.com
@@ -81,8 +109,8 @@ taos-im,TAOS IM,subnet-team,official,https://github.com/taos-im/sn-79,https://ta
 taostats,Taostats,data-provider,provider-claimed,,https://taostats.io
 targon,Targon,subnet-team,official,https://github.com/manifold-inc/targon,https://targon.com/
 tensorclaw,Tensorclaw,subnet-team,provider-claimed,,https://www.tensorclaw.ai/
-tensorplex-subnet-docs,Tensorplex subnet-docs,docs-provider,community,,https://github.com/tensorplex-labs/subnet-docs
 tensorplex,Tensorplex,subnet-team,official,https://github.com/tensorplex-labs/dojo,https://www.tensorplex.ai/
+tensorplex-subnet-docs,Tensorplex subnet-docs,docs-provider,community,,https://github.com/tensorplex-labs/subnet-docs
 tensorusd,TensorUSD,subnet-team,official,https://github.com/TensorUSD/subnet,https://tensorusd.com/
 trajectoryrl,TrajectoryRL,subnet-team,official,https://github.com/trajectoryRL/trajectoryRL,https://trajrl.com/
 trishool,Trishool,subnet-team,official,https://github.com/TrishoolAI/trishool-phase2,https://trishool.ai/
@@ -91,3 +119,6 @@ vanta,Vanta Network,subnet-team,official,https://github.com/taoshidev/vanta-netw
 vectorchat,VectorChat,subnet-team,provider-claimed,,https://subnet.chunking.com/
 verathos,Verathos,subnet-team,official,https://github.com/verathos-ai/verathos,https://verathos.ai/
 vidaio,Vidaio,subnet-team,official,https://github.com/vidaio-subnet/vidaio-subnet,https://vidaio.io/
+vocence,Vocence,subnet-team,community,https://github.com/vocence-78/vocence,https://www.vocence.ai/
+zeus,Zeus,subnet-team,community,https://github.com/Orpheus-AI/Zeus,https://www.zeussubnet.com/
+zipcode,Zipcode,subnet-team,community,https://github.com/resi-labs-ai/RESI-models,https://zipcode.ai/
