@@ -1051,6 +1051,7 @@ sn-117-taopedia-article,117,sn-117,BrainPlay,docs,BrainPlay Taopedia article,tao
 sn-117-tensorplex-docs,117,sn-117,BrainPlay,docs,BrainPlay Tensorplex subnet docs,tensorplex-subnet-docs,registry-observed,https://github.com/tensorplex-labs/subnet-docs/tree/main/data/117,false,true,
 sn-118-backprop-dashboard,118,sn-118,Ditto,dashboard,Ditto Backprop Finance dashboard,backprop-finance,registry-observed,https://backprop.finance/dtao/subnets/118-ditto,false,true,
 sn-118-ditto-assistant,118,sn-118,Ditto,dashboard,Ditto assistant app,ditto-assistant,official,https://assistant.heyditto.ai/,false,true,
+sn-118-ditto-dittobench-starter-kit,118,sn-118,Ditto,source-repo,DittoBench starter kit,ditto-assistant,official,https://github.com/ditto-assistant/dittobench-starter-kit,false,true,
 sn-118-ditto-docs,118,sn-118,Ditto,docs,Ditto docs,ditto-assistant,official,https://heyditto.ai/docs/,false,true,
 sn-118-ditto-hermes-docs,118,sn-118,Ditto,docs,Ditto Hermes Agent docs,ditto-assistant,official,https://heyditto.ai/docs/hermes-agent/,false,true,
 sn-118-ditto-mcp-docs,118,sn-118,Ditto,docs,Ditto MCP server docs,ditto-assistant,official,https://heyditto.ai/docs/mcp-server/,false,true,

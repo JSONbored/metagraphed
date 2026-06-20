@@ -1,5 +1,5 @@
 {
-  "content_hash": "a44a7d0991f2f0f194575a46f06395407ab30895c9ee4eb69799abf4183a1e5a",
+  "content_hash": "30ff35bd6576c31ea676d693640f0d0978e300cf98e7fd8cfc2367507bc23417",
   "contract_version": "2026-06-06.1",
   "dataset_count": 3,
   "datasets": [
@@ -60,7 +60,7 @@
       "format": "csv",
       "id": "surfaces",
       "path": "/datasets/surfaces.csv",
-      "rows": 1135,
+      "rows": 1136,
       "title": "Surfaces"
     },
     {
