@@ -5,8 +5,15 @@
   "slug": "sn-37",
   "status": "active",
   "categories": [],
-  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
   "surfaces": [],
-  "social": { "x": "https://x.com/aureliusaligned" },
-  "contact": "aurelius.subnet@gmail.com"
+  "social": {
+    "x": "https://x.com/aureliusaligned"
+  },
+  "contact": "aurelius.subnet@gmail.com",
+  "source_repo": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+  "website_url": "https://aureliusaligned.ai/"
 }

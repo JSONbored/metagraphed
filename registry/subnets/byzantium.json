@@ -43,5 +43,8 @@
       },
       "notes": "Official Byzantium website."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/byzantiumai"
+  }
 }

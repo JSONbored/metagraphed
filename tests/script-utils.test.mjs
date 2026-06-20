@@ -42,6 +42,7 @@ import {
   listJsonFilesRecursive,
   loadCandidates,
   loadDetailedVerification,
+  loadProviders,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -1034,6 +1035,108 @@ describe("script utility contracts", () => {
     assert.equal(surface.rate_limit_notes, "See docs for tier details.");
   });
 
+  test("only elevates generated overlays when reviewed evidence is promoted", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 59, name: "Babelbit", status: "active" }],
+    };
+    const candidates = [
+      {
+        id: "sn-59-babelbit-website",
+        netuid: 59,
+        name: "Babelbit website",
+        kind: "website",
+        url: "https://babelbit.ai/",
+        provider: "babelbit",
+        source_type: "native-chain-identity",
+        source_tier: "native-chain",
+        source_url: "https://babelbit.ai/",
+        source_urls: ["https://babelbit.ai/"],
+        state: "schema-valid",
+      },
+      {
+        id: "sn-59-babelbit-api",
+        netuid: 59,
+        name: "Babelbit API",
+        kind: "subnet-api",
+        url: "https://api.babelbit.ai/",
+        provider: "babelbit",
+        source_type: "project-website-common-path",
+        source_tier: "provider-claimed",
+        source_url: "https://babelbit.ai/",
+        source_urls: ["https://babelbit.ai/"],
+        state: "schema-valid",
+      },
+    ];
+    const maintainerReviewedDecisions = [
+      {
+        netuid: 59,
+        slug: "sn-59",
+        decision: "maintainer-reviewed",
+        reviewed_at: "2026-06-20T00:00:00.000Z",
+        confidence: "high",
+        source_urls: ["https://api.babelbit.ai/"],
+      },
+    ];
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      maintainerReviewedDecisions,
+      manualOverlays: [],
+      nativeSnapshot,
+      verification: {
+        schema_version: 1,
+        results: [
+          {
+            candidate_id: "sn-59-babelbit-website",
+            classification: "live",
+            content_type: "text/html",
+            quality_signals: { public_safe: true },
+          },
+          {
+            candidate_id: "sn-59-babelbit-api",
+            classification: "live",
+            content_type: "text/html",
+            quality_signals: { public_safe: true },
+          },
+        ],
+      },
+    });
+
+    assert.deepEqual(
+      overlaySet.generatedOverlays[0].surfaces.map((surface) => surface.id),
+      ["sn-59-babelbit-website"],
+    );
+    assert.equal(
+      overlaySet.generatedOverlays[0].curation.level,
+      "machine-verified",
+    );
+
+    const reviewedOverlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      maintainerReviewedDecisions,
+      manualOverlays: [],
+      nativeSnapshot,
+      verification: {
+        schema_version: 1,
+        results: candidates.map((candidate) => ({
+          candidate_id: candidate.id,
+          classification: "live",
+          content_type:
+            candidate.kind === "subnet-api" ? "application/json" : "text/html",
+          quality_signals: { public_safe: true },
+        })),
+      },
+    });
+
+    assert.equal(
+      reviewedOverlaySet.generatedOverlays[0].curation.level,
+      "maintainer-reviewed",
+    );
+  });
+
   test("does not promote owner-mismatched source repository candidates", async () => {
     const nativeSnapshot = {
       captured_at: "2026-06-08T00:00:00.000Z",
@@ -1313,6 +1416,24 @@ describe("script utility contracts", () => {
       ),
       9,
     );
+  });
+
+  test("loadProviders loads community-submitted providers as first-class (regression: was non-recursive)", async () => {
+    // The debut provider+candidate lane depends on community providers being
+    // loaded/registered the same way community candidates are. loadProviders was
+    // non-recursive and skipped registry/providers/community/, so a merged
+    // community provider was invisible and any candidate referencing it failed
+    // validate ("unknown provider"). Assert they are loaded, unwrapped, and
+    // conform to the flat provider shape.
+    const providers = await loadProviders();
+    const ids = new Set(providers.map((provider) => provider.id));
+    assert.equal(ids.has("404-gen"), true); // a registry/providers/community/*.json id
+    assert.equal(ids.size, providers.length); // no duplicate ids (curated wins)
+    const community = providers.find((provider) => provider.id === "404-gen");
+    // Unwrapped to a flat provider object (no { provider, submission } wrapper).
+    assert.equal(community.provider, undefined);
+    assert.equal(community.submission, undefined);
+    assert.ok(community.id && community.name && community.website_url);
   });
 
   test("loads checked-in candidates and verification fallback contracts", async () => {

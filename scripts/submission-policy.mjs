@@ -575,12 +575,12 @@ export function buildPrSubmissionReport({
   if (candidate) {
     // Atomic provider+candidate pair: the inline provider counts as registered
     // for the candidate's provider checks, so a first-time team can land its
-    // debut provider + first surface in one PR (the build writes both in the
-    // same merge) without a prior, separately-reviewed provider PR.
-    const providersForCandidate =
-      provider && scope.scope === "direct-pair"
-        ? [...providers, provider]
-        : providers;
+    // debut provider + first surface in one PR. Both files are community-authored
+    // and loaded as first-class once merged (loadProviders reads
+    // registry/providers/community/), so the candidate's provider resolves at
+    // build/serve time without a prior, separately-reviewed provider PR.
+    const isPair = provider && scope.scope === "direct-pair";
+    const providersForCandidate = isPair ? [...providers, provider] : providers;
     const deterministic = validateCandidateForSubmission({
       candidate,
       document: candidateDocument,
@@ -593,6 +593,15 @@ export function buildPrSubmissionReport({
     errors.push(...deterministic.errors);
     manual_reasons.push(...deterministic.manual_reasons);
     warnings.push(...deterministic.warnings);
+    // The inline provider's identity is self-asserted by the same submitter, so
+    // it cannot vouch for the candidate's ownership the way a previously-reviewed
+    // provider does. Surface that to the reviewer as an advisory signal (it must
+    // independently verify the debut provider's identity) — never auto-cleared.
+    if (isPair && candidate.provider === provider.id) {
+      manual_reasons.push(
+        "debut provider+candidate pair — provider identity is self-asserted in the same PR; verify the provider is the real operator before trusting owner-match",
+      );
+    }
   }
 
   // reviewbot owns the merge / close / manual-review decision and defaults to

@@ -65,21 +65,22 @@ export async function generateBaselineOverlaySet(options = {}) {
     options.existingGeneratedOverlays ||
     (await loadExistingGeneratedSubnetOverlays());
   // Maintainer-reviewed decisions elevate generated-only overlays too (not just
-  // manual ones), so a human decision — or a confirmed review-queue elevation —
-  // reaches the trust tier for a subnet that has no hand-authored overlay file.
-  const maintainerReviewedNetuids =
-    options.maintainerReviewedNetuids ||
-    new Set(
-      (
-        (
-          await readJson(
-            path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
-          ).catch(() => ({ decisions: [] }))
-        ).decisions || []
-      )
-        .filter((decision) => decision.decision === "maintainer-reviewed")
-        .map((decision) => decision.netuid),
-    );
+  // manual ones), but the elevation must be tied to reviewed evidence. A subnet
+  // should not inherit the maintainer-reviewed tier merely because any unrelated
+  // surface was promoted for the same netuid.
+  const maintainerReviewedDecisions =
+    options.maintainerReviewedDecisions ||
+    (
+      await readJson(
+        path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
+      ).catch(() => ({ decisions: [] }))
+    ).decisions ||
+    [];
+  const maintainerReviewedDecisionsByNetuid = groupByNetuid(
+    maintainerReviewedDecisions.filter(
+      (decision) => decision.decision === "maintainer-reviewed",
+    ),
+  );
 
   const manualNetuids = new Set(
     manualOverlays.map((overlay) => overlay.netuid),
@@ -104,7 +105,7 @@ export async function generateBaselineOverlaySet(options = {}) {
       nativeSubnet,
       providersById,
       verificationByCandidate,
-      maintainerReviewedNetuids,
+      maintainerReviewedDecisionsByNetuid,
     });
     if (manualNetuids.has(nativeSubnet.netuid)) {
       manualBaselineOverlays.push(baselineOverlay);
@@ -283,11 +284,11 @@ export async function writeGeneratedOverlayArtifacts({
 // file (registry/reviews/maintainer-reviewed.json), the single source of truth.
 function buildGeneratedCuration({
   hasSurfaces,
-  maintainerReviewed,
+  hasReviewedEvidence,
   sourceCount,
   gapNotes,
 }) {
-  const elevated = maintainerReviewed && hasSurfaces;
+  const elevated = hasSurfaces && hasReviewedEvidence;
   return {
     level: elevated
       ? "maintainer-reviewed"
@@ -308,7 +309,7 @@ function buildGeneratedOverlay({
   nativeSubnet,
   providersById,
   verificationByCandidate,
-  maintainerReviewedNetuids = new Set(),
+  maintainerReviewedDecisionsByNetuid = new Map(),
 }) {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
   const promotedSurfaces = subnetCandidates
@@ -360,13 +361,35 @@ function buildGeneratedOverlay({
         : "Machine-generated baseline overlay from verified public-source candidates.",
     curation: buildGeneratedCuration({
       hasSurfaces: promotedSurfaces.length > 0,
-      maintainerReviewed: maintainerReviewedNetuids.has(nativeSubnet.netuid),
+      hasReviewedEvidence: hasMaintainerReviewedEvidence(
+        promotedSurfaces,
+        maintainerReviewedDecisionsByNetuid.get(nativeSubnet.netuid) || [],
+      ),
       sourceCount: sourceUrls.size,
       gapNotes: gaps.gap_notes,
     }),
     links: [],
     surfaces: promotedSurfaces,
   };
+}
+
+function hasMaintainerReviewedEvidence(surfaces, decisions) {
+  if (surfaces.length === 0 || decisions.length === 0) {
+    return false;
+  }
+
+  const promotedUrls = new Set(
+    surfaces
+      .flatMap((surface) => [surface.url, ...(surface.source_urls || [])])
+      .map((url) => normalizePublicUrl(url))
+      .filter(Boolean),
+  );
+  return decisions.some((decision) =>
+    (decision.source_urls || [])
+      .map((url) => normalizePublicUrl(url))
+      .filter(Boolean)
+      .some((url) => promotedUrls.has(url)),
+  );
 }
 
 const OWNER_SENSITIVE_KINDS = new Set([
