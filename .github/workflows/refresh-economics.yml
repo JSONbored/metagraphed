@@ -1,11 +1,11 @@
 name: Refresh Economics (live tier)
 
-# Publishes the live economics tier (KV economics:current + D1 durability mirror),
-# DECOUPLED from the 6h Publish Cloudflare Backend job so /api/v1/economics stays
-# fresh (and survives) independent of the heavy publish. Fetches the chain snapshot
-# fresh, builds the economics blob (byte-shape-identical to R2 economics.json), and
-# writes it to the live store. Tolerant: a chain/wrangler failure leaves the last
-# live value in place; the serve path falls back KV → R2 regardless.
+# Publishes the live economics tier (KV economics:current), DECOUPLED from the 6h
+# Publish Cloudflare Backend job so /api/v1/economics stays fresh (and survives)
+# independent of the heavy publish. Fetches the chain snapshot fresh, builds the
+# economics blob (byte-shape-identical to R2 economics.json), and writes it to KV.
+# Tolerant: a chain/wrangler failure leaves the last live value in place; the serve
+# path falls back KV → R2 regardless.
 on:
   schedule:
     # Every 3 hours — fresher than the 6h publish, light chain load.
@@ -47,14 +47,13 @@ jobs:
       - name: Refresh native chain snapshot (tolerant)
         run: node scripts/refresh-native-snapshot.mjs
 
-      - name: Publish live economics (KV + D1)
+      - name: Publish live economics (KV)
         run: npm run economics:refresh
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
-          METAGRAPH_ALLOW_D1_WRITE: "1"
 
       - name: Notify on failure
         if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
