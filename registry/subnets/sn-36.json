@@ -5,7 +5,14 @@
   "slug": "sn-36",
   "status": "active",
   "categories": [],
-  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
   "surfaces": [],
-  "social": { "x": "https://x.com/rendix_network" }
+  "social": {
+    "x": "https://x.com/rendix_network"
+  },
+  "source_repo": "https://github.com/RendixNetwork/eirel-ai",
+  "website_url": "https://eirel.ai/"
 }

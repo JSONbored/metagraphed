@@ -5,8 +5,15 @@
   "slug": "sn-26",
   "status": "active",
   "categories": [],
-  "curation": { "level": "candidate-discovered", "review_state": "unreviewed" },
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
   "surfaces": [],
-  "social": { "x": "https://x.com/perturbaix" },
-  "contact": "hello@perturbai.io"
+  "social": {
+    "x": "https://x.com/perturbaix"
+  },
+  "contact": "hello@perturbai.io",
+  "source_repo": "https://github.com/0xsigurd/Perturb",
+  "website_url": "https://www.perturbai.io/"
 }
