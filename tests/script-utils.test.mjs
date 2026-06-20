@@ -674,9 +674,8 @@ describe("script utility contracts", () => {
       isR2PreferredDualArtifactPath("/metagraph/subnets.json"),
       false,
     );
-    // The agent-catalog/agent-resources/lineage/operational-surfaces indexes
-    // moved to plain R2-only (#1003, ADR-0006) — live-data/registry-derived
-    // indexes, not the committed contract, so they're R2-only and NOT dual.
+    // The agent-catalog/agent-resources/lineage indexes are plain R2-only (#1003,
+    // ADR-0006) — live-data/registry-derived indexes, not the committed contract.
     assert.equal(
       artifactStorageTierForRelativePath("agent-catalog.json"),
       ARTIFACT_STORAGE_TIERS.r2,
@@ -693,9 +692,12 @@ describe("script utility contracts", () => {
       artifactStorageTierForRelativePath("lineage.json"),
       ARTIFACT_STORAGE_TIERS.r2,
     );
+    // operational-surfaces.json is DUAL (committed): it's the cron prober's own
+    // input and is deterministic, so committing it decouples the live health tier
+    // from the 6h publish (a publish outage must not freeze the prober).
     assert.equal(
       artifactStorageTierForRelativePath("operational-surfaces.json"),
-      ARTIFACT_STORAGE_TIERS.r2,
+      ARTIFACT_STORAGE_TIERS.dual,
     );
     assert.equal(
       artifactStorageTierForRelativePath("surface-aliases.json"),

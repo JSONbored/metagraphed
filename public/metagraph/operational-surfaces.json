@@ -1,0 +1,1006 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "kinds": [
+    "archive",
+    "data-artifact",
+    "sse",
+    "subnet-api",
+    "subtensor-rpc",
+    "subtensor-wss"
+  ],
+  "schema_version": 1,
+  "surface_count": 55,
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subtensor-rpc",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "JSON-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "onfinality",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "onfinality-finney-rpc",
+      "surface_key": "srf-dece284ea80ec36c",
+      "url": "https://bittensor-finney.api.onfinality.io/public"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subtensor-wss",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "WSS-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "onfinality",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "onfinality-finney-wss",
+      "surface_key": "srf-09438235257fa944",
+      "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-rpc",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "JSON-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-archive-rpc",
+      "surface_key": "srf-d6ad3703dbed701f",
+      "url": "https://archive.chain.opentensor.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-wss",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "WSS-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-archive-wss",
+      "surface_key": "srf-62a01e9d17dc2ac8",
+      "url": "wss://archive.chain.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-rpc",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "JSON-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-finney-rpc",
+      "surface_key": "srf-3ffcb1a074d13547",
+      "url": "https://entrypoint-finney.opentensor.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-wss",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "WSS-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-finney-wss",
+      "surface_key": "srf-f216252c5e5b341f",
+      "url": "wss://entrypoint-finney.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-rpc",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "JSON-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-lite-rpc",
+      "surface_key": "srf-2d3306d2cfa2223e",
+      "url": "https://lite.chain.opentensor.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subtensor-wss",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "WSS-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "opentensor-lite-wss",
+      "surface_key": "srf-dcf48d017826dc4b",
+      "url": "wss://lite.chain.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 6,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "surface_id": "sn-6-numinous-api-health",
+      "surface_key": "srf-4d92fe6304cbb843",
+      "url": "https://api.numinouslabs.io/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 6,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "surface_id": "sn-6-numinous-leaderboard",
+      "surface_key": "srf-1e61c2a2b07ebb24",
+      "url": "https://api.numinouslabs.io/api/v1/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-api-health",
+      "surface_key": "srf-e81528d66302ee51",
+      "url": "https://api.all-ways.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-crown",
+      "surface_key": "srf-b4011f2dcaf520b8",
+      "url": "https://api.all-ways.io/crown"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-events-latest",
+      "surface_key": "srf-cc1a1ad8cf1170b7",
+      "url": "https://api.all-ways.io/events/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-miners",
+      "surface_key": "srf-d4a66107344a3f28",
+      "url": "https://api.all-ways.io/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-miners-leaderboard",
+      "surface_key": "srf-611e6482fd15f376",
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-miners-reliability",
+      "surface_key": "srf-7f553de2b7ed71ea",
+      "url": "https://api.all-ways.io/miners/reliability"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-network-overview",
+      "surface_key": "srf-3517b995dfdb719a",
+      "url": "https://api.all-ways.io/network/overview"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-protocol-chain-state",
+      "surface_key": "srf-117ca13385677b0a",
+      "url": "https://api.all-ways.io/protocol/chain-state"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-protocol-constants",
+      "surface_key": "srf-cc58e48f67eab560",
+      "url": "https://api.all-ways.io/protocol/constants"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "sse",
+      "netuid": 7,
+      "probe": {
+        "expect": "sse",
+        "method": "GET",
+        "timeout_ms": 5000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-sse",
+      "surface_key": "srf-9a3013f8b54338b4",
+      "url": "https://api.all-ways.io/sse"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "community-sn-7-subnet-api-api-all-ways-io",
+      "surface_key": "srf-7ae24ec1e4ae7d50",
+      "url": "https://api.all-ways.io/swaps"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "subnet-api",
+      "netuid": 14,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "surface_id": "community-sn-14-subnet-api-api-cacheon-ai",
+      "surface_key": "srf-08ad6da0db95e254",
+      "url": "https://api.cacheon.ai/api/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 23,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
+      "public_safe": true,
+      "subnet_name": "Trishool",
+      "subnet_slug": "sn-23",
+      "surface_id": "sn-23-trishool-api-root",
+      "surface_key": "srf-b98c53721003635a",
+      "url": "https://api.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 24,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-quasar-base-model",
+      "surface_key": "srf-2e8a77e8b3404e86",
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 24,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-quasar-launch-teacher",
+      "surface_key": "srf-840a2605f8fb23c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 24,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-website-link-silxinc-com-data-artifact-3",
+      "surface_key": "srf-319b61d8ff50a870",
+      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 29,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "subnet_name": "Coldint",
+      "subnet_slug": "sn-29",
+      "surface_id": "sn-29-coldint-fineweb-dataset",
+      "surface_key": "srf-f51c73d17f954447",
+      "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 33,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "subnet_name": "ReadyAI",
+      "subnet_slug": "sn-33",
+      "surface_id": "sn-33-readyai-hf-dataset",
+      "surface_key": "srf-1e2a3e1a34a5a2b9",
+      "url": "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 33,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "subnet_name": "ReadyAI",
+      "subnet_slug": "sn-33",
+      "surface_id": "sn-33-readyai-llms-data-repo",
+      "surface_key": "srf-369814c5b1cde9c3",
+      "url": "https://github.com/afterpartyai/llms_txt_store"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 47,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "subnet_name": "EvolAI",
+      "subnet_slug": "sn-47",
+      "surface_id": "sn-47-evolai-universal-qa-dataset",
+      "surface_key": "srf-aa5d5d31a0f78307",
+      "url": "https://huggingface.co/datasets/evolai/universal_qa"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-website-common-api",
+      "surface_key": "srf-c27814da8fc343a3",
+      "url": "https://lium.io/api"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 25000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-last-boss-battle",
+      "surface_key": "srf-c0245306b1d6177a",
+      "url": "https://api.gradients.io/v1/performance/last-boss-battle"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 25000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-latest-tournament-weights",
+      "surface_key": "srf-2e2ae1882c93c037",
+      "url": "https://api.gradients.io/v1/performance/latest-tournament-weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "data-artifact",
+      "netuid": 56,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-models",
+      "surface_key": "srf-8d4249cf3cefb4cc",
+      "url": "https://www.gradients.io/app/my-models"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 25000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-weight-projection-static",
+      "surface_key": "srf-5aa367d8193a4a6a",
+      "url": "https://api.gradients.io/v1/performance/weight-projection-static"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 58,
+      "probe": {
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "surface_id": "sn-58-handshake58-provider-directory-api",
+      "surface_key": "srf-1c93ab1da6a59c50",
+      "url": "https://handshake58.com/api/mcp/providers"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 58,
+      "probe": {
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "surface_id": "sn-58-handshake58-skills-api",
+      "surface_key": "srf-fdcb03337cc44e64",
+      "url": "https://handshake58.com/api/skills?status=published"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 64,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-pricing-api",
+      "surface_key": "srf-a452646cd344d1a2",
+      "url": "https://api.chutes.ai/pricing"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-website-link-chutes-ai-data-artifact-5",
+      "surface_key": "srf-9e534fe113c5b86a",
+      "url": "https://chutes.ai/app?type=llm"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-website-link-chutes-ai-data-artifact-6",
+      "surface_key": "srf-dea1477f513710c8",
+      "url": "https://chutes.ai/app?type=diffusion"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 68,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "surface_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "surface_key": "srf-1216a921c8908de5",
+      "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 70,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "subnet_name": "NexisGen",
+      "subnet_slug": "sn-70",
+      "surface_id": "sn-70-website-link-nexisgen-ai-data-artifact-5",
+      "surface_key": "srf-009a5089d0e13e24",
+      "url": "https://nexisgen.ai/commission"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 72,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "natix",
+      "public_safe": true,
+      "subnet_name": "StreetVision by NATIX",
+      "subnet_slug": "sn-72",
+      "surface_id": "sn-72-natix-huggingface",
+      "surface_key": "srf-f58da177e29ec502",
+      "url": "https://huggingface.co/natix-network-org"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "gittensor-master-repositories",
+      "surface_key": "srf-150f1f0ade50ced8",
+      "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "gittensory-contribution-interface",
+      "surface_key": "srf-cc923091819b9bf0",
+      "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 79,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taos-im",
+      "public_safe": true,
+      "subnet_name": "MVTRX",
+      "subnet_slug": "sn-79",
+      "surface_id": "sn-79-mvtrx-paper",
+      "surface_key": "srf-0c31e228973cafd3",
+      "url": "https://simulate.trading/taos-im-paper"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 88,
+      "probe": {
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mobiusfund",
+      "public_safe": true,
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "surface_id": "sn-88-investing-assets",
+      "surface_key": "srf-3d79d0526c25e5cc",
+      "url": "https://api.investing88.ai/assets"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "data-artifact",
+      "netuid": 95,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "subnet_name": "Actual",
+      "subnet_slug": "actual",
+      "surface_id": "sn-95-actual-model-registry",
+      "surface_key": "srf-5a99159ed1a9bd15",
+      "url": "https://models.actual.inc/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 96,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "surface_id": "sn-96-verathos-models-api",
+      "surface_key": "srf-4f803cf3db704548",
+      "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 109,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "academia",
+      "public_safe": true,
+      "subnet_name": "Academia",
+      "subnet_slug": "sn-109",
+      "surface_id": "sn-109-academia-archives",
+      "surface_key": "srf-0070df9e44e7d65b",
+      "url": "https://github.com/fx-integral/academia-archives"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 110,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-green-compute-models",
+      "surface_key": "srf-8fa47d05ebfe89b1",
+      "url": "https://www.green-compute.com/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 110,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
+      "surface_key": "srf-4956e665c57320f3",
+      "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 110,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
+      "surface_key": "srf-ae90870b3452e032",
+      "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 114,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "surface_id": "sn-114-soma-mcp",
+      "surface_key": "srf-71dfb5eb3db2406d",
+      "url": "https://thesoma.ai/mcp"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "kind": "data-artifact",
+      "netuid": 118,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "surface_id": "sn-118-website-link-heyditto-ai-data-artifact-3",
+      "surface_key": "srf-eeeec504a19120d3",
+      "url": "https://heyditto.ai/ditto-vs-frontier-open-models"
+    }
+  ]
+}

@@ -529,7 +529,7 @@
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "r2"
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",

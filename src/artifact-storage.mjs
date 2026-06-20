@@ -79,14 +79,13 @@ const R2_ONLY_PATTERNS = [
   // coverage seeds (unchanged), and dispatch-webhooks reads it tier-aware.
   /^changelog\.json$/,
   // Agent-facing data indexes moved out of git (#1003, ADR-0006 end state): the
-  // capability catalog, the AI-resources index, the cross-network lineage map,
-  // and the cron prober's operational-surfaces list. All live-data/registry-
-  // derived and served tier-aware from R2; only the reproducible contract
-  // (openapi/types/contracts/api-index/schemas-index) stays committed.
+  // capability catalog, the AI-resources index, and the cross-network lineage
+  // map. Live-data/registry-derived and served tier-aware from R2; only the
+  // reproducible contract (openapi/types/contracts/api-index/schemas-index) and
+  // the prober's operational-surfaces list (DUAL — see below) stay committed.
   /^agent-catalog\.json$/,
   /^agent-resources\.json$/,
   /^lineage\.json$/,
-  /^operational-surfaces\.json$/,
   // The live-data seeds (#1003): the chain-snapshot subnet index + the coverage
   // rollup. Non-reproducible (live-enriched), so they drove the bulk-refresh
   // reproducibility wall (#998). Now R2-only; the changelog's "since last
@@ -144,6 +143,15 @@ const DUAL_PATTERNS = [
   /^openapi\.json$/,
   /^schemas\/index\.json$/,
   /^types\.d\.ts$/,
+  // The cron prober's own input list. It is deterministic (probe-enabled overlay
+  // surfaces, sorted, with a fixed-epoch generated_at), so it is committable like
+  // the contract files. #1017 made it R2-only, which created a SPOF: the prober
+  // reads it ASSETS-first then R2, but with no committed copy the ASSETS read
+  // 404s and the prober depends on the 6h publish's R2 latest/ surviving — so a
+  // publish outage eventually freezes the *live* health tier too. DUAL (committed
+  // + R2-mirrored) decouples the prober from the publish: its ASSETS read always
+  // succeeds from the deployed bundle. The #1025 freshness gate keeps it current.
+  /^operational-surfaces\.json$/,
 ];
 
 // R2-preferred dual artifacts: now EMPTY. subnets/coverage were the last

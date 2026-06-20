@@ -411,7 +411,7 @@
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "r2"
+      "storage_tier": "dual"
     },
     {
       "contract_version": "2026-06-06.1",

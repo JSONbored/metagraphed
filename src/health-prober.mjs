@@ -259,9 +259,11 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
     });
 }
 
-// Read the committed operational-surfaces.json (dual tier) via the ASSETS
-// binding, falling back to R2. Returns the surfaces array (empty on failure —
-// the run then no-ops rather than throwing).
+// Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
+// the ASSETS binding, falling back to R2. It is committed precisely so this read
+// never depends on the 6h publish (see artifact-storage.mjs): a publish outage
+// must not freeze the live health prober. Returns the surfaces array (empty on
+// failure — the run then no-ops rather than throwing).
 export async function loadOperationalSurfaces(env) {
   // ASSETS first (committed, always present in the deployed Worker).
   try {
