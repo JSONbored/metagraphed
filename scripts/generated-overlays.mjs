@@ -64,6 +64,22 @@ export async function generateBaselineOverlaySet(options = {}) {
   const existingGeneratedOverlays =
     options.existingGeneratedOverlays ||
     (await loadExistingGeneratedSubnetOverlays());
+  // Maintainer-reviewed decisions elevate generated-only overlays too (not just
+  // manual ones), so a human decision — or a confirmed review-queue elevation —
+  // reaches the trust tier for a subnet that has no hand-authored overlay file.
+  const maintainerReviewedNetuids =
+    options.maintainerReviewedNetuids ||
+    new Set(
+      (
+        (
+          await readJson(
+            path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
+          ).catch(() => ({ decisions: [] }))
+        ).decisions || []
+      )
+        .filter((decision) => decision.decision === "maintainer-reviewed")
+        .map((decision) => decision.netuid),
+    );
 
   const manualNetuids = new Set(
     manualOverlays.map((overlay) => overlay.netuid),
@@ -88,6 +104,7 @@ export async function generateBaselineOverlaySet(options = {}) {
       nativeSubnet,
       providersById,
       verificationByCandidate,
+      maintainerReviewedNetuids,
     });
     if (manualNetuids.has(nativeSubnet.netuid)) {
       manualBaselineOverlays.push(baselineOverlay);
@@ -259,12 +276,39 @@ export async function writeGeneratedOverlayArtifacts({
   return summary;
 }
 
+// Curation block for a generated overlay. A maintainer-reviewed decision elevates
+// the level to the trusted tier (only when there are surfaces to vouch for);
+// otherwise it's machine-verified (has surfaces) or candidate-discovered (none).
+// reviewed_at stays null here — the authoritative timestamp lives in the decision
+// file (registry/reviews/maintainer-reviewed.json), the single source of truth.
+function buildGeneratedCuration({
+  hasSurfaces,
+  maintainerReviewed,
+  sourceCount,
+  gapNotes,
+}) {
+  const elevated = maintainerReviewed && hasSurfaces;
+  return {
+    level: elevated
+      ? "maintainer-reviewed"
+      : hasSurfaces
+        ? "machine-verified"
+        : "candidate-discovered",
+    review_state: elevated ? "maintainer-reviewed" : "machine-generated",
+    reviewed_at: null,
+    verified_at: null,
+    source_count: sourceCount,
+    gap_notes: gapNotes,
+  };
+}
+
 function buildGeneratedOverlay({
   candidatesByNetuid,
   existingGeneratedByNetuid,
   nativeSubnet,
   providersById,
   verificationByCandidate,
+  maintainerReviewedNetuids = new Set(),
 }) {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
   const promotedSurfaces = subnetCandidates
@@ -314,17 +358,12 @@ function buildGeneratedOverlay({
       nativeSubnet.netuid === 0
         ? "Machine-generated root/system baseline overlay."
         : "Machine-generated baseline overlay from verified public-source candidates.",
-    curation: {
-      level:
-        promotedSurfaces.length > 0
-          ? "machine-verified"
-          : "candidate-discovered",
-      review_state: "machine-generated",
-      reviewed_at: null,
-      verified_at: null,
-      source_count: sourceUrls.size,
-      gap_notes: gaps.gap_notes,
-    },
+    curation: buildGeneratedCuration({
+      hasSurfaces: promotedSurfaces.length > 0,
+      maintainerReviewed: maintainerReviewedNetuids.has(nativeSubnet.netuid),
+      sourceCount: sourceUrls.size,
+      gapNotes: gaps.gap_notes,
+    }),
     links: [],
     surfaces: promotedSurfaces,
   };

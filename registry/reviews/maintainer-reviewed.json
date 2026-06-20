@@ -627,6 +627,15 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/handshake58.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 59,
+      "slug": "sn-59",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": ["https://api.babelbit.ai/"],
+      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
+    },
+    {
       "netuid": 61,
       "slug": "sn-61",
       "decision": "maintainer-reviewed",
@@ -1015,6 +1024,15 @@
       "confidence": "high",
       "source_urls": [],
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/for-sale-uid1.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+    },
+    {
+      "netuid": 107,
+      "slug": "sn-107",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": ["https://api.theminos.ai/"],
+      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (theminos.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
     },
     {
       "netuid": 109,
