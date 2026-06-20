@@ -1087,9 +1087,9 @@ export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 // Live economics tier: return the KV 'economics:current' blob (byte-identical to
 // the built economics.json) when it is present, on-contract, fresh, and passes
 // integrity invariants — else null so the caller serves the committed R2 artifact.
-// KV-primary / R2-fallback (D1 is a durability mirror the writer populates but the
-// serve path never reconstructs from it — that avoids re-deriving the cross-subnet
-// emission_share or the summary in the Worker). Pure given readHealthKv + now.
+// KV-primary / R2-fallback: the blob is served verbatim (never reconstructed), so
+// the cross-subnet emission_share + summary are never re-derived in the Worker.
+// Pure given readHealthKv + now.
 export async function resolveLiveEconomics({
   readHealthKv,
   env,

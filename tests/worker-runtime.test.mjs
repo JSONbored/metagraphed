@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import worker, { handleRequest } from "../workers/api.mjs";
 
 const env = createLocalArtifactEnv();
@@ -103,6 +104,82 @@ describe("Worker runtime", () => {
     // build time in a production refresh, so assert the invariant (distinct from
     // the overlaid published_at), not a fixed fixture value (#349).
     assert.notEqual(body.data.generated_at, publishedAt);
+  });
+
+  test("/api/v1/economics serves the live KV blob (meta.source: live-kv)", async () => {
+    const liveBlob = {
+      schema_version: 1,
+      contract_version: CONTRACT_VERSION,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      captured_at: new Date(Date.now() - 60_000).toISOString(), // fresh
+      network: "finney",
+      summary: { subnet_count: 1, with_economics_count: 1 },
+      subnets: [{ netuid: 7, slug: "x", name: "X", emission_share: 1 }],
+    };
+    const liveEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key, options) {
+          if (key === "economics:current") {
+            assert.equal(options?.type, "json");
+            return liveBlob;
+          }
+          return null;
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      liveEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "live-kv");
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(body.data.summary.with_economics_count, 1);
+  });
+
+  test("/api/v1/economics falls back to the R2 artifact when KV is cold (meta.source: r2-fallback)", async () => {
+    // Base env has no METAGRAPH_CONTROL → resolveLiveEconomics returns null →
+    // the committed R2 economics.json serves, exactly as before this tier existed.
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2-fallback");
+    assert.ok(Array.isArray(body.data.subnets));
+  });
+
+  test("/api/v1/economics rejects a stale KV blob and falls back to R2", async () => {
+    const staleEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "economics:current") {
+            return {
+              schema_version: 1,
+              contract_version: CONTRACT_VERSION,
+              captured_at: "2020-01-01T00:00:00.000Z", // way past the 8h window
+              summary: { with_economics_count: 1 },
+              subnets: [{ netuid: 7, emission_share: 1 }],
+            };
+          }
+          return null;
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      staleEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2-fallback");
   });
 
   test("/.well-known/mcp/server-card.json overlays published_at from the KV pointer", async () => {
