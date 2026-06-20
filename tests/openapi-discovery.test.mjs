@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   OPENAPI_PROBE_PATHS,
+  apiDocsSubdomainOrigins,
   isOpenApiDocument,
   probeOpenApiSpec,
 } from "../scripts/lib.mjs";
@@ -150,6 +151,60 @@ describe("probeOpenApiSpec", () => {
     };
     await probeOpenApiSpec("https://example.com", ["/openapi.json"], fetcher);
     assert.deepEqual(urls, ["https://example.com/openapi.json"]);
+  });
+});
+
+describe("apiDocsSubdomainOrigins (#1004)", () => {
+  test("derives api. and docs. origins from a marketing-root domain", () => {
+    assert.deepEqual(apiDocsSubdomainOrigins("https://graphite.xyz"), [
+      "https://api.graphite.xyz",
+      "https://docs.graphite.xyz",
+    ]);
+  });
+
+  test("strips www. and ignores path/port when deriving", () => {
+    assert.deepEqual(apiDocsSubdomainOrigins("https://www.vidaio.io/about"), [
+      "https://api.vidaio.io",
+      "https://docs.vidaio.io",
+    ]);
+  });
+
+  test("folds an existing subdomain back to the registrable domain", () => {
+    // app.example.com → api.example.com / docs.example.com
+    assert.deepEqual(apiDocsSubdomainOrigins("https://app.example.com"), [
+      "https://api.example.com",
+      "https://docs.example.com",
+    ]);
+  });
+
+  test("handles a multi-label public suffix (co.uk)", () => {
+    assert.deepEqual(apiDocsSubdomainOrigins("https://acme.co.uk"), [
+      "https://api.acme.co.uk",
+      "https://docs.acme.co.uk",
+    ]);
+  });
+
+  test("returns [] for multi-tenant platform tenants", () => {
+    for (const origin of [
+      "https://foo.github.io",
+      "https://bar.vercel.app",
+      "https://baz.pages.dev",
+      "https://qux.workers.dev",
+    ]) {
+      assert.deepEqual(apiDocsSubdomainOrigins(origin), [], origin);
+    }
+  });
+
+  test("returns [] for IP literals, bare hosts, and unparseable input", () => {
+    for (const origin of [
+      "https://127.0.0.1",
+      "https://192.168.1.10:8080",
+      "https://localhost",
+      "not a url",
+      "",
+    ]) {
+      assert.deepEqual(apiDocsSubdomainOrigins(origin), [], origin);
+    }
   });
 });
 

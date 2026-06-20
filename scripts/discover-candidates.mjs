@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  apiDocsSubdomainOrigins,
   buildTimestamp,
   isBrandImpersonationUrl,
   isCredentialedUrl,
@@ -853,6 +854,23 @@ async function discoverOpenApiSpecs() {
 function collectOpenApiBaseOrigins() {
   const seen = new Set();
   const targets = [];
+  const pushOrigin = (netuid, provider, origin) => {
+    let host;
+    try {
+      host = new URL(origin).hostname;
+    } catch {
+      return;
+    }
+    if (isGenericHost(host)) {
+      return;
+    }
+    const key = `${netuid}:${origin}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    targets.push({ netuid, provider, origin });
+  };
   const add = (netuid, provider, rawUrl) => {
     if (netuid == null || !provider || netuidsWithOpenapi.has(netuid)) {
       return;
@@ -863,20 +881,17 @@ function collectOpenApiBaseOrigins() {
     }
     let origin;
     try {
-      const parsed = new URL(normalized);
-      if (isGenericHost(parsed.hostname)) {
-        return;
-      }
-      origin = parsed.origin;
+      origin = new URL(normalized).origin;
     } catch {
       return;
     }
-    const key = `${netuid}:${origin}`;
-    if (seen.has(key)) {
-      return;
+    pushOrigin(netuid, provider, origin);
+    // #1004 — also probe the conventional api./docs. subdomains of the same
+    // registrable domain; live specs frequently live there, not on the marketing
+    // root (the Graphite/Vidaio/Hippius class the root-only probe missed).
+    for (const derived of apiDocsSubdomainOrigins(origin)) {
+      pushOrigin(netuid, provider, derived);
     }
-    seen.add(key);
-    targets.push({ netuid, provider, origin });
   };
 
   for (const candidate of candidatesByKey.values()) {

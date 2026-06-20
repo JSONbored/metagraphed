@@ -1667,6 +1667,45 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
+// project's registrable domain so the OpenAPI spec sweep reaches APIs that live
+// on api.<domain> (or docs.<domain>) rather than the marketing root — the
+// Graphite/Vidaio/Hippius class the website-only probe was blind to. Returns []
+// when a service subdomain is meaningless: unparseable input, IP literals,
+// multi-tenant platform tenants (api.foo.github.io would belong to the platform,
+// not the project), or hosts with no resolvable registrable domain. Pure +
+// deterministic, so it is exhaustively unit-tested. Callers still apply their own
+// generic-host / safe-fetch policy to the returned origins.
+export function apiDocsSubdomainOrigins(origin) {
+  let host;
+  try {
+    host = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return [];
+  }
+  // IPv4 / IPv6 literals have no subdomain structure.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
+    return [];
+  }
+  const bare = host.replace(/^www\./, "");
+  if (bare.split(".").filter(Boolean).length < 2) {
+    return [];
+  }
+  // Multi-tenant platform tenant (foo.github.io, bar.vercel.app): a service
+  // subdomain of the registrable domain would belong to the platform, never the
+  // project, so don't derive one.
+  for (const suffix of MULTI_TENANT_HOST_SUFFIXES) {
+    if (bare === suffix || bare.endsWith(`.${suffix}`)) {
+      return [];
+    }
+  }
+  const registrable = clusterSuffixDomain(bare);
+  if (!registrable) {
+    return [];
+  }
+  return [`https://api.${registrable}`, `https://docs.${registrable}`];
+}
+
 // #1007: the distinct discovery sources (clustered domains) that independently
 // surfaced a candidate, from its source_urls. 2+ distinct sources is strong
 // corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
