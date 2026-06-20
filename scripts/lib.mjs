@@ -1706,6 +1706,142 @@ export function apiDocsSubdomainOrigins(origin) {
   return [`https://api.${registrable}`, `https://docs.${registrable}`];
 }
 
+// Provenance auto-elevation (Move A): a callable-API surface (openapi/subnet-api)
+// that is (1) live-verified and (2) hosted on the subnet's OWN on-chain-asserted
+// registrable domain (Subtensor SubnetIdentitiesV3 subnet_url) is trustworthy
+// WITHOUT a human review — the chain itself vouches for the domain and we probed
+// the API live. This computes that set so promote-reviewed can lift those subnets
+// to the maintainer-reviewed trust tier automatically, and validate can treat the
+// machine decision as backing for the tier. Pure + deterministic (sorted, deduped)
+// so it is unit-testable and the committed auto-reviewed.json can be drift-checked.
+//
+// Provenance bar (kept strict so a blind common-path guess never auto-trusts):
+//   - openapi  : source must be a probe-confirmed spec ("openapi-probe") or a
+//                human intake ("community-pr-intake") — never a blind path guess.
+//   - subnet-api: any source EXCEPT the blind "project-website-common-path" sweep.
+// Both require: kind on the chain-asserted domain + verification live/redirected +
+// the verify step judged the response content-type to match the kind.
+const AUTO_ELEVATE_OPENAPI_SOURCES = new Set([
+  "openapi-probe",
+  "community-pr-intake",
+]);
+export function computeProvenanceElevations({
+  candidates = [],
+  nativeSubnets = [],
+  verificationResults = [],
+}) {
+  const authByNetuid = new Map();
+  for (const subnet of nativeSubnets) {
+    const url = subnet?.chain_identity?.subnet_url;
+    const domain = url ? clusterDomainFromUrl(url) : null;
+    if (domain) authByNetuid.set(subnet.netuid, domain);
+  }
+  const verByCandidate = new Map(
+    verificationResults
+      .filter((result) => result?.candidate_id)
+      .map((result) => [result.candidate_id, result]),
+  );
+  const byNetuid = new Map();
+  for (const candidate of candidates) {
+    if (candidate.kind !== "openapi" && candidate.kind !== "subnet-api") {
+      continue;
+    }
+    const auth = authByNetuid.get(candidate.netuid);
+    if (!auth || clusterDomainFromUrl(candidate.url) !== auth) {
+      continue;
+    }
+    if (
+      candidate.kind === "openapi"
+        ? !AUTO_ELEVATE_OPENAPI_SOURCES.has(candidate.source_type)
+        : candidate.source_type === "project-website-common-path"
+    ) {
+      continue;
+    }
+    const verification = verByCandidate.get(candidate.id);
+    if (
+      !verification ||
+      (verification.classification !== "live" &&
+        verification.classification !== "redirected") ||
+      verification.quality_signals?.content_type_matches_kind !== true
+    ) {
+      continue;
+    }
+    if (!byNetuid.has(candidate.netuid)) {
+      byNetuid.set(candidate.netuid, {
+        netuid: candidate.netuid,
+        slug: candidate.slug ?? null,
+        domain: auth,
+        source_urls: new Set(),
+        kinds: new Set(),
+      });
+    }
+    const entry = byNetuid.get(candidate.netuid);
+    entry.source_urls.add(candidate.url);
+    entry.kinds.add(candidate.kind);
+    if (!entry.slug && candidate.slug) entry.slug = candidate.slug;
+  }
+  return [...byNetuid.values()]
+    .map((entry) => ({
+      netuid: entry.netuid,
+      slug: entry.slug,
+      domain: entry.domain,
+      kinds: [...entry.kinds].sort(),
+      source_urls: [...entry.source_urls].sort(),
+    }))
+    .sort((a, b) => a.netuid - b.netuid);
+}
+
+// Build the provenance review queue document from the elevation set: the subnets
+// a maintainer should elevate next, i.e. provenance-strong live APIs whose subnet
+// is NOT already at the top trust tier (maintainer-reviewed / adapter-backed).
+// Deterministic (generated_at is the fixed build placeholder) so the committed
+// queue is drift-checked by validate.mjs. Pure — takes the already-loaded inputs.
+const TOP_TRUST_LEVELS = new Set(["maintainer-reviewed", "adapter-backed"]);
+export function buildProvenanceReviewQueue({
+  candidates = [],
+  nativeSubnets = [],
+  verificationResults = [],
+  subnets = [],
+}) {
+  const levelByNetuid = new Map(
+    subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
+  );
+  const slugByNetuid = new Map(
+    subnets.map((subnet) => [subnet.netuid, subnet.slug]),
+  );
+  const elevations = computeProvenanceElevations({
+    candidates,
+    nativeSubnets,
+    verificationResults,
+  });
+  const queue = elevations
+    .filter((entry) => !TOP_TRUST_LEVELS.has(levelByNetuid.get(entry.netuid)))
+    .map((entry) => ({
+      netuid: entry.netuid,
+      slug:
+        slugByNetuid.get(entry.netuid) ?? entry.slug ?? `sn-${entry.netuid}`,
+      current_level: levelByNetuid.get(entry.netuid) ?? null,
+      kinds: entry.kinds,
+      domain: entry.domain,
+      source_urls: entry.source_urls,
+      rationale:
+        `Live ${entry.kinds.join(" + ")} on the subnet's on-chain-asserted ` +
+        `domain (${entry.domain}). Strong provenance — elevate by adding a ` +
+        `decision to maintainer-reviewed.json after a quick confirm.`,
+    }));
+  return {
+    schema_version: 1,
+    generated_by: "metagraphed-review-queue",
+    generated_at: buildTimestamp(),
+    notes:
+      "Suggested maintainer-review elevations: provenance-strong, live callable " +
+      "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +
+      "top trust tier. Machine-proposed; promote by moving an entry into " +
+      "maintainer-reviewed.json. Regenerate with `npm run review:queue`.",
+    queue,
+  };
+}
+
 // #1007: the distinct discovery sources (clustered domains) that independently
 // surfaced a candidate, from its source_urls. 2+ distinct sources is strong
 // corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
