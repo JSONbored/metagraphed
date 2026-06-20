@@ -143,3 +143,26 @@ observed health directly.
 6. Use the adapter-candidate queue after baseline identity and operational
    surfaces are strong.
 7. Promote entries to maintainer-reviewed only after provenance is strong.
+
+## Maintainer Review & Trust Elevation
+
+`registry/reviews/maintainer-reviewed.json` is the single source of truth for the
+`maintainer-reviewed` trust tier. `validate.mjs` fails CI if any overlay sits at
+`curation.level: maintainer-reviewed` without a backing decision there, so the tier
+is reached ONLY by adding a decision — never by hand-editing `curation.level` in a
+`registry/subnets/*.json` overlay.
+
+To find what to elevate next, run:
+
+```bash
+npm run review:queue
+```
+
+This regenerates `registry/reviews/review-queue.json`: subnets whose callable API
+(`openapi`/`subnet-api`) is verified live AND hosted on the subnet's own
+on-chain-asserted domain (Subtensor `SubnetIdentitiesV3.subnet_url`) but that are
+not yet at the top trust tier. These have strong provenance — the chain vouches for
+the domain and the API probed live — so they are one-confirm elevations: copy an
+entry into `maintainer-reviewed.json` after a quick check. The queue is a pure,
+drift-checked transform of committed data; the machine proposes, the maintainer
+disposes (it never auto-writes the human tier).
