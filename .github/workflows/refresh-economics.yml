@@ -1,0 +1,66 @@
+name: Refresh Economics (live tier)
+
+# Publishes the live economics tier (KV economics:current + D1 durability mirror),
+# DECOUPLED from the 6h Publish Cloudflare Backend job so /api/v1/economics stays
+# fresh (and survives) independent of the heavy publish. Fetches the chain snapshot
+# fresh, builds the economics blob (byte-shape-identical to R2 economics.json), and
+# writes it to the live store. Tolerant: a chain/wrangler failure leaves the last
+# live value in place; the serve path falls back KV → R2 regardless.
+on:
+  schedule:
+    # Every 3 hours — fresher than the 6h publish, light chain load.
+    - cron: "41 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-economics
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22.22.3
+          cache: npm
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+
+      - name: Install
+        run: npm ci
+
+      - name: Stamp run time
+        run: echo "METAGRAPH_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" >> "$GITHUB_ENV"
+
+      - name: Refresh native chain snapshot (tolerant)
+        run: node scripts/refresh-native-snapshot.mjs
+
+      - name: Publish live economics (KV + D1)
+        run: npm run economics:refresh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_KV_WRITE: "1"
+          METAGRAPH_ALLOW_D1_WRITE: "1"
+
+      - name: Notify on failure
+        if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
+        env:
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d '{"content":"🔴 metagraphed refresh-economics FAILED — live economics may go stale (serve falls back to R2)."}' || true

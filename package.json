@@ -33,6 +33,8 @@
     "review:promote:dry-run": "node scripts/promote-reviewed.mjs --dry-run",
     "review:queue": "node scripts/review-queue.mjs --write",
     "review:queue:dry-run": "node scripts/review-queue.mjs --dry-run",
+    "economics:refresh": "node scripts/refresh-economics.mjs --write",
+    "economics:refresh:dry-run": "node scripts/refresh-economics.mjs --dry-run",
     "schemas:snapshot": "node scripts/snapshot-openapi.mjs --write",
     "schemas:snapshot:dry-run": "node scripts/snapshot-openapi.mjs --dry-run",
     "capture:fixtures": "node scripts/capture-fixtures.mjs --write",

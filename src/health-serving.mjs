@@ -1078,6 +1078,61 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
   return null;
 }
 
+// Live economics freshness window. Economics is refreshed on its own schedule
+// (refresh-economics.yml), independent of the 6h publish, so its acceptable age
+// is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
+// older than this is treated as cold and the committed R2 economics.json serves.
+export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
+// Live economics tier: return the KV 'economics:current' blob (byte-identical to
+// the built economics.json) when it is present, on-contract, fresh, and passes
+// integrity invariants — else null so the caller serves the committed R2 artifact.
+// KV-primary / R2-fallback (D1 is a durability mirror the writer populates but the
+// serve path never reconstructs from it — that avoids re-deriving the cross-subnet
+// emission_share or the summary in the Worker). Pure given readHealthKv + now.
+export async function resolveLiveEconomics({
+  readHealthKv,
+  env,
+  contractVersion,
+  now,
+} = {}) {
+  if (typeof readHealthKv !== "function" || !env) return null;
+  let blob;
+  try {
+    blob = await readHealthKv(env, "economics:current");
+  } catch {
+    return null;
+  }
+  if (!blob || typeof blob !== "object" || Array.isArray(blob)) return null;
+  // On-contract only: a blob built under an older contract may predate a schema
+  // change — fall through to the (also-versioned) R2 artifact + stale-contract path.
+  if (
+    contractVersion &&
+    blob.contract_version &&
+    blob.contract_version !== contractVersion
+  ) {
+    return null;
+  }
+  // Freshness: reject a stale blob (writer wedged) so R2 takes over.
+  const capturedMs = Date.parse(blob.captured_at);
+  if (!Number.isFinite(capturedMs)) return null;
+  const currentMs = typeof now === "function" ? now() : Date.now();
+  if (currentMs - capturedMs > ECONOMICS_FRESHNESS_MAX_AGE_MS) return null;
+  // Integrity: row count must match the summary and the cross-subnet
+  // emission_share must still sum to ~1 — a partial/corrupt write never serves.
+  const rows = Array.isArray(blob.subnets) ? blob.subnets : null;
+  if (!rows) return null;
+  const expected = blob.summary?.with_economics_count;
+  if (Number.isInteger(expected) && rows.length !== expected) return null;
+  const emissionSum = rows.reduce(
+    (sum, row) =>
+      sum + (typeof row.emission_share === "number" ? row.emission_share : 0),
+    0,
+  );
+  if (rows.length > 0 && Math.abs(emissionSum - 1) > 0.001) return null;
+  return { data: blob, source: "live-kv" };
+}
+
 // Overlay the live per-subnet operational rollup onto a composed overview
 // artifact's `health`. Returns null only when there is no live snapshot at all
 // (caller falls back); when the snapshot exists but the subnet has no probed

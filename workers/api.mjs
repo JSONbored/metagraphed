@@ -76,6 +76,7 @@ import {
   overlayOverviewHealth,
   overlayRpcPoolEligibility,
   overlaySubnetHealth,
+  resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
@@ -150,6 +151,10 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   "endpoints",
   "subnet-endpoints",
   "provider-endpoints",
+  // Economics serves live from KV 'economics:current' (refreshed independently of
+  // the 6h publish), falling back to the committed R2 economics.json — so it must
+  // not be static-edge-cached.
+  "economics",
 ]);
 
 function isStaticEdgeCacheEligible(matched, network) {
@@ -1013,6 +1018,17 @@ async function handleApiRequest(
     if (!live) {
       live = { data: unknownSubnetHealth(Number(matched.params.netuid)) };
     }
+  } else if (matched.id === "economics") {
+    // Economics: prefer the live KV 'economics:current' blob (fresh, on-contract,
+    // integrity-checked); fall back to the committed R2 economics.json when KV is
+    // cold/stale/invalid. Unlike health this keeps the R2 artifact as a real
+    // fallback, so it can never 404.
+    artifact = await readArtifact(env, artifactPath);
+    live = await resolveLiveEconomics({
+      readHealthKv,
+      env,
+      contractVersion: contractVersion(env),
+    });
   } else {
     artifact = await readArtifact(env, artifactPath);
     live = await liveHealthOverlay(
@@ -1030,8 +1046,10 @@ async function handleApiRequest(
 
   const baseData = live ? live.data : artifact.data;
   const baseSource = live
-    ? baseData?.health_source || "live-cron-prober"
-    : artifact.source;
+    ? live.source || baseData?.health_source || "live-cron-prober"
+    : matched.id === "economics"
+      ? "r2-fallback"
+      : artifact.source;
 
   // Serve-time contract drift (#1001): when serving a STORED artifact (not a
   // live overlay) that was built under an older contract than the live one, the
