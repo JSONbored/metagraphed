@@ -9,17 +9,21 @@
 
 import { computeReliability } from "./reliability.mjs";
 
-const D1_HEALTH_FALLBACK_MAX_AGE_MS = 10 * 60 * 1000;
+// Must exceed the probe cadence (15 min) so a live D1 health row is never treated
+// as stale just because the next probe hasn't run yet. 25 min = cadence + a
+// one-missed-run buffer. (KV health:current has no TTL, so this only bounds the
+// D1 fallback path.)
+const D1_HEALTH_FALLBACK_MAX_AGE_MS = 25 * 60 * 1000;
 
 // Pool-eligibility hysteresis (cosmos.directory-style "don't flap"): an RPC
 // endpoint is only dropped from the proxy pool after this many CONSECUTIVE
-// failed 2-min probes, so a single transient blip (~2-4 min) doesn't evict an
-// otherwise-healthy node. cosmos.directory tolerates ~10 errors before removal;
-// at a 2-min cadence, 4 (~8 min) is a conservative middle that still removes
-// genuinely-down nodes promptly. Env-overridable.
+// failed probes, so a single transient blip doesn't evict an otherwise-healthy
+// node. At the 15-min probe cadence, 2 (~30 min sustained-down) removes genuinely
+// dead nodes while the RPC proxy still fails over per-request in the meantime.
+// Env-overridable.
 const POOL_SUSTAINED_DOWN_FAILURES = Math.max(
   1,
-  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 4,
+  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 2,
 );
 
 const OPERATIONAL_KINDS = new Set([
@@ -422,10 +426,11 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
 
 // --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
 
-// A gap larger than this between consecutive failing checks (probe cadence is
-// ~2 min) ends one incident and starts another. Used by the gap-island SQL in
-// the incidents handler.
-export const INCIDENT_GAP_MS = 6 * 60 * 1000;
+// A gap larger than this between consecutive failing checks ends one incident and
+// starts another. Must exceed the probe cadence (15 min) so consecutive failed
+// probes group into a single incident; 30 min = cadence + one missed-run buffer.
+// Used by the gap-island SQL in the incidents handler.
+export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 
 // Minimum consecutive failed probes for a gap-island to count as an incident.
 // A single failed probe that recovers on the next (~2 min later) is transient

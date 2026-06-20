@@ -144,11 +144,11 @@ describe("overlayRpcPoolEligibility", () => {
       { id: "b", url: "https://b", pool_eligible: true },
     ],
   };
-  test("drops endpoints only after sustained (>=4) consecutive failures", () => {
+  test("drops endpoints only after sustained (>=2) consecutive failures", () => {
     const live = {
       endpoints: [
-        { id: "a", status: "failed", consecutive_failures: 3 }, // transient blip → stays (hysteresis)
-        { id: "b", status: "failed", consecutive_failures: 4 }, // sustained → drop
+        { id: "a", status: "failed", consecutive_failures: 1 }, // transient blip → stays (hysteresis)
+        { id: "b", status: "failed", consecutive_failures: 2 }, // sustained (~30 min at 15-min cadence) → drop
       ],
     };
     const out = overlayRpcPoolEligibility(pool, live);
@@ -1020,7 +1020,8 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.equal(live.surfaces[0].surface_key, "srf-d1fallback0000");
     assert.equal(live.subnets[0].netuid, 7);
     assert.equal(live.subnets[0].status, "failed");
-    assert.deepEqual(observedCutoffs, [1_700_000_000_000]);
+    // cutoff = now (1_700_000_600_000) − D1_HEALTH_FALLBACK_MAX_AGE_MS (25 min).
+    assert.deepEqual(observedCutoffs, [1_699_999_100_000]);
     // ms → ISO conversion for D1 timestamps.
     assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
   });

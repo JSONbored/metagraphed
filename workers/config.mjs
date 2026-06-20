@@ -6,10 +6,10 @@
 // without cycles.
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
-// trigger prunes the D1 time-series; every other trigger runs the 2-minute probe.
+// trigger prunes the D1 time-series; every other trigger runs the 15-minute probe.
 export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Daily embedding-sync trigger (Worker-runtime, since CI has no AI bindings).
-// Distinct minute (odd) so it never collides with the 2-minute probe or the
+// Distinct minute (odd) so it never collides with the 15-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
