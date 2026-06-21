@@ -187,7 +187,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/providers/{slug}/endpoints` — List endpoint resources for one provider or operator.
 - `GET /api/v1/coverage` — Fetch registry coverage summary.
 - `GET /api/v1/coverage-depth` — Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.
-- `GET /api/v1/economics` — List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.
+- `GET /api/v1/economics` — List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.
 - `GET /api/v1/registry/summary` — Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `GET /api/v1/lineage` — Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `GET /api/v1/fixtures` — Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.

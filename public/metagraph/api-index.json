@@ -1992,14 +1992,92 @@
     {
       "artifact_path": "/metagraph/economics.json",
       "cache": "standard",
-      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
       "id": "economics",
       "method": "GET",
       "path": "/api/v1/economics",
       "public": true,
-      "query_collection": null,
-      "query_filter_names": [],
-      "query_parameters": []
+      "query_collection": "economics",
+      "query_filter_names": [
+        "netuid",
+        "registration_allowed"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "registration_allowed",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "alpha_price_tao",
+              "emission_share",
+              "max_stake_tao",
+              "max_uids",
+              "max_validators",
+              "miner_count",
+              "name",
+              "netuid",
+              "registration_cost_tao",
+              "subnet_volume_tao",
+              "total_stake_tao",
+              "validator_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/registry-summary.json",

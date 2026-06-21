@@ -215,7 +215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -5437,7 +5437,16 @@ export interface operations {
     };
     economics: {
         parameters: {
-            query?: never;
+            query?: {
+                netuid?: number;
+                registration_allowed?: "true" | "false";
+                q?: string;
+                fields?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "alpha_price_tao" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "name" | "netuid" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                order?: "asc" | "desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;

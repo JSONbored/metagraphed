@@ -185,6 +185,27 @@ export const API_QUERY_COLLECTIONS = {
     search: ["title", "subtitle", "slug", "tokens"],
     sort: ["kind", "netuid", "slug", "title"],
   }),
+  economics: queryCollection("subnets", {
+    filters: {
+      netuid: integerSchema,
+      registration_allowed: enumSchema(["true", "false"]),
+    },
+    search: ["name", "slug"],
+    sort: [
+      "alpha_price_tao",
+      "emission_share",
+      "max_stake_tao",
+      "max_uids",
+      "max_validators",
+      "miner_count",
+      "name",
+      "netuid",
+      "registration_cost_tao",
+      "subnet_volume_tao",
+      "total_stake_tao",
+      "validator_count",
+    ],
+  }),
   endpoints: queryCollection("endpoints", {
     filters: {
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
@@ -1231,9 +1252,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
     "standard",
     ["subnets"],
+    listQuery("economics"),
   ),
   route(
     "registry-summary",

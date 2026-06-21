@@ -13182,7 +13182,98 @@
     "/api/v1/economics": {
       "get": {
         "operationId": "economics",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "registration_allowed",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "alpha_price_tao",
+                "emission_share",
+                "max_stake_tao",
+                "max_uids",
+                "max_validators",
+                "miner_count",
+                "name",
+                "netuid",
+                "registration_cost_tao",
+                "subnet_volume_tao",
+                "total_stake_tao",
+                "validator_count"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -13326,7 +13417,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
         "tags": [
           "subnets"
         ]
