@@ -61,7 +61,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.1.0";
+export const MCP_SERVER_VERSION = "1.2.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -316,6 +316,20 @@ function clampLimit(value, fallback, max) {
   return Math.max(1, Math.min(max, Math.floor(value)));
 }
 
+// Shared pagination for every list/search tool: slice one page and return the
+// envelope (total before slicing, resolved offset/limit, and a next_offset
+// cursor that is null at the end). One implementation keeps the tools in sync.
+function paginate(items, args, fallbackLimit, maxLimit) {
+  const total = items.length;
+  const offset = Number.isFinite(args?.offset)
+    ? Math.max(0, Math.floor(args.offset))
+    : 0;
+  const limit = clampLimit(args?.limit, fallbackLimit, maxLimit);
+  const page = items.slice(offset, offset + limit);
+  const nextOffset = offset + page.length < total ? offset + page.length : null;
+  return { page, total, offset, limit, returned: page.length, nextOffset };
+}
+
 // Score a search document against the query terms: how many distinct terms
 // appear as substrings of the document's title/subtitle/tokens haystack.
 function scoreDocument(doc, terms) {
@@ -436,7 +450,10 @@ export const MCP_TOOLS = [
     description:
       "Full-text search across Bittensor subnets by name, slug, capability, " +
       "or keyword. Returns ranked matches with netuid, slug, title, and a one-" +
-      "line description. Use this to discover subnets before fetching detail.",
+      "line description. Use this to discover subnets before fetching detail. " +
+      "Paginated like list_subnets: pass `offset` to page past the first " +
+      "results; the response carries `total` and a `next_offset` cursor (null " +
+      "at the end) so the whole ranked match set is reachable.",
     inputSchema: {
       type: "object",
       properties: {
@@ -444,9 +461,15 @@ export const MCP_TOOLS = [
           type: "string",
           description: "Search terms, e.g. 'image generation' or 'scraping'.",
         },
+        offset: {
+          type: "integer",
+          description:
+            "Pagination offset into the ranked match set. Default 0.",
+          minimum: 0,
+        },
         limit: {
           type: "integer",
-          description: "Max results (1-50, default 10).",
+          description: "Max results per page (1-50, default 10).",
           minimum: 1,
           maximum: 50,
         },
@@ -456,24 +479,36 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const query = requireString(args, "query");
-      const limit = clampLimit(args?.limit, 10, 50);
       const index = await loadArtifactData(ctx, "/metagraph/search.json");
       const terms = queryTerms(query);
       const docs = Array.isArray(index.documents) ? index.documents : [];
-      const ranked = docs
+      const matched = docs
         .filter((doc) => doc.type === "subnet")
         .map((doc) => ({ doc, score: scoreDocument(doc, terms) }))
         .filter((entry) => entry.score > 0)
-        .sort((a, b) => b.score - a.score || a.doc.netuid - b.doc.netuid)
-        .slice(0, limit)
-        .map(({ doc }) => ({
-          netuid: doc.netuid,
-          slug: doc.slug,
-          title: doc.title,
-          description: doc.subtitle || null,
-          url: `https://${ctx.domain}/api/v1/subnets/${doc.netuid}/overview`,
-        }));
-      return { query, count: ranked.length, results: ranked };
+        .sort((a, b) => b.score - a.score || a.doc.netuid - b.doc.netuid);
+      const { page, total, offset, limit, returned, nextOffset } = paginate(
+        matched,
+        args,
+        10,
+        50,
+      );
+      const results = page.map(({ doc }) => ({
+        netuid: doc.netuid,
+        slug: doc.slug,
+        title: doc.title,
+        description: doc.subtitle || null,
+        url: `https://${ctx.domain}/api/v1/subnets/${doc.netuid}/overview`,
+      }));
+      return {
+        query,
+        total,
+        count: returned,
+        offset,
+        limit,
+        next_offset: nextOffset,
+        results,
+      };
     },
   },
   {
@@ -569,12 +604,13 @@ export const MCP_TOOLS = [
         }
         return true;
       });
-      const total = filtered.length;
-      const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
-        : 0;
-      const limit = clampLimit(args?.limit, 50, 100);
-      const page = filtered.slice(offset, offset + limit).map((subnet) => ({
+      const { page, total, offset, limit, returned, nextOffset } = paginate(
+        filtered,
+        args,
+        50,
+        100,
+      );
+      const subnets = page.map((subnet) => ({
         netuid: subnet.netuid,
         slug: subnet.slug ?? null,
         title: subnet.name ?? null,
@@ -589,15 +625,13 @@ export const MCP_TOOLS = [
             ? subnet.surface_count
             : null,
       }));
-      const nextOffset =
-        offset + page.length < total ? offset + page.length : null;
       return {
         total,
-        returned: page.length,
+        returned,
         offset,
         limit,
         next_offset: nextOffset,
-        subnets: page,
+        subnets,
       };
     },
   },
@@ -608,7 +642,10 @@ export const MCP_TOOLS = [
       "Find Bittensor subnets that expose callable services (APIs, OpenAPI " +
       "schemas, SSE streams) matching a capability or category. Returns only " +
       "subnets an agent can actually call, ranked by callable-service count. " +
-      "Pair with list_subnet_apis to get concrete endpoints.",
+      "Pair with list_subnet_apis to get concrete endpoints. Paginated like " +
+      "list_subnets: pass `offset` to page past the first results; the response " +
+      "carries `total` and a `next_offset` cursor (null at the end) so the " +
+      "whole ranked match set is reachable.",
     inputSchema: {
       type: "object",
       properties: {
@@ -617,9 +654,15 @@ export const MCP_TOOLS = [
           description:
             "Capability/category to match, e.g. 'inference', 'data', 'bitcoin'.",
         },
+        offset: {
+          type: "integer",
+          description:
+            "Pagination offset into the ranked match set. Default 0.",
+          minimum: 0,
+        },
         limit: {
           type: "integer",
-          description: "Max results (1-50, default 10).",
+          description: "Max results per page (1-50, default 10).",
           minimum: 1,
           maximum: 50,
         },
@@ -629,7 +672,6 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const capability = requireString(args, "capability");
-      const limit = clampLimit(args?.limit, 10, 50);
       const staticCatalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
@@ -638,7 +680,7 @@ export const MCP_TOOLS = [
       const catalog = overlayCatalogIndex(staticCatalog, live) || staticCatalog;
       const terms = queryTerms(capability);
       const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
-      const ranked = subnets
+      const matched = subnets
         .map((subnet) => {
           const haystack = [
             subnet.name,
@@ -662,18 +704,31 @@ export const MCP_TOOLS = [
             (b.subnet.integration_readiness || 0) -
               (a.subnet.integration_readiness || 0) ||
             b.subnet.callable_count - a.subnet.callable_count,
-        )
-        .slice(0, limit)
-        .map(({ subnet }) => ({
-          netuid: subnet.netuid,
-          slug: subnet.slug,
-          name: subnet.name,
-          categories: subnet.categories || [],
-          service_kinds: subnet.service_kinds || [],
-          callable_count: subnet.callable_count,
-          integration_readiness: subnet.integration_readiness ?? null,
-        }));
-      return { capability, count: ranked.length, results: ranked };
+        );
+      const { page, total, offset, limit, returned, nextOffset } = paginate(
+        matched,
+        args,
+        10,
+        50,
+      );
+      const results = page.map(({ subnet }) => ({
+        netuid: subnet.netuid,
+        slug: subnet.slug,
+        name: subnet.name,
+        categories: subnet.categories || [],
+        service_kinds: subnet.service_kinds || [],
+        callable_count: subnet.callable_count,
+        integration_readiness: subnet.integration_readiness ?? null,
+      }));
+      return {
+        capability,
+        total,
+        count: returned,
+        offset,
+        limit,
+        next_offset: nextOffset,
+        results,
+      };
     },
   },
   {
@@ -1397,10 +1452,22 @@ const TOOL_OUTPUT_SCHEMAS = {
   search_subnets: {
     type: "object",
     additionalProperties: true,
-    required: ["query", "count", "results"],
+    required: [
+      "query",
+      "total",
+      "count",
+      "offset",
+      "limit",
+      "next_offset",
+      "results",
+    ],
     properties: {
       query: { type: "string" },
+      total: { type: "integer" },
       count: { type: "integer" },
+      offset: { type: "integer" },
+      limit: { type: "integer" },
+      next_offset: { type: ["integer", "null"] },
       results: objectItems({
         netuid: { type: "integer" },
         slug: { type: "string" },
@@ -1441,10 +1508,22 @@ const TOOL_OUTPUT_SCHEMAS = {
   find_subnets_by_capability: {
     type: "object",
     additionalProperties: true,
-    required: ["capability", "count", "results"],
+    required: [
+      "capability",
+      "total",
+      "count",
+      "offset",
+      "limit",
+      "next_offset",
+      "results",
+    ],
     properties: {
       capability: { type: "string" },
+      total: { type: "integer" },
       count: { type: "integer" },
+      offset: { type: "integer" },
+      limit: { type: "integer" },
+      next_offset: { type: ["integer", "null"] },
       results: objectItems({
         netuid: { type: "integer" },
         slug: { type: "string" },
