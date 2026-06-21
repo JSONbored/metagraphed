@@ -1,4 +1,4 @@
-// Pure, isomorphic surface-probing primitives shared by the Node 6h build
+// Pure, isomorphic surface-probing primitives shared by the Node data build
 // (scripts/probes-smoke.mjs) and the Cloudflare cron prober (src/health-prober.mjs,
 // wired through workers/api.mjs `scheduled()`).
 //
@@ -33,7 +33,7 @@ function normalizeHash(value) {
 
 // Surface kinds whose health changes minute-to-minute and is worth probing live
 // (the 15-minute cron prober). Everything else — docs, website, source-repo,
-// dashboard, openapi, sdk, example, repo-registry — stays on the slower 6h build.
+// dashboard, openapi, sdk, example, repo-registry — stays on the slower batch build.
 // This is the single source of truth: scripts/build-artifacts.mjs emits the
 // operational-surfaces.json list from it, and the Worker prober consumes that list.
 export const OPERATIONAL_SURFACE_KINDS = [

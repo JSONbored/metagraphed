@@ -1,4 +1,5 @@
 import path from "node:path";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { pathToFileURL } from "node:url";
 import {
   buildTimestamp,
@@ -16,7 +17,7 @@ const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const generatedAt = buildTimestamp();
-const contractVersion = "2026-06-06.1";
+const contractVersion = CONTRACT_VERSION;
 const MAX_OPENAPI_SCHEMA_BYTES = 2 * 1024 * 1024;
 const outputRoot = path.join(repoRoot, "registry/adapters/latest");
 // GitHub token plumbing: accept either env name (the project convention used by

@@ -21,8 +21,9 @@ import {
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
 } from "../src/health-probe-core.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
-const contractVersion = "2026-06-06.1";
+const contractVersion = CONTRACT_VERSION;
 const subnets = await loadSubnets();
 const providers = await loadProviders();
 const allSurfaces = flattenSurfaces(subnets);

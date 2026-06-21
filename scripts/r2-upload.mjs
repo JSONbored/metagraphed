@@ -72,7 +72,12 @@ const remoteManifestResult = forceUpload
 const remoteManifestByPath = new Map(
   (remoteManifestResult.manifest?.artifacts ?? []).map((artifact) => [
     artifact.path,
-    artifact.sha256,
+    // Compare on the delta hash (generated_at-normalized) so a republish whose
+    // only change is the wall-clock build stamp is skipped. Fall back to sha256
+    // for a pre-content_sha256 remote manifest — the first publish after this
+    // ships re-uploads once (the hashes can't match across the change), then
+    // deltas resume.
+    artifact.content_sha256 ?? artifact.sha256,
   ]),
 );
 let changedArtifactCount = 0;
@@ -86,7 +91,8 @@ for (const artifact of plannedArtifacts) {
   const changed =
     forceUpload ||
     remoteManifestResult.status !== "found" ||
-    remoteManifestByPath.get(artifact.path) !== artifact.sha256;
+    remoteManifestByPath.get(artifact.path) !==
+      (artifact.content_sha256 ?? artifact.sha256);
   if (changed) {
     changedArtifactCount += 1;
     artifactUploadJobs.push(

@@ -152,7 +152,7 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   "subnet-endpoints",
   "provider-endpoints",
   // Economics serves live from KV 'economics:current' (refreshed independently of
-  // the 6h publish), falling back to the committed R2 economics.json — so it must
+  // the data publish), falling back to the committed R2 economics.json — so it must
   // not be static-edge-cached.
   "economics",
 ]);
@@ -1089,7 +1089,7 @@ async function handleApiRequest(
   const pub = await publishedAt(env);
   // A live tier whose blob carries its OWN freshness (economics' captured_at,
   // refreshed on its own 3h schedule) should report that as published_at, not the
-  // unrelated 6h publish pointer — otherwise a fresh live-kv economics blob looks
+  // unrelated data publish pointer — otherwise a fresh live-kv economics blob looks
   // as stale as the last full publish.
   const effectivePublishedAt =
     matched.id === "economics" &&
@@ -2695,13 +2695,17 @@ async function handleHealthRequest(request, env) {
     health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
   };
 
-  // Data freshness — the scheduled refresh (ADR 0001) advances the KV `latest`
-  // pointer's published_at every ~6h. If that pipeline silently stops, the
-  // pointer goes stale; report `degraded` + HTTP 503 so an uptime monitor
-  // pointed at /health catches a broken data-refresh. Only a *present* stale
-  // pointer trips it, so local/dev and the worker-test harness (no published
-  // pointer) stay healthy.
-  const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 12;
+  // Data freshness — the event-driven data publish (ADR 0007) advances the KV
+  // `latest` pointer's published_at on each human-input registry merge and at
+  // least once daily (the 07:17 UTC floor). If that pipeline silently stops, the
+  // pointer goes stale; report `degraded` + HTTP 503 so an uptime monitor pointed
+  // at /health catches a broken data-refresh. Only a *present* stale pointer trips
+  // it, so local/dev and the worker-test harness (no published pointer) stay
+  // healthy.
+  // Default 48h = two missed daily floors. (The old 12h default — "two missed 6h
+  // crons" — would false-degrade on a quiet day now that the floor is daily, not
+  // 6-hourly.)
+  const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 48;
   // Read the publish pointer + the operational-health meta concurrently (one
   // round-trip instead of two) — both are independent KV gets.
   const [pointer, meta] = bindings.kv
@@ -2755,7 +2759,7 @@ async function handleHealthRequest(request, env) {
 }
 
 // --- Change-feed webhooks -----------------------------------------------------
-// Subscription management for the ~6h publish change feed. Subscriptions live in
+// Subscription management for the data publish change feed. Subscriptions live in
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
 // publish-time dispatcher (scripts/dispatch-webhooks.mjs) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
@@ -2982,7 +2986,7 @@ async function readWebhookSubscription(env, id) {
   }
 }
 
-// Thin SSE change feed. Given the ~6h cadence there is no value in holding a
+// Thin SSE change feed. Given the publish cadence there is no value in holding a
 // long-lived connection, so we emit the current change snapshot as one SSE event
 // and advise a 5-minute reconnect via `retry:`. EventSource clients reconnect on
 // that interval and re-read; `id:` is the publish timestamp for dedupe.

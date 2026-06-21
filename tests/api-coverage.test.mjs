@@ -219,7 +219,9 @@ describe("/health readiness", () => {
   });
 
   test("reports degraded + 503 when the KV latest pointer is stale", async () => {
-    const stale = new Date(Date.now() - 48 * 3_600_000).toISOString();
+    // Clearly past the 48h default max-age — not exactly on the boundary, which
+    // raced (a few ms of test runtime decided 48.001h > 48h vs == 48h).
+    const stale = new Date(Date.now() - 72 * 3_600_000).toISOString();
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: stale },

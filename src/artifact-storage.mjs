@@ -147,7 +147,7 @@ const DUAL_PATTERNS = [
   // surfaces, sorted, with a fixed-epoch generated_at), so it is committable like
   // the contract files. #1017 made it R2-only, which created a SPOF: the prober
   // reads it ASSETS-first then R2, but with no committed copy the ASSETS read
-  // 404s and the prober depends on the 6h publish's R2 latest/ surviving — so a
+  // 404s and the prober depends on the data publish's R2 latest/ surviving — so a
   // publish outage eventually freezes the *live* health tier too. DUAL (committed
   // + R2-mirrored) decouples the prober from the publish: its ASSETS read always
   // succeeds from the deployed bundle. The #1025 freshness gate keeps it current.

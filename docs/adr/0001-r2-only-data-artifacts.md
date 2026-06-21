@@ -4,6 +4,9 @@
 - **Date:** 2026-06-09
 - **Supersedes:** the implicit "dual-tier everything" model and the
   push-triggered `publish-cloudflare.yml` full-publish.
+- **Superseded in part by:** [ADR 0007](0007-event-driven-publish.md) — the 6h
+  cron in the "Outcome" below is now an event-driven publish (on human-input
+  registry merges) + a daily floor.
 
 ## Context
 

@@ -1050,7 +1050,7 @@ async function validateGeneratedArtifacts(
     "coverage: native_only_count must be 0",
   );
   // The committed coverage.json is an inert cold-start seed (ADR 0006) that
-  // legitimately drifts from live source as candidate PRs merge — the 6h refresh
+  // legitimately drifts from live source as candidate PRs merge — the data publish
   // advances R2/D1, not the committed copy. These committed-vs-fresh count-parity
   // checks are a post-build freshness guarantee (CI builds before validating, and
   // pipeline:refresh rebuilds), so they are meaningless against the stale seed in
