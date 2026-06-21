@@ -60,6 +60,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      metagraph_run_id: ${{ steps.stamp-publish-time.outputs.metagraph_run_id }}
+      metagraph_published_at: ${{ steps.stamp-publish-time.outputs.metagraph_published_at }}
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
     steps:
@@ -81,14 +84,17 @@ jobs:
         run: npm ci
 
       - name: Stamp publish time
+        id: stamp-publish-time
         run: |
           # The real publish moment — served LIVE as meta.published_at, never baked.
           published_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
           echo "METAGRAPH_PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_published_at=$published_at" >> "$GITHUB_OUTPUT"
           # Unique R2 run-prefix id for every r2:manifest invocation (build + the
           # post-changelog re-stamp). generated_at stays the deterministic epoch
           # marker (issue #349) so artifacts don't churn; this keeps runs/ unique.
           echo "METAGRAPH_RUN_ID=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_run_id=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Prepare reviewed publish artifacts
         run: npm run build
@@ -162,6 +168,11 @@ jobs:
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
       METAGRAPH_REQUIRE_PROBE_HEALTH: "1"
+      # $GITHUB_ENV is job-local; carry the refresh job's unique publish stamp
+      # into the publish job so the final r2:manifest restamp cannot fall back to
+      # the deterministic generated_at epoch and reuse runs/1970.../.
+      METAGRAPH_RUN_ID: ${{ needs.refresh.outputs.metagraph_run_id }}
+      METAGRAPH_PUBLISHED_AT: ${{ needs.refresh.outputs.metagraph_published_at }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
