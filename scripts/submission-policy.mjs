@@ -31,6 +31,30 @@ const PROVIDER_KINDS = new Set([
   "registry",
 ]);
 
+const PROVIDER_SCHEMA_FIELDS = new Set([
+  "schema_version",
+  "id",
+  "name",
+  "kind",
+  "website_url",
+  "docs_url",
+  "github_url",
+  "logo_url",
+  "social",
+  "team_url",
+  "contact_url",
+  "authority",
+  "public_notes",
+  "notes",
+]);
+
+const PROVIDER_SOCIAL_SCHEMA_FIELDS = new Set([
+  "x",
+  "telegram",
+  "reddit",
+  "youtube",
+]);
+
 const STATUS_REPORT_TYPES = new Set([
   "down",
   "degraded",
@@ -1497,6 +1521,23 @@ export function validateProviderForSubmission({
       warnings,
       manual_reasons,
     };
+  }
+
+  for (const field of Object.keys(provider)) {
+    if (!PROVIDER_SCHEMA_FIELDS.has(field)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider ${field} is not allowed`,
+      });
+    }
+  }
+  for (const [key] of socialEntries) {
+    if (!PROVIDER_SOCIAL_SCHEMA_FIELDS.has(key)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider social.${key} is not allowed`,
+      });
+    }
   }
 
   if (provider.schema_version !== 1) {

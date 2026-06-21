@@ -132,8 +132,12 @@ describe("submission-policy provider extraction and validation", () => {
         github_url: "http://169.254.169.254",
         team_url: "http://192.168.0.1",
         contact_url: "ftp://example.com",
-        social: { x: "http://169.254.169.254/latest/meta-data" },
+        social: {
+          x: "http://169.254.169.254/latest/meta-data",
+          mastodon: "https://social.example/@bad",
+        },
         authority: "official",
+        unexpected: "will-fail-schema",
         notes: "legacy notes",
       },
       document: { submission: {} },
@@ -141,6 +145,11 @@ describe("submission-policy provider extraction and validation", () => {
       providers,
     });
     const messages = result.errors.map((error) => error.message);
+    assert.equal(messages.includes("provider unexpected is not allowed"), true);
+    assert.equal(
+      messages.includes("provider social.mastodon is not allowed"),
+      true,
+    );
     assert.equal(messages.includes("provider schema_version must be 1"), true);
     assert.equal(
       messages.includes("provider id must be a lowercase slug"),
