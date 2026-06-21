@@ -48,6 +48,27 @@ describe("metagraph-neurons builders", () => {
     assert.equal(formatNeuron(undefined), null);
   });
 
+  test("formatNeuron defaults every missing field to null/false", () => {
+    // Exercises the ?? null + Boolean(falsy) branches (sparse chain row).
+    const n = formatNeuron({ uid: 3 });
+    assert.equal(n.uid, 3);
+    assert.equal(n.hotkey, null);
+    assert.equal(n.coldkey, null);
+    assert.equal(n.rank, null);
+    assert.equal(n.trust, null);
+    assert.equal(n.validator_trust, null);
+    assert.equal(n.consensus, null);
+    assert.equal(n.incentive, null);
+    assert.equal(n.dividends, null);
+    assert.equal(n.emission_tao, null);
+    assert.equal(n.stake_tao, null);
+    assert.equal(n.registered_at_block, null);
+    assert.equal(n.axon, null);
+    assert.equal(n.active, false);
+    assert.equal(n.validator_permit, false);
+    assert.equal(n.is_immunity_period, false);
+  });
+
   test("buildSubnetMetagraph stamps count + ISO captured_at", () => {
     const data = buildSubnetMetagraph([ROW, MINER], 7);
     assert.equal(data.netuid, 7);
