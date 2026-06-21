@@ -205,7 +205,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/health/history/{date}` — Fetch compact daily health history.
 - `GET /api/v1/subnets/{netuid}/health` — Fetch health detail for one subnet.
 - `GET /api/v1/health/trends` — Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).
-- `GET /api/v1/subnets/{netuid}/health/trends` — Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).
+- `GET /api/v1/subnets/{netuid}/health/trends` — Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/health/percentiles` — Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/health/incidents` — Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/trajectory` — Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).

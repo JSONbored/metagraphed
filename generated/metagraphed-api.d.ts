@@ -929,7 +929,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1). */
+        /** Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1). */
         get: operations["subnetHealthTrends"];
         put?: never;
         post?: never;
@@ -1391,10 +1391,12 @@ export interface components {
                     subnet_count: number;
                     subnets: {
                         avg_latency_ms: number | null;
+                        latency_sample_count: number;
                         netuid: number;
                         points: {
                             avg_latency_ms: number | null;
                             date: string;
+                            latency_sample_count: number;
                             samples: number;
                             uptime_ratio: number | null;
                         }[];
@@ -2153,6 +2155,7 @@ export interface components {
             failed_count: number;
             last_checked?: string | null;
             last_ok?: string | null;
+            latency_sample_count?: number;
             name?: string;
             netuid?: number;
             ok_count: number;
@@ -2222,9 +2225,18 @@ export interface components {
             source: string;
             windows: {
                 [key: string]: {
+                    latency_sample_count: number;
                     samples: number;
                     surfaces: ({
                         avg_latency_ms: number | null;
+                        latency_ms: {
+                            p50?: number | null;
+                            p95?: number | null;
+                            p99?: number | null;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        latency_sample_count: number;
                         samples: number;
                         surface_id: string;
                         uptime_ratio: number | null;
@@ -2536,6 +2548,7 @@ export interface components {
             day_count?: number;
             /** @enum {string} */
             grade: "A" | "B" | "C" | "D" | "F";
+            latency_sample_count: number;
             sample_count: number;
             score: number;
             surface_count?: number;
@@ -3838,6 +3851,14 @@ export interface components {
                 days: ({
                     avg_latency_ms?: number | null;
                     day: string;
+                    latency_ms?: {
+                        p50?: number | null;
+                        p95?: number | null;
+                        p99?: number | null;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                    latency_sample_count?: number;
                     samples: number;
                     status: string;
                     uptime_ratio: number | null;
@@ -6966,11 +6987,13 @@ export interface operations {
                      *             "subnets": [
                      *               {
                      *                 "avg_latency_ms": 120,
+                     *                 "latency_sample_count": 120,
                      *                 "netuid": 7,
                      *                 "points": [
                      *                   {
                      *                     "avg_latency_ms": 120,
                      *                     "date": "2026-06-01",
+                     *                     "latency_sample_count": 120,
                      *                     "samples": 1,
                      *                     "uptime_ratio": 0.9966
                      *                   }
@@ -11364,6 +11387,7 @@ export interface operations {
                      *           "failed_count": 1,
                      *           "last_checked": "2026-06-01T00:00:00.000Z",
                      *           "last_ok": "2026-06-01T00:00:00.000Z",
+                     *           "latency_sample_count": 120,
                      *           "name": "Example Subnet",
                      *           "netuid": 7,
                      *           "ok_count": 1,
@@ -11725,10 +11749,13 @@ export interface operations {
                      *         "source": "live-cron-prober",
                      *         "windows": {
                      *           "example": {
+                     *             "latency_sample_count": 120,
                      *             "samples": 1,
                      *             "surfaces": [
                      *               {
                      *                 "avg_latency_ms": 120,
+                     *                 "latency_ms": {},
+                     *                 "latency_sample_count": 120,
                      *                 "samples": 1,
                      *                 "surface_id": "example",
                      *                 "uptime_ratio": 0.9966
@@ -12984,6 +13011,7 @@ export interface operations {
                      *           "computed_at": "2026-06-01T00:00:00.000Z",
                      *           "day_count": 1,
                      *           "grade": "A",
+                     *           "latency_sample_count": 120,
                      *           "sample_count": 1,
                      *           "score": 100,
                      *           "surface_count": 1,

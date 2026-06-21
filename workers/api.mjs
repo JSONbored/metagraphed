@@ -57,6 +57,11 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "../src/health-sql.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
 import {
@@ -87,6 +92,7 @@ import {
 } from "../src/health-serving.mjs";
 import {
   NEURON_COLUMNS,
+  NEURON_INSERT_COLUMNS,
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildNeuronDetail,
@@ -216,11 +222,72 @@ export default {
   },
 };
 
+// Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
+// refresh-metagraph CI job fetches Taostats and writes the neuron rows as JSON to
+// R2 (metagraph/neurons-pending.json) using its existing R2 permission; we load
+// them here through the METAGRAPH_HEALTH_DB binding — which needs no API-token D1
+// permission — with PARAMETERIZED inserts (values are always bound, never
+// interpolated, so a tampered/garbage staged file can only fail, never inject
+// SQL), then delete the object so it loads exactly once. Batched to stay under
+// D1's 100-param-per-statement limit (→ 5 rows/statement) and the Worker's
+// subrequest limit.
+export async function loadStagedNeurons(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
+  const key = "metagraph/neurons-pending.json";
+  const object = await bucket.get(key);
+  if (!object) return { ok: false, reason: "none" };
+  let rows;
+  try {
+    rows = await object.json();
+  } catch {
+    await bucket.delete(key);
+    return { ok: false, reason: "parse_failed" };
+  }
+  rows = Array.isArray(rows)
+    ? rows.filter(
+        (r) => Number.isInteger(r?.netuid) && Number.isInteger(r?.uid),
+      )
+    : [];
+  if (!rows.length) {
+    await bucket.delete(key);
+    return { ok: false, reason: "empty" };
+  }
+  const cols = NEURON_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  const ROWS_PER_STMT = 5;
+  const STMTS_PER_BATCH = 50;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(`INSERT OR REPLACE INTO neurons (${colList}) VALUES ${tuples}`)
+        .bind(...values),
+    );
+  }
+  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+  }
+  await bucket.delete(key);
+  return { ok: true, rows: rows.length };
+}
+
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
+
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
+  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+  // snapshot and load it via the D1 binding on whichever cron fires next; it then
+  // self-deletes. Isolated so a load failure never affects the prober/prune below.
+  await loadStagedNeurons(env).catch(() => {});
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
@@ -1294,12 +1361,7 @@ async function handleBulkHealthTrends(
             day AS date,
             SUM(samples) AS total,
             SUM(ok_count) AS ok_count,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                     SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-              ELSE NULL
-            END AS avg_latency_ms
+            ${dailyLatencyColumns()}
      FROM surface_uptime_daily
      WHERE day >= ?
      GROUP BY netuid, day
@@ -1358,14 +1420,14 @@ async function handleHealthTrends(request, env, netuid) {
         const result = await withTimeout(
           db
             .prepare(
-              `SELECT MAX(surface_id) AS surface_id,
-                    COALESCE(surface_key, surface_id) AS surface_key,
+              `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+             SELECT MAX(surface_id) AS surface_id,
+                    surface_key,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
-                    AVG(latency_ms) AS avg_latency_ms
-             FROM surface_checks
-             WHERE netuid = ? AND checked_at >= ?
-             GROUP BY COALESCE(surface_key, surface_id)`,
+                    ${latencyStatColumns({ includeMinMax: false })}
+             FROM ranked
+             GROUP BY surface_key`,
             )
             .bind(netuid, nowMs - days * DAY_MS)
             .all(),
@@ -1483,31 +1545,13 @@ async function handleHealthPercentiles(request, env, netuid, url) {
   if (error) return analyticsQueryError(error);
   const rows = await d1All(
     env,
-    `WITH ranked AS (
-       SELECT COALESCE(surface_key, surface_id) AS surface_key,
-              surface_id,
-              latency_ms,
-              ROW_NUMBER() OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-                ORDER BY latency_ms
-              ) AS rn,
-              COUNT(*) OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-              ) AS cnt
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ? AND latency_ms IS NOT NULL
-     )
+    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
-            MAX(cnt) AS samples,
-            MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
-            MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95,
-            MAX(CASE WHEN rn = CAST(0.99 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p99,
-            AVG(latency_ms) AS avg_latency_ms,
-            MIN(latency_ms) AS min_latency_ms,
-            MAX(latency_ms) AS max_latency_ms
+            ${latencyStatColumns()}
      FROM ranked
-     GROUP BY surface_key`,
+     GROUP BY surface_key
+     HAVING MAX(lat_cnt) > 0`,
     [netuid, Date.now() - days * DAY_MS],
   );
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -1834,14 +1878,10 @@ async function handleUptime(request, env, netuid, url) {
               WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
               ELSE NULL
             END AS uptime_ratio,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN CAST(ROUND(
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                ) AS INTEGER)
-              ELSE NULL
-            END AS avg_latency_ms,
+            ${dailyLatencyColumns({ roundedAvg: true })},
+            MAX(p50_latency_ms) AS p50,
+            MAX(p95_latency_ms) AS p95,
+            MAX(p99_latency_ms) AS p99,
             CASE
               WHEN SUM(samples) = 0 THEN 'unknown'
               WHEN SUM(ok_count) = SUM(samples) THEN 'ok'

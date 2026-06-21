@@ -1220,9 +1220,93 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.status, "degraded");
     assert.equal(subnet.ok_count, 1);
     assert.equal(subnet.failed_count, 1);
-    // Average of 100 and 300.
-    assert.equal(subnet.avg_latency_ms, 200);
+    // Latency is success-only: the failed surface's 300ms is excluded, so the
+    // mean is the lone healthy reading (100) — NOT (100+300)/2 — and exactly one
+    // sample backed it.
+    assert.equal(subnet.avg_latency_ms, 100);
+    assert.equal(subnet.latency_sample_count, 1);
     assert.equal(subnet.last_ok, new Date(6000).toISOString());
+  });
+
+  test("failures (fast, timed-out, unsafe) never pollute the latency mean", async () => {
+    // Regression for issue 4: a fast-fail stored 0ms and a timeout stored its
+    // elapsed time, so both leaked into AVG(latency_ms) while a thrown probe's
+    // null was excluded — the mean silently blended them. Now every failure is
+    // excluded uniformly: the mean is the single healthy 100ms reading.
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 7000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [
+          buildSurface("ok", 55),
+          buildSurface("timeout", 55),
+          buildSurface("unsafe", 55),
+          buildSurface("threw", 55),
+        ],
+        probeSurface: async (input) =>
+          ({
+            ok: { status: "ok", classification: "live", latency_ms: 100 },
+            timeout: {
+              status: "degraded",
+              classification: "timeout",
+              latency_ms: 8000,
+            },
+            unsafe: {
+              status: "failed",
+              classification: "unsafe",
+              latency_ms: 0,
+            },
+            threw: {
+              status: "failed",
+              classification: "dead",
+              latency_ms: null,
+            },
+          })[input.id],
+        probeOptions: {},
+      },
+    );
+    const current = kv.json(KV_HEALTH_CURRENT);
+    const subnet = current.subnets.find((s) => s.netuid === 55);
+    assert.equal(subnet.avg_latency_ms, 100);
+    assert.equal(subnet.latency_sample_count, 1);
+    // Stored per-surface latency is null for every non-ok probe.
+    const byId = new Map(current.surfaces.map((s) => [s.surface_id, s]));
+    assert.equal(byId.get("ok").latency_ms, 100);
+    assert.equal(byId.get("timeout").latency_ms, null);
+    assert.equal(byId.get("unsafe").latency_ms, null);
+    assert.equal(byId.get("threw").latency_ms, null);
+  });
+
+  test("all-failed subnet reports a null latency mean and zero latency samples", async () => {
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 7500,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [
+          buildSurface("x1", 66),
+          buildSurface("x2", 66),
+        ],
+        probeSurface: async () => ({
+          status: "failed",
+          classification: "timeout",
+          latency_ms: 9000,
+        }),
+        probeOptions: {},
+      },
+    );
+    const subnet = kv
+      .json(KV_HEALTH_CURRENT)
+      .subnets.find((s) => s.netuid === 66);
+    assert.equal(subnet.avg_latency_ms, null);
+    assert.equal(subnet.latency_sample_count, 0);
   });
 
   test("all-failed subnet rolls up to failed", async () => {
@@ -1367,24 +1451,28 @@ describe("rollupDailyUptime (durable daily history)", () => {
     const stmts = db.calls.batches[0];
     assert.equal(stmts.length, 2);
     assert.match(stmts[0].sql, /INSERT INTO surface_uptime_daily/);
-    assert.match(
-      stmts[0].sql,
-      /GROUP BY COALESCE\(surface_key, surface_id\), netuid/,
-    );
+    // Latency is rolled up via the shared ok-latency ranking CTE → success-only
+    // mean + sample count + p50/p95/p99 stored for long-term tail latency.
+    assert.match(stmts[0].sql, /WITH ranked AS/);
+    assert.match(stmts[0].sql, /latency_samples/);
+    assert.match(stmts[0].sql, /p50_latency_ms/);
+    assert.match(stmts[0].sql, /p99_latency_ms/);
+    assert.match(stmts[0].sql, /GROUP BY surface_key, netuid/);
     assert.match(
       stmts[0].sql,
       /ON CONFLICT\(surface_key, day\) WHERE surface_key IS NOT NULL/,
     );
     assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\) DO UPDATE SET/);
-    // binds: [day, updated_at, dayStart, dayEnd]
+    // binds: [dayStart, dayEnd, day, updated_at] — the CTE's checked_at window
+    // binds lead the statement, then `? AS day` / `? AS updated_at`.
     assert.deepEqual(stmts[0].binds, [
-      "2026-06-13",
-      fixedNow,
       Date.UTC(2026, 5, 13),
       Date.UTC(2026, 5, 14),
+      "2026-06-13",
+      fixedNow,
     ]);
-    assert.equal(stmts[1].binds[0], "2026-06-12");
-    assert.equal(stmts[1].binds[2], Date.UTC(2026, 5, 12));
+    assert.equal(stmts[1].binds[2], "2026-06-12");
+    assert.equal(stmts[1].binds[0], Date.UTC(2026, 5, 12));
   });
 
   test("no-ops without a D1 binding", async () => {

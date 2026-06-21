@@ -1,8 +1,8 @@
 {
   "contract_version": "2026-06-06.1",
-  "generated_at": "2026-06-14T09:03:05.163Z",
+  "generated_at": "1970-01-01T00:00:00.000Z",
   "notes": "Machine-readable OpenAPI/Swagger JSON snapshots only. HTML Swagger UI pages are not treated as schema-backed.",
-  "observed_at": "2026-06-14T09:03:05.163Z",
+  "observed_at": "2026-06-21T08:55:41.808Z",
   "schema_version": 1,
   "schemas": [
     {
@@ -14,6 +14,12 @@
       "previous_hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
       "schema_url": "https://api.numinouslabs.io/api/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "X-API-Key",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -21,10 +27,10 @@
         "component_schema_count": 42,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
         "netuid": 6,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 20,
         "previous_hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
@@ -53,6 +59,12 @@
       "previous_hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
       "schema_url": "https://api.numinouslabs.io/api/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "X-API-Key",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -60,10 +72,10 @@
         "component_schema_count": 42,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
         "netuid": 6,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 20,
         "previous_hash": "5b564b4af01b36ab2d106b2d58684b157e3fb55b7f728c7a16cde2364d12263f",
@@ -92,15 +104,16 @@
       "previous_hash": "66ed39e7b6e658cbf6f493bbdd472fbda145229ba11dae6510352ae3af1bc15b",
       "schema_url": "https://api.all-ways.io/swagger-json",
       "snapshot": {
+        "auth_detail": null,
         "auth_required": false,
         "auth_schemes": [],
         "component_schema_count": 0,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "66ed39e7b6e658cbf6f493bbdd472fbda145229ba11dae6510352ae3af1bc15b",
         "netuid": 7,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.0.0",
         "path_count": 33,
         "previous_hash": "66ed39e7b6e658cbf6f493bbdd472fbda145229ba11dae6510352ae3af1bc15b",
@@ -129,6 +142,12 @@
       "previous_hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
       "schema_url": "https://www.desearch.ai/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -136,10 +155,10 @@
         "component_schema_count": 76,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
         "netuid": 22,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 35,
         "previous_hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
@@ -168,6 +187,12 @@
       "previous_hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
       "schema_url": "https://desearch.ai/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -175,10 +200,10 @@
         "component_schema_count": 76,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
         "netuid": 22,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 35,
         "previous_hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
@@ -200,24 +225,30 @@
     },
     {
       "content_type": "application/json; charset=utf-8",
-      "drift_status": "unchanged",
-      "hash": "7d5fd0eaa0408d0ee0c6a6d0602937767433d563c73784804e836cdf084712df",
+      "drift_status": "changed",
+      "hash": "706a053f891659d31c62f8069c87acf4a85bb367bf8d3af5b66448dc1982931c",
       "netuid": 46,
       "path": "/metagraph/schemas/sn-46-website-common-openapi-json.json",
       "previous_hash": "7d5fd0eaa0408d0ee0c6a6d0602937767433d563c73784804e836cdf084712df",
       "schema_url": "https://zipcode.ai/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Hotkey",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
         ],
         "component_schema_count": 3,
         "contract_version": "2026-06-06.1",
-        "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
-        "hash": "7d5fd0eaa0408d0ee0c6a6d0602937767433d563c73784804e836cdf084712df",
+        "drift_status": "changed",
+        "generated_at": "1970-01-01T00:00:00.000Z",
+        "hash": "706a053f891659d31c62f8069c87acf4a85bb367bf8d3af5b66448dc1982931c",
         "netuid": 46,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.0.0",
         "path_count": 41,
         "previous_hash": "7d5fd0eaa0408d0ee0c6a6d0602937767433d563c73784804e836cdf084712df",
@@ -246,6 +277,12 @@
       "previous_hash": "ca6a6dea6bbf3f867393796711900c431ba333bcab6aaec1d8ce70445523317a",
       "schema_url": "https://tournament-api.nepher.ai/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "bearer",
+          "value_format": "Bearer <token>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "http"
@@ -253,10 +290,10 @@
         "component_schema_count": 116,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "ca6a6dea6bbf3f867393796711900c431ba333bcab6aaec1d8ce70445523317a",
         "netuid": 49,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 137,
         "previous_hash": "ca6a6dea6bbf3f867393796711900c431ba333bcab6aaec1d8ce70445523317a",
@@ -285,6 +322,12 @@
       "previous_hash": "fe9ff34b255bfc17af9321a91d8d30c7ea66833c57bb53b9ef01558d5a051b05",
       "schema_url": "https://api.gradients.io/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -292,10 +335,10 @@
         "component_schema_count": 104,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "fe9ff34b255bfc17af9321a91d8d30c7ea66833c57bb53b9ef01558d5a051b05",
         "netuid": 56,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 56,
         "previous_hash": "fe9ff34b255bfc17af9321a91d8d30c7ea66833c57bb53b9ef01558d5a051b05",
@@ -324,15 +367,16 @@
       "previous_hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
       "schema_url": "https://handshake58.com/openapi.json",
       "snapshot": {
+        "auth_detail": null,
         "auth_required": false,
         "auth_schemes": [],
         "component_schema_count": 5,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
         "netuid": 58,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.0.3",
         "path_count": 4,
         "previous_hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
@@ -355,26 +399,32 @@
     {
       "content_type": "application/json",
       "drift_status": "changed",
-      "hash": "67314412ead631b738ca83bee717e61e938f4c55dc8d2b652441e6ae19764879",
+      "hash": "3b9020b3f79b2f5ab53ee4066a7bc6fff39c021350a4d04917ee128f71b56ace",
       "netuid": 64,
       "path": "/metagraph/schemas/sn-64-chutes-openapi.json",
-      "previous_hash": "0c81e7d1180c3512dac9c967edf7771034253d03475e5e254b76cfa0090bc372",
+      "previous_hash": "67314412ead631b738ca83bee717e61e938f4c55dc8d2b652441e6ae19764879",
       "schema_url": "https://api.chutes.ai/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
         ],
-        "component_schema_count": 2,
+        "component_schema_count": 95,
         "contract_version": "2026-06-06.1",
         "drift_status": "changed",
-        "generated_at": "2026-06-14T09:03:05.163Z",
-        "hash": "67314412ead631b738ca83bee717e61e938f4c55dc8d2b652441e6ae19764879",
+        "generated_at": "1970-01-01T00:00:00.000Z",
+        "hash": "3b9020b3f79b2f5ab53ee4066a7bc6fff39c021350a4d04917ee128f71b56ace",
         "netuid": 64,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
-        "path_count": 1,
-        "previous_hash": "0c81e7d1180c3512dac9c967edf7771034253d03475e5e254b76cfa0090bc372",
+        "path_count": 166,
+        "previous_hash": "67314412ead631b738ca83bee717e61e938f4c55dc8d2b652441e6ae19764879",
         "schema_url": "https://api.chutes.ai/openapi.json",
         "schema_version": 1,
         "server_count": 0,
@@ -400,6 +450,12 @@
       "previous_hash": "e1e19edbb99626a13f782c9ecdf5a192cbf1376045062e17da492c5ccac93c9d",
       "schema_url": "https://api.gittensor.io/swagger-json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "x-api-key",
+          "scheme": "api-key",
+          "value_format": "<api-key>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "apiKey"
@@ -407,10 +463,10 @@
         "component_schema_count": 0,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "e1e19edbb99626a13f782c9ecdf5a192cbf1376045062e17da492c5ccac93c9d",
         "netuid": 74,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.0.0",
         "path_count": 32,
         "previous_hash": "e1e19edbb99626a13f782c9ecdf5a192cbf1376045062e17da492c5ccac93c9d",
@@ -439,15 +495,16 @@
       "previous_hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
       "schema_url": "https://api.subnet90.com/openapi.json",
       "snapshot": {
+        "auth_detail": null,
         "auth_required": false,
         "auth_schemes": [],
         "component_schema_count": 5,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "netuid": 90,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 10,
         "previous_hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
@@ -476,15 +533,16 @@
       "previous_hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
       "schema_url": "https://verathos.ai/openapi.json",
       "snapshot": {
+        "auth_detail": null,
         "auth_required": false,
         "auth_schemes": [],
         "component_schema_count": 20,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
         "netuid": 96,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 24,
         "previous_hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
@@ -513,6 +571,12 @@
       "previous_hash": "3a8e7781d720ec3591dec934c18df619bdabf365349d967efa9c976df7526558",
       "schema_url": "https://us-east-1.hippius.com/openapi.json",
       "snapshot": {
+        "auth_detail": {
+          "location": "header",
+          "name": "Authorization",
+          "scheme": "bearer",
+          "value_format": "Bearer <token>"
+        },
         "auth_required": true,
         "auth_schemes": [
           "http"
@@ -520,10 +584,10 @@
         "component_schema_count": 7,
         "contract_version": "2026-06-06.1",
         "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
+        "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "3a8e7781d720ec3591dec934c18df619bdabf365349d967efa9c976df7526558",
         "netuid": 97,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
         "path_count": 12,
         "previous_hash": "3a8e7781d720ec3591dec934c18df619bdabf365349d967efa9c976df7526558",
@@ -545,24 +609,25 @@
     },
     {
       "content_type": "application/json",
-      "drift_status": "unchanged",
-      "hash": "31182e26d7df3f09419d9b48bf6144621d5f0f57cdbb2dc3da93a54b52e51b2f",
+      "drift_status": "changed",
+      "hash": "0c150038ecde26f07837e3b4b77f3e699143ede4fb0d5d6dec9913c342f6bb45",
       "netuid": 110,
       "path": "/metagraph/schemas/sn-110-green-compute-openapi.json",
       "previous_hash": "31182e26d7df3f09419d9b48bf6144621d5f0f57cdbb2dc3da93a54b52e51b2f",
       "schema_url": "https://api.green-compute.com/openapi.json",
       "snapshot": {
+        "auth_detail": null,
         "auth_required": false,
         "auth_schemes": [],
         "component_schema_count": 24,
         "contract_version": "2026-06-06.1",
-        "drift_status": "unchanged",
-        "generated_at": "2026-06-14T09:03:05.163Z",
-        "hash": "31182e26d7df3f09419d9b48bf6144621d5f0f57cdbb2dc3da93a54b52e51b2f",
+        "drift_status": "changed",
+        "generated_at": "1970-01-01T00:00:00.000Z",
+        "hash": "0c150038ecde26f07837e3b4b77f3e699143ede4fb0d5d6dec9913c342f6bb45",
         "netuid": 110,
-        "observed_at": "2026-06-14T09:03:05.163Z",
+        "observed_at": "2026-06-21T08:55:41.808Z",
         "openapi_version": "3.1.0",
-        "path_count": 98,
+        "path_count": 99,
         "previous_hash": "31182e26d7df3f09419d9b48bf6144621d5f0f57cdbb2dc3da93a54b52e51b2f",
         "schema_url": "https://api.green-compute.com/openapi.json",
         "schema_version": 1,
@@ -584,8 +649,8 @@
   "source": "openapi-snapshot",
   "summary": {
     "by_drift_status": {
-      "changed": 1,
-      "unchanged": 14
+      "changed": 3,
+      "unchanged": 12
     },
     "by_status": {
       "captured": 15

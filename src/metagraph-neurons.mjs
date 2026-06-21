@@ -9,6 +9,31 @@ export const NEURON_COLUMNS =
   "consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, " +
   "is_immunity_period, axon, block_number, captured_at";
 
+// The full column set written to the neurons table (matches migration 0007 and
+// the normalizeNeuron row shape). Used by the cron's parameterized bulk load
+// (loadStagedNeurons) — values are always bound, never interpolated into SQL.
+export const NEURON_INSERT_COLUMNS = [
+  "netuid",
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+  "block_number",
+  "captured_at",
+];
+
 function toIso(ms) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }

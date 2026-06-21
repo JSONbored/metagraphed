@@ -408,7 +408,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Computed 7d/30d uptime + latency trends for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
+      "description": "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthTrendsArtifact",
@@ -417,7 +417,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Compact all-subnet 7d/30d daily uptime + latency trend matrix. Served live from D1 at /api/v1/health/trends (no static file).",
+      "description": "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live from D1 at /api/v1/health/trends (no static file).",
       "id": "health-trends-bulk",
       "path": "/metagraph/health/trends.json",
       "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
