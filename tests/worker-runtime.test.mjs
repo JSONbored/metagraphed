@@ -72,11 +72,12 @@ describe("Worker runtime", () => {
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.meta.published_at, publishedAt);
-    // generated_at stays the deterministic content marker, distinct from it.
-    assert.notEqual(body.meta.generated_at, publishedAt);
+    // generated_at is now served LIVE as the real publish time (serve-time overlay);
+    // the baked epoch marker (issue #349) is never exposed to consumers.
+    assert.equal(body.meta.generated_at, publishedAt);
   });
 
-  test("/api/v1/build populates the body's published_at from the KV pointer (generated_at stays the marker)", async () => {
+  test("/api/v1/build serves published_at + generated_at from the KV pointer (live, not the baked marker)", async () => {
     const publishedAt = "2026-06-12T21:06:24.956Z";
     const controlEnv = {
       ...env,
@@ -99,11 +100,9 @@ describe("Worker runtime", () => {
     // the real publish pointer so a body-reading agent sees genuine freshness.
     assert.equal(body.data.published_at, publishedAt);
     assert.equal(body.meta.published_at, publishedAt);
-    // generated_at is the build marker and must NOT be clobbered by the
-    // published_at overlay. It is epoch-0 in deterministic/CI builds but the real
-    // build time in a production refresh, so assert the invariant (distinct from
-    // the overlaid published_at), not a fixed fixture value (#349).
-    assert.notEqual(body.data.generated_at, publishedAt);
+    // generated_at is served LIVE as the real publish time (serve-time overlay), so
+    // a body-reading agent sees the true date, not the baked epoch marker (#349).
+    assert.equal(body.data.generated_at, publishedAt);
   });
 
   test("/api/v1/economics serves the live KV blob (meta.source: live-kv)", async () => {
