@@ -18,6 +18,7 @@ import {
   isUnsafePublicUrl,
   mapLimit,
   probeSurface as coreProbeSurface,
+  rollupSubnetStatus,
 } from "./health-probe-core.mjs";
 
 export const KV_HEALTH_CURRENT = "health:current";
@@ -304,13 +305,6 @@ export async function loadOperationalSurfaces(env) {
   return [];
 }
 
-function rollupStatus({ ok, degraded, failed, unknown, total }) {
-  if (total === 0 || unknown === total) return "unknown";
-  if (failed === 0 && degraded === 0) return "ok";
-  if (ok > 0 || degraded > 0) return "degraded";
-  return "failed";
-}
-
 function summarizeGroup(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   let lastChecked = 0;
@@ -323,7 +317,7 @@ function summarizeGroup(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus({ ...counts, total: rows.length }),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,

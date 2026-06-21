@@ -304,6 +304,26 @@ export function contentMismatch(probe, surface) {
   return false;
 }
 
+// Canonical subnet operational-status rollup — the SINGLE source of the
+// ok/degraded/failed/unknown precedence shared by the live serve overlay
+// (health-serving), the 15-minute prober, and the build/smoke status columns.
+// Keeping every caller here means build-time status and live-served status can
+// never silently diverge — drift in the health domain that is the product's core
+// promise. Precedence: all-unknown (or empty) → unknown; no failed/degraded → ok;
+// any ok or degraded present → degraded; else → failed.
+export function rollupSubnetStatus({
+  ok = 0,
+  degraded = 0,
+  failed = 0,
+  unknown = 0,
+  total,
+}) {
+  if (total === 0 || unknown === total) return "unknown";
+  if (failed === 0 && degraded === 0) return "ok";
+  if (ok > 0 || degraded > 0) return "degraded";
+  return "failed";
+}
+
 export function statusForClassification(classification, surface = null) {
   if (["live", "redirected"].includes(classification)) {
     return "ok";

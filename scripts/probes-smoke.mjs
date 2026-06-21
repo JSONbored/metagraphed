@@ -19,6 +19,7 @@ import {
   mapLimit,
   nodeWebSocketConnector,
   probeSurface as coreProbeSurface,
+  rollupSubnetStatus,
 } from "../src/health-probe-core.mjs";
 
 const contractVersion = "2026-06-06.1";
@@ -357,12 +358,12 @@ function summarizeSubnet(subnet, subnetSurfaces) {
     netuid: subnet.netuid,
     slug: subnet.slug,
     name: subnet.name,
-    status: classifySubnetStatus({
-      okCount,
-      failedCount,
-      degradedCount,
-      unknownCount,
-      surfaceCount: subnetSurfaces.length,
+    status: rollupSubnetStatus({
+      ok: okCount,
+      failed: failedCount,
+      degraded: degradedCount,
+      unknown: unknownCount,
+      total: subnetSurfaces.length,
     }),
     surface_count: subnetSurfaces.length,
     ok_count: okCount,
@@ -381,25 +382,6 @@ function summarizeSubnet(subnet, subnetSurfaces) {
         .filter(Number.isFinite),
     ),
   };
-}
-
-function classifySubnetStatus({
-  okCount,
-  failedCount,
-  degradedCount,
-  unknownCount,
-  surfaceCount,
-}) {
-  if (surfaceCount === 0 || unknownCount === surfaceCount) {
-    return "unknown";
-  }
-  if (failedCount === 0 && degradedCount === 0) {
-    return "ok";
-  }
-  if (okCount > 0 || degradedCount > 0) {
-    return "degraded";
-  }
-  return "failed";
 }
 
 async function loadPriorHistory() {

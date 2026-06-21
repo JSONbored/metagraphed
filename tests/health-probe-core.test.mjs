@@ -15,9 +15,38 @@ import {
   probeSubtensorWss,
   probeSurface,
   probeUrl,
+  rollupSubnetStatus,
   statusForClassification,
   summarizeRpcProbe,
 } from "../src/health-probe-core.mjs";
+
+describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
+  test("empty / all-unknown → unknown", () => {
+    assert.equal(rollupSubnetStatus({ total: 0 }), "unknown");
+    assert.equal(rollupSubnetStatus({ unknown: 3, total: 3 }), "unknown");
+  });
+  test("no failed and no degraded → ok (even with unknowns present)", () => {
+    assert.equal(rollupSubnetStatus({ ok: 2, total: 2 }), "ok");
+    assert.equal(rollupSubnetStatus({ ok: 1, unknown: 1, total: 2 }), "ok");
+  });
+  test("any ok or degraded alongside a failure → degraded", () => {
+    assert.equal(
+      rollupSubnetStatus({ ok: 1, failed: 1, total: 2 }),
+      "degraded",
+    );
+    assert.equal(
+      rollupSubnetStatus({ degraded: 1, failed: 1, total: 2 }),
+      "degraded",
+    );
+  });
+  test("only failures/unknowns (no ok, no degraded) → failed", () => {
+    assert.equal(rollupSubnetStatus({ failed: 2, total: 2 }), "failed");
+    assert.equal(
+      rollupSubnetStatus({ failed: 1, unknown: 1, total: 2 }),
+      "failed",
+    );
+  });
+});
 
 // Minimal Response-like stub for an injected fetch.
 function fakeResponse({

@@ -2,7 +2,10 @@ import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
-import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import {
+  OPERATIONAL_SURFACE_KINDS,
+  rollupSubnetStatus,
+} from "../src/health-probe-core.mjs";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
   backfilledIdentityUrl,
@@ -5139,12 +5142,12 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
     const degradedCount = subnetSurfaces.filter(
       (surface) => surface.status === "degraded",
     ).length;
-    const status = classifySubnetStatus({
-      okCount,
-      failedCount,
-      unknownCount,
-      degradedCount,
-      surfaceCount: subnetSurfaces.length,
+    const status = rollupSubnetStatus({
+      ok: okCount,
+      failed: failedCount,
+      unknown: unknownCount,
+      degraded: degradedCount,
+      total: subnetSurfaces.length,
     });
     const summary = {
       netuid: subnet.netuid,
@@ -6764,25 +6767,6 @@ function countGapKinds(subnets) {
       }, {}),
     ).sort(([a], [b]) => a.localeCompare(b)),
   );
-}
-
-function classifySubnetStatus({
-  okCount,
-  failedCount,
-  unknownCount,
-  degradedCount,
-  surfaceCount,
-}) {
-  if (surfaceCount === 0 || unknownCount === surfaceCount) {
-    return "unknown";
-  }
-  if (failedCount === 0 && degradedCount === 0) {
-    return "ok";
-  }
-  if (okCount > 0 || degradedCount > 0) {
-    return "degraded";
-  }
-  return "failed";
 }
 
 // Promote the per-subnet completeness scoring into a public, explained

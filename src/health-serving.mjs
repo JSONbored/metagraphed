@@ -8,6 +8,7 @@
 // objects + D1 rows in.
 
 import { computeReliability } from "./reliability.mjs";
+import { rollupSubnetStatus } from "./health-probe-core.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
@@ -91,13 +92,6 @@ export function parseLive(raw) {
   }
 }
 
-function rollupStatus(counts, total) {
-  if (total === 0 || counts.unknown === total) return "unknown";
-  if ((counts.failed || 0) === 0 && (counts.degraded || 0) === 0) return "ok";
-  if ((counts.ok || 0) > 0 || (counts.degraded || 0) > 0) return "degraded";
-  return "failed";
-}
-
 function latestIso(values) {
   let best = null;
   for (const value of values) {
@@ -115,7 +109,7 @@ export function summarizeRows(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus(counts, rows.length),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,
