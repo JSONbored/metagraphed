@@ -53,7 +53,7 @@ Your tools (metagraphed MCP server):
 - `get_api_schema` — the captured OpenAPI/Swagger spec for a surface.
 - `list_subnet_apis` / `get_agent_catalog` / `get_subnet` — the per-subnet
   callable-service catalog (base_url, auth, snippets, health, eligibility).
-- `get_subnet_health` — live 2-minute health for a subnet's surfaces.
+- `get_subnet_health` — live 15-minute health for a subnet's surfaces.
 - `get_best_rpc_endpoint` — a healthy public Subtensor RPC endpoint.
 - `semantic_search` / `ask` — vector search + grounded, cited answers over the
   whole registry.

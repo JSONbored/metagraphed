@@ -341,7 +341,7 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mainframe.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
-      "netuid": 27,
+      "netuid": 106,
       "slug": "nodexo",
       "decision": "maintainer-reviewed",
       "reviewed_at": "2026-06-08T14:15:00.000Z",
@@ -439,15 +439,6 @@
         "https://app.bitmind.ai/"
       ],
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitmind.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
-    },
-    {
-      "netuid": 38,
-      "slug": "colosseum",
-      "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
-      "confidence": "high",
-      "source_urls": ["https://github.com/TAO-Colosseum/tao-colosseum-subnet"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/colosseum.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 39,

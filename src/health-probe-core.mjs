@@ -1,4 +1,4 @@
-// Pure, isomorphic surface-probing primitives shared by the Node 6h build
+// Pure, isomorphic surface-probing primitives shared by the Node data build
 // (scripts/probes-smoke.mjs) and the Cloudflare cron prober (src/health-prober.mjs,
 // wired through workers/api.mjs `scheduled()`).
 //
@@ -32,8 +32,8 @@ function normalizeHash(value) {
 }
 
 // Surface kinds whose health changes minute-to-minute and is worth probing live
-// (the 2-minute cron prober). Everything else — docs, website, source-repo,
-// dashboard, openapi, sdk, example, repo-registry — stays on the slower 6h build.
+// (the 15-minute cron prober). Everything else — docs, website, source-repo,
+// dashboard, openapi, sdk, example, repo-registry — stays on the slower batch build.
 // This is the single source of truth: scripts/build-artifacts.mjs emits the
 // operational-surfaces.json list from it, and the Worker prober consumes that list.
 export const OPERATIONAL_SURFACE_KINDS = [
@@ -302,6 +302,26 @@ export function contentMismatch(probe, surface) {
       .includes("text/event-stream");
   }
   return false;
+}
+
+// Canonical subnet operational-status rollup — the SINGLE source of the
+// ok/degraded/failed/unknown precedence shared by the live serve overlay
+// (health-serving), the 15-minute prober, and the build/smoke status columns.
+// Keeping every caller here means build-time status and live-served status can
+// never silently diverge — drift in the health domain that is the product's core
+// promise. Precedence: all-unknown (or empty) → unknown; no failed/degraded → ok;
+// any ok or degraded present → degraded; else → failed.
+export function rollupSubnetStatus({
+  ok = 0,
+  degraded = 0,
+  failed = 0,
+  unknown = 0,
+  total,
+}) {
+  if (total === 0 || unknown === total) return "unknown";
+  if (failed === 0 && degraded === 0) return "ok";
+  if (ok > 0 || degraded > 0) return "degraded";
+  return "failed";
 }
 
 export function statusForClassification(classification, surface = null) {

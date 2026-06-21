@@ -24,13 +24,13 @@ async function rawSubnets(env) {
 }
 
 describe("raw artifact published_at header", () => {
-  test("exposes the real publish time as a header without changing the body", async () => {
+  test("overlays the real publish time onto the body's generated_at + a header", async () => {
     const { res, body } = await rawSubnets(envWithPointer());
     assert.equal(res.headers.get("x-metagraph-published-at"), PUB);
-    // The body is unchanged: generated_at is NOT overlaid with the publish
-    // time (proven without assuming the build's generated_at value, which is
-    // the epoch locally but a real timestamp in the publish/sync build).
-    assert.notEqual(body.generated_at, PUB);
+    // The body's generated_at is served LIVE as the real publish time (serve-time
+    // overlay) so a raw fetcher sees the true date, not the baked epoch marker
+    // (the artifact on disk stays the deterministic epoch — issue #349).
+    assert.equal(body.generated_at, PUB);
   });
 
   test("omits the header when there is no latest pointer", async () => {

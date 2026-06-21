@@ -14,7 +14,7 @@
   "website_url": "https://heyditto.ai/",
   "docs_url": "https://heyditto.ai/docs/",
   "dashboard_url": "https://assistant.heyditto.ai/",
-  "source_repo": "https://github.com/orgs/ditto-assistant/repositories",
+  "source_repo": "https://github.com/ditto-assistant/dittobench-starter-kit",
   "baseline_excluded_surface_ids": [
     "sn-118-taomarketcap-source-repo",
     "sn-118-taomarketcap-website",
@@ -22,7 +22,7 @@
     "sn-118-website-common-docs",
     "sn-118-website-link-heyditto-ai-docs-5"
   ],
-  "notes": "Reviewed overlay for SN118 Ditto using the public Ditto website, docs, assistant app, and GitHub organization repository listing. No specific canonical live source repository, API, OpenAPI, SSE, or read-only data endpoint is verified yet.",
+  "notes": "Reviewed overlay for SN118 Ditto using the public Ditto website, docs, assistant app, GitHub organization, and the official dittobench-starter-kit repository (whose description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\"). No public API, OpenAPI, SSE, or read-only data endpoint is verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -31,10 +31,10 @@
     "source_count": 8,
     "gap_notes": [
       "Official website, docs, assistant app, and GitHub organization repository listing are verified.",
-      "The GitHub organization repositories page is tracked as a repo registry, not a specific source repository.",
+      "The GitHub organization repositories page is tracked as a repo registry, distinct from the canonical source repository below.",
       "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
-      "No verified canonical source repository yet.",
+      "Canonical source repository verified: ditto-assistant/dittobench-starter-kit self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\" (not a fork, ditto-assistant org).",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
@@ -178,7 +178,28 @@
         "expect": "any",
         "timeout_ms": 10000
       },
-      "notes": "Public Ditto GitHub organization repository listing. Tracked separately from source-repo until a canonical repository is verified."
+      "notes": "Public Ditto GitHub organization repository listing. Tracked as a repo registry, distinct from the canonical source repository."
+    },
+    {
+      "id": "sn-118-ditto-dittobench-starter-kit",
+      "name": "DittoBench starter kit",
+      "kind": "source-repo",
+      "url": "https://github.com/ditto-assistant/dittobench-starter-kit",
+      "provider": "ditto-assistant",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/ditto-assistant/dittobench-starter-kit",
+        "https://heyditto.ai/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official DittoBench miner starter kit; its GitHub description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\"."
     }
   ],
   "social": {

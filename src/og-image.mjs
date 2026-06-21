@@ -19,7 +19,7 @@ const INK = "#0B1F1A";
 const INK_TEXT = "#08110E";
 
 const OG_PATHS = new Set(["/og.png", "/og"]);
-// Stats refresh on the 6h publish; an hour of edge cache + a long
+// Stats refresh on the data publish; an hour of edge cache + a long
 // stale-while-revalidate keeps render cost near-zero without serving stale art.
 const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 // Bump on any visual change to the card. It's part of the edge-cache key, so a

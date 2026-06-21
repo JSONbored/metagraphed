@@ -1,6 +1,6 @@
 // Live operational-health serving helpers.
 //
-// Pure functions that overlay the 2-minute cron snapshot (KV health:current /
+// Pure functions that overlay the 15-minute cron snapshot (KV health:current /
 // health:rpc-pool / health:meta, written by src/health-prober.mjs) onto the 6h
 // static artifacts. Every helper returns null when the live store is cold/absent
 // so the caller (workers/api.mjs) falls back to the static artifact — keeping
@@ -8,6 +8,8 @@
 // objects + D1 rows in.
 
 import { computeReliability } from "./reliability.mjs";
+import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
@@ -91,13 +93,6 @@ export function parseLive(raw) {
   }
 }
 
-function rollupStatus(counts, total) {
-  if (total === 0 || counts.unknown === total) return "unknown";
-  if ((counts.failed || 0) === 0 && (counts.degraded || 0) === 0) return "ok";
-  if ((counts.ok || 0) > 0 || (counts.degraded || 0) > 0) return "degraded";
-  return "failed";
-}
-
 function latestIso(values) {
   let best = null;
   for (const value of values) {
@@ -115,7 +110,7 @@ export function summarizeRows(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus(counts, rows.length),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,
@@ -279,7 +274,7 @@ export function mergeFreshness(staticFreshness, liveMeta) {
               timestamp: liveMeta.last_run_at,
               status: "current",
               stale_behavior: "warn",
-              notes: "Operational surfaces are probed live every ~2 minutes.",
+              notes: "Operational surfaces are probed live every ~15 minutes.",
             }
           : source,
       )
@@ -433,7 +428,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
 export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 
 // Minimum consecutive failed probes for a gap-island to count as an incident.
-// A single failed probe that recovers on the next (~2 min later) is transient
+// A single failed probe that recovers on the next (~15 min later) is transient
 // noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
 // dominated the ledger (~76% of rows were single-sample, zero-duration). This
 // mirrors the Cosmos liveness model: an isolated missed block is tolerated;
@@ -1041,7 +1036,7 @@ function liveFromD1Rows(rows) {
 export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
-      const current = await readHealthKv(env, "health:current");
+      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
       // The prober writes surfaces + subnets + summary; accept any live snapshot
       // that carries the per-surface or per-subnet rows the overlays consume —
       // but freshness-gate it exactly like the D1 fallback below. KV health:current
@@ -1092,8 +1087,8 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
 }
 
 // Live economics freshness window. Economics is refreshed on its own schedule
-// (refresh-economics.yml), independent of the 6h publish, so its acceptable age
-// is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
+// (refresh-economics.yml, ~3h), independent of the DATA publish, so its acceptable
+// age is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
 // older than this is treated as cold and the committed R2 economics.json serves.
 export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
@@ -1112,7 +1107,7 @@ export async function resolveLiveEconomics({
   if (typeof readHealthKv !== "function" || !env) return null;
   let blob;
   try {
-    blob = await readHealthKv(env, "economics:current");
+    blob = await readHealthKv(env, KV_ECONOMICS_CURRENT);
   } catch {
     return null;
   }

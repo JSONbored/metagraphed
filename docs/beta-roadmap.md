@@ -94,8 +94,10 @@ subnets and demonstrate the product to the broader ecosystem.
    The deploy pipeline was decoupled: **Worker code deploys via Cloudflare
    Workers Builds on every push to `main`** (connected; native R2/KV/deploy creds,
    no GitHub secrets; `wrangler.jsonc` carries 100% logs+traces + Smart
-   Placement), and **data refreshes on a 6h schedule** (`publish-cloudflare.yml`
-   repurposed: build → validate → `r2:upload` + `kv:publish` → `smoke:live`).
+   Placement), and **data refreshes on an event-driven publish** (on each
+   human-input registry merge + a daily floor — see `docs/adr/0007`;
+   `publish-cloudflare.yml`: build → validate → `r2:upload` + `kv:publish` →
+   `smoke:live`).
    _Remaining verification:_ dispatch the scheduled data-refresh once
    (`workflow_dispatch publish_mode=publish`) to confirm the real `r2:upload`/
    `kv:publish`/`smoke` path end-to-end.
@@ -139,7 +141,7 @@ subnets and demonstrate the product to the broader ecosystem.
    each run so the Worker reads versioned R2 rather than only `latest/`; the
    pointer-first rollback is documented in `docs/operations.md`. _Added:_ `GET
 /health` is now freshness-aware — it reads the pointer's `published_at` and
-   returns `degraded` + HTTP 503 past `METAGRAPH_HEALTH_MAX_AGE_HOURS` (default 12),
+   returns `degraded` + HTTP 503 past `METAGRAPH_HEALTH_MAX_AGE_HOURS` (default 48),
    so an uptime monitor catches a silently-broken data-refresh.
 
 ### P2/P3 — Coverage-completeness flywheel (the moat, made visible)

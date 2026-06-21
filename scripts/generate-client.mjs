@@ -734,11 +734,30 @@ export function createMetagraphedClient(
   ): Promise<Item[]> {
     const items: Item[] = [];
     for await (const page of paginate(path, options)) {
+      // List endpoints nest their rows under data[meta.pagination.collection]
+      // (e.g. data.subnets), not as a bare array. Resolve the collection key,
+      // falling back to a flat data array or the single array-valued field.
       const data = (page as { data?: unknown }).data;
       if (Array.isArray(data)) {
         items.push(...(data as Item[]));
-      } else if (data !== undefined && data !== null) {
-        items.push(data as Item);
+        continue;
+      }
+      if (typeof data !== "object" || data === null) {
+        continue;
+      }
+      const record = data as Record<string, unknown>;
+      const collection = (
+        page as { meta?: { pagination?: { collection?: unknown } } }
+      ).meta?.pagination?.collection;
+      if (typeof collection === "string" && Array.isArray(record[collection])) {
+        items.push(...(record[collection] as Item[]));
+        continue;
+      }
+      const arrays = Object.values(record).filter((value) =>
+        Array.isArray(value),
+      );
+      if (arrays.length === 1) {
+        items.push(...(arrays[0] as Item[]));
       }
     }
     return items;
