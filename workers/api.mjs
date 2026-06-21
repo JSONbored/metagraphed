@@ -75,6 +75,7 @@ import {
   overlayCatalogIndex,
   overlayOverviewHealth,
   overlayRpcPoolEligibility,
+  overlaySubnetEconomics,
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
@@ -1090,7 +1091,27 @@ async function handleApiRequest(
     });
   }
 
-  const baseData = live ? live.data : artifact.data;
+  let baseData = live ? live.data : artifact.data;
+  // Per-subnet economics overlay (#1308): attach the live economics row so
+  // /api/v1/subnets/{netuid} carries validator/miner counts, registration, stake
+  // and alpha price in one call. Null-safe — a cold/stale economics tier leaves
+  // the detail unchanged. Served live (not baked) so it never churns the artifact.
+  if (
+    matched.id === "subnet-detail" &&
+    baseData &&
+    typeof baseData === "object"
+  ) {
+    const liveEconomics = await resolveLiveEconomics({
+      readHealthKv,
+      env,
+      contractVersion: contractVersion(env),
+    });
+    baseData = overlaySubnetEconomics(
+      baseData,
+      liveEconomics?.data,
+      Number(matched.params.netuid),
+    );
+  }
   const baseSource = live
     ? live.source || baseData?.health_source || "live-cron-prober"
     : matched.id === "economics"

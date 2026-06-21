@@ -3185,6 +3185,7 @@ export interface components {
         SubnetDetailArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
             candidates?: components["schemas"]["CandidateSurface"][];
+            economics?: components["schemas"]["SubnetEconomics"];
             endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             subnet: components["schemas"]["SubnetDetail"];
@@ -10354,6 +10355,27 @@ export interface operations {
                      *           }
                      *         ],
                      *         "contract_version": "2026-06-06.1",
+                     *         "economics": {
+                     *           "alpha_in_pool": 0.5,
+                     *           "alpha_out_pool": 0.5,
+                     *           "alpha_price_tao": 0.5,
+                     *           "emission_share": 0.5,
+                     *           "max_stake_tao": 0.5,
+                     *           "max_uids": 1,
+                     *           "max_validators": 1,
+                     *           "miner_count": 1,
+                     *           "name": "Example Subnet",
+                     *           "netuid": 7,
+                     *           "owner_coldkey": "example",
+                     *           "owner_hotkey": "example",
+                     *           "registration_allowed": false,
+                     *           "registration_cost_tao": 0.5,
+                     *           "slug": "example-subnet",
+                     *           "subnet_volume_tao": 0.5,
+                     *           "tao_in_pool_tao": 0.5,
+                     *           "total_stake_tao": 0.5,
+                     *           "validator_count": 1
+                     *         },
                      *         "endpoints": [
                      *           {
                      *             "auth_required": true,

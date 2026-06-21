@@ -1189,6 +1189,21 @@ export async function resolveLiveEconomics({
   return { data: blob, source: "live-kv" };
 }
 
+// Attach the per-subnet economics row from the live economics blob onto a
+// subnet-detail artifact at serve time (#1308), so /api/v1/subnets/{netuid}
+// carries validator/miner counts, registration, stake and alpha price without a
+// second call to /api/v1/economics. Null-safe: when the live economics store is
+// cold/stale (resolveLiveEconomics → null) or the subnet has no economics row,
+// the detail is returned unchanged (no `economics` field).
+export function overlaySubnetEconomics(detail, economicsBlob, netuid) {
+  if (!detail || typeof detail !== "object") return detail;
+  const rows = economicsBlob?.subnets;
+  if (!Array.isArray(rows)) return detail;
+  const row = rows.find((entry) => entry?.netuid === netuid);
+  if (!row) return detail;
+  return { ...detail, economics: row };
+}
+
 // Overlay the live per-subnet operational rollup onto a composed overview
 // artifact's `health`. Returns null only when there is no live snapshot at all
 // (caller falls back); when the snapshot exists but the subnet has no probed

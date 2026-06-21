@@ -1165,6 +1165,9 @@
               },
               "gaps": {
                 "$ref": "#/components/schemas/Gaps"
+              },
+              "economics": {
+                "$ref": "#/components/schemas/SubnetEconomics"
               }
             },
             "additionalProperties": true

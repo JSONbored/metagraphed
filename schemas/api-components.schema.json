@@ -8602,6 +8602,9 @@
                 },
                 "type": "array"
               },
+              "economics": {
+                "$ref": "#/components/schemas/SubnetEconomics"
+              },
               "endpoints": {
                 "items": {
                   "$ref": "#/components/schemas/EndpointResource"
