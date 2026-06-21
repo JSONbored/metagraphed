@@ -821,6 +821,35 @@ const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
+// rpc/pools.json is R2-only and static per-build (it changes only on redeploy).
+// The RPC proxy reads it on every POST to /rpc/v1/* before failover, so a burst
+// turns into N R2 reads of the same artifact (#1309). Memoize the successful read
+// per-isolate (5 min TTL, same as the other in-isolate caches). The per-endpoint
+// health that actually changes is overlaid separately from KV (readHealthKv) on
+// every request, so caching the static pool never staleness-pins live eligibility.
+// Keyed on env so tests / multi-binding callers never cross-read; only ok reads
+// are cached so a transient R2 miss isn't sticky.
+export const RPC_POOL_ARTIFACT_TTL_MS = 300_000;
+let rpcPoolArtifactCache = { env: null, value: null, expiresAt: 0 };
+
+export async function readRpcPoolArtifact(env, now = Date.now()) {
+  if (
+    rpcPoolArtifactCache.env === env &&
+    now < rpcPoolArtifactCache.expiresAt
+  ) {
+    return rpcPoolArtifactCache.value;
+  }
+  const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
+  if (poolArtifact.ok) {
+    rpcPoolArtifactCache = {
+      env,
+      value: poolArtifact,
+      expiresAt: now + RPC_POOL_ARTIFACT_TTL_MS,
+    };
+  }
+  return poolArtifact;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -2172,7 +2201,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     );
   }
 
-  const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
+  const poolArtifact = await readRpcPoolArtifact(env);
   if (!poolArtifact.ok) {
     return errorResponse(
       poolArtifact.code,
