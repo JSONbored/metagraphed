@@ -22,6 +22,7 @@ import {
   stableStringify,
 } from "./lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -99,7 +100,7 @@ if (process.env.METAGRAPH_ALLOW_KV_WRITE === "1") {
       "kv",
       "key",
       "put",
-      "economics:current",
+      KV_ECONOMICS_CURRENT,
       "--path",
       blobPath,
       "--namespace-id",

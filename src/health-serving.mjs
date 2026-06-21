@@ -9,6 +9,7 @@
 
 import { computeReliability } from "./reliability.mjs";
 import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
@@ -1035,7 +1036,7 @@ function liveFromD1Rows(rows) {
 export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
-      const current = await readHealthKv(env, "health:current");
+      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
       // The prober writes surfaces + subnets + summary; accept any live snapshot
       // that carries the per-surface or per-subnet rows the overlays consume —
       // but freshness-gate it exactly like the D1 fallback below. KV health:current
@@ -1106,7 +1107,7 @@ export async function resolveLiveEconomics({
   if (typeof readHealthKv !== "function" || !env) return null;
   let blob;
   try {
-    blob = await readHealthKv(env, "economics:current");
+    blob = await readHealthKv(env, KV_ECONOMICS_CURRENT);
   } catch {
     return null;
   }

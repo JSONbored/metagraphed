@@ -20,10 +20,15 @@ import {
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
 } from "./health-probe-core.mjs";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+} from "./kv-keys.mjs";
 
-export const KV_HEALTH_CURRENT = "health:current";
-export const KV_HEALTH_RPC_POOL = "health:rpc-pool";
-export const KV_HEALTH_META = "health:meta";
+// Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
+// resolving the KV health keys through the prober; the names now live in kv-keys.
+export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 const PROBE_CONCURRENCY = 8;
