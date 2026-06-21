@@ -62,7 +62,7 @@ jobs:
       # binding (loadStagedNeurons) — no API-token D1 permission required.
       - name: Stage neurons to R2 for the Worker to load into D1
         if: steps.gate.outputs.ready == 'true'
-        run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.sql --file=dist/metagraph-neurons.sql --remote
+        run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.json --file=dist/metagraph-neurons.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
