@@ -3569,7 +3569,7 @@
       "GeneratedOpenApiMarker": {
         "properties": {
           "generated_at": {
-            "const": "2026-06-20T00:00:00.000Z"
+            "const": "1970-01-01T00:00:00.000Z"
           }
         },
         "type": "object"
@@ -24726,7 +24726,7 @@
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
     "contract_version": "2026-06-06.1",
-    "generated_at": "2026-06-20T00:00:00.000Z",
+    "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1
   }
