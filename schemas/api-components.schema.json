@@ -1071,6 +1071,10 @@
                           "null"
                         ]
                       },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
                       "netuid": {
                         "minimum": 0,
                         "type": "integer"
@@ -1090,6 +1094,10 @@
                               "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                               "type": "string"
                             },
+                            "latency_sample_count": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
                             "samples": {
                               "minimum": 0,
                               "type": "integer"
@@ -1107,7 +1115,8 @@
                             "date",
                             "samples",
                             "uptime_ratio",
-                            "avg_latency_ms"
+                            "avg_latency_ms",
+                            "latency_sample_count"
                           ],
                           "type": "object"
                         },
@@ -1131,6 +1140,7 @@
                       "samples",
                       "uptime_ratio",
                       "avg_latency_ms",
+                      "latency_sample_count",
                       "points"
                     ],
                     "type": "object"
@@ -4170,6 +4180,10 @@
               "null"
             ]
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -4442,6 +4456,10 @@
             "additionalProperties": {
               "additionalProperties": true,
               "properties": {
+                "latency_sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "samples": {
                   "minimum": 0,
                   "type": "integer"
@@ -4455,6 +4473,34 @@
                           "integer",
                           "null"
                         ]
+                      },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       "samples": {
                         "minimum": 0,
@@ -4474,7 +4520,9 @@
                       "surface_id",
                       "samples",
                       "uptime_ratio",
-                      "avg_latency_ms"
+                      "avg_latency_ms",
+                      "latency_sample_count",
+                      "latency_ms"
                     ],
                     "type": "object"
                   },
@@ -4490,6 +4538,7 @@
               "required": [
                 "samples",
                 "uptime_ratio",
+                "latency_sample_count",
                 "surfaces"
               ],
               "type": "object"
@@ -5412,6 +5461,10 @@
             ],
             "type": "string"
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "sample_count": {
             "minimum": 0,
             "type": "integer"
@@ -5442,7 +5495,8 @@
           "score",
           "grade",
           "uptime_ratio",
-          "sample_count"
+          "sample_count",
+          "latency_sample_count"
         ],
         "type": "object"
       },
@@ -10715,6 +10769,34 @@
                       },
                       "day": {
                         "type": "string"
+                      },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       "samples": {
                         "minimum": 0,

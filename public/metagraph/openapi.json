@@ -1085,6 +1085,10 @@
                           "null"
                         ]
                       },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
                       "netuid": {
                         "minimum": 0,
                         "type": "integer"
@@ -1104,6 +1108,10 @@
                               "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                               "type": "string"
                             },
+                            "latency_sample_count": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
                             "samples": {
                               "minimum": 0,
                               "type": "integer"
@@ -1121,7 +1129,8 @@
                             "date",
                             "samples",
                             "uptime_ratio",
-                            "avg_latency_ms"
+                            "avg_latency_ms",
+                            "latency_sample_count"
                           ],
                           "type": "object"
                         },
@@ -1145,6 +1154,7 @@
                       "samples",
                       "uptime_ratio",
                       "avg_latency_ms",
+                      "latency_sample_count",
                       "points"
                     ],
                     "type": "object"
@@ -4192,6 +4202,10 @@
               "null"
             ]
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -4464,6 +4478,10 @@
             "additionalProperties": {
               "additionalProperties": true,
               "properties": {
+                "latency_sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "samples": {
                   "minimum": 0,
                   "type": "integer"
@@ -4477,6 +4495,34 @@
                           "integer",
                           "null"
                         ]
+                      },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       "samples": {
                         "minimum": 0,
@@ -4496,7 +4542,9 @@
                       "surface_id",
                       "samples",
                       "uptime_ratio",
-                      "avg_latency_ms"
+                      "avg_latency_ms",
+                      "latency_sample_count",
+                      "latency_ms"
                     ],
                     "type": "object"
                   },
@@ -4512,6 +4560,7 @@
               "required": [
                 "samples",
                 "uptime_ratio",
+                "latency_sample_count",
                 "surfaces"
               ],
               "type": "object"
@@ -5434,6 +5483,10 @@
             ],
             "type": "string"
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "sample_count": {
             "minimum": 0,
             "type": "integer"
@@ -5464,7 +5517,8 @@
           "score",
           "grade",
           "uptime_ratio",
-          "sample_count"
+          "sample_count",
+          "latency_sample_count"
         ],
         "type": "object"
       },
@@ -10738,6 +10792,34 @@
                       "day": {
                         "type": "string"
                       },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
                       "samples": {
                         "minimum": 0,
                         "type": "integer"
@@ -15440,11 +15522,13 @@
                         "subnets": [
                           {
                             "avg_latency_ms": 120,
+                            "latency_sample_count": 120,
                             "netuid": 7,
                             "points": [
                               {
                                 "avg_latency_ms": 120,
                                 "date": "2026-06-01",
+                                "latency_sample_count": 120,
                                 "samples": 1,
                                 "uptime_ratio": 0.9966
                               }
@@ -22650,6 +22734,7 @@
                       "failed_count": 1,
                       "last_checked": "2026-06-01T00:00:00.000Z",
                       "last_ok": "2026-06-01T00:00:00.000Z",
+                      "latency_sample_count": 120,
                       "name": "Example Subnet",
                       "netuid": 7,
                       "ok_count": 1,
@@ -23114,10 +23199,13 @@
                     "source": "live-cron-prober",
                     "windows": {
                       "example": {
+                        "latency_sample_count": 120,
                         "samples": 1,
                         "surfaces": [
                           {
                             "avg_latency_ms": 120,
+                            "latency_ms": {},
+                            "latency_sample_count": 120,
                             "samples": 1,
                             "surface_id": "example",
                             "uptime_ratio": 0.9966
@@ -23226,7 +23314,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+        "summary": "Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).",
         "tags": [
           "health",
           "subnets"
@@ -24358,6 +24446,7 @@
                       "computed_at": "2026-06-01T00:00:00.000Z",
                       "day_count": 1,
                       "grade": "A",
+                      "latency_sample_count": 120,
                       "sample_count": 1,
                       "score": 100,
                       "surface_count": 1,

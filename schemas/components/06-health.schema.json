@@ -229,6 +229,10 @@
           "avg_latency_ms": {
             "type": ["integer", "null"],
             "minimum": 0
+          },
+          "latency_sample_count": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "additionalProperties": false
@@ -420,10 +424,16 @@
             "type": "object",
             "additionalProperties": {
               "type": "object",
-              "required": ["samples", "uptime_ratio", "surfaces"],
+              "required": [
+                "samples",
+                "uptime_ratio",
+                "latency_sample_count",
+                "surfaces"
+              ],
               "properties": {
                 "samples": { "type": "integer", "minimum": 0 },
                 "uptime_ratio": { "type": ["number", "null"] },
+                "latency_sample_count": { "type": "integer", "minimum": 0 },
                 "surfaces": {
                   "type": "array",
                   "items": {
@@ -432,13 +442,28 @@
                       "surface_id",
                       "samples",
                       "uptime_ratio",
-                      "avg_latency_ms"
+                      "avg_latency_ms",
+                      "latency_sample_count",
+                      "latency_ms"
                     ],
                     "properties": {
                       "surface_id": { "type": "string" },
                       "samples": { "type": "integer", "minimum": 0 },
                       "uptime_ratio": { "type": ["number", "null"] },
-                      "avg_latency_ms": { "type": ["integer", "null"] }
+                      "avg_latency_ms": { "type": ["integer", "null"] },
+                      "latency_sample_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "latency_ms": {
+                        "type": "object",
+                        "properties": {
+                          "p50": { "type": ["integer", "null"] },
+                          "p95": { "type": ["integer", "null"] },
+                          "p99": { "type": ["integer", "null"] }
+                        },
+                        "additionalProperties": true
+                      }
                     },
                     "additionalProperties": true
                   }
@@ -475,6 +500,7 @@
                       "samples",
                       "uptime_ratio",
                       "avg_latency_ms",
+                      "latency_sample_count",
                       "points"
                     ],
                     "properties": {
@@ -489,6 +515,10 @@
                         "type": ["integer", "null"],
                         "minimum": 0
                       },
+                      "latency_sample_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
                       "points": {
                         "type": "array",
                         "items": {
@@ -497,7 +527,8 @@
                             "date",
                             "samples",
                             "uptime_ratio",
-                            "avg_latency_ms"
+                            "avg_latency_ms",
+                            "latency_sample_count"
                           ],
                           "properties": {
                             "date": {
@@ -512,6 +543,10 @@
                             },
                             "avg_latency_ms": {
                               "type": ["integer", "null"],
+                              "minimum": 0
+                            },
+                            "latency_sample_count": {
+                              "type": "integer",
                               "minimum": 0
                             }
                           },
@@ -801,13 +836,20 @@
       "ReliabilityScore": {
         "type": "object",
         "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",
-        "required": ["score", "grade", "uptime_ratio", "sample_count"],
+        "required": [
+          "score",
+          "grade",
+          "uptime_ratio",
+          "sample_count",
+          "latency_sample_count"
+        ],
         "properties": {
           "score": { "type": "integer", "minimum": 0, "maximum": 100 },
           "grade": { "type": "string", "enum": ["A", "B", "C", "D", "F"] },
           "uptime_ratio": { "type": ["number", "null"] },
           "avg_latency_ms": { "type": ["integer", "null"] },
           "sample_count": { "type": "integer", "minimum": 0 },
+          "latency_sample_count": { "type": "integer", "minimum": 0 },
           "window": { "type": ["string", "null"] },
           "surface_count": { "type": "integer", "minimum": 0 },
           "day_count": { "type": "integer", "minimum": 0 },
@@ -861,6 +903,19 @@
                       "samples": { "type": "integer", "minimum": 0 },
                       "uptime_ratio": { "type": ["number", "null"] },
                       "avg_latency_ms": { "type": ["integer", "null"] },
+                      "latency_sample_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "latency_ms": {
+                        "type": "object",
+                        "properties": {
+                          "p50": { "type": ["integer", "null"] },
+                          "p95": { "type": ["integer", "null"] },
+                          "p99": { "type": ["integer", "null"] }
+                        },
+                        "additionalProperties": true
+                      },
                       "status": { "type": "string" }
                     },
                     "additionalProperties": true

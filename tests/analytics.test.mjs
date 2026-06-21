@@ -366,9 +366,14 @@ function captureD1Env(queries) {
 }
 function rowsForSql(sql) {
   if (sql.includes("WITH ranked")) {
+    // Shared ok-latency CTE backs BOTH the percentiles and the trends routes, so
+    // the fixture row carries uptime (total/ok_count) AND the latency stats.
     return [
       {
         surface_id: "s1",
+        total: 100,
+        ok_count: 98,
+        latency_samples: 96,
         samples: 100,
         p50: 120,
         p95: 400,
@@ -556,6 +561,8 @@ describe("analytics routes (fake D1 with data)", () => {
       /PARTITION BY COALESCE\(surface_key, surface_id\)/,
     );
     assert.match(queries[0].sql, /GROUP BY surface_key/);
+    // Surfaces with no healthy-latency reading are excluded (no all-null rows).
+    assert.match(queries[0].sql, /HAVING MAX\(lat_cnt\) > 0/);
   });
   test("incidents computes uptime + incidents from D1", async () => {
     const queries = [];
@@ -608,11 +615,12 @@ describe("analytics routes (fake D1 with data)", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/uptime",
       envWithCapture,
     );
-    assert.match(
-      queries.find((query) => query.sql.includes("FROM surface_checks"))?.sql ||
-        "",
-      /GROUP BY COALESCE\(surface_key, surface_id\)/,
-    );
+    // Trends rolls raw checks through the shared ok-latency CTE, which coalesces
+    // surface_key ?? surface_id once, then groups on that stable key.
+    const trendsSql =
+      queries.find((query) => query.sql.includes("FROM ranked"))?.sql || "";
+    assert.match(trendsSql, /COALESCE\(surface_key, surface_id\) AS surface_key/);
+    assert.match(trendsSql, /GROUP BY surface_key/);
     assert.match(
       queries.find((query) => query.sql.includes("FROM surface_uptime_daily"))
         ?.sql || "",

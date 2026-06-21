@@ -25,8 +25,14 @@ function gradeFor(score) {
 }
 
 // Score a single rolled-up window of stats. Returns null when there are no
-// samples (no probe data → no score, by design).
-export function scoreFromStats({ samples, okCount, avgLatencyMs }) {
+// samples (no probe data → no score, by design). `latencySamples` is how many
+// healthy probes backed `avgLatencyMs`, distinct from `samples` (the uptime total).
+export function scoreFromStats({
+  samples,
+  okCount,
+  avgLatencyMs,
+  latencySamples = 0,
+}) {
   if (!samples) {
     return null;
   }
@@ -49,12 +55,15 @@ export function scoreFromStats({ samples, okCount, avgLatencyMs }) {
     uptime_ratio: Number(uptimeRatio.toFixed(4)),
     avg_latency_ms: avgLatencyMs == null ? null : Math.round(avgLatencyMs),
     sample_count: samples,
+    latency_sample_count: latencySamples,
   };
 }
 
 // Aggregate surface_uptime_daily rows into a subnet-level score + a per-surface
-// score map. `rows`: [{ surface_id, day, samples, ok_count, avg_latency_ms }].
-// `subnet` is null when there are no samples across the window.
+// score map. `rows`: [{ surface_id, day, samples, ok_count, avg_latency_ms,
+// latency_samples }]. The window mean is weighted by latency_samples (healthy
+// readings per day), not total samples; legacy rows fall back to total samples.
+// `subnet` is null when there are no samples.
 export function computeReliability(rows, { window = null, now = null } = {}) {
   const bySurface = new Map();
   let totalSamples = 0;
@@ -68,6 +77,11 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     const okCount = Number(row.ok_count) || 0;
     const latency =
       row.avg_latency_ms == null ? null : Number(row.avg_latency_ms);
+    // Healthy readings behind this day's mean; legacy rows lack it → total samples.
+    const latencyCount =
+      row.latency_samples == null
+        ? samples
+        : Number(row.latency_samples) || 0;
     const surface = bySurface.get(row.surface_id) || {
       samples: 0,
       okCount: 0,
@@ -76,11 +90,11 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     };
     surface.samples += samples;
     surface.okCount += okCount;
-    if (latency != null && Number.isFinite(latency)) {
-      surface.latencyWeighted += latency * samples;
-      surface.latencySamples += samples;
-      latencyWeighted += latency * samples;
-      latencySamples += samples;
+    if (latency != null && Number.isFinite(latency) && latencyCount > 0) {
+      surface.latencyWeighted += latency * latencyCount;
+      surface.latencySamples += latencyCount;
+      latencyWeighted += latency * latencyCount;
+      latencySamples += latencyCount;
     }
     bySurface.set(row.surface_id, surface);
     totalSamples += samples;
@@ -98,6 +112,7 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
       avgLatencyMs: surface.latencySamples
         ? surface.latencyWeighted / surface.latencySamples
         : null,
+      latencySamples: surface.latencySamples,
     });
   }
 
@@ -105,6 +120,7 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     samples: totalSamples,
     okCount: totalOk,
     avgLatencyMs: latencySamples ? latencyWeighted / latencySamples : null,
+    latencySamples,
   });
   const subnet = base
     ? {

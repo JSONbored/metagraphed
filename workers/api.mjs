@@ -52,6 +52,11 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "../src/health-sql.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
 import {
@@ -1195,12 +1200,7 @@ async function handleBulkHealthTrends(
             day AS date,
             SUM(samples) AS total,
             SUM(ok_count) AS ok_count,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                     SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-              ELSE NULL
-            END AS avg_latency_ms
+            ${dailyLatencyColumns()}
      FROM surface_uptime_daily
      WHERE day >= ?
      GROUP BY netuid, day
@@ -1259,14 +1259,14 @@ async function handleHealthTrends(request, env, netuid) {
         const result = await withTimeout(
           db
             .prepare(
-              `SELECT MAX(surface_id) AS surface_id,
-                    COALESCE(surface_key, surface_id) AS surface_key,
+              `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+             SELECT MAX(surface_id) AS surface_id,
+                    surface_key,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
-                    AVG(latency_ms) AS avg_latency_ms
-             FROM surface_checks
-             WHERE netuid = ? AND checked_at >= ?
-             GROUP BY COALESCE(surface_key, surface_id)`,
+                    ${latencyStatColumns({ includeMinMax: false })}
+             FROM ranked
+             GROUP BY surface_key`,
             )
             .bind(netuid, nowMs - days * DAY_MS)
             .all(),
@@ -1384,31 +1384,13 @@ async function handleHealthPercentiles(request, env, netuid, url) {
   if (error) return analyticsQueryError(error);
   const rows = await d1All(
     env,
-    `WITH ranked AS (
-       SELECT COALESCE(surface_key, surface_id) AS surface_key,
-              surface_id,
-              latency_ms,
-              ROW_NUMBER() OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-                ORDER BY latency_ms
-              ) AS rn,
-              COUNT(*) OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-              ) AS cnt
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ? AND latency_ms IS NOT NULL
-     )
+    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
-            MAX(cnt) AS samples,
-            MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
-            MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95,
-            MAX(CASE WHEN rn = CAST(0.99 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p99,
-            AVG(latency_ms) AS avg_latency_ms,
-            MIN(latency_ms) AS min_latency_ms,
-            MAX(latency_ms) AS max_latency_ms
+            ${latencyStatColumns()}
      FROM ranked
-     GROUP BY surface_key`,
+     GROUP BY surface_key
+     HAVING MAX(lat_cnt) > 0`,
     [netuid, Date.now() - days * DAY_MS],
   );
   const meta = await readHealthKv(env, KV_HEALTH_META);
@@ -1646,14 +1628,10 @@ async function handleUptime(request, env, netuid, url) {
               WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
               ELSE NULL
             END AS uptime_ratio,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN CAST(ROUND(
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                ) AS INTEGER)
-              ELSE NULL
-            END AS avg_latency_ms,
+            ${dailyLatencyColumns({ roundedAvg: true })},
+            MAX(p50_latency_ms) AS p50,
+            MAX(p95_latency_ms) AS p95,
+            MAX(p99_latency_ms) AS p99,
             CASE
               WHEN SUM(samples) = 0 THEN 'unknown'
               WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
