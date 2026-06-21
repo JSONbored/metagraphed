@@ -7,7 +7,7 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability } from "./reliability.mjs";
+import { computeReliability, scoreFromStats } from "./reliability.mjs";
 import { rollupSubnetStatus } from "./health-probe-core.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
@@ -975,6 +975,54 @@ export async function loadSubnetReliability({
       window: `${windowDays}d`,
       now: computedAt,
     }).subnet;
+  } catch {
+    return null;
+  }
+}
+
+// Sample-weighted reliability score over one or many subnets in a single
+// aggregate query, so a provider spanning dozens of subnets stays one D1
+// round-trip. Returns the scoreFromStats shape (no per-surface breakdown the
+// badge doesn't need), or null when D1 is unbound/cold or has no history.
+export async function loadReliabilityAggregate({
+  db,
+  netuids,
+  windowDays = 30,
+  now = null,
+}) {
+  // Keep only integer netuids (no coercion, so Number(null) can't slip in as
+  // subnet 0), then dedupe so the IN-list has no repeats.
+  const ids = [...new Set((netuids || []).filter((n) => Number.isInteger(n)))];
+  if (!db?.prepare || ids.length === 0) {
+    return null;
+  }
+  const nowMs = now ? Date.parse(now) : Date.now();
+  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const placeholders = ids.map(() => "?").join(",");
+  try {
+    const row = await db
+      .prepare(
+        `SELECT SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                CASE
+                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                    THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                         SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+                  ELSE NULL
+                END AS avg_latency_ms
+         FROM surface_uptime_daily
+         WHERE netuid IN (${placeholders}) AND day >= ?`,
+      )
+      .bind(...ids, cutoff)
+      .first();
+    return scoreFromStats({
+      samples: Number(row?.samples) || 0,
+      okCount: Number(row?.ok_count) || 0,
+      avgLatencyMs:
+        row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+    });
   } catch {
     return null;
   }

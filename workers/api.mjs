@@ -296,13 +296,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     });
   }
 
-  // Embeddable SVG readiness badges (#744) — /api/v1/{subnets/{netuid}|
-  // providers/{slug}}/badge.svg. Worker-computed image, caught before the generic
-  // entity routing so `badge.svg` isn't resolved as an entity sub-resource.
+  // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/
+  // badge.svg. Worker-computed image, caught before the generic entity routing so
+  // `badge.svg` isn't resolved as an entity sub-resource. `?metric=uptime` reads
+  // the live reliability rollup, hence the health DB binding.
   if (
     /^\/api\/v1\/(?:subnets|providers)\/[^/]+\/badge\.svg$/.test(url.pathname)
   ) {
-    return handleBadgeRequest(request, env, url, { readArtifact });
+    return handleBadgeRequest(request, env, url, {
+      readArtifact,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
   }
 
   // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
