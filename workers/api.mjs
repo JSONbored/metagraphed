@@ -1097,6 +1097,7 @@ async function handleApiRequest(
   // and alpha price in one call. Null-safe — a cold/stale economics tier leaves
   // the detail unchanged. Served live (not baked) so it never churns the artifact.
   if (
+    network.isDefault &&
     matched.id === "subnet-detail" &&
     baseData &&
     typeof baseData === "object"
