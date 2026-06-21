@@ -705,7 +705,7 @@ export const MCP_TOOLS = [
     title: "Get subnet health",
     description:
       "Fetch live operational health for one subnet's surfaces (probed every " +
-      "~2 minutes): per-surface status, latency, and last-ok timestamps.",
+      "~15 minutes): per-surface status, latency, and last-ok timestamps.",
     inputSchema: {
       type: "object",
       properties: {

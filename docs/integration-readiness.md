@@ -13,7 +13,7 @@ breakdown ships alongside the score so you can re-weight it for your own needs.
 ## What it is not
 
 - **Not live up/down.** Readiness is a _build-time eligibility_ signal computed
-  from the reproducible registry snapshot — never the 2-minute health prober.
+  from the reproducible registry snapshot — never the 15-minute health prober.
   A subnet can be "ready" and momentarily down. For "is it up right now" use
   `get_subnet_health` / the per-service `health` block. Keeping live status out
   of the score is what lets it stay a deterministic, reproducible artifact value.
@@ -161,7 +161,7 @@ The numeric `score` is deliberately build-time and deterministic, so
 `has_callable_api` fires on a _catalogued_ surface — a subnet can score 100 with
 a dead API. `readiness_verified` (#357) closes that gap **at serve time only**:
 it is `true` when ≥1 catalogued surface was probed healthy (status `"ok"`) by the
-live 2-minute cron. It is **absent** on the static build artifact (there is no
+live 15-minute cron. It is **absent** on the static build artifact (there is no
 live truth there) and overlaid onto live agent-catalog detail responses. Treat it
 as the "proven callable right now" gate on top of the deterministic score — an
 agent that needs ground truth before wiring should require

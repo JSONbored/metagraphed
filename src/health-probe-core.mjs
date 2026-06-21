@@ -32,7 +32,7 @@ function normalizeHash(value) {
 }
 
 // Surface kinds whose health changes minute-to-minute and is worth probing live
-// (the 2-minute cron prober). Everything else — docs, website, source-repo,
+// (the 15-minute cron prober). Everything else — docs, website, source-repo,
 // dashboard, openapi, sdk, example, repo-registry — stays on the slower 6h build.
 // This is the single source of truth: scripts/build-artifacts.mjs emits the
 // operational-surfaces.json list from it, and the Worker prober consumes that list.

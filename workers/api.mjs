@@ -203,7 +203,7 @@ export default {
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
-// trigger (the 2-minute one) runs a full operational-health probe sweep.
+// trigger (the 15-minute one) runs a full operational-health probe sweep.
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
   if (cron === HEALTH_PRUNE_CRON) {
@@ -617,7 +617,7 @@ async function handleRawArtifactRequest(
   // Live per-endpoint health overlay: raw artifacts that embed the shared
   // EndpointResource list (endpoints.json, subnets/{n}.json, profiles/{n}.json,
   // provider endpoints) must not serve build-time operational health as fresh.
-  // Overlay the 2-minute cron snapshot so direct /metagraph/*.json fetchers see
+  // Overlay the 15-minute cron snapshot so direct /metagraph/*.json fetchers see
   // the same live status the /api/v1 routes do; surfaces with no live reading
   // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
   // that actually carry probed endpoints.
@@ -1960,7 +1960,7 @@ async function verifyMeta(env) {
 
 // #358: live-probe one catalogued surface on demand. Safe by construction — the
 // URL always comes from operational-surfaces.json (already public_safe, the exact
-// URLs the 2-minute cron probes), never the caller. Gated by the RPC rate limiter
+// URLs the 15-minute cron probes), never the caller. Gated by the RPC rate limiter
 // plus a 60s per-surface Cache-API entry so repeat calls can't fan out into real
 // outbound probes. An agent (or the verify_integration MCP tool) calls this to
 // confirm "callable right now" before wiring.
@@ -2191,7 +2191,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   const staticPool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
-  // Overlay the 2-minute cron health so the proxy avoids sustained-down endpoints
+  // Overlay the 15-minute cron health so the proxy avoids sustained-down endpoints
   // (the in-isolate breaker still handles instantaneous failures). Falls back to
   // the static pool when the live snapshot is cold (always the case for the static
   // testnet pool, which is intentionally not probe-derived).
@@ -2345,7 +2345,7 @@ const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
 const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
-// (~2 min) tolerates cross-provider probe-timing skew while still routing around
+// (~15 min) tolerates cross-provider probe-timing skew while still routing around
 // a genuinely stalled/lagging node.
 const BLOCK_LAG_TOLERANCE = 10;
 
@@ -2714,7 +2714,7 @@ async function handleHealthRequest(request, env) {
     : null;
   const stale = ageHours !== null && ageHours > maxAgeHours;
 
-  // Operational-health freshness — the 2-minute cron prober's last run. Reported
+  // Operational-health freshness — the 15-minute cron prober's last run. Reported
   // for observability (a stuck prober shows a growing age); does not gate the
   // HTTP status here (Phase 4 wires alerting). Null until the first cron run.
   const opRunAtMs = meta?.last_run_at ? Date.parse(meta.last_run_at) : NaN;
@@ -3203,7 +3203,7 @@ function unknownSubnetHealth(netuid) {
   };
 }
 
-// Overlay the 2-minute cron snapshot onto a static health/rpc artifact. Returns
+// Overlay the 15-minute cron snapshot onto a static health/rpc artifact. Returns
 // { data } when a live snapshot is available, else null (caller serves static).
 // Health-overlay routes whose live composition is keyed on surfaces/services
 // (not the shared EndpointResource list) — excluded from the generic per-endpoint
@@ -3285,7 +3285,7 @@ async function liveHealthOverlay(env, matched, staticData) {
   // Generic live overlay for any artifact embedding the shared EndpointResource
   // list (subnet detail, profile, endpoints collection, provider endpoints, and
   // the composed overview's endpoints[]). Each endpoint's operational health is
-  // replaced from the 2-minute cron snapshot; surfaces with no live reading
+  // replaced from the 15-minute cron snapshot; surfaces with no live reading
   // become `unknown` — so per-endpoint health is never the baked build value.
   const base = data ?? staticData;
   if (

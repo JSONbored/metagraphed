@@ -1,6 +1,6 @@
 // Live operational-health cron prober.
 //
-// Runs in the Worker on a 2-minute Cron Trigger (workers/api.mjs `scheduled()`):
+// Runs in the Worker on a 15-minute Cron Trigger (workers/api.mjs `scheduled()`):
 // loads the committed operational-surfaces.json list, probes each surface with
 // the shared isomorphic core (src/health-probe-core.mjs) under bounded
 // concurrency, then writes:
@@ -26,6 +26,9 @@ export const KV_HEALTH_META = "health:meta";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 const PROBE_CONCURRENCY = 8;
+// Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
+// headroom). Early signal to raise concurrency or shard before runs overlap.
+const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
@@ -441,12 +444,22 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  const durationMs = now() - runAt;
+  // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
+  // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
+  // this threshold is the early signal to raise PROBE_CONCURRENCY or shard
+  // surfaces across firings before runs start overlapping / getting killed.
+  if (durationMs > PROBE_WALLTIME_WARN_MS) {
+    console.warn(
+      `prober wall-time ${durationMs}ms for ${probed.length} surfaces exceeds the ${PROBE_WALLTIME_WARN_MS}ms warn threshold (15-min cron limit) — raise PROBE_CONCURRENCY or shard surfaces.`,
+    );
+  }
   return {
     ok: true,
     probed: probed.length,
     counts,
     run_at: iso(runAt),
-    duration_ms: now() - runAt,
+    duration_ms: durationMs,
   };
 }
 
@@ -617,7 +630,7 @@ function utcDayBounds(ms) {
   };
 }
 
-// Durable daily uptime rollup (PR3). Aggregates the raw 2-minute surface_checks
+// Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
 // retained indefinitely for long-term uptime analytics — so the 30-day raw
 // prune never loses history. MUST run before pruneHealthHistory. Rolls up today

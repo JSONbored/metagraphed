@@ -922,7 +922,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "operational-surfaces",
     "/metagraph/operational-surfaces.json",
-    "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 2-minute scheduled prober.",
+    "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 15-minute scheduled prober.",
     "OperationalSurfacesArtifact",
   ),
   artifact(
