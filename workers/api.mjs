@@ -219,8 +219,43 @@ export default {
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
+// Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
+// refresh-metagraph CI job fetches Taostats and writes the INSERT-OR-REPLACE SQL
+// to R2 (metagraph/neurons-pending.sql) using its existing R2 permission; we
+// execute it here through the METAGRAPH_HEALTH_DB binding — which needs no
+// API-token D1 permission — then delete the object so it loads exactly once.
+// Batched to stay well under D1's per-batch and the Worker's subrequest limits.
+export async function loadStagedNeurons(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
+  const key = "metagraph/neurons-pending.sql";
+  const object = await bucket.get(key);
+  if (!object) return { ok: false, reason: "none" };
+  const statements = (await object.text())
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("INSERT"));
+  if (!statements.length) {
+    await bucket.delete(key);
+    return { ok: false, reason: "empty" };
+  }
+  const BATCH = 40;
+  for (let i = 0; i < statements.length; i += BATCH) {
+    await db.batch(
+      statements.slice(i, i + BATCH).map((sql) => db.prepare(sql)),
+    );
+  }
+  await bucket.delete(key);
+  return { ok: true, statements: statements.length };
+}
+
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
+  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+  // snapshot and load it via the D1 binding on whichever cron fires next; it then
+  // self-deletes. Isolated so a load failure never affects the prober/prune below.
+  await loadStagedNeurons(env).catch(() => {});
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
