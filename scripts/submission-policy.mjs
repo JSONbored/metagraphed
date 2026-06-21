@@ -73,6 +73,25 @@ const CANDIDATE_VERIFICATION_CLASSIFICATIONS = new Set([
   "content-mismatch",
 ]);
 
+const CANDIDATE_AUTH_FIELDS = new Set([
+  "scheme",
+  "location",
+  "name",
+  "value_format",
+  "token_url",
+  "scopes_note",
+]);
+const CANDIDATE_AUTH_SCHEMES = new Set([
+  "none",
+  "bearer",
+  "api-key",
+  "basic",
+  "oauth2",
+  "custom",
+]);
+const CANDIDATE_AUTH_LOCATIONS = new Set(["header", "query", "cookie"]);
+const PLACEHOLDER_VALUE_FORMAT = /<[^<>]+>/;
+
 const CANDIDATE_SCHEMA_FIELDS = new Set([
   "schema_version",
   "id",
@@ -866,6 +885,78 @@ function validateCandidateSchemaShape(candidate) {
       category: "unsupported-shape",
       message: "candidate source_type must be a string",
     });
+  }
+  if (candidate.auth !== undefined && candidate.auth !== null) {
+    if (typeof candidate.auth !== "object" || Array.isArray(candidate.auth)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate auth must be an object or null",
+      });
+    } else {
+      if (candidate.auth.scheme === undefined) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is required",
+        });
+      }
+      for (const field of Object.keys(candidate.auth)) {
+        if (!CANDIDATE_AUTH_FIELDS.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} is not allowed`,
+          });
+        }
+      }
+      if (
+        candidate.auth.scheme !== undefined &&
+        !CANDIDATE_AUTH_SCHEMES.has(candidate.auth.scheme)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is unsupported",
+        });
+      }
+      if (
+        candidate.auth.location !== undefined &&
+        !CANDIDATE_AUTH_LOCATIONS.has(candidate.auth.location)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.location is unsupported",
+        });
+      }
+      for (const field of ["name", "scopes_note"]) {
+        if (
+          candidate.auth[field] !== undefined &&
+          typeof candidate.auth[field] !== "string"
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} must be a string`,
+          });
+        }
+      }
+      if (
+        candidate.auth.value_format !== undefined &&
+        (typeof candidate.auth.value_format !== "string" ||
+          !PLACEHOLDER_VALUE_FORMAT.test(candidate.auth.value_format))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.value_format must be a placeholder string",
+        });
+      }
+      if (
+        candidate.auth.token_url !== undefined &&
+        (typeof candidate.auth.token_url !== "string" ||
+          !normalizePublicHttpUrl(candidate.auth.token_url))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.token_url must be a public HTTP(S) URL",
+        });
+      }
+    }
   }
   if (candidate.rate_limit !== undefined) {
     if (

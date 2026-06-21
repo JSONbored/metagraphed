@@ -316,6 +316,59 @@ describe("submission-policy candidate schema shape branches", () => {
     );
   });
 
+  test("flags malformed structured auth metadata (#1255 follow-up)", () => {
+    const messagesFor = (auth) =>
+      validateCandidateForSubmission({
+        candidate: { ...baseCandidate, auth },
+        document: validSubmissionDocument,
+        submitter: "jsonbored",
+        native,
+        providers,
+      }).errors.map((error) => error.message);
+
+    const malformed = messagesFor({
+      scheme: "bogus",
+      location: "body",
+      name: 7,
+      value_format: "real-token-value",
+      token_url: "http://169.254.169.254/latest/meta-data",
+      scopes_note: false,
+      extra: "not allowed",
+    });
+    assert.ok(malformed.includes("candidate auth.extra is not allowed"));
+    assert.ok(malformed.includes("candidate auth.scheme is unsupported"));
+    assert.ok(malformed.includes("candidate auth.location is unsupported"));
+    assert.ok(malformed.includes("candidate auth.name must be a string"));
+    assert.ok(
+      malformed.includes(
+        "candidate auth.value_format must be a placeholder string",
+      ),
+    );
+    assert.ok(
+      malformed.includes(
+        "candidate auth.token_url must be a public HTTP(S) URL",
+      ),
+    );
+    assert.ok(
+      malformed.includes("candidate auth.scopes_note must be a string"),
+    );
+
+    assert.ok(
+      messagesFor(42).includes("candidate auth must be an object or null"),
+    );
+    assert.ok(messagesFor({}).includes("candidate auth.scheme is required"));
+
+    const valid = messagesFor({
+      scheme: "oauth2",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+      token_url: "https://auth.example.com/oauth/token",
+      scopes_note: "Request read-only scopes.",
+    });
+    assert.ok(!valid.some((message) => message.startsWith("candidate auth.")));
+  });
+
   test("flags malformed verification metadata inside a verification object", () => {
     const result = validateCandidateForSubmission({
       candidate: {
