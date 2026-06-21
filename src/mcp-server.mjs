@@ -2131,7 +2131,25 @@ async function callTool(params, ctx) {
         isError: true,
       };
     }
-    throw error;
+    // A non-toolError (an AI/D1/Vectorize/readArtifact rejection or a programmer
+    // error) is an unexpected internal fault. Per MCP (SEP-1303) tool failures
+    // are isError results, not transport errors — and raw internals must never
+    // reach the unauthenticated public /mcp client. Log server-side; return a
+    // sanitized isError result that still honors the structuredContent.error
+    // fallback contract clients branch on.
+    console.error("MCP tool handler failed:", error);
+    return {
+      content: [
+        { type: "text", text: "internal_error: The tool failed to complete." },
+      ],
+      structuredContent: {
+        error: {
+          code: "internal_error",
+          message: "The tool failed to complete.",
+        },
+      },
+      isError: true,
+    };
   }
 }
 
@@ -2213,11 +2231,9 @@ async function dispatchMessage(message, ctx) {
     if (error?.toolError) {
       return rpcError(id, RPC_INVALID_PARAMS, error.message);
     }
-    return rpcError(
-      id,
-      RPC_INTERNAL_ERROR,
-      error?.message || "Internal error.",
-    );
+    // Don't echo raw internals to the public client; log server-side instead.
+    console.error("MCP dispatch failed:", error);
+    return rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
   }
 }
 

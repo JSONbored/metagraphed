@@ -314,6 +314,72 @@ class ClientTest(unittest.TestCase):
                 metagraphed_rpc("finney", "nope")
         self.assertIn("Method not found", str(ctx.exception))
 
+    def test_rpc_retries_transient_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": {"peers": 7}})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc(
+                "finney", "system_health", retries=1, backoff=0
+            )
+
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(result, {"peers": 7})
+
+    def test_rpc_retries_network_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.URLError("connection reset")
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": "0xabc"})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc(
+                "finney", "chain_getBlockHash", [0], retries=1, backoff=0
+            )
+
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(result, "0xabc")
+
+    def test_rpc_retries_exhausted_raises_after_configured_count(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_rpc("finney", "system_health", retries=2, backoff=0)
+
+        # Initial attempt + 2 retries, then it gives up.
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(ctx.exception.status, 503)
+
+    def test_client_rpc_forwards_configured_retries_and_backoff(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] <= 2:
+                raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": "ok"})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = MetagraphedClient(retries=2, backoff=0).rpc(
+                "finney", "system_health"
+            )
+
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(result, "ok")
+
 
 class FetchAllAndModelsTest(unittest.TestCase):
     def _patch_pages(self, pages):

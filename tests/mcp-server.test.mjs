@@ -1237,7 +1237,7 @@ describe("MCP edge cases", () => {
     assert.equal(res.body.result.isError, true);
   });
 
-  test("a readArtifact rejection surfaces as a JSON-RPC internal error", async () => {
+  test("a readArtifact rejection is a sanitized isError result (no internal leak)", async () => {
     const throwingDeps = {
       readArtifact() {
         return Promise.reject(new Error("kv exploded"));
@@ -1247,8 +1247,40 @@ describe("MCP edge cases", () => {
       },
     };
     const res = await callTool("registry_summary", {}, { deps: throwingDeps });
+    // A non-toolError stays inside the tool-result contract (isError, not a
+    // -32603 transport error) and must not echo the raw internal message.
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "internal_error",
+    );
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
+  });
+
+  test("a non-toolError from a protocol method is a sanitized -32603 (no leak)", async () => {
+    // resources/read -> readResource -> loadArtifactData; a raw readArtifact
+    // rejection is a non-toolError that reaches dispatchMessage's internal-error
+    // path, which must withhold the raw message (not just tool calls).
+    const throwingDeps = {
+      readArtifact() {
+        return Promise.reject(new Error("kv exploded"));
+      },
+      readHealthKv() {
+        return Promise.resolve(null);
+      },
+    };
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://subnet/7" },
+      },
+      { deps: throwingDeps },
+    );
     assert.equal(res.body.error.code, -32603);
-    assert.ok(res.body.error.message.includes("kv exploded"));
+    assert.equal(res.body.error.message, "Internal error.");
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
   });
 
   test("artifact failure without code/message uses default messaging", async () => {

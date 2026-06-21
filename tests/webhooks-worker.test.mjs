@@ -236,6 +236,41 @@ describe("SSE change feed", () => {
     assert.equal(event.type, "metagraph.publish");
     assert.ok(Array.isArray(event.affected_netuids));
   });
+
+  test("Last-Event-ID matching the current snapshot short-circuits to a keepalive", async () => {
+    const env = envWith(makeKv());
+    const first = await handleRequest(req("/api/v1/events"), env, {});
+    const firstText = await first.text();
+    assert.equal(first.headers.get("x-metagraph-events"), "snapshot");
+    const idLine = firstText
+      .split("\n")
+      .find((line) => line.startsWith("id: "));
+    const eventId = idLine.slice("id: ".length);
+
+    const reconnect = await handleRequest(
+      req("/api/v1/events", { headers: { "last-event-id": eventId } }),
+      env,
+      {},
+    );
+    assert.equal(reconnect.status, 200);
+    assert.equal(reconnect.headers.get("x-metagraph-events"), "unchanged");
+    const reconnectText = await reconnect.text();
+    // No snapshot frame — just a retry directive and a keepalive comment.
+    assert.doesNotMatch(reconnectText, /event: snapshot/);
+    assert.doesNotMatch(reconnectText, /^data:/m);
+    assert.match(reconnectText, /retry: 300000/);
+    assert.match(reconnectText, /^: /m);
+  });
+
+  test("a stale Last-Event-ID still delivers the snapshot", async () => {
+    const res = await handleRequest(
+      req("/api/v1/events", { headers: { "last-event-id": "stale-id" } }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.headers.get("x-metagraph-events"), "snapshot");
+    assert.match(await res.text(), /event: snapshot/);
+  });
 });
 
 describe("webhook route edge cases", () => {
