@@ -42,6 +42,22 @@ test("computeMinerReadiness scores joinability 0-100 (#1306)", () => {
     60,
   );
   assert.equal(computeMinerReadiness(null, 5, 0.1), null);
+
+  // A non-finite cost (NaN/Infinity) is "unknown", not free: it must take the
+  // +10 unknown-cost path, not slip past a typeof check and score 0 cost points.
+  // open + slots + unknown-cost + active → 40+30+10+10.
+  assert.equal(
+    computeMinerReadiness(
+      {
+        registration_allowed: true,
+        registration_cost_tao: Number.NaN,
+        total_stake_tao: 100,
+      },
+      50,
+      0.01,
+    ),
+    90,
+  );
 });
 
 test("buildEconomicsArtifact derives open_slots + miner_readiness (#1306)", () => {
