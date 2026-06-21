@@ -1260,7 +1260,11 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
               classification: "unsafe",
               latency_ms: 0,
             },
-            threw: { status: "failed", classification: "dead", latency_ms: null },
+            threw: {
+              status: "failed",
+              classification: "dead",
+              latency_ms: null,
+            },
           })[input.id],
         probeOptions: {},
       },

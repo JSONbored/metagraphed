@@ -2171,7 +2171,13 @@ describe("computeReliability (score from uptime history)", () => {
 
   test("legacy rows without latency_samples fall back to total samples", () => {
     const out = computeReliability([
-      { surface_id: "a", day: "2026-06-12", samples: 100, ok_count: 90, avg_latency_ms: 300 },
+      {
+        surface_id: "a",
+        day: "2026-06-12",
+        samples: 100,
+        ok_count: 90,
+        avg_latency_ms: 300,
+      },
     ]);
     assert.equal(out.subnet.avg_latency_ms, 300);
     assert.equal(out.subnet.latency_sample_count, 100);

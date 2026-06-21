@@ -79,9 +79,7 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
       row.avg_latency_ms == null ? null : Number(row.avg_latency_ms);
     // Healthy readings behind this day's mean; legacy rows lack it → total samples.
     const latencyCount =
-      row.latency_samples == null
-        ? samples
-        : Number(row.latency_samples) || 0;
+      row.latency_samples == null ? samples : Number(row.latency_samples) || 0;
     const surface = bySurface.get(row.surface_id) || {
       samples: 0,
       okCount: 0,

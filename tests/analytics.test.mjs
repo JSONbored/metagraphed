@@ -619,7 +619,10 @@ describe("analytics routes (fake D1 with data)", () => {
     // surface_key ?? surface_id once, then groups on that stable key.
     const trendsSql =
       queries.find((query) => query.sql.includes("FROM ranked"))?.sql || "";
-    assert.match(trendsSql, /COALESCE\(surface_key, surface_id\) AS surface_key/);
+    assert.match(
+      trendsSql,
+      /COALESCE\(surface_key, surface_id\) AS surface_key/,
+    );
     assert.match(trendsSql, /GROUP BY surface_key/);
     assert.match(
       queries.find((query) => query.sql.includes("FROM surface_uptime_daily"))
