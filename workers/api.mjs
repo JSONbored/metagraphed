@@ -1689,7 +1689,9 @@ async function handleTrajectory(request, env, netuid, url) {
   // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
     env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
      FROM subnet_snapshots
      WHERE netuid = ?
      ORDER BY snapshot_date DESC

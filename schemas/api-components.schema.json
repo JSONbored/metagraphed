@@ -10279,6 +10279,12 @@
             "items": {
               "additionalProperties": true,
               "properties": {
+                "alpha_price_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "completeness_score": {
                   "type": [
                     "integer",
@@ -10288,13 +10294,37 @@
                 "date": {
                   "type": "string"
                 },
+                "emission_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "endpoint_count": {
                   "type": [
                     "integer",
                     "null"
                   ]
                 },
+                "miner_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "surface_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "total_stake_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validator_count": {
                   "type": [
                     "integer",
                     "null"

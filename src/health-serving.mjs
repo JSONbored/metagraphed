@@ -808,6 +808,13 @@ export function formatTrajectory({ netuid, rows }) {
       completeness_score: row.completeness_score ?? null,
       surface_count: row.surface_count ?? null,
       endpoint_count: row.endpoint_count ?? null,
+      // Economic time series (#1307) — null on rows captured before the columns
+      // existed / when economics was unavailable that day.
+      validator_count: row.validator_count ?? null,
+      miner_count: row.miner_count ?? null,
+      total_stake_tao: row.total_stake_tao ?? null,
+      alpha_price_tao: row.alpha_price_tao ?? null,
+      emission_share: row.emission_share ?? null,
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 

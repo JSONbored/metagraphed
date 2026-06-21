@@ -640,7 +640,12 @@
                 "date": { "type": "string" },
                 "completeness_score": { "type": ["integer", "null"] },
                 "surface_count": { "type": ["integer", "null"] },
-                "endpoint_count": { "type": ["integer", "null"] }
+                "endpoint_count": { "type": ["integer", "null"] },
+                "validator_count": { "type": ["integer", "null"] },
+                "miner_count": { "type": ["integer", "null"] },
+                "total_stake_tao": { "type": ["number", "null"] },
+                "alpha_price_tao": { "type": ["number", "null"] },
+                "emission_share": { "type": ["number", "null"] }
               },
               "additionalProperties": true
             }

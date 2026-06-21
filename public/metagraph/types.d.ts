@@ -3637,10 +3637,15 @@ export interface components {
             netuid: number;
             point_count: number;
             points: ({
+                alpha_price_tao?: number | null;
                 completeness_score?: number | null;
                 date: string;
+                emission_share?: number | null;
                 endpoint_count?: number | null;
+                miner_count?: number | null;
                 surface_count?: number | null;
+                total_stake_tao?: number | null;
+                validator_count?: number | null;
             } & {
                 [key: string]: unknown;
             })[];
