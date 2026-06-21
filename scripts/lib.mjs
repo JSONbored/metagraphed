@@ -2382,6 +2382,32 @@ export function slugify(value) {
 // now-zeroed on-chain subnet_emission field. Pure + side-effect free so it is
 // fully unit-testable; subnets with no economics block are omitted (graceful
 // when the snapshot predates the economics fetcher).
+// Miner-readiness heuristic (#1306): 0-100 "how easy is it for a new miner to
+// join + earn on this subnet". Weighs registration being open, free UID slots
+// (vs. having to outcompete an existing miner), the registration cost, and
+// whether the subnet is actually active. A display/ranking signal for miner
+// discovery — never a guarantee, never feeds completeness.
+export function computeMinerReadiness(economics, openSlots, emissionShare) {
+  if (!economics || typeof economics !== "object") return null;
+  let score = 0;
+  if (economics.registration_allowed) score += 40; // can register at all
+  if (typeof openSlots === "number" && openSlots > 0) score += 30; // room
+  const cost = economics.registration_cost_tao;
+  if (typeof cost === "number") {
+    if (cost <= 1) score += 20;
+    else if (cost <= 10) score += 10;
+    else if (cost <= 100) score += 5;
+  } else {
+    score += 10; // unknown cost — don't over-penalize
+  }
+  const active =
+    (typeof emissionShare === "number" && emissionShare > 0) ||
+    (typeof economics.total_stake_tao === "number" &&
+      economics.total_stake_tao > 0);
+  if (active) score += 10; // worth mining
+  return Math.max(0, Math.min(100, score));
+}
+
 export function buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
@@ -2413,12 +2439,23 @@ export function buildEconomicsArtifact({
       price != null && totalAlphaPrice > 0
         ? round(price / totalAlphaPrice, 6)
         : null;
+    const participants =
+      numericOrZero(economics.validator_count) +
+      numericOrZero(economics.miner_count);
+    const maxUids = numericOrZero(economics.max_uids);
+    const openSlots = maxUids > 0 ? Math.max(0, maxUids - participants) : null;
     return {
       netuid: subnet.netuid,
       slug: subnet.slug,
       name: subnet.name,
       ...economics,
       emission_share: emissionShare,
+      open_slots: openSlots,
+      miner_readiness: computeMinerReadiness(
+        economics,
+        openSlots,
+        emissionShare,
+      ),
     };
   });
   // Highest emission share first (the "top subnets by emission" view); stable

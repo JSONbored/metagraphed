@@ -8830,12 +8830,29 @@
             "minimum": 0,
             "type": "integer"
           },
+          "miner_readiness": {
+            "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306).",
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
+          },
+          "open_slots": {
+            "description": "Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306).",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "owner_coldkey": {
             "type": [
