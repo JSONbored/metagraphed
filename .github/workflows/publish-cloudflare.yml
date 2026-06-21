@@ -82,7 +82,13 @@ jobs:
 
       - name: Stamp publish time
         run: |
-          echo "METAGRAPH_PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
+          # The real publish moment — served LIVE as meta.published_at, never baked.
+          published_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "METAGRAPH_PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
+          # Unique R2 run-prefix id for every r2:manifest invocation (build + the
+          # post-changelog re-stamp). generated_at stays the deterministic epoch
+          # marker (issue #349) so artifacts don't churn; this keeps runs/ unique.
+          echo "METAGRAPH_RUN_ID=$published_at" >> "$GITHUB_ENV"
 
       - name: Prepare reviewed publish artifacts
         run: npm run build
@@ -93,7 +99,9 @@ jobs:
           # shipping degraded adapter data (mirrors sync-subnets.yml).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          METAGRAPH_BUILD_TIMESTAMP: ${{ env.METAGRAPH_PUBLISHED_AT }}
+          # No METAGRAPH_BUILD_TIMESTAMP override: generated_at stays the epoch
+          # marker (deterministic, no churn). The real time is served live
+          # (meta.published_at); the unique run prefix comes from METAGRAPH_RUN_ID.
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters

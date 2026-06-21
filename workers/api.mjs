@@ -634,11 +634,21 @@ async function handleRawArtifactRequest(
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
   }
-  // The raw artifact path has no envelope, so direct fetchers of
-  // /metagraph/*.json have no freshness signal — the body's generated_at is the
-  // deterministic epoch content marker by design. Expose the real publish time
-  // as a header; the operational-health fields are overlaid live (above).
+  // The raw artifact path has no envelope. Artifacts bake a deterministic epoch
+  // `generated_at` marker (issue #349) so their bytes don't churn; stamp the real
+  // publish time onto the served body's generated_at (and a header) so direct
+  // fetchers of /metagraph/*.json see the true date. Operational-health fields are
+  // overlaid live (above).
   const pub = await publishedAt(env);
+  if (
+    pub &&
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    "generated_at" in data
+  ) {
+    data = { ...data, generated_at: pub };
+  }
   const body = JSON.stringify(data);
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
@@ -1094,21 +1104,28 @@ async function handleApiRequest(
     baseData?.captured_at
       ? baseData.captured_at
       : pub;
-  // Static-asset artifacts that DECLARE a `published_at` field (e.g.
-  // build-summary, agent-catalog) carry it as null in the committed
-  // deterministic build, so an agent reading the response BODY (not just the
-  // envelope meta) sees no freshness signal. Populate it at serve from the same
-  // pointer that feeds meta.published_at; generated_at stays the marker.
+  // Freshness is served LIVE, never baked. Artifacts carry a deterministic epoch
+  // `generated_at` marker (issue #349) so their bytes change only when the data
+  // does (git-committable, no churn). The Worker stamps the real publish time onto
+  // the response here — the envelope meta (below) AND the body, so a consumer
+  // reading the raw body sees the true date instead of the 1970 marker. Same source
+  // that feeds meta.published_at; storage stays deterministic, serving stays honest.
   let responseData = transformed.data;
   if (
-    pub &&
     responseData &&
     typeof responseData === "object" &&
-    !Array.isArray(responseData) &&
-    "published_at" in responseData &&
-    !responseData.published_at
+    !Array.isArray(responseData)
   ) {
-    responseData = { ...responseData, published_at: pub };
+    const patch = {};
+    if (effectivePublishedAt && "generated_at" in responseData) {
+      patch.generated_at = effectivePublishedAt;
+    }
+    if (pub && "published_at" in responseData && !responseData.published_at) {
+      patch.published_at = pub;
+    }
+    if (Object.keys(patch).length) {
+      responseData = { ...responseData, ...patch };
+    }
   }
   const response = await envelopeResponse(
     request,
@@ -1118,7 +1135,7 @@ async function handleApiRequest(
         artifact_path: artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
-        generated_at: baseData?.generated_at || null,
+        generated_at: effectivePublishedAt || baseData?.generated_at || null,
         published_at: effectivePublishedAt,
         source: baseSource,
         ...(staleContract ? { stale_contract: staleContract } : {}),
