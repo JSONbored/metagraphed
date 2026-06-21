@@ -908,7 +908,14 @@ export function isBrandImpersonationUrl(value) {
     return false;
   }
 
-  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  // A trailing dot is the FQDN-canonical form of the same hostname, so strip it
+  // before the self-domain exemption — otherwise "metagraph.sh." (and real
+  // subdomains like "api.metagraph.sh.") fail the `=== SELF_DOMAIN` / `.endsWith`
+  // check and get wrongly flagged as impersonating our own domain.
+  const host = url.hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
   if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
     return false;
   }
