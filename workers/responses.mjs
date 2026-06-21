@@ -4,7 +4,7 @@
 // http + storage leaf modules and the contract version; it calls nothing back
 // into api.mjs, so there is no import cycle.
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
-import { apiHeaders, weakEtag } from "./http.mjs";
+import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 import { latestPointer } from "./storage.mjs";
 
 export function contractVersion(env) {
@@ -86,7 +86,7 @@ export async function envelopeResponse(request, payload, cacheProfile) {
       payload.meta.stale_contract.built_under,
     );
   }
-  if (request.headers.get("if-none-match") === etag) {
+  if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, {
       status: 304,
       headers,
