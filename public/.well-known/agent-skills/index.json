@@ -3,7 +3,7 @@
   "skills": [
     {
       "description": "Use when a developer asks what a Bittensor subnet does, whether it's up right now, or how to call/integrate its API — e.g. \"which subnet does image generation\", \"is subnet 7 healthy\", \"how do I call the Chutes API\", \"build on a Bittensor subnet\". Backed by metagraphed (api.metagraph.sh), the live operational + integration registry for ~129 subnets.",
-      "digest": "sha256:5aa735e2813eca2614bee03bd5e82c15df3faf919c920d30ce6d8580349287b2",
+      "digest": "sha256:202192843c32bc7efdc7313d1b78974014ae64b4f6b6c5b8823de49775bde4b2",
       "name": "bittensor",
       "type": "skill-md",
       "url": "https://api.metagraph.sh/skills/bittensor/SKILL.md"

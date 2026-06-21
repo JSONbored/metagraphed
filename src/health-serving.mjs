@@ -1,6 +1,6 @@
 // Live operational-health serving helpers.
 //
-// Pure functions that overlay the 2-minute cron snapshot (KV health:current /
+// Pure functions that overlay the 15-minute cron snapshot (KV health:current /
 // health:rpc-pool / health:meta, written by src/health-prober.mjs) onto the 6h
 // static artifacts. Every helper returns null when the live store is cold/absent
 // so the caller (workers/api.mjs) falls back to the static artifact — keeping
@@ -279,7 +279,7 @@ export function mergeFreshness(staticFreshness, liveMeta) {
               timestamp: liveMeta.last_run_at,
               status: "current",
               stale_behavior: "warn",
-              notes: "Operational surfaces are probed live every ~2 minutes.",
+              notes: "Operational surfaces are probed live every ~15 minutes.",
             }
           : source,
       )
@@ -433,7 +433,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
 export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 
 // Minimum consecutive failed probes for a gap-island to count as an incident.
-// A single failed probe that recovers on the next (~2 min later) is transient
+// A single failed probe that recovers on the next (~15 min later) is transient
 // noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
 // dominated the ledger (~76% of rows were single-sample, zero-duration). This
 // mirrors the Cosmos liveness model: an isolated missed block is tolerated;
@@ -1092,8 +1092,8 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
 }
 
 // Live economics freshness window. Economics is refreshed on its own schedule
-// (refresh-economics.yml), independent of the 6h publish, so its acceptable age
-// is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
+// (refresh-economics.yml, ~3h), independent of the DATA publish, so its acceptable
+// age is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
 // older than this is treated as cold and the committed R2 economics.json serves.
 export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 

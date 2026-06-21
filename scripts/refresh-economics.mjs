@@ -2,7 +2,7 @@
 // current native snapshot + merged overlays — byte-shape-identical to the R2
 // economics.json, with the same contract_version stamp — and publishes it to KV
 // 'economics:current' (read by resolveLiveEconomics) so /api/v1/economics serves
-// fresher-than-6h data DECOUPLED from the fragile 6h publish, falling back to the
+// fresh data on its own ~3h cadence DECOUPLED from the DATA publish, falling back to the
 // committed R2 economics.json when the KV blob is cold/stale/invalid.
 //
 // KV-only: a single atomic PUT of the JSON blob via the same arg-array wrangler

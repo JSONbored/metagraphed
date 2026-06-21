@@ -7,5 +7,9 @@ test("KV latest pointer uses immutable run prefix for Worker artifact reads", ()
 
   assert.match(source, /latest_prefix: manifest\.run_prefix/);
   assert.doesNotMatch(source, /latest_prefix: manifest\.latest_prefix/);
-  assert.match(source, /previous run-specific artifacts live/);
+  assert.match(source, /immutable run prefix/);
+  // metagraph:latest is the only KV control record now (dead feature-flags /
+  // endpoint-pools / source-freshness sidecars were removed — read by nothing).
+  assert.match(source, /\["metagraph:latest", pointer\]/);
+  assert.doesNotMatch(source, /metagraph:feature-flags/);
 });

@@ -1,4 +1,4 @@
-# ADR 0002 — Live operational health (2-minute cron prober → D1/KV → served live)
+# ADR 0002 — Live operational health (15-minute cron prober → D1/KV → served live)
 
 - **Status:** Accepted — implemented (Phases 1–5, PRs #252–#257).
 - **Date:** 2026-06-10
@@ -29,7 +29,7 @@ Split the two data classes. Keep slow/structural data on the 6h build. Move the
 `subnet-api`, `sse`, `data-artifact`) onto a **dedicated live pipeline**:
 
 ```
-EVERY 2 MIN (Cloudflare Cron Trigger, workers/api.mjs scheduled())
+EVERY 15 MIN (Cloudflare Cron Trigger, workers/api.mjs scheduled())
   load operational-surfaces.json (committed) → probe with the shared isomorphic
   core (src/health-probe-core.mjs) under bounded concurrency →
     D1 surface_checks  (append-only time-series → /health/trends)
@@ -63,7 +63,7 @@ Key properties:
 
 - **Real-time per-request probing** — a Worker can't crawl hundreds of
   third-party endpoints per request (rate limits, latency, subrequest caps).
-- **Durable Object / Queue prober** — overkill at ~58 endpoints; one 2-minute
+- **Durable Object / Queue prober** — overkill at ~58 endpoints; one 15-minute
   cron with bounded concurrency sits far under the 30s CPU / 15-min duration /
   10k-subrequest limits. Revisit if per-endpoint staggered scheduling is needed.
 - **Probe everything live** — the ~1,091 docs/website/repo surfaces rarely change
@@ -71,7 +71,7 @@ Key properties:
 
 ## Outcome
 
-Operational health is fresh to **~2 minutes** (was 6h). `/health` reports
+Operational health is fresh to **~15 minutes** (was 6h). `/health` reports
 `operational_health.last_run_at` for monitoring. D1 time-series powers
 `/health/trends` (7d/30d uptime + latency). The cascade is structurally
 impossible: health no longer depends on the publish, the freshness gate, or

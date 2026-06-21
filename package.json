@@ -107,8 +107,7 @@
     "test:coverage": "vitest run --coverage",
     "submission-gate:health": "node scripts/submission-gate-health.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
-    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs",
-    "endpoint:ops:brief": "node scripts/endpoint-ops-brief.mjs"
+    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "dependencies": {
     "workers-og": "^0.0.27"
