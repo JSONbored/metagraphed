@@ -3286,8 +3286,12 @@ export interface components {
             max_uids: number;
             max_validators: number;
             miner_count: number;
+            /** @description 0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306). */
+            miner_readiness?: number | null;
             name: string;
             netuid: number;
+            /** @description Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306). */
+            open_slots?: number | null;
             owner_coldkey: string | null;
             owner_hotkey: string | null;
             registration_allowed: boolean;
@@ -5554,7 +5558,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: "alpha_price_tao" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "name" | "netuid" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                sort?: "alpha_price_tao" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -10483,8 +10487,10 @@ export interface operations {
                      *           "max_uids": 1,
                      *           "max_validators": 1,
                      *           "miner_count": 1,
+                     *           "miner_readiness": 1,
                      *           "name": "Example Subnet",
                      *           "netuid": 7,
+                     *           "open_slots": 1,
                      *           "owner_coldkey": "example",
                      *           "owner_hotkey": "example",
                      *           "registration_allowed": false,

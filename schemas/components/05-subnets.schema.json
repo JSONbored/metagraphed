@@ -1222,6 +1222,17 @@
             "minimum": 0,
             "maximum": 1,
             "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price."
+          },
+          "open_slots": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306)."
+          },
+          "miner_readiness": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306)."
           }
         },
         "additionalProperties": false
