@@ -392,17 +392,18 @@ describe("createMetagraphedClient", () => {
     }
   });
 
-  test("fetchAll collects data rows across cursor pages", async () => {
+  test("fetchAll collects nested data[collection] rows across cursor pages", async () => {
+    // List endpoints nest rows under data[meta.pagination.collection].
     const pages = [
       {
         ok: true,
-        data: [{ netuid: 1 }, { netuid: 2 }],
-        meta: { pagination: { next_cursor: "c2" } },
+        data: { subnets: [{ netuid: 1 }, { netuid: 2 }] },
+        meta: { pagination: { collection: "subnets", next_cursor: "c2" } },
       },
       {
         ok: true,
-        data: [{ netuid: 3 }],
-        meta: { pagination: { next_cursor: null } },
+        data: { subnets: [{ netuid: 3 }] },
+        meta: { pagination: { collection: "subnets", next_cursor: null } },
       },
     ];
     let index = 0;
@@ -415,6 +416,37 @@ describe("createMetagraphedClient", () => {
     expect((fetchMock.mock.calls[1][0] as URL).searchParams.get("cursor")).toBe(
       "c2",
     );
+  });
+
+  test("fetchAll falls back to a flat data array and the lone array field", async () => {
+    const flat = vi.fn(async () =>
+      jsonResponse({
+        ok: true,
+        data: [{ id: "a" }],
+        meta: { pagination: { next_cursor: null } },
+      }),
+    );
+    const flatClient = createMetagraphedClient({
+      fetch: flat as unknown as typeof fetch,
+    });
+    expect(await flatClient.fetchAll("/api/v1/subnets" as never)).toEqual([
+      { id: "a" },
+    ]);
+
+    // No collection key, but data has a single array-valued field.
+    const lone = vi.fn(async () =>
+      jsonResponse({
+        ok: true,
+        data: { rows: [{ id: "b" }] },
+        meta: { pagination: { next_cursor: null } },
+      }),
+    );
+    const loneClient = createMetagraphedClient({
+      fetch: lone as unknown as typeof fetch,
+    });
+    expect(await loneClient.fetchAll("/api/v1/subnets" as never)).toEqual([
+      { id: "b" },
+    ]);
   });
 
   test("retries transport errors (network/timeout) then resolves", async () => {

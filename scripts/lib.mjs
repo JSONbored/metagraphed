@@ -1251,6 +1251,43 @@ export function hashJson(value) {
   return sha256Hex(stableStringify(value));
 }
 
+// Content hash for the R2 delta-skip: an artifact's hash with the pure build stamp
+// (`generated_at`) normalized out, so a republish whose ONLY difference is the
+// wall-clock build time (METAGRAPH_BUILD_TIMESTAMP, set per-publish in production —
+// see ADR 0007) is skipped instead of re-uploaded. `captured_at` is deliberately
+// NOT normalized: it is the chain-snapshot time consumers read as freshness, so an
+// artifact that was genuinely re-snapshotted still re-uploads. Non-JSON artifacts
+// (svg/txt) and unparseable files hash as-is.
+// NOTE: this is a delta-comparison hash only. Integrity verification (r2:download)
+// still uses the real `sha256` of the actual uploaded bytes, which is untouched.
+const DELTA_GENERATED_AT_PLACEHOLDER = "1970-01-01T00:00:00.000Z";
+
+export function artifactContentHash(relativePath, raw) {
+  if (!relativePath.endsWith(".json")) return sha256Hex(raw);
+  let parsed;
+  try {
+    parsed = JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
+  } catch {
+    return sha256Hex(raw);
+  }
+  return hashJson(stripGeneratedAt(parsed));
+}
+
+function stripGeneratedAt(value) {
+  if (Array.isArray(value)) return value.map(stripGeneratedAt);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      out[key] =
+        key === "generated_at"
+          ? DELTA_GENERATED_AT_PLACEHOLDER
+          : stripGeneratedAt(val);
+    }
+    return out;
+  }
+  return value;
+}
+
 export function isJsonContentType(value) {
   return String(value || "")
     .toLowerCase()

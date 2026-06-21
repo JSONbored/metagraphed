@@ -2,7 +2,7 @@
 // current native snapshot + merged overlays — byte-shape-identical to the R2
 // economics.json, with the same contract_version stamp — and publishes it to KV
 // 'economics:current' (read by resolveLiveEconomics) so /api/v1/economics serves
-// fresher-than-6h data DECOUPLED from the fragile 6h publish, falling back to the
+// fresh data on its own ~3h cadence DECOUPLED from the DATA publish, falling back to the
 // committed R2 economics.json when the KV blob is cold/stale/invalid.
 //
 // KV-only: a single atomic PUT of the JSON blob via the same arg-array wrangler
@@ -22,6 +22,8 @@ import {
   stableStringify,
 } from "./lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
+import { shouldPublishEconomics } from "./economics-floor.mjs";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -58,17 +60,21 @@ if (!write) {
 // Content floor: never overwrite the live tier with an empty / near-empty blob. A
 // partial chain-fetch (0 rows, or far below the subnet count) or a missing
 // captured_at must not clobber the last good KV value — warn + exit 0 so the serve
-// path keeps the last live value (or falls back to R2).
+// path keeps the last live value (or falls back to R2). Logic lives in the pure
+// shouldPublishEconomics helper so its boundaries are unit-tested.
 const expectedCount = subnets.length;
-if (
-  summary.with_economics_count === 0 ||
-  !economics.captured_at ||
-  (expectedCount > 0 && summary.with_economics_count < expectedCount * 0.5)
-) {
+const floor = shouldPublishEconomics(summary, expectedCount);
+if (!floor.publish) {
   console.warn(
-    `::warning::economics blob failed the content floor (with_economics_count=${summary.with_economics_count} of ~${expectedCount}, captured_at=${economics.captured_at}); keeping the last live value.`,
+    `::warning::economics blob failed the content floor (${floor.reason}; with_economics_count=${summary.with_economics_count} of ~${expectedCount}, captured_at=${economics.captured_at}); keeping the last live value.`,
   );
-  console.log(stableStringify({ mode: "skipped-floor", ...summary }));
+  console.log(
+    stableStringify({
+      mode: "skipped-floor",
+      reason: floor.reason,
+      ...summary,
+    }),
+  );
   process.exit(0);
 }
 
@@ -99,7 +105,7 @@ if (process.env.METAGRAPH_ALLOW_KV_WRITE === "1") {
       "kv",
       "key",
       "put",
-      "economics:current",
+      KV_ECONOMICS_CURRENT,
       "--path",
       blobPath,
       "--namespace-id",

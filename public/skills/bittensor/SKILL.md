@@ -58,7 +58,7 @@ Cursor / other clients: add an MCP server with url
 
 ## Rules of thumb
 
-- **Liveness is live, identity is cached.** Health/uptime come from a 2-minute
+- **Liveness is live, identity is cached.** Health/uptime come from a 15-minute
   prober; treat `get_subnet_health` / the `health` block as the source of truth
   for "is it up right now". The committed registry data (names, APIs, schemas)
   refreshes every ~6h.

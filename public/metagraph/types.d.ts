@@ -1835,7 +1835,7 @@ export interface components {
             source_url: string;
             subject: string;
             support_summary: string;
-            verified_at?: string;
+            verified_at?: string | null;
         };
         EvidenceLedgerArtifact: components["schemas"]["ArtifactBase"] & ({
             claims: components["schemas"]["EvidenceClaim"][];
@@ -2398,6 +2398,7 @@ export interface components {
             [key: string]: unknown;
         });
         R2ManifestEntry: {
+            content_sha256?: string;
             content_type: string;
             key: string;
             latest_key: string;

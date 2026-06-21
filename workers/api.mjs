@@ -152,7 +152,7 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   "subnet-endpoints",
   "provider-endpoints",
   // Economics serves live from KV 'economics:current' (refreshed independently of
-  // the 6h publish), falling back to the committed R2 economics.json — so it must
+  // the data publish), falling back to the committed R2 economics.json — so it must
   // not be static-edge-cached.
   "economics",
 ]);
@@ -203,7 +203,7 @@ export default {
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
-// trigger (the 2-minute one) runs a full operational-health probe sweep.
+// trigger (the 15-minute one) runs a full operational-health probe sweep.
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
   if (cron === HEALTH_PRUNE_CRON) {
@@ -617,7 +617,7 @@ async function handleRawArtifactRequest(
   // Live per-endpoint health overlay: raw artifacts that embed the shared
   // EndpointResource list (endpoints.json, subnets/{n}.json, profiles/{n}.json,
   // provider endpoints) must not serve build-time operational health as fresh.
-  // Overlay the 2-minute cron snapshot so direct /metagraph/*.json fetchers see
+  // Overlay the 15-minute cron snapshot so direct /metagraph/*.json fetchers see
   // the same live status the /api/v1 routes do; surfaces with no live reading
   // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
   // that actually carry probed endpoints.
@@ -634,11 +634,21 @@ async function handleRawArtifactRequest(
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
   }
-  // The raw artifact path has no envelope, so direct fetchers of
-  // /metagraph/*.json have no freshness signal — the body's generated_at is the
-  // deterministic epoch content marker by design. Expose the real publish time
-  // as a header; the operational-health fields are overlaid live (above).
+  // The raw artifact path has no envelope. Artifacts bake a deterministic epoch
+  // `generated_at` marker (issue #349) so their bytes don't churn; stamp the real
+  // publish time onto the served body's generated_at (and a header) so direct
+  // fetchers of /metagraph/*.json see the true date. Operational-health fields are
+  // overlaid live (above).
   const pub = await publishedAt(env);
+  if (
+    pub &&
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    "generated_at" in data
+  ) {
+    data = { ...data, generated_at: pub };
+  }
   const body = JSON.stringify(data);
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
@@ -1086,7 +1096,7 @@ async function handleApiRequest(
   const pub = await publishedAt(env);
   // A live tier whose blob carries its OWN freshness (economics' captured_at,
   // refreshed on its own 3h schedule) should report that as published_at, not the
-  // unrelated 6h publish pointer — otherwise a fresh live-kv economics blob looks
+  // unrelated data publish pointer — otherwise a fresh live-kv economics blob looks
   // as stale as the last full publish.
   const effectivePublishedAt =
     matched.id === "economics" &&
@@ -1094,21 +1104,28 @@ async function handleApiRequest(
     baseData?.captured_at
       ? baseData.captured_at
       : pub;
-  // Static-asset artifacts that DECLARE a `published_at` field (e.g.
-  // build-summary, agent-catalog) carry it as null in the committed
-  // deterministic build, so an agent reading the response BODY (not just the
-  // envelope meta) sees no freshness signal. Populate it at serve from the same
-  // pointer that feeds meta.published_at; generated_at stays the marker.
+  // Freshness is served LIVE, never baked. Artifacts carry a deterministic epoch
+  // `generated_at` marker (issue #349) so their bytes change only when the data
+  // does (git-committable, no churn). The Worker stamps the real publish time onto
+  // the response here — the envelope meta (below) AND the body, so a consumer
+  // reading the raw body sees the true date instead of the 1970 marker. Same source
+  // that feeds meta.published_at; storage stays deterministic, serving stays honest.
   let responseData = transformed.data;
   if (
-    pub &&
     responseData &&
     typeof responseData === "object" &&
-    !Array.isArray(responseData) &&
-    "published_at" in responseData &&
-    !responseData.published_at
+    !Array.isArray(responseData)
   ) {
-    responseData = { ...responseData, published_at: pub };
+    const patch = {};
+    if (effectivePublishedAt && "generated_at" in responseData) {
+      patch.generated_at = effectivePublishedAt;
+    }
+    if (pub && "published_at" in responseData && !responseData.published_at) {
+      patch.published_at = pub;
+    }
+    if (Object.keys(patch).length) {
+      responseData = { ...responseData, ...patch };
+    }
   }
   const response = await envelopeResponse(
     request,
@@ -1118,7 +1135,7 @@ async function handleApiRequest(
         artifact_path: artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
-        generated_at: baseData?.generated_at || null,
+        generated_at: effectivePublishedAt || baseData?.generated_at || null,
         published_at: effectivePublishedAt,
         source: baseSource,
         ...(staleContract ? { stale_contract: staleContract } : {}),
@@ -1960,7 +1977,7 @@ async function verifyMeta(env) {
 
 // #358: live-probe one catalogued surface on demand. Safe by construction — the
 // URL always comes from operational-surfaces.json (already public_safe, the exact
-// URLs the 2-minute cron probes), never the caller. Gated by the RPC rate limiter
+// URLs the 15-minute cron probes), never the caller. Gated by the RPC rate limiter
 // plus a 60s per-surface Cache-API entry so repeat calls can't fan out into real
 // outbound probes. An agent (or the verify_integration MCP tool) calls this to
 // confirm "callable right now" before wiring.
@@ -2191,7 +2208,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   const staticPool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
-  // Overlay the 2-minute cron health so the proxy avoids sustained-down endpoints
+  // Overlay the 15-minute cron health so the proxy avoids sustained-down endpoints
   // (the in-isolate breaker still handles instantaneous failures). Falls back to
   // the static pool when the live snapshot is cold (always the case for the static
   // testnet pool, which is intentionally not probe-derived).
@@ -2345,7 +2362,7 @@ const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
 const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
-// (~2 min) tolerates cross-provider probe-timing skew while still routing around
+// (~15 min) tolerates cross-provider probe-timing skew while still routing around
 // a genuinely stalled/lagging node.
 const BLOCK_LAG_TOLERANCE = 10;
 
@@ -2692,13 +2709,17 @@ async function handleHealthRequest(request, env) {
     health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
   };
 
-  // Data freshness — the scheduled refresh (ADR 0001) advances the KV `latest`
-  // pointer's published_at every ~6h. If that pipeline silently stops, the
-  // pointer goes stale; report `degraded` + HTTP 503 so an uptime monitor
-  // pointed at /health catches a broken data-refresh. Only a *present* stale
-  // pointer trips it, so local/dev and the worker-test harness (no published
-  // pointer) stay healthy.
-  const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 12;
+  // Data freshness — the event-driven data publish (ADR 0007) advances the KV
+  // `latest` pointer's published_at on each human-input registry merge and at
+  // least once daily (the 07:17 UTC floor). If that pipeline silently stops, the
+  // pointer goes stale; report `degraded` + HTTP 503 so an uptime monitor pointed
+  // at /health catches a broken data-refresh. Only a *present* stale pointer trips
+  // it, so local/dev and the worker-test harness (no published pointer) stay
+  // healthy.
+  // Default 48h = two missed daily floors. (The old 12h default — "two missed 6h
+  // crons" — would false-degrade on a quiet day now that the floor is daily, not
+  // 6-hourly.)
+  const maxAgeHours = Number(env.METAGRAPH_HEALTH_MAX_AGE_HOURS) || 48;
   // Read the publish pointer + the operational-health meta concurrently (one
   // round-trip instead of two) — both are independent KV gets.
   const [pointer, meta] = bindings.kv
@@ -2714,7 +2735,7 @@ async function handleHealthRequest(request, env) {
     : null;
   const stale = ageHours !== null && ageHours > maxAgeHours;
 
-  // Operational-health freshness — the 2-minute cron prober's last run. Reported
+  // Operational-health freshness — the 15-minute cron prober's last run. Reported
   // for observability (a stuck prober shows a growing age); does not gate the
   // HTTP status here (Phase 4 wires alerting). Null until the first cron run.
   const opRunAtMs = meta?.last_run_at ? Date.parse(meta.last_run_at) : NaN;
@@ -2752,7 +2773,7 @@ async function handleHealthRequest(request, env) {
 }
 
 // --- Change-feed webhooks -----------------------------------------------------
-// Subscription management for the ~6h publish change feed. Subscriptions live in
+// Subscription management for the data publish change feed. Subscriptions live in
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
 // publish-time dispatcher (scripts/dispatch-webhooks.mjs) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
@@ -2979,7 +3000,7 @@ async function readWebhookSubscription(env, id) {
   }
 }
 
-// Thin SSE change feed. Given the ~6h cadence there is no value in holding a
+// Thin SSE change feed. Given the publish cadence there is no value in holding a
 // long-lived connection, so we emit the current change snapshot as one SSE event
 // and advise a 5-minute reconnect via `retry:`. EventSource clients reconnect on
 // that interval and re-read; `id:` is the publish timestamp for dedupe.
@@ -3203,7 +3224,7 @@ function unknownSubnetHealth(netuid) {
   };
 }
 
-// Overlay the 2-minute cron snapshot onto a static health/rpc artifact. Returns
+// Overlay the 15-minute cron snapshot onto a static health/rpc artifact. Returns
 // { data } when a live snapshot is available, else null (caller serves static).
 // Health-overlay routes whose live composition is keyed on surfaces/services
 // (not the shared EndpointResource list) — excluded from the generic per-endpoint
@@ -3285,7 +3306,7 @@ async function liveHealthOverlay(env, matched, staticData) {
   // Generic live overlay for any artifact embedding the shared EndpointResource
   // list (subnet detail, profile, endpoints collection, provider endpoints, and
   // the composed overview's endpoints[]). Each endpoint's operational health is
-  // replaced from the 2-minute cron snapshot; surfaces with no live reading
+  // replaced from the 15-minute cron snapshot; surfaces with no live reading
   // become `unknown` — so per-endpoint health is never the baked build value.
   const base = data ?? staticData;
   if (

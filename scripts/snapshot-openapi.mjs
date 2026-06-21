@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
   artifactFilePath,
   artifactOutputPath,
@@ -23,7 +24,7 @@ const observedAt =
   nonPlaceholderTimestamp(process.env.METAGRAPH_SCHEMA_OBSERVED_AT) ||
   nonPlaceholderTimestamp(process.env.METAGRAPH_BUILD_TIMESTAMP) ||
   new Date().toISOString();
-const contractVersion = "2026-06-06.1";
+const contractVersion = CONTRACT_VERSION;
 
 class SchemaSnapshotLimitError extends Error {
   constructor(message) {

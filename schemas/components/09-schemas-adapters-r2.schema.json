@@ -151,6 +151,10 @@
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
           },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
           "size_bytes": {
             "type": "integer",
             "minimum": 0

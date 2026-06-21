@@ -1,6 +1,6 @@
 // Live operational-health cron prober.
 //
-// Runs in the Worker on a 2-minute Cron Trigger (workers/api.mjs `scheduled()`):
+// Runs in the Worker on a 15-minute Cron Trigger (workers/api.mjs `scheduled()`):
 // loads the committed operational-surfaces.json list, probes each surface with
 // the shared isomorphic core (src/health-probe-core.mjs) under bounded
 // concurrency, then writes:
@@ -11,21 +11,30 @@
 //   - KV health:meta     (last_run_at + counts → freshness + self-monitoring)
 //
 // Everything is injected (db, kv, loadSurfaces, probe, now) so the whole run is
-// unit-testable without a live runtime. Decoupled from the 6h build: a stale
+// unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
 import {
   isUnsafePublicUrl,
   mapLimit,
   probeSurface as coreProbeSurface,
+  rollupSubnetStatus,
 } from "./health-probe-core.mjs";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+} from "./kv-keys.mjs";
 
-export const KV_HEALTH_CURRENT = "health:current";
-export const KV_HEALTH_RPC_POOL = "health:rpc-pool";
-export const KV_HEALTH_META = "health:meta";
+// Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
+// resolving the KV health keys through the prober; the names now live in kv-keys.
+export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 const PROBE_CONCURRENCY = 8;
+// Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
+// headroom). Early signal to raise concurrency or shard before runs overlap.
+const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
@@ -261,7 +270,7 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
 
 // Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
 // the ASSETS binding, falling back to R2. It is committed precisely so this read
-// never depends on the 6h publish (see artifact-storage.mjs): a publish outage
+// never depends on the data publish (see artifact-storage.mjs): a publish outage
 // must not freeze the live health prober. Returns the surfaces array (empty on
 // failure — the run then no-ops rather than throwing).
 export async function loadOperationalSurfaces(env) {
@@ -301,13 +310,6 @@ export async function loadOperationalSurfaces(env) {
   return [];
 }
 
-function rollupStatus({ ok, degraded, failed, unknown, total }) {
-  if (total === 0 || unknown === total) return "unknown";
-  if (failed === 0 && degraded === 0) return "ok";
-  if (ok > 0 || degraded > 0) return "degraded";
-  return "failed";
-}
-
 function summarizeGroup(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   let lastChecked = 0;
@@ -320,7 +322,7 @@ function summarizeGroup(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus({ ...counts, total: rows.length }),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,
@@ -441,12 +443,22 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  const durationMs = now() - runAt;
+  // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
+  // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
+  // this threshold is the early signal to raise PROBE_CONCURRENCY or shard
+  // surfaces across firings before runs start overlapping / getting killed.
+  if (durationMs > PROBE_WALLTIME_WARN_MS) {
+    console.warn(
+      `prober wall-time ${durationMs}ms for ${probed.length} surfaces exceeds the ${PROBE_WALLTIME_WARN_MS}ms warn threshold (15-min cron limit) — raise PROBE_CONCURRENCY or shard surfaces.`,
+    );
+  }
   return {
     ok: true,
     probed: probed.length,
     counts,
     run_at: iso(runAt),
-    duration_ms: now() - runAt,
+    duration_ms: durationMs,
   };
 }
 
@@ -617,7 +629,7 @@ function utcDayBounds(ms) {
   };
 }
 
-// Durable daily uptime rollup (PR3). Aggregates the raw 2-minute surface_checks
+// Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
 // retained indefinitely for long-term uptime analytics — so the 30-day raw
 // prune never loses history. MUST run before pruneHealthHistory. Rolls up today

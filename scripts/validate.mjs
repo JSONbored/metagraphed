@@ -1050,7 +1050,7 @@ async function validateGeneratedArtifacts(
     "coverage: native_only_count must be 0",
   );
   // The committed coverage.json is an inert cold-start seed (ADR 0006) that
-  // legitimately drifts from live source as candidate PRs merge — the 6h refresh
+  // legitimately drifts from live source as candidate PRs merge — the data publish
   // advances R2/D1, not the committed copy. These committed-vs-fresh count-parity
   // checks are a post-build freshness guarantee (CI builds before validating, and
   // pipeline:refresh rebuilds), so they are meaningless against the stale seed in
@@ -1549,6 +1549,35 @@ for (const subnet of subnets) {
     assert(
       maintainerReviewedNetuids.has(subnet.netuid),
       `${subnet.slug}: curation.level "maintainer-reviewed" (netuid ${subnet.netuid}) has no backing decision in registry/reviews/maintainer-reviewed.json — add a decision there instead of hand-editing the overlay level`,
+    );
+  }
+}
+
+// Identity guardrail (the "Nodexo" class): a curated overlay's name must not match
+// the ON-CHAIN identity of a DIFFERENT netuid than the one it is keyed to. That is
+// the signature of a mis-keyed overlay — e.g. "Nodexo" sat at netuid 27 while the
+// chain said 27="Team TBC" and 106="Nodexo", and "colosseum" sat at a netuid the
+// chain had re-registered to "ChronoLLM". A name that matches its OWN netuid's
+// chain identity (native-only subnets) or no chain name at all (friendly curated
+// names) is fine — only a cross-netuid match fails. Cross-check
+// registry/native/finney-subnets.json when re-keying.
+const normIdentityName = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+const chainNetuidsByName = new Map();
+for (const native of nativeSnapshot.subnets || []) {
+  const key = normIdentityName(native.chain_identity?.subnet_name);
+  if (!key) continue;
+  if (!chainNetuidsByName.has(key)) chainNetuidsByName.set(key, []);
+  chainNetuidsByName.get(key).push(native.netuid);
+}
+for (const subnet of subnets) {
+  const matchNetuids = chainNetuidsByName.get(normIdentityName(subnet.name));
+  if (matchNetuids && !matchNetuids.includes(subnet.netuid)) {
+    assert(
+      false,
+      `${subnet.slug}: curated name "${subnet.name}" (netuid ${subnet.netuid}) matches the on-chain identity of netuid ${matchNetuids.join(", ")}, not its own — the overlay is mis-keyed. Re-key it to the correct netuid (cross-check registry/native/finney-subnets.json), and re-key any backing maintainer-reviewed.json decision to match.`,
     );
   }
 }
