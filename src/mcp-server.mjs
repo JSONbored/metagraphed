@@ -1668,6 +1668,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       context_count: NULLABLE_INT,
       citations: objectItems({
         ref: ANY,
+        score: { type: "number" },
         title: NULLABLE_STRING,
         netuid: NULLABLE_INT,
         slug: NULLABLE_STRING,

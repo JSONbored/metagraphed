@@ -16,9 +16,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["ref", "title", "netuid", "slug", "url"],
+        "required": ["ref", "score", "title", "netuid", "slug", "url"],
         "properties": {
           "ref": { "type": "integer", "minimum": 1 },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
           "title": { "type": ["string", "null"] },
           "netuid": { "type": ["integer", "null"] },
           "slug": { "type": ["string", "null"] },
