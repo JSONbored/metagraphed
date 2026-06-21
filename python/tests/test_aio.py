@@ -13,19 +13,29 @@ from metagraphed import AsyncMetagraphedClient, MetagraphedError, Subnet
 
 
 class _FakeAsyncHttp:
-    """Stand-in for ``httpx.AsyncClient``: returns queued responses, records calls."""
+    """Stand-in for ``httpx.AsyncClient``: returns queued responses, records calls.
+
+    A queued item that is an ``Exception`` is raised instead of returned, which
+    lets a test simulate a network failure (``httpx.HTTPError``) on a given call.
+    """
 
     def __init__(self, responses):
         self._responses = list(responses)
         self.calls = []
 
+    def _next(self):
+        item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
     async def get(self, url, params=None, headers=None):
         self.calls.append(("GET", url, params))
-        return self._responses.pop(0)
+        return self._next()
 
     async def post(self, url, json=None, headers=None):
         self.calls.append(("POST", url, json))
-        return self._responses.pop(0)
+        return self._next()
 
     async def aclose(self):
         self.closed = True
@@ -33,8 +43,8 @@ class _FakeAsyncHttp:
 
 @unittest.skipUnless(_HAS_HTTPX, "httpx not installed (metagraphed[async])")
 class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
-    def _client(self, *responses):
-        client = AsyncMetagraphedClient()
+    def _client(self, *responses, **kwargs):
+        client = AsyncMetagraphedClient(**kwargs)
         client._client = _FakeAsyncHttp(responses)
         return client
 
@@ -111,6 +121,43 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(method, "POST")
         self.assertTrue(url.endswith("/rpc/v1/finney"))
         self.assertEqual(body["method"], "chain_getBlockHash")
+
+    async def test_rpc_retries_transient_error_then_succeeds(self):
+        client = self._client(
+            httpx.Response(503, text="busy"),
+            httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0xok"}),
+            retries=1,
+            backoff=0,
+        )
+        out = await client.rpc("finney", "chain_getBlockHash", [0])
+        self.assertEqual(out, "0xok")
+        self.assertEqual(len(client._client.calls), 2)
+        self.assertTrue(all(call[0] == "POST" for call in client._client.calls))
+
+    async def test_rpc_retries_network_error_then_succeeds(self):
+        client = self._client(
+            httpx.ConnectError("connection reset"),
+            httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0xok"}),
+            retries=1,
+            backoff=0,
+        )
+        out = await client.rpc("finney", "chain_getBlockHash", [0])
+        self.assertEqual(out, "0xok")
+        self.assertEqual(len(client._client.calls), 2)
+
+    async def test_rpc_retries_exhausted_raises_after_configured_count(self):
+        client = self._client(
+            httpx.Response(503, text="busy"),
+            httpx.Response(503, text="busy"),
+            httpx.Response(503, text="busy"),
+            retries=2,
+            backoff=0,
+        )
+        with self.assertRaises(MetagraphedError) as ctx:
+            await client.rpc("finney", "system_health")
+        # Initial attempt + 2 retries, then it gives up.
+        self.assertEqual(len(client._client.calls), 3)
+        self.assertEqual(ctx.exception.status, 503)
 
     async def test_context_manager_closes_pool(self):
         client = self._client(httpx.Response(200, json={"data": []}))

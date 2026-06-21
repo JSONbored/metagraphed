@@ -58,8 +58,9 @@ from metagraphed import (
     metagraphed_rpc,
 )
 
-# Opt-in retry/backoff for idempotent GETs (retries 429/5xx + network errors,
-# honoring a numeric Retry-After). Disabled by default.
+# Opt-in retry/backoff for idempotent reads — GETs *and* the read-only RPC proxy
+# (retries 429/5xx + network errors, honoring a numeric Retry-After). Off by
+# default.
 client = MetagraphedClient(retries=3)
 
 # Iterate every page of a list endpoint (follows meta.pagination.next_cursor):
@@ -67,8 +68,12 @@ for page in client.paginate("/api/v1/subnets", query={"limit": 100}):
     for subnet in page["data"]["subnets"]:
         print(subnet["netuid"])
 
-# Call the read-only Subtensor RPC proxy and get back the JSON-RPC result:
-info = metagraphed_rpc("finney", "system_health")
+# Call the read-only Subtensor RPC proxy and get back the JSON-RPC result. Via
+# the client, RPC reads honor the same retries/backoff as GETs:
+info = client.rpc("finney", "system_health")
+
+# Or as a standalone call with explicit retries:
+info = metagraphed_rpc("finney", "system_health", retries=3)
 ```
 
 ### `fetch_all` + typed models
