@@ -1,4 +1,5 @@
 import path from "node:path";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
@@ -109,7 +110,7 @@ async function buildManifest(generatedAt = buildTimestamp()) {
   artifacts.sort((a, b) => a.path.localeCompare(b.path));
   return {
     schema_version: 1,
-    contract_version: "2026-06-06.1",
+    contract_version: CONTRACT_VERSION,
     generated_at: generatedAt,
     bucket_binding: "METAGRAPH_ARCHIVE",
     bucket_name: "metagraphed-artifacts",
