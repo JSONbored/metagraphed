@@ -232,7 +232,44 @@ export function stripJsonComments(value) {
     }
     out += ch;
   }
-  return out.replace(/,\s*([}\]])/g, "$1");
+
+  // Drop trailing commas (",}" / ",]") outside string literals only. A blanket
+  // regex over the whole output spliced commas out of string contents too, so a
+  // value like "a, }" lost its comma. Re-walk string-aware; for a removed comma
+  // the look-ahead (j) also skips the whitespace up to the closing bracket, so
+  // ",\n }" collapses to "}" exactly as the old regex did.
+  let result = "";
+  inString = false;
+  for (let i = 0; i < out.length; i += 1) {
+    const ch = out[i];
+    if (inString) {
+      result += ch;
+      if (ch === "\\") {
+        result += out[i + 1] ?? "";
+        i += 1;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      result += ch;
+      continue;
+    }
+    if (ch === ",") {
+      let j = i + 1;
+      while (j < out.length && /\s/.test(out[j])) {
+        j += 1;
+      }
+      if (out[j] === "}" || out[j] === "]") {
+        i = j - 1;
+        continue;
+      }
+    }
+    result += ch;
+  }
+  return result;
 }
 
 export async function formatRepositoryJson(value) {
