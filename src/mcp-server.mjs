@@ -39,6 +39,7 @@ import {
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.mjs";
+import { keywordScore, queryTerms } from "./keyword-search.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -316,30 +317,17 @@ function clampLimit(value, fallback, max) {
   return Math.max(1, Math.min(max, Math.floor(value)));
 }
 
-// Score a search document against the query terms: how many distinct terms
-// appear as substrings of the document's title/subtitle/tokens haystack.
+// A search.json document → keywordScore shape: title/slug are identity; subtitle
+// and tokens (which already fold in categories/service kinds) are recall-only.
 function scoreDocument(doc, terms) {
-  const haystack = [
-    doc.title,
-    doc.subtitle,
-    doc.slug,
-    ...(Array.isArray(doc.tokens) ? doc.tokens : []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  let score = 0;
-  for (const term of terms) {
-    if (haystack.includes(term)) score += 1;
-  }
-  return score;
-}
-
-function queryTerms(query) {
-  return query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((term) => term.length > 0);
+  return keywordScore(
+    {
+      name: doc.title,
+      slug: doc.slug,
+      text: [doc.subtitle, ...(Array.isArray(doc.tokens) ? doc.tokens : [])],
+    },
+    terms,
+  );
 }
 
 const COVERAGE_DEPTH_TIERS = [
@@ -639,22 +627,22 @@ export const MCP_TOOLS = [
       const terms = queryTerms(capability);
       const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
       const ranked = subnets
-        .map((subnet) => {
-          const haystack = [
-            subnet.name,
-            subnet.slug,
-            ...(Array.isArray(subnet.categories) ? subnet.categories : []),
-            ...(Array.isArray(subnet.service_kinds)
-              ? subnet.service_kinds
-              : []),
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          let score = 0;
-          for (const term of terms) if (haystack.includes(term)) score += 1;
-          return { subnet, score };
-        })
+        .map((subnet) => ({
+          subnet,
+          score: keywordScore(
+            {
+              name: subnet.name,
+              slug: subnet.slug,
+              text: [
+                ...(Array.isArray(subnet.categories) ? subnet.categories : []),
+                ...(Array.isArray(subnet.service_kinds)
+                  ? subnet.service_kinds
+                  : []),
+              ],
+            },
+            terms,
+          ),
+        }))
         .filter((entry) => entry.score > 0 && entry.subnet.callable_count > 0)
         .sort(
           (a, b) =>

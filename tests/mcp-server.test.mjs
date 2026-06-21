@@ -1180,6 +1180,84 @@ describe("MCP tools (injected deps)", () => {
   });
 });
 
+// keyword-search.test.mjs covers the scoring matrix; here we only prove both
+// tools are wired to it — substring noise is gone and the precise target wins.
+describe("MCP keyword discovery relevance", () => {
+  const deps = makeDeps({
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 1,
+          slug: "targon",
+          title: "Targon",
+          subtitle: "AI inference network",
+          tokens: ["ai", "inference", "llm"],
+        },
+        {
+          // "Brain" / "domain" only contain "ai" as a mid-word substring — the
+          // old includes() ranking surfaced these for a query of "ai".
+          type: "subnet",
+          netuid: 2,
+          slug: "braintrust",
+          title: "BrainTrust",
+          subtitle: "domain registrar",
+          tokens: ["brain", "domain", "captain"],
+        },
+      ],
+    },
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        {
+          netuid: 1,
+          slug: "targon",
+          name: "Targon",
+          categories: ["ai", "inference"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+        {
+          netuid: 2,
+          slug: "braintrust",
+          name: "BrainTrust",
+          categories: ["brain", "domain"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+      ],
+    },
+  });
+
+  test('search_subnets: "ai" matches the real AI subnet, not "brain"/"domain"', async () => {
+    const res = await callTool("search_subnets", { query: "ai" }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("search_subnets: an exact name match wins outright", async () => {
+    const res = await callTool("search_subnets", { query: "targon" }, { deps });
+    assert.equal(res.body.result.structuredContent.results[0].netuid, 1);
+  });
+
+  test('find_subnets_by_capability: "ai" excludes the substring-only subnet', async () => {
+    const res = await callTool(
+      "find_subnets_by_capability",
+      { capability: "ai" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
+});
+
 describe("MCP edge cases", () => {
   test("a request method behaves as a notification when sent without an id", async () => {
     // Covers the isNotification short-circuit on otherwise-valid methods.
