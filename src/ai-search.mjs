@@ -340,6 +340,7 @@ export async function askQuestion(env, question, options = {}, deps = {}) {
     const metadata = match?.metadata || {};
     return {
       ref: i + 1,
+      score: Math.round((match?.score ?? 0) * 1e4) / 1e4,
       title: metadata.title ?? null,
       netuid: metadata.netuid ?? null,
       slug: metadata.slug ?? null,

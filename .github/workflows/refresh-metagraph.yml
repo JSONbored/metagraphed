@@ -1,0 +1,74 @@
+name: Refresh Metagraph (per-UID neurons)
+
+# Fetches the per-UID metagraph for every subnet from Taostats and loads it into
+# the metagraphed-health D1 `neurons` table (#1303, epic #1302). Powers
+# /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, and /validators. Daily +
+# manual. Tolerant: a failed/partial fetch aborts before writing (the script
+# guards on >50% subnet failures), so the previous snapshot stays in place.
+#
+# Gated on TAOSTATS_API_KEY: until the maintainer adds that repo secret the job
+# is a no-op (green), not a daily red failure.
+on:
+  schedule:
+    - cron: "23 5 * * *" # daily 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-metagraph
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40 # the Taostats fetch is rate-limited (~129 subnets w/ backoff)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22.22.3
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Gate on Taostats key
+        id: gate
+        env:
+          TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
+        run: |
+          if [ -n "$TAOSTATS_API_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::TAOSTATS_API_KEY not set — skipping metagraph refresh."
+          fi
+
+      - name: Fetch per-UID metagraph (Taostats)
+        if: steps.gate.outputs.ready == 'true'
+        run: node scripts/fetch-metagraph.mjs
+        env:
+          TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
+
+      - name: Load neurons into D1
+        if: steps.gate.outputs.ready == 'true'
+        run: npx wrangler d1 execute metagraphed-health --remote --file=dist/metagraph-neurons.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Notify on failure
+        if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
+        env:
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d '{"content":"🔴 metagraphed refresh-metagraph FAILED — the per-UID neurons D1 tier may go stale."}' || true

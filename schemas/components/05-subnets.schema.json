@@ -1165,6 +1165,9 @@
               },
               "gaps": {
                 "$ref": "#/components/schemas/Gaps"
+              },
+              "economics": {
+                "$ref": "#/components/schemas/SubnetEconomics"
               }
             },
             "additionalProperties": true
@@ -1219,6 +1222,17 @@
             "minimum": 0,
             "maximum": 1,
             "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price."
+          },
+          "open_slots": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306)."
+          },
+          "miner_readiness": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306)."
           }
         },
         "additionalProperties": false
@@ -1263,6 +1277,87 @@
             }
           }
         ]
+      },
+      "Neuron": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null.",
+        "required": ["uid", "hotkey", "coldkey", "active", "validator_permit"],
+        "properties": {
+          "uid": { "type": "integer", "minimum": 0 },
+          "hotkey": { "type": ["string", "null"] },
+          "coldkey": { "type": ["string", "null"] },
+          "active": { "type": "boolean" },
+          "validator_permit": { "type": "boolean" },
+          "rank": { "type": ["number", "null"] },
+          "trust": { "type": ["number", "null"] },
+          "validator_trust": { "type": ["number", "null"] },
+          "consensus": { "type": ["number", "null"] },
+          "incentive": { "type": ["number", "null"] },
+          "dividends": { "type": ["number", "null"] },
+          "emission_tao": { "type": ["number", "null"] },
+          "stake_tao": { "type": ["number", "null"] },
+          "registered_at_block": { "type": ["integer", "null"] },
+          "is_immunity_period": { "type": "boolean" },
+          "axon": { "type": ["string", "null"] }
+        }
+      },
+      "SubnetMetagraphArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+        "required": ["schema_version", "netuid", "neuron_count", "neurons"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "neurons": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Neuron" }
+          }
+        }
+      },
+      "NeuronDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+        "required": ["schema_version", "netuid", "neuron"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "neuron": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Neuron" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
+      "SubnetValidatorsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "validators": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Neuron" }
+          }
+        }
       },
       "CoverageArtifact": {
         "allOf": [

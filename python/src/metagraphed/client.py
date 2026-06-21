@@ -96,6 +96,86 @@ def _interpolate(path: str, path_params: Optional[Mapping[str, Any]]) -> str:
     return _PATH_PARAM.sub(repl, path)
 
 
+def _default_headers(
+    headers: Optional[Mapping[str, str]], *, json_body: bool = False
+) -> dict:
+    """Metagraphed's default headers, overridable by ``headers`` (which wins, so
+    a caller can replace the User-Agent). ``json_body`` adds Content-Type."""
+    merged = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
+    if json_body:
+        merged["Content-Type"] = "application/json"
+    merged.update(headers or {})
+    return merged
+
+
+def _build_request(
+    url: str,
+    *,
+    method: str,
+    data: Optional[bytes] = None,
+    headers: Optional[Mapping[str, str]] = None,
+) -> urllib.request.Request:
+    """A urllib Request with default headers applied; ``data`` implies a POST body."""
+    request = urllib.request.Request(url, data=data, method=method)
+    for key, value in _default_headers(headers, json_body=data is not None).items():
+        request.add_header(key, value)
+    return request
+
+
+def _request_json(
+    request: urllib.request.Request,
+    *,
+    timeout: float,
+    retries: int,
+    backoff: float,
+    label: str,
+) -> Any:
+    """Open ``request`` and return its parsed JSON body, retrying transient
+    failures.
+
+    Retries HTTP 429/5xx and network errors up to ``retries`` times with
+    exponential ``backoff`` seconds, honoring a numeric ``Retry-After`` (capped
+    at 60s). ``label`` (e.g. ``"GET <url>"`` or ``"RPC <method>"``) prefixes
+    error messages. Raises :class:`MetagraphedError` once retries are exhausted
+    or if the body is not JSON.
+    """
+    attempt = 0
+    while True:
+        try:
+            with _open_request(request, timeout=timeout) as response:
+                body = response.read().decode("utf-8")
+            break
+        except urllib.error.HTTPError as error:
+            if attempt < retries and error.code in _RETRY_STATUSES:
+                time.sleep(_retry_delay(error, attempt, backoff))
+                attempt += 1
+                continue
+            raise MetagraphedError(
+                f"{label} failed: HTTP {error.code}{_error_detail(error)}",
+                status=error.code,
+            ) from error
+        except urllib.error.URLError as error:
+            if attempt < retries:
+                time.sleep(backoff * (2**attempt))
+                attempt += 1
+                continue
+            raise MetagraphedError(f"{label} failed: {error.reason}") from error
+
+    try:
+        return json.loads(body)
+    except ValueError as error:
+        raise MetagraphedError(f"{label} returned a non-JSON response") from error
+
+
+def _jsonrpc_result(parsed: Any, method: str) -> Any:
+    """Unwrap a JSON-RPC envelope: return its ``result``, or raise its ``error``."""
+    rpc_error = parsed.get("error") if isinstance(parsed, dict) else None
+    if rpc_error:
+        message = rpc_error.get("message") if isinstance(rpc_error, dict) else None
+        raise MetagraphedError(f"RPC {method} error: {message or rpc_error}")
+    return parsed.get("result") if isinstance(parsed, dict) else None
+
+
 def metagraphed_fetch(
     path: str,
     *,
@@ -124,42 +204,13 @@ def metagraphed_fetch(
         if pairs:
             url += "?" + urllib.parse.urlencode(pairs, doseq=True)
 
-    # Defaults first so a caller-supplied header (e.g. a custom User-Agent) wins.
-    merged_headers = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
-    merged_headers.update(headers or {})
-
-    request = urllib.request.Request(url, method="GET")
-    for key, value in merged_headers.items():
-        request.add_header(key, value)
-
-    attempt = 0
-    while True:
-        try:
-            with _open_request(request, timeout=timeout) as response:
-                body = response.read().decode("utf-8")
-            break
-        except urllib.error.HTTPError as error:
-            if attempt < retries and error.code in _RETRY_STATUSES:
-                time.sleep(_retry_delay(error, attempt, backoff))
-                attempt += 1
-                continue
-            raise MetagraphedError(
-                f"GET {url} failed: HTTP {error.code}{_error_detail(error)}",
-                status=error.code,
-            ) from error
-        except urllib.error.URLError as error:
-            if attempt < retries:
-                time.sleep(backoff * (2**attempt))
-                attempt += 1
-                continue
-            raise MetagraphedError(f"GET {url} failed: {error.reason}") from error
-
-    try:
-        return json.loads(body)
-    except ValueError as error:
-        raise MetagraphedError(
-            f"GET {url} returned a non-JSON response"
-        ) from error
+    return _request_json(
+        _build_request(url, method="GET", headers=headers),
+        timeout=timeout,
+        retries=retries,
+        backoff=backoff,
+        label=f"GET {url}",
+    )
 
 
 def _retry_delay(
@@ -212,6 +263,7 @@ def metagraphed_paginate(
     headers: Optional[Mapping[str, str]] = None,
     timeout: float = 30.0,
     retries: int = 0,
+    backoff: float = 0.5,
 ) -> Iterator[Any]:
     """Yield each page's envelope for a list endpoint, following
     ``meta.pagination.next_cursor`` until it is exhausted."""
@@ -229,6 +281,7 @@ def metagraphed_paginate(
             headers=headers,
             timeout=timeout,
             retries=retries,
+            backoff=backoff,
         )
         yield page
         pagination = (
@@ -243,6 +296,30 @@ def metagraphed_paginate(
             return
 
 
+def _collection_rows(page: Any) -> List[Any]:
+    """Extract the row list from a single list-endpoint page.
+
+    List endpoints nest their rows under ``data[meta['pagination']['collection']]``
+    (e.g. ``data['subnets']``), not as a bare array. Resolve the collection key,
+    falling back to a flat ``data`` list or the single list-valued field. Mirrors
+    the TypeScript client's ``fetchAll``.
+    """
+    if not isinstance(page, dict):
+        return []
+    data = page.get("data")
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return []
+    meta = page.get("meta")
+    pagination = meta.get("pagination") if isinstance(meta, dict) else None
+    collection = pagination.get("collection") if isinstance(pagination, dict) else None
+    if isinstance(collection, str) and isinstance(data.get(collection), list):
+        return data[collection]
+    arrays = [value for value in data.values() if isinstance(value, list)]
+    return arrays[0] if len(arrays) == 1 else []
+
+
 def metagraphed_fetch_all(
     path: str,
     *,
@@ -252,9 +329,10 @@ def metagraphed_fetch_all(
     headers: Optional[Mapping[str, str]] = None,
     timeout: float = 30.0,
     retries: int = 0,
+    backoff: float = 0.5,
 ) -> List[Any]:
-    """Follow pagination for a list endpoint and return every item — the
-    flattened ``data`` arrays across all pages."""
+    """Follow pagination for a list endpoint and return every row across all
+    pages (the nested ``data`` collection; see :func:`_collection_rows`)."""
     items: List[Any] = []
     for page in metagraphed_paginate(
         path,
@@ -264,10 +342,9 @@ def metagraphed_fetch_all(
         headers=headers,
         timeout=timeout,
         retries=retries,
+        backoff=backoff,
     ):
-        data = page.get("data") if isinstance(page, dict) else None
-        if isinstance(data, list):
-            items.extend(data)
+        items.extend(_collection_rows(page))
     return items
 
 
@@ -280,10 +357,18 @@ def metagraphed_rpc(
     headers: Optional[Mapping[str, str]] = None,
     timeout: float = 30.0,
     request_id: Any = 1,
+    retries: int = 0,
+    backoff: float = 0.5,
 ) -> Any:
     """Call the read-only Subtensor RPC proxy (POST ``/rpc/v1/<network>``) and
     return the JSON-RPC ``result``. Raises :class:`MetagraphedError` on a network
-    failure, a non-2xx response, or a JSON-RPC-level error object."""
+    failure, a non-2xx response, or a JSON-RPC-level error object.
+
+    The proxy is a read-only Subtensor read, so RPC reads are retried exactly
+    like idempotent GETs: set ``retries`` > 0 to retry transient errors (HTTP
+    429/5xx and network failures) with exponential ``backoff`` seconds, honoring
+    a numeric ``Retry-After`` capped at 60 seconds. Retries are opt-in
+    (default 0)."""
     url = (
         base_url.rstrip("/")
         + "/rpc/v1/"
@@ -298,46 +383,19 @@ def metagraphed_rpc(
         }
     ).encode("utf-8")
 
-    merged_headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": DEFAULT_USER_AGENT,
-    }
-    merged_headers.update(headers or {})
-
-    request = urllib.request.Request(url, data=payload, method="POST")
-    for key, value in merged_headers.items():
-        request.add_header(key, value)
-
-    try:
-        with _open_request(request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-    except urllib.error.HTTPError as error:
-        raise MetagraphedError(
-            f"RPC {method} failed: HTTP {error.code}{_error_detail(error)}",
-            status=error.code,
-        ) from error
-    except urllib.error.URLError as error:
-        raise MetagraphedError(f"RPC {method} failed: {error.reason}") from error
-
-    try:
-        parsed = json.loads(body)
-    except ValueError as error:
-        raise MetagraphedError(
-            f"RPC {method} returned a non-JSON response"
-        ) from error
-
-    rpc_error = parsed.get("error") if isinstance(parsed, dict) else None
-    if rpc_error:
-        message = (
-            rpc_error.get("message") if isinstance(rpc_error, dict) else None
-        )
-        raise MetagraphedError(f"RPC {method} error: {message or rpc_error}")
-    return parsed.get("result") if isinstance(parsed, dict) else None
+    parsed = _request_json(
+        _build_request(url, method="POST", data=payload, headers=headers),
+        timeout=timeout,
+        retries=retries,
+        backoff=backoff,
+        label=f"RPC {method}",
+    )
+    return _jsonrpc_result(parsed, method)
 
 
 class MetagraphedClient:
-    """Convenience wrapper binding a ``base_url`` + default ``timeout``/``retries``."""
+    """Convenience wrapper binding a ``base_url`` + default
+    ``timeout``/``retries``/``backoff`` (applied to GETs and RPC reads alike)."""
 
     def __init__(
         self,
@@ -345,10 +403,12 @@ class MetagraphedClient:
         *,
         timeout: float = 30.0,
         retries: int = 0,
+        backoff: float = 0.5,
     ) -> None:
         self.base_url = base_url
         self.timeout = timeout
         self.retries = retries
+        self.backoff = backoff
 
     def fetch(
         self,
@@ -367,6 +427,7 @@ class MetagraphedClient:
             headers=headers,
             timeout=self.timeout,
             retries=self.retries,
+            backoff=self.backoff,
         )
 
     def paginate(
@@ -386,6 +447,7 @@ class MetagraphedClient:
             headers=headers,
             timeout=self.timeout,
             retries=self.retries,
+            backoff=self.backoff,
         )
 
     def rpc(
@@ -397,7 +459,10 @@ class MetagraphedClient:
         headers: Optional[Mapping[str, str]] = None,
         request_id: Any = 1,
     ) -> Any:
-        """Call the read-only RPC proxy and return the JSON-RPC ``result``."""
+        """Call the read-only RPC proxy and return the JSON-RPC ``result``.
+
+        Honors this client's ``retries`` + ``backoff``: RPC reads are retried on
+        transient errors exactly like GETs (see :func:`metagraphed_rpc`)."""
         return metagraphed_rpc(
             network,
             method,
@@ -406,6 +471,8 @@ class MetagraphedClient:
             headers=headers,
             timeout=self.timeout,
             request_id=request_id,
+            retries=self.retries,
+            backoff=self.backoff,
         )
 
     def fetch_all(
@@ -425,6 +492,7 @@ class MetagraphedClient:
             headers=headers,
             timeout=self.timeout,
             retries=self.retries,
+            backoff=self.backoff,
         )
 
     # -- typed convenience methods (the raw-dict path stays via fetch/fetch_all) --

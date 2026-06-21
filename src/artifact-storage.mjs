@@ -34,6 +34,12 @@ const R2_ONLY_PATTERNS = [
   /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
+  // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
+  // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
+  // never written as files.
+  /^subnets\/(?:\d+|\{netuid\})\/metagraph\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
   /^registry\/leaderboards\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.

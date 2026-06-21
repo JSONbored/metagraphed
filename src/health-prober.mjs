@@ -745,19 +745,33 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     : [];
   if (!profiles.length) return { ok: false, reason: "no_profiles" };
 
+  // Per-subnet economics for the time series (#1307). Best-effort: a missing
+  // economics artifact just leaves those columns null (structural trajectory
+  // still records).
+  const economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  const economicsByNetuid = new Map(
+    (Array.isArray(economicsResult?.data?.subnets)
+      ? economicsResult.data.subnets
+      : []
+    ).map((row) => [row.netuid, row]),
+  );
+
   const date = new Date(now()).toISOString().slice(0, 10);
   const capturedAt = now();
   const stmt = db.prepare(
     `INSERT INTO subnet_snapshots
        (netuid, snapshot_date, completeness_score, surface_count,
-        endpoint_count, monitored_count, candidate_count, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        endpoint_count, monitored_count, candidate_count,
+        validator_count, miner_count, total_stake_tao, alpha_price_tao,
+        emission_share, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (netuid, snapshot_date) DO NOTHING`,
   );
   const statements = profiles
     .filter((profile) => Number.isInteger(profile.netuid))
-    .map((profile) =>
-      stmt.bind(
+    .map((profile) => {
+      const econ = economicsByNetuid.get(profile.netuid) || {};
+      return stmt.bind(
         profile.netuid,
         date,
         profile.completeness_score ?? null,
@@ -765,9 +779,14 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
         profile.endpoint_count ?? null,
         profile.monitored_endpoint_count ?? null,
         profile.candidate_count ?? null,
+        econ.validator_count ?? null,
+        econ.miner_count ?? null,
+        econ.total_stake_tao ?? null,
+        econ.alpha_price_tao ?? null,
+        econ.emission_share ?? null,
         capturedAt,
-      ),
-    );
+      );
+    });
   if (!statements.length) return { ok: false, reason: "no_rows" };
   try {
     await db.batch(statements);

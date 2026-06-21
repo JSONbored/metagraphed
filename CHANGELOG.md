@@ -19,6 +19,19 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.16.2](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.1...platform-v0.16.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **feeds:** return feed errors through the canonical API error envelope ([#1258](https://github.com/JSONbored/metagraphed/issues/1258)) ([cc0dc95](https://github.com/JSONbored/metagraphed/commit/cc0dc95542e1370ef261008c2e6f9ffa7f297a41))
+* **publish:** preserve R2 run id across jobs ([#1298](https://github.com/JSONbored/metagraphed/issues/1298)) ([308b7ee](https://github.com/JSONbored/metagraphed/commit/308b7ee3966d0ac8076c45ba90630c785f9ba9be))
+* **r2:** compare latest uploads by real sha ([#1297](https://github.com/JSONbored/metagraphed/issues/1297)) ([5ac13de](https://github.com/JSONbored/metagraphed/commit/5ac13de736d1cda7b8a64a1eff6d720bb53c91d4))
+* **submission:** restore manual review routing ([#1294](https://github.com/JSONbored/metagraphed/issues/1294)) ([19662bc](https://github.com/JSONbored/metagraphed/commit/19662bc21058fee004d7063f0ad6c537e194aac6))
+* **submissions:** reject unknown provider fields ([#1293](https://github.com/JSONbored/metagraphed/issues/1293)) ([86506a7](https://github.com/JSONbored/metagraphed/commit/86506a7bb756c51eb83b9ae72f67ab521cfedb78))
+* **submission:** validate candidate auth metadata ([#1292](https://github.com/JSONbored/metagraphed/issues/1292)) ([297605a](https://github.com/JSONbored/metagraphed/commit/297605ab867daf1d9c7093cfaf70be427630b75f))
+* **validate:** warn on on-chain name collisions ([#1296](https://github.com/JSONbored/metagraphed/issues/1296)) ([7891eff](https://github.com/JSONbored/metagraphed/commit/7891effc88136ef76ba160a39d0c61f2379ac761))
+
 ## [0.16.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.0...platform-v0.16.1) (2026-06-21)
 
 

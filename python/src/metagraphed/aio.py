@@ -19,11 +19,13 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, List, Mapping, Optional, S
 
 from .client import (
     DEFAULT_BASE_URL,
-    DEFAULT_USER_AGENT,
     MetagraphedError,
     _MAX_RETRY_AFTER_SECONDS,
     _RETRY_STATUSES,
+    _collection_rows,
+    _default_headers,
     _interpolate,
+    _jsonrpc_result,
 )
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
@@ -105,6 +107,50 @@ class AsyncMetagraphedClient:
         """Close the underlying connection pool."""
         await self._client.aclose()
 
+    async def _send_json(self, send: Any, *, label: str) -> Any:
+        """Perform a request via ``send`` (an async thunk returning a response),
+        retrying transient failures, and return the parsed JSON body.
+
+        Retries HTTP 429/5xx and network errors up to ``self.retries`` times with
+        exponential ``self.backoff`` seconds, honoring a numeric ``Retry-After``
+        capped at 60 seconds. ``label`` (e.g. ``"GET <url>"`` or ``"RPC
+        <method>"``) prefixes error messages. Raises :class:`MetagraphedError`
+        once retries are exhausted or if the body is not JSON.
+        """
+        attempt = 0
+        while True:
+            try:
+                response = await send()
+            except self._httpx.HTTPError as error:
+                if attempt < self.retries:
+                    await asyncio.sleep(self.backoff * (2**attempt))
+                    attempt += 1
+                    continue
+                raise MetagraphedError(f"{label} failed: {error}") from error
+            if response.status_code >= 400:
+                if (
+                    attempt < self.retries
+                    and response.status_code in _RETRY_STATUSES
+                ):
+                    await asyncio.sleep(
+                        _retry_after_seconds(response, attempt, self.backoff)
+                    )
+                    attempt += 1
+                    continue
+                raise MetagraphedError(
+                    f"{label} failed: HTTP {response.status_code}"
+                    f"{_response_error_detail(response)}",
+                    status=response.status_code,
+                )
+            break
+
+        try:
+            return response.json()
+        except ValueError as error:
+            raise MetagraphedError(
+                f"{label} returned a non-JSON response"
+            ) from error
+
     async def fetch(
         self,
         path: str,
@@ -125,47 +171,11 @@ class AsyncMetagraphedClient:
             if query
             else None
         )
-        merged_headers = {
-            "Accept": "application/json",
-            "User-Agent": DEFAULT_USER_AGENT,
-        }
-        merged_headers.update(headers or {})
-
-        attempt = 0
-        while True:
-            try:
-                response = await self._client.get(
-                    url, params=params, headers=merged_headers
-                )
-            except self._httpx.HTTPError as error:
-                if attempt < self.retries:
-                    await asyncio.sleep(self.backoff * (2**attempt))
-                    attempt += 1
-                    continue
-                raise MetagraphedError(f"GET {url} failed: {error}") from error
-            if response.status_code >= 400:
-                if (
-                    attempt < self.retries
-                    and response.status_code in _RETRY_STATUSES
-                ):
-                    await asyncio.sleep(
-                        _retry_after_seconds(response, attempt, self.backoff)
-                    )
-                    attempt += 1
-                    continue
-                raise MetagraphedError(
-                    f"GET {url} failed: HTTP {response.status_code}"
-                    f"{_response_error_detail(response)}",
-                    status=response.status_code,
-                )
-            break
-
-        try:
-            return response.json()
-        except ValueError as error:
-            raise MetagraphedError(
-                f"GET {url} returned a non-JSON response"
-            ) from error
+        merged_headers = _default_headers(headers)
+        return await self._send_json(
+            lambda: self._client.get(url, params=params, headers=merged_headers),
+            label=f"GET {url}",
+        )
 
     async def paginate(
         self,
@@ -207,14 +217,13 @@ class AsyncMetagraphedClient:
         query: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> List[Any]:
-        """Follow pagination and return every item (flattened ``data`` arrays)."""
+        """Follow pagination and return every row across all pages (the nested
+        ``data`` collection; see :func:`~metagraphed.client._collection_rows`)."""
         items: List[Any] = []
         async for page in self.paginate(
             path, path_params=path_params, query=query, headers=headers
         ):
-            data = page.get("data") if isinstance(page, dict) else None
-            if isinstance(data, list):
-                items.extend(data)
+            items.extend(_collection_rows(page))
         return items
 
     async def rpc(
@@ -226,7 +235,13 @@ class AsyncMetagraphedClient:
         headers: Optional[Mapping[str, str]] = None,
         request_id: Any = 1,
     ) -> Any:
-        """Call the read-only Subtensor RPC proxy and return the JSON-RPC result."""
+        """Call the read-only Subtensor RPC proxy and return the JSON-RPC result.
+
+        Honors this client's ``retries`` + ``backoff``: the proxy is a read-only
+        Subtensor read, so RPC reads are retried on transient errors (HTTP
+        429/5xx and network failures) exactly like GETs, honoring a numeric
+        ``Retry-After`` capped at 60 seconds.
+        """
         url = (
             self.base_url.rstrip("/")
             + "/rpc/v1/"
@@ -238,38 +253,12 @@ class AsyncMetagraphedClient:
             "method": method,
             "params": list(params or []),
         }
-        merged_headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": DEFAULT_USER_AGENT,
-        }
-        merged_headers.update(headers or {})
-
-        try:
-            response = await self._client.post(
-                url, json=payload, headers=merged_headers
-            )
-        except self._httpx.HTTPError as error:
-            raise MetagraphedError(f"RPC {method} failed: {error}") from error
-        if response.status_code >= 400:
-            raise MetagraphedError(
-                f"RPC {method} failed: HTTP {response.status_code}"
-                f"{_response_error_detail(response)}",
-                status=response.status_code,
-            )
-        try:
-            parsed = response.json()
-        except ValueError as error:
-            raise MetagraphedError(
-                f"RPC {method} returned a non-JSON response"
-            ) from error
-        rpc_error = parsed.get("error") if isinstance(parsed, dict) else None
-        if rpc_error:
-            message = (
-                rpc_error.get("message") if isinstance(rpc_error, dict) else None
-            )
-            raise MetagraphedError(f"RPC {method} error: {message or rpc_error}")
-        return parsed.get("result") if isinstance(parsed, dict) else None
+        merged_headers = _default_headers(headers, json_body=True)
+        parsed = await self._send_json(
+            lambda: self._client.post(url, json=payload, headers=merged_headers),
+            label=f"RPC {method}",
+        )
+        return _jsonrpc_result(parsed, method)
 
     # -- typed convenience methods (raw-dict path stays via fetch/fetch_all) --
 

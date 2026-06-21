@@ -6,7 +6,12 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import { applyQueryFilters } from "./list-query.mjs";
-import { apiHeaders, errorResponse, weakEtag } from "./http.mjs";
+import {
+  apiHeaders,
+  errorResponse,
+  ifNoneMatchSatisfied,
+  weakEtag,
+} from "./http.mjs";
 import {
   d1TimeoutMs,
   latestPointer,
@@ -80,10 +85,17 @@ import {
   overlayCatalogIndex,
   overlayOverviewHealth,
   overlayRpcPoolEligibility,
+  overlaySubnetEconomics,
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
+import {
+  NEURON_COLUMNS,
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+  buildNeuronDetail,
+} from "../src/metagraph-neurons.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -117,6 +129,9 @@ import {
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
+  SUBNET_METAGRAPH_PATH_PATTERN,
+  SUBNET_NEURON_PATH_PATTERN,
+  SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
@@ -301,13 +316,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     });
   }
 
-  // Embeddable SVG readiness badges (#744) — /api/v1/{subnets/{netuid}|
-  // providers/{slug}}/badge.svg. Worker-computed image, caught before the generic
-  // entity routing so `badge.svg` isn't resolved as an entity sub-resource.
+  // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/
+  // badge.svg. Worker-computed image, caught before the generic entity routing so
+  // `badge.svg` isn't resolved as an entity sub-resource. `?metric=uptime` reads
+  // the live reliability rollup, hence the health DB binding.
   if (
     /^\/api\/v1\/(?:subnets|providers)\/[^/]+\/badge\.svg$/.test(url.pathname)
   ) {
-    return handleBadgeRequest(request, env, url, { readArtifact });
+    return handleBadgeRequest(request, env, url, {
+      readArtifact,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
   }
 
   // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
@@ -439,6 +458,38 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
       return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+    }
+    // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (metagraphMatch) {
+      return handleSubnetMetagraph(
+        request,
+        env,
+        Number(metagraphMatch[1]),
+        resolved.url,
+      );
+    }
+    const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
+    if (neuronMatch) {
+      return handleNeuron(
+        request,
+        env,
+        Number(neuronMatch[1]),
+        Number(neuronMatch[2]),
+      );
+    }
+    const validatorsMatch = SUBNET_VALIDATORS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (validatorsMatch) {
+      return handleSubnetValidators(
+        request,
+        env,
+        Number(validatorsMatch[1]),
+        resolved.url,
+      );
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return handleGlobalIncidents(request, env, resolved.url);
@@ -666,7 +717,7 @@ async function handleRawArtifactRequest(
     headers.set("x-metagraph-published-at", pub);
   }
   headers.set("etag", await weakEtag(body));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -826,6 +877,35 @@ const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
+// rpc/pools.json is R2-only and static per-build (it changes only on redeploy).
+// The RPC proxy reads it on every POST to /rpc/v1/* before failover, so a burst
+// turns into N R2 reads of the same artifact (#1309). Memoize the successful read
+// per-isolate (5 min TTL, same as the other in-isolate caches). The per-endpoint
+// health that actually changes is overlaid separately from KV (readHealthKv) on
+// every request, so caching the static pool never staleness-pins live eligibility.
+// Keyed on env so tests / multi-binding callers never cross-read; only ok reads
+// are cached so a transient R2 miss isn't sticky.
+export const RPC_POOL_ARTIFACT_TTL_MS = 300_000;
+let rpcPoolArtifactCache = { env: null, value: null, expiresAt: 0 };
+
+export async function readRpcPoolArtifact(env, now = Date.now()) {
+  if (
+    rpcPoolArtifactCache.env === env &&
+    now < rpcPoolArtifactCache.expiresAt
+  ) {
+    return rpcPoolArtifactCache.value;
+  }
+  const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
+  if (poolArtifact.ok) {
+    rpcPoolArtifactCache = {
+      env,
+      value: poolArtifact,
+      expiresAt: now + RPC_POOL_ARTIFACT_TTL_MS,
+    };
+  }
+  return poolArtifact;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -976,8 +1056,7 @@ async function handleApiRequest(
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
-        const etag = overlayHit.headers.get("etag");
-        if (etag && request.headers.get("if-none-match") === etag) {
+        if (ifNoneMatchSatisfied(request, overlayHit.headers.get("etag"))) {
           return new Response(null, {
             status: 304,
             headers: overlayHit.headers,
@@ -992,8 +1071,7 @@ async function handleApiRequest(
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
-      const etag = hit.headers.get("etag");
-      if (etag && request.headers.get("if-none-match") === etag) {
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
         return new Response(null, { status: 304, headers: hit.headers });
       }
       return hit;
@@ -1062,7 +1140,28 @@ async function handleApiRequest(
     });
   }
 
-  const baseData = live ? live.data : artifact.data;
+  let baseData = live ? live.data : artifact.data;
+  // Per-subnet economics overlay (#1308): attach the live economics row so
+  // /api/v1/subnets/{netuid} carries validator/miner counts, registration, stake
+  // and alpha price in one call. Null-safe — a cold/stale economics tier leaves
+  // the detail unchanged. Served live (not baked) so it never churns the artifact.
+  if (
+    network.isDefault &&
+    matched.id === "subnet-detail" &&
+    baseData &&
+    typeof baseData === "object"
+  ) {
+    const liveEconomics = await resolveLiveEconomics({
+      readHealthKv,
+      env,
+      contractVersion: contractVersion(env),
+    });
+    baseData = overlaySubnetEconomics(
+      baseData,
+      liveEconomics?.data,
+      Number(matched.params.netuid),
+    );
+  }
   const baseSource = live
     ? live.source || baseData?.health_source || "live-cron-prober"
     : matched.id === "economics"
@@ -1575,7 +1674,9 @@ async function handleTrajectory(request, env, netuid, url) {
   // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
   const rows = await d1All(
     env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
      FROM subnet_snapshots
      WHERE netuid = ?
      ORDER BY snapshot_date DESC
@@ -1591,6 +1692,93 @@ async function handleTrajectory(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/trajectory.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
+// (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
+// unbound/cold D1 returns a schema-stable empty payload, like the other
+// D1-backed analytics routes.
+async function metagraphMeta(env, artifactPath, generatedAt) {
+  return {
+    artifact_path: artifactPath,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: generatedAt,
+    published_at: await publishedAt(env),
+    source: "metagraph-snapshot",
+  };
+}
+
+async function handleSubnetMetagraph(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["validator_permit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const validatorsOnly = url.searchParams.get("validator_permit") === "true";
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
+      validatorsOnly ? " AND validator_permit = 1" : ""
+    } ORDER BY uid`,
+    [netuid],
+  );
+  const data = buildSubnetMetagraph(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/metagraph.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+async function handleNeuron(request, env, netuid, uid) {
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
+    [netuid, uid],
+  );
+  // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
+  // tiers (health/economics never 404 on a cold store).
+  const data = buildNeuronDetail(rows[0] ?? null, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+async function handleSubnetValidators(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
+    [netuid],
+  );
+  const data = buildSubnetValidators(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
       ),
     },
     "short",
@@ -2150,7 +2338,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     );
   }
 
-  const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
+  const poolArtifact = await readRpcPoolArtifact(env);
   if (!poolArtifact.ok) {
     return errorResponse(
       poolArtifact.code,
@@ -2992,13 +3180,18 @@ async function handleEventsRequest(request, env) {
   ]);
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
   const event = buildChangeEvent({ changelog, pointer });
-  const frame =
-    [
-      "retry: 300000",
-      `id: ${event.published_at || event.generated_at || "0"}`,
-      "event: snapshot",
-      `data: ${JSON.stringify(event)}`,
-    ].join("\n") + "\n\n";
+  const eventId = event.published_at || event.generated_at || "0";
+  // Reconnect replays the last id; if the snapshot hasn't moved, answer with a
+  // bare keepalive instead of re-sending it (a 304 analogue for SSE).
+  const unchanged = request.headers.get("last-event-id") === eventId;
+  const frame = unchanged
+    ? `retry: 300000\n: no new snapshot since ${eventId}\n\n`
+    : [
+        "retry: 300000",
+        `id: ${eventId}`,
+        "event: snapshot",
+        `data: ${JSON.stringify(event)}`,
+      ].join("\n") + "\n\n";
 
   const headers = new Headers();
   headers.set("content-type", "text/event-stream; charset=utf-8");
@@ -3006,6 +3199,7 @@ async function handleEventsRequest(request, env) {
   headers.set("access-control-allow-origin", "*");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
+  headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");
   return new Response(frame, { status: 200, headers });
 }
 

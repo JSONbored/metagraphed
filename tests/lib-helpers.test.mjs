@@ -355,6 +355,9 @@ describe("isBrandImpersonationUrl", () => {
       "https://metagraph.sh/api/v1/subnets",
       "https://api.metagraph.sh/x",
       "https://www.metagraph.sh",
+      // FQDN-canonical trailing dot resolves to the same host, not a squat.
+      "https://metagraph.sh./api/v1/subnets",
+      "https://api.metagraph.sh./x",
     ]) {
       assert.equal(isBrandImpersonationUrl(url), false, url);
     }

@@ -594,6 +594,23 @@ describe("Worker runtime", () => {
     assert.equal(cached.status, 304);
     assert.equal(await cached.text(), "");
 
+    // The raw artifact path revalidates too (a separate call site from the
+    // envelope path); `*` matches any current representation.
+    const raw = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json"),
+      env,
+      {},
+    );
+    const rawConditional = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json", {
+        headers: { "if-none-match": "*" },
+      }),
+      env,
+      {},
+    );
+    assert.ok(raw.headers.get("etag"));
+    assert.equal(rawConditional.status, 304);
+
     const options = await handleRequest(
       new Request("https://metagraph.sh/api/v1/contracts", {
         method: "OPTIONS",

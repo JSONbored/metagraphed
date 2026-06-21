@@ -16,6 +16,7 @@ import {
   overlaySubnetHealth,
   formatUptime,
   loadSubnetReliability,
+  loadReliabilityAggregate,
   parseLive,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -2298,6 +2299,104 @@ describe("loadSubnetReliability (D1-backed)", () => {
   test("returns null when there is no history yet", async () => {
     assert.equal(
       await loadSubnetReliability({ db: uptimeDb([]), netuid: 7 }),
+      null,
+    );
+  });
+});
+
+describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () => {
+  // Fake D1 returning a single aggregate row from .first(); also records the
+  // bound params so we can assert the netuid IN-list was built correctly.
+  function aggregateDb(row, sink = {}) {
+    return {
+      prepare(sql) {
+        sink.sql = sql;
+        return {
+          bind(...params) {
+            sink.params = params;
+            return this;
+          },
+          async first() {
+            return row;
+          },
+        };
+      },
+    };
+  }
+
+  test("returns null when D1 is unbound or no netuids given", async () => {
+    assert.equal(
+      await loadReliabilityAggregate({ db: undefined, netuids: [7] }),
+      null,
+    );
+    assert.equal(
+      await loadReliabilityAggregate({ db: aggregateDb({}), netuids: [] }),
+      null,
+    );
+  });
+
+  test("scores the summed samples/ok_count via scoreFromStats", async () => {
+    const sink = {};
+    const out = await loadReliabilityAggregate({
+      db: aggregateDb(
+        { samples: 1440, ok_count: 1080, avg_latency_ms: 600 },
+        sink,
+      ),
+      netuids: [7, 12],
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    // (1080/1440)=0.75 uptime; latency 600 → -1 penalty → score 74, grade F.
+    assert.deepEqual(
+      out,
+      scoreFromStats({ samples: 1440, okCount: 1080, avgLatencyMs: 600 }),
+    );
+    assert.equal(out.uptime_ratio, 0.75);
+    // One IN-list query over a deduped, sorted netuid set + the day cutoff.
+    assert.match(sink.sql, /netuid IN \(\?,\?\)/);
+    assert.deepEqual(sink.params, [7, 12, "2026-05-14"]);
+  });
+
+  test("dedupes netuids and ignores non-integers", async () => {
+    const sink = {};
+    await loadReliabilityAggregate({
+      db: aggregateDb({ samples: 10, ok_count: 10 }, sink),
+      netuids: [7, 7, 12, "x", null, undefined],
+    });
+    assert.match(sink.sql, /netuid IN \(\?,\?\)/);
+    assert.deepEqual(sink.params.slice(0, 2), [7, 12]);
+  });
+
+  test("no rows → null (no samples, by design)", async () => {
+    assert.equal(
+      await loadReliabilityAggregate({
+        db: aggregateDb({
+          samples: null,
+          ok_count: null,
+          avg_latency_ms: null,
+        }),
+        netuids: [7],
+      }),
+      null,
+    );
+    assert.equal(
+      await loadReliabilityAggregate({
+        db: aggregateDb(null),
+        netuids: [7],
+      }),
+      null,
+    );
+  });
+
+  test("returns null (not throw) when the query fails", async () => {
+    assert.equal(
+      await loadReliabilityAggregate({
+        db: {
+          prepare() {
+            throw new Error("d1 down");
+          },
+        },
+        netuids: [7],
+      }),
       null,
     );
   });

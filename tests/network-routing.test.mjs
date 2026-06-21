@@ -159,6 +159,40 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(detail.body.data.subnet.netuid, 11);
   });
 
+  test("testnet subnet details do not receive mainnet live economics", async () => {
+    const economicsBlob = {
+      schema_version: 1,
+      captured_at: new Date().toISOString(),
+      summary: { with_economics_count: 1 },
+      subnets: [
+        {
+          netuid: 1,
+          name: "MAINNET economics row for netuid 1",
+          emission_share: 1,
+          validators: 123,
+          miners: 456,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === "economics:current" ? economicsBlob : null;
+        },
+      },
+    });
+
+    const detail = await get(env, "/api/v1/testnet/subnets/1");
+
+    assert.equal(detail.res.status, 200);
+    assert.equal(
+      detail.body.meta.artifact_path,
+      "/metagraph/testnet/subnets/1.json",
+    );
+    assert.equal(detail.body.data.subnet.netuid, 1);
+    assert.equal(detail.body.data.economics, undefined);
+  });
+
   test("local network route 404s cleanly (no data published)", async () => {
     const env = createLocalArtifactEnv();
     const { res } = await get(env, "/api/v1/local/coverage");

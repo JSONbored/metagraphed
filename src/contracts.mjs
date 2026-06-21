@@ -185,6 +185,29 @@ export const API_QUERY_COLLECTIONS = {
     search: ["title", "subtitle", "slug", "tokens"],
     sort: ["kind", "netuid", "slug", "title"],
   }),
+  economics: queryCollection("subnets", {
+    filters: {
+      netuid: integerSchema,
+      registration_allowed: enumSchema(["true", "false"]),
+    },
+    search: ["name", "slug"],
+    sort: [
+      "alpha_price_tao",
+      "emission_share",
+      "max_stake_tao",
+      "max_uids",
+      "max_validators",
+      "miner_count",
+      "miner_readiness",
+      "name",
+      "netuid",
+      "open_slots",
+      "registration_cost_tao",
+      "subnet_volume_tao",
+      "total_stake_tao",
+      "validator_count",
+    ],
+  }),
   endpoints: queryCollection("endpoints", {
     filters: {
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
@@ -872,6 +895,24 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTrajectoryArtifact",
   ),
   artifact(
+    "subnet-metagraph",
+    "/metagraph/subnets/{netuid}/metagraph.json",
+    "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+    "SubnetMetagraphArtifact",
+  ),
+  artifact(
+    "subnet-neuron",
+    "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+    "A single neuron's metagraph state by UID, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+    "NeuronDetailArtifact",
+  ),
+  artifact(
+    "subnet-validators",
+    "/metagraph/subnets/{netuid}/validators.json",
+    "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+    "SubnetValidatorsArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -1231,9 +1272,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
     "standard",
     ["subnets"],
+    listQuery("economics"),
   ),
   route(
     "registry-summary",
@@ -1447,6 +1489,42 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/trajectory",
     "/metagraph/subnets/{netuid}/trajectory.json",
     "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-metagraph",
+    "GET",
+    "/api/v1/subnets/{netuid}/metagraph",
+    "/metagraph/subnets/{netuid}/metagraph.json",
+    "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+    "short",
+    ["subnets", "analytics"],
+    [{ name: "validator_permit", schema: { type: "string", enum: ["true"] } }],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-neuron",
+    "GET",
+    "/api/v1/subnets/{netuid}/neurons/{uid}",
+    "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+    "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "uid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
+    "subnet-validators",
+    "GET",
+    "/api/v1/subnets/{netuid}/validators",
+    "/metagraph/subnets/{netuid}/validators.json",
+    "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -1897,12 +1975,14 @@ export function artifactPathFromTemplate(template, params = {}) {
 export function compileRoutePattern(pathTemplate) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
+    .replace(/\{uid\}/g, "__METAGRAPH_UID__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
+    .replace(/__METAGRAPH_UID__/g, "(?<uid>\\d+)")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
     .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");

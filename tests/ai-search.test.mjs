@@ -408,6 +408,9 @@ describe("askQuestion", () => {
     assert.equal(out.model, ASK_MODEL);
     assert.ok(out.answer.length > 0);
     assert.equal(out.citations[0].ref, 1);
+    // Citations carry the Vectorize relevance score so agents can rank them (#1312).
+    assert.equal(typeof out.citations[0].score, "number");
+    assert.ok(out.citations[0].score >= 0 && out.citations[0].score <= 1);
     assert.equal(out.context_count, 3);
   });
   test("rejects a blank question", async () => {

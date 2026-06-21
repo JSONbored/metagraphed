@@ -187,7 +187,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/providers/{slug}/endpoints` — List endpoint resources for one provider or operator.
 - `GET /api/v1/coverage` — Fetch registry coverage summary.
 - `GET /api/v1/coverage-depth` — Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.
-- `GET /api/v1/economics` — List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share.
+- `GET /api/v1/economics` — List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.
 - `GET /api/v1/registry/summary` — Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `GET /api/v1/lineage` — Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `GET /api/v1/fixtures` — Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.
@@ -209,6 +209,9 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/subnets/{netuid}/health/percentiles` — Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/health/incidents` — Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/trajectory` — Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).
+- `GET /api/v1/subnets/{netuid}/metagraph` — Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.
+- `GET /api/v1/subnets/{netuid}/neurons/{uid}` — Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.
+- `GET /api/v1/subnets/{netuid}/validators` — Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.
 - `GET /api/v1/subnets/{netuid}/uptime` — Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).
 - `GET /api/v1/registry/leaderboards` — Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.
 - `GET /api/v1/rpc/usage` — Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).
