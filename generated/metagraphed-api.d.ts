@@ -1835,7 +1835,7 @@ export interface components {
             source_url: string;
             subject: string;
             support_summary: string;
-            verified_at?: string;
+            verified_at?: string | null;
         };
         EvidenceLedgerArtifact: components["schemas"]["ArtifactBase"] & ({
             claims: components["schemas"]["EvidenceClaim"][];
