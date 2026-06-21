@@ -6,7 +6,12 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import { applyQueryFilters } from "./list-query.mjs";
-import { apiHeaders, errorResponse, weakEtag } from "./http.mjs";
+import {
+  apiHeaders,
+  errorResponse,
+  ifNoneMatchSatisfied,
+  weakEtag,
+} from "./http.mjs";
 import {
   d1TimeoutMs,
   latestPointer,
@@ -707,7 +712,7 @@ async function handleRawArtifactRequest(
     headers.set("x-metagraph-published-at", pub);
   }
   headers.set("etag", await weakEtag(body));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -1046,8 +1051,7 @@ async function handleApiRequest(
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
-        const etag = overlayHit.headers.get("etag");
-        if (etag && request.headers.get("if-none-match") === etag) {
+        if (ifNoneMatchSatisfied(request, overlayHit.headers.get("etag"))) {
           return new Response(null, {
             status: 304,
             headers: overlayHit.headers,
@@ -1062,8 +1066,7 @@ async function handleApiRequest(
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
-      const etag = hit.headers.get("etag");
-      if (etag && request.headers.get("if-none-match") === etag) {
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
         return new Response(null, { status: 304, headers: hit.headers });
       }
       return hit;
@@ -3199,13 +3202,18 @@ async function handleEventsRequest(request, env) {
   ]);
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
   const event = buildChangeEvent({ changelog, pointer });
-  const frame =
-    [
-      "retry: 300000",
-      `id: ${event.published_at || event.generated_at || "0"}`,
-      "event: snapshot",
-      `data: ${JSON.stringify(event)}`,
-    ].join("\n") + "\n\n";
+  const eventId = event.published_at || event.generated_at || "0";
+  // Reconnect replays the last id; if the snapshot hasn't moved, answer with a
+  // bare keepalive instead of re-sending it (a 304 analogue for SSE).
+  const unchanged = request.headers.get("last-event-id") === eventId;
+  const frame = unchanged
+    ? `retry: 300000\n: no new snapshot since ${eventId}\n\n`
+    : [
+        "retry: 300000",
+        `id: ${eventId}`,
+        "event: snapshot",
+        `data: ${JSON.stringify(event)}`,
+      ].join("\n") + "\n\n";
 
   const headers = new Headers();
   headers.set("content-type", "text/event-stream; charset=utf-8");
@@ -3213,6 +3221,7 @@ async function handleEventsRequest(request, env) {
   headers.set("access-control-allow-origin", "*");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
+  headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");
   return new Response(frame, { status: 200, headers });
 }
 
