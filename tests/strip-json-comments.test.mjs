@@ -38,6 +38,16 @@ describe("stripJsonComments", () => {
     assert.deepEqual(parsed.triggers.crons, ["*/2 * * * *", "0 * * * *"]);
   });
 
+  test("preserves comma-then-bracket sequences inside string literals", () => {
+    // The trailing-comma cleanup must not splice a ", }" / ", ]" out of a string
+    // value, while still dropping a genuine trailing comma before the close.
+    const input = `{ "note": "use a, } or b, ] here", "items": [1, 2, ], "x": 1, }`;
+    const parsed = JSON.parse(stripJsonComments(input));
+    assert.equal(parsed.note, "use a, } or b, ] here");
+    assert.deepEqual(parsed.items, [1, 2]);
+    assert.equal(parsed.x, 1);
+  });
+
   test("handles escaped quotes inside strings", () => {
     const input = `{ "q": "a \\"quoted\\" // not-a-comment" }`;
     assert.equal(
