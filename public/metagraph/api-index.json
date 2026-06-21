@@ -3677,7 +3677,7 @@
     {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",
       "cache": "short",
-      "description": "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+      "description": "Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).",
       "id": "subnet-health-trends",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/health/trends",
