@@ -324,14 +324,35 @@ class FetchAllAndModelsTest(unittest.TestCase):
 
         return mock.patch("metagraphed.client._open_request", fake_urlopen)
 
-    def test_fetch_all_flattens_pages_following_cursor(self):
+    def test_fetch_all_collects_nested_collection_following_cursor(self):
+        # List endpoints nest rows under data[meta.pagination.collection].
         pages = [
-            {"data": [{"netuid": 1}], "meta": {"pagination": {"next_cursor": "c2"}}},
-            {"data": [{"netuid": 2}], "meta": {"pagination": {"next_cursor": None}}},
+            {
+                "data": {"subnets": [{"netuid": 1}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": "c2"}},
+            },
+            {
+                "data": {"subnets": [{"netuid": 2}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": None}},
+            },
         ]
         with self._patch_pages(pages):
             items = metagraphed_fetch_all("/api/v1/subnets")
         self.assertEqual([item["netuid"] for item in items], [1, 2])
+
+    def test_fetch_all_falls_back_to_flat_and_lone_array(self):
+        flat = [{"data": [{"id": "a"}], "meta": {"pagination": {"next_cursor": None}}}]
+        with self._patch_pages(flat):
+            self.assertEqual(metagraphed_fetch_all("/api/v1/subnets"), [{"id": "a"}])
+        # No collection key, but data has a single list-valued field.
+        lone = [
+            {
+                "data": {"rows": [{"id": "b"}]},
+                "meta": {"pagination": {"next_cursor": None}},
+            }
+        ]
+        with self._patch_pages(lone):
+            self.assertEqual(metagraphed_fetch_all("/api/v1/subnets"), [{"id": "b"}])
 
     def test_subnets_convenience_returns_typed_models(self):
         pages = [

@@ -243,6 +243,30 @@ def metagraphed_paginate(
             return
 
 
+def _collection_rows(page: Any) -> List[Any]:
+    """Extract the row list from a single list-endpoint page.
+
+    List endpoints nest their rows under ``data[meta['pagination']['collection']]``
+    (e.g. ``data['subnets']``), not as a bare array. Resolve the collection key,
+    falling back to a flat ``data`` list or the single list-valued field. Mirrors
+    the TypeScript client's ``fetchAll``.
+    """
+    if not isinstance(page, dict):
+        return []
+    data = page.get("data")
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return []
+    meta = page.get("meta")
+    pagination = meta.get("pagination") if isinstance(meta, dict) else None
+    collection = pagination.get("collection") if isinstance(pagination, dict) else None
+    if isinstance(collection, str) and isinstance(data.get(collection), list):
+        return data[collection]
+    arrays = [value for value in data.values() if isinstance(value, list)]
+    return arrays[0] if len(arrays) == 1 else []
+
+
 def metagraphed_fetch_all(
     path: str,
     *,
@@ -253,8 +277,8 @@ def metagraphed_fetch_all(
     timeout: float = 30.0,
     retries: int = 0,
 ) -> List[Any]:
-    """Follow pagination for a list endpoint and return every item — the
-    flattened ``data`` arrays across all pages."""
+    """Follow pagination for a list endpoint and return every row across all
+    pages (the nested ``data`` collection; see :func:`_collection_rows`)."""
     items: List[Any] = []
     for page in metagraphed_paginate(
         path,
@@ -265,9 +289,7 @@ def metagraphed_fetch_all(
         timeout=timeout,
         retries=retries,
     ):
-        data = page.get("data") if isinstance(page, dict) else None
-        if isinstance(data, list):
-            items.extend(data)
+        items.extend(_collection_rows(page))
     return items
 
 

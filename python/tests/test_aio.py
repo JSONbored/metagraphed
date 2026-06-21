@@ -56,19 +56,20 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         await client.fetch("/api/v1/subnets", query={"limit": 5, "cursor": None})
         self.assertEqual(client._client.calls[0][2], {"limit": 5})
 
-    async def test_fetch_all_flattens_pages_following_cursor(self):
+    async def test_fetch_all_collects_nested_collection_following_cursor(self):
+        # List endpoints nest rows under data[meta.pagination.collection].
         page1 = httpx.Response(
             200,
             json={
-                "data": [{"netuid": 1}],
-                "meta": {"pagination": {"next_cursor": "c2"}},
+                "data": {"subnets": [{"netuid": 1}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": "c2"}},
             },
         )
         page2 = httpx.Response(
             200,
             json={
-                "data": [{"netuid": 2}],
-                "meta": {"pagination": {"next_cursor": None}},
+                "data": {"subnets": [{"netuid": 2}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": None}},
             },
         )
         client = self._client(page1, page2)
