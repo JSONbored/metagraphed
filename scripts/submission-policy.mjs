@@ -604,14 +604,16 @@ export function buildPrSubmissionReport({
     }
   }
 
-  // reviewbot owns the merge / close / manual-review decision and defaults to
-  // close-or-escalate when in doubt (it must almost never merge false data as
-  // real). The gate therefore no longer pre-escalates whole risk CLASSES to a
-  // maintainer lane: a schema-valid submission is handed to the autonomous
-  // reviewer (submit_pr) regardless of manual_reasons, which are now ADVISORY
-  // risk signals the reviewer weighs — not a human gate. Only genuine,
-  // contributor-fixable problems block the PR (fix_required).
-  const publicState = errors.length > 0 ? "fix_required" : "submit_pr";
+  // Deterministic risk signals are review-routing gates for direct PR intake:
+  // schema-invalid submissions require contributor fixes, schema-valid submissions
+  // with high-trust/manual signals require maintainer review, and only the
+  // remaining low-risk submissions go to the autonomous private reviewer.
+  const publicState =
+    errors.length > 0
+      ? "fix_required"
+      : manual_reasons.length > 0
+        ? "manual_review"
+        : "submit_pr";
   const terminalRecommendation = errors.some((error) =>
     TERMINAL_FIX_CATEGORIES.has(error.category),
   )
@@ -636,7 +638,7 @@ export function buildPrSubmissionReport({
     publish_allowed: false,
     auto_merge_eligible: false,
     private_review_required: publicState === "submit_pr",
-    blocking: publicState === "fix_required",
+    blocking: publicState !== "submit_pr",
     terminal_recommendation: terminalRecommendation,
     review_marker: SUBMISSION_REVIEW_MARKER,
     labels: {
@@ -648,7 +650,9 @@ export function buildPrSubmissionReport({
     next_action:
       publicState === "submit_pr"
         ? "private-review"
-        : terminalRecommendation || "resubmission-needed",
+        : publicState === "manual_review"
+          ? "manual-review"
+          : terminalRecommendation || "resubmission-needed",
   };
 }
 

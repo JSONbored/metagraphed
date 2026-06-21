@@ -14,18 +14,16 @@ marker comment, no Discord notification, and no AI content verdict.
 
 ## Public States
 
-- `submit_pr`: the submission shape is valid and ready for private review.
+- `submit_pr`: the submission shape is valid, has no deterministic manual-review signals, and is ready for private review.
 - `fix_required`: the submission is malformed, unsafe, duplicate, or out of
   scope.
 - `route_away`: the PR is not a direct UGC submission and should use normal
   backend review.
-- `manual_review`: a state the **private reviewer** may assign when it chooses to
-  escalate a submission for human judgment. The public preflight no longer
-  pre-assigns it to whole risk classes — a schema-valid submission is handed to
-  the autonomous reviewer as `submit_pr` with advisory risk signals
-  (`manual_reasons`), and the reviewer decides merge / close / escalate (it
-  defaults to close-or-escalate when in doubt and must never merge false data as
-  real).
+- `manual_review`: deterministic preflight or the **private reviewer** requires
+  human judgment. Direct PRs with high-trust/manual signals (for example
+  provider profiles, authenticated APIs, base-layer RPC/WSS/archive endpoints,
+  ownership mismatches, or non-independent proof sources) are routed here instead
+  of the autonomous merge lane.
 
 ## Labels
 
@@ -144,11 +142,10 @@ App after required public checks pass. Public preflight only decides whether a
 submission is shaped correctly enough for private review; it does not expose AI
 scoring, thresholds, prompts, examples, corpus weights, or model internals.
 
-Direct provider profile PRs are handed to the private reviewer like any other
-submission (`submit_pr`), carrying the `provider profile submissions require
-review` advisory signal. They identify operators and can affect future endpoint
-trust, so the reviewer scrutinizes identity and defaults to close/escalate when
-in doubt — but a provider profile is no longer pre-blocked from autonomous merge.
+Direct provider profile PRs route to `manual_review` with the `provider profile
+submissions require review` signal. They identify operators and can affect future
+endpoint trust, so deterministic preflight keeps them out of the autonomous merge
+lane until a maintainer reviews the identity claim.
 
 Maintainer automation branches such as `codex/*` are ignored before D1 state,
 labels, comments, AI review, or Discord notifications. Direct UGC examples
@@ -201,15 +198,15 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
 
-The private runtime makes the final UGC decision for every schema-valid
-submission (`submit_pr`), returning a strict public-safe verdict object.
+The private runtime makes the final UGC decision for schema-valid submissions
+that are routed as `submit_pr`, returning a strict public-safe verdict object.
 Deterministic hard guards still win over AI and block the PR at preflight
 (`fix_required`): unsafe/private URLs, secrets, duplicates, generated-artifact
 edits, and unsupported file shapes cannot reach the reviewer at all. Higher-trust
 classes — base-layer RPC/WSS/archive claims, authenticated surfaces, owner
-mismatches, and provider profiles — are NOT deterministic hard blocks; they reach
-the reviewer as advisory `manual_reasons` so it can scrutinize them and, when in
-doubt, close or escalate to `manual_review` rather than merge.
+mismatches, non-independent proof sources, atomic debut provider+candidate pairs,
+and provider profiles — are deterministic manual-review routes: they are
+schema-valid, but cannot enter the autonomous merge lane.
 
 Production GitHub writes must use a GitHub App installation token. A fallback
 `GITHUB_TOKEN` can exist for emergency/local testing only when the private
