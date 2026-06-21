@@ -3116,7 +3116,7 @@ await writeJson(artifactFile("registry-summary.json"), {
 // Operational-surfaces list — the input for the 15-minute Cloudflare cron health
 // prober (src/health-prober.mjs). Deterministic, committed (git-tier), and read
 // by the Worker at runtime via the ASSETS binding. Only probe-enabled,
-// public-safe, operational-kind surfaces; everything else stays on this 6h build.
+// public-safe, operational-kind surfaces; everything else stays on this batch build.
 const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
 const operationalSurfaces = surfaces
   .filter(

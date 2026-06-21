@@ -11,7 +11,7 @@
 //   - KV health:meta     (last_run_at + counts → freshness + self-monitoring)
 //
 // Everything is injected (db, kv, loadSurfaces, probe, now) so the whole run is
-// unit-testable without a live runtime. Decoupled from the 6h build: a stale
+// unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
 import {
@@ -270,7 +270,7 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
 
 // Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
 // the ASSETS binding, falling back to R2. It is committed precisely so this read
-// never depends on the 6h publish (see artifact-storage.mjs): a publish outage
+// never depends on the data publish (see artifact-storage.mjs): a publish outage
 // must not freeze the live health prober. Returns the surfaces array (empty on
 // failure — the run then no-ops rather than throwing).
 export async function loadOperationalSurfaces(env) {

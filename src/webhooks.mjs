@@ -1,6 +1,6 @@
 // Pure, isomorphic helpers for the metagraph.sh change-feed webhooks.
 //
-// metagraph.sh regenerates its dataset on a ~6h schedule (ADR 0001), so the
+// metagraph.sh regenerates its dataset on an event-driven publish (ADR 0007), so the
 // "real-time" surface is honestly a CHANGE FEED: a notification pushed within
 // seconds of each publish, not a sub-second tail. These helpers are shared by
 // the Worker (subscription routes + SSE) and the publish-time dispatch script.
