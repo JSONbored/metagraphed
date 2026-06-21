@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
   cpSync,
@@ -99,6 +99,44 @@ afterAll(() => {
 
 test("registry validates", () => {
   runNode("scripts/validate.mjs");
+});
+
+test("registry validation warns but does not block on cross-netuid on-chain name collisions", () => {
+  const nativePath = "registry/native/finney-subnets.json";
+  const original = readFileSync(nativePath, "utf8");
+  const nativeSnapshot = JSON.parse(original);
+  const attackerControlledSubnet = nativeSnapshot.subnets.find(
+    (subnet) => subnet.netuid === 1,
+  );
+  assert(
+    attackerControlledSubnet,
+    "expected native fixture to include netuid 1",
+  );
+  attackerControlledSubnet.chain_identity ||= {};
+  attackerControlledSubnet.chain_identity.subnet_name = "Templar";
+
+  let result;
+  try {
+    writeFileSync(nativePath, `${JSON.stringify(nativeSnapshot, null, 2)}\n`);
+    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
+  } finally {
+    writeFileSync(nativePath, original);
+  }
+
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+  assert.match(
+    output,
+    /sn-3: curated name "Templar" .*possible mis-keyed overlay/,
+  );
+  assert.doesNotMatch(
+    output,
+    /Validation failed[^]*- sn-3: curated name "Templar"/,
+  );
 });
 
 test("registry validation rejects registry-observed surfaces without verification evidence", () => {
