@@ -1251,15 +1251,12 @@ export function hashJson(value) {
   return sha256Hex(stableStringify(value));
 }
 
-// Content hash for the R2 delta-skip: an artifact's hash with the pure build stamp
-// (`generated_at`) normalized out, so a republish whose ONLY difference is the
-// wall-clock build time (METAGRAPH_BUILD_TIMESTAMP, set per-publish in production —
-// see ADR 0007) is skipped instead of re-uploaded. `captured_at` is deliberately
-// NOT normalized: it is the chain-snapshot time consumers read as freshness, so an
-// artifact that was genuinely re-snapshotted still re-uploads. Non-JSON artifacts
-// (svg/txt) and unparseable files hash as-is.
-// NOTE: this is a delta-comparison hash only. Integrity verification (r2:download)
-// still uses the real `sha256` of the actual uploaded bytes, which is untouched.
+// Content hash for publish diagnostics: an artifact's hash with the pure build
+// stamp (`generated_at`) normalized out. `captured_at` is deliberately NOT
+// normalized: it is the chain-snapshot time consumers read as freshness. Non-JSON
+// artifacts (svg/txt) and unparseable files hash as-is.
+// NOTE: this is not an integrity hash. Upload/download decisions must use the
+// real `sha256` of the actual bytes so latest manifests and objects stay aligned.
 const DELTA_GENERATED_AT_PLACEHOLDER = "1970-01-01T00:00:00.000Z";
 
 export function artifactContentHash(relativePath, raw) {
