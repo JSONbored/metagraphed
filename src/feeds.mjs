@@ -313,9 +313,15 @@ async function readData(readArtifact, env, path) {
 
 export async function handleFeedRequest(request, env, url, deps = {}) {
   const readArtifact = deps.readArtifact;
+  // Feed errors go through the shared canonical envelope (workers/http.mjs
+  // errorResponse), injected by the Worker so they match every other API
+  // error — schema_version, data: null, meta.contract_version, and the
+  // standard headers. feedError is the bare fallback when none is injected.
+  const fail =
+    typeof deps.errorResponse === "function" ? deps.errorResponse : feedError;
   const target = parseFeedPath(url.pathname);
   if (!target || typeof readArtifact !== "function") {
-    return feedError(
+    return fail(
       "feed_not_found",
       "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/subnets/{netuid} (each as .rss/.atom/.json or via Accept).",
       404,

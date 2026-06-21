@@ -41,7 +41,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 Community data becomes a reviewed **candidate**, not direct registry truth. PR-first is the simplest path:
 
-> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts. First-time team? Add **both** in one PR (an atomic provider+candidate pair): the inline provider counts as registered, so your debut provider and first surface land together — no separate, pre-approved provider PR needed.
+> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts. First-time team? Add **both** in one PR (an atomic provider+candidate pair): the inline provider counts as registered for candidate validation, but provider/profile identity still requires maintainer review before it can land.
 
 Generate a candidate locally — three steps:
 

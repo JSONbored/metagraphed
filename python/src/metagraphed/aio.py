@@ -23,6 +23,7 @@ from .client import (
     MetagraphedError,
     _MAX_RETRY_AFTER_SECONDS,
     _RETRY_STATUSES,
+    _collection_rows,
     _interpolate,
 )
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
@@ -207,14 +208,13 @@ class AsyncMetagraphedClient:
         query: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> List[Any]:
-        """Follow pagination and return every item (flattened ``data`` arrays)."""
+        """Follow pagination and return every row across all pages (the nested
+        ``data`` collection; see :func:`~metagraphed.client._collection_rows`)."""
         items: List[Any] = []
         async for page in self.paginate(
             path, path_params=path_params, query=query, headers=headers
         ):
-            data = page.get("data") if isinstance(page, dict) else None
-            if isinstance(data, list):
-                items.extend(data)
+            items.extend(_collection_rows(page))
         return items
 
     async def rpc(

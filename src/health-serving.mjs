@@ -7,7 +7,7 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability } from "./reliability.mjs";
+import { computeReliability, scoreFromStats } from "./reliability.mjs";
 import { rollupSubnetStatus } from "./health-probe-core.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
@@ -808,6 +808,13 @@ export function formatTrajectory({ netuid, rows }) {
       completeness_score: row.completeness_score ?? null,
       surface_count: row.surface_count ?? null,
       endpoint_count: row.endpoint_count ?? null,
+      // Economic time series (#1307) — null on rows captured before the columns
+      // existed / when economics was unavailable that day.
+      validator_count: row.validator_count ?? null,
+      miner_count: row.miner_count ?? null,
+      total_stake_tao: row.total_stake_tao ?? null,
+      alpha_price_tao: row.alpha_price_tao ?? null,
+      emission_share: row.emission_share ?? null,
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
@@ -980,6 +987,54 @@ export async function loadSubnetReliability({
   }
 }
 
+// Sample-weighted reliability score over one or many subnets in a single
+// aggregate query, so a provider spanning dozens of subnets stays one D1
+// round-trip. Returns the scoreFromStats shape (no per-surface breakdown the
+// badge doesn't need), or null when D1 is unbound/cold or has no history.
+export async function loadReliabilityAggregate({
+  db,
+  netuids,
+  windowDays = 30,
+  now = null,
+}) {
+  // Keep only integer netuids (no coercion, so Number(null) can't slip in as
+  // subnet 0), then dedupe so the IN-list has no repeats.
+  const ids = [...new Set((netuids || []).filter((n) => Number.isInteger(n)))];
+  if (!db?.prepare || ids.length === 0) {
+    return null;
+  }
+  const nowMs = now ? Date.parse(now) : Date.now();
+  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const placeholders = ids.map(() => "?").join(",");
+  try {
+    const row = await db
+      .prepare(
+        `SELECT SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                CASE
+                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
+                    THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
+                         SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
+                  ELSE NULL
+                END AS avg_latency_ms
+         FROM surface_uptime_daily
+         WHERE netuid IN (${placeholders}) AND day >= ?`,
+      )
+      .bind(...ids, cutoff)
+      .first();
+    return scoreFromStats({
+      samples: Number(row?.samples) || 0,
+      okCount: Number(row?.ok_count) || 0,
+      avgLatencyMs:
+        row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+    });
+  } catch {
+    return null;
+  }
+}
+
 // --- Live-everywhere health resolution + composed-artifact overlays ----------
 // Health must never be served from a build-time artifact. resolveLiveHealth
 // returns the freshest live snapshot — KV health:current first, then a
@@ -1139,6 +1194,21 @@ export async function resolveLiveEconomics({
   );
   if (rows.length > 0 && Math.abs(emissionSum - 1) > 0.001) return null;
   return { data: blob, source: "live-kv" };
+}
+
+// Attach the per-subnet economics row from the live economics blob onto a
+// subnet-detail artifact at serve time (#1308), so /api/v1/subnets/{netuid}
+// carries validator/miner counts, registration, stake and alpha price without a
+// second call to /api/v1/economics. Null-safe: when the live economics store is
+// cold/stale (resolveLiveEconomics → null) or the subnet has no economics row,
+// the detail is returned unchanged (no `economics` field).
+export function overlaySubnetEconomics(detail, economicsBlob, netuid) {
+  if (!detail || typeof detail !== "object") return detail;
+  const rows = economicsBlob?.subnets;
+  if (!Array.isArray(rows)) return detail;
+  const row = rows.find((entry) => entry?.netuid === netuid);
+  if (!row) return detail;
+  return { ...detail, economics: row };
 }
 
 // Overlay the live per-subnet operational rollup onto a composed overview

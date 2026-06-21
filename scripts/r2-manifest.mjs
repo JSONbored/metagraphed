@@ -86,7 +86,13 @@ for (const artifact of validationManifest.artifacts) {
 console.log(stableStringify(summary));
 
 async function buildManifest(generatedAt = buildTimestamp()) {
-  const version = generatedAt.replace(/[:.]/g, "-");
+  // The R2 immutable run prefix must stay UNIQUE per publish even though
+  // generated_at is a deterministic epoch marker (issue #349) — otherwise every
+  // publish would collide on runs/1970.../ and lose atomic-swap safety. The publish
+  // workflow sets METAGRAPH_RUN_ID to a unique per-run value; local/dev builds fall
+  // back to the generated_at stamp (deterministic, fine with no remote history).
+  const runId = process.env.METAGRAPH_RUN_ID || generatedAt;
+  const version = runId.replace(/[:.]/g, "-").replace(/[^A-Za-z0-9._-]/g, "-");
   const publicRoot = path.join(repoRoot, "public/metagraph");
   const r2Root = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
   const files = await listManifestArtifactFiles({ publicRoot, r2Root });

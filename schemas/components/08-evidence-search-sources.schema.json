@@ -93,7 +93,7 @@
             "type": "string"
           },
           "verified_at": {
-            "type": "string"
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false

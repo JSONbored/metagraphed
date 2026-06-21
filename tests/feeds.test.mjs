@@ -310,7 +310,7 @@ describe("feeds — Worker dispatch integration", () => {
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
-  test("an unknown feed path is a 404 (not a static-asset fall-through)", async () => {
+  test("an unknown feed path is a 404 with the canonical error envelope", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/nonexistent"),
@@ -318,5 +318,15 @@ describe("feeds — Worker dispatch integration", () => {
       {},
     );
     assert.equal(res.status, 404);
+    // The Worker injects the shared errorResponse, so feed errors carry the
+    // same envelope + headers as every other API error (not a bare body).
+    assert.equal(res.headers.get("x-metagraph-error-code"), "feed_not_found");
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    const body = await res.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.schema_version, 1);
+    assert.equal(body.data, null);
+    assert.equal(body.error.code, "feed_not_found");
+    assert.ok(body.meta.contract_version);
   });
 });

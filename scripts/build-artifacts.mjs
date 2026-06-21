@@ -2836,6 +2836,7 @@ await writeJson(
 const evidenceLedger = buildEvidenceLedger({
   candidates,
   generatedAt,
+  capturedAt: nativeSnapshot.captured_at,
   subnets: mergedSubnets,
   surfaces,
 });
@@ -6227,6 +6228,7 @@ function sourceStatus(classifications, rpcCount) {
 function buildEvidenceLedger({
   candidates: candidateRows,
   generatedAt: timestamp,
+  capturedAt,
   subnets,
   surfaces: surfaceRows,
 }) {
@@ -6240,7 +6242,9 @@ function buildEvidenceLedger({
     source_url: "registry/native/finney-subnets.json",
     subject: `subnet:${subnet.netuid}`,
     support_summary: `Captured from native snapshot at block ${subnet.block}.`,
-    verified_at: timestamp,
+    // Chain claims are verified by the snapshot — use its capture time (a real,
+    // deterministic observation timestamp), never the wall-clock build time.
+    verified_at: capturedAt || null,
   }));
 
   const surfaceClaims = surfaceRows.map((surface) => ({
@@ -6260,7 +6264,9 @@ function buildEvidenceLedger({
     source_url: surface.source_urls?.[0] || surface.url,
     subject: `surface:${surface.id}`,
     support_summary: `Listed in curated overlay for ${surface.subnet_slug}.`,
-    verified_at: surface.verification?.verified_at || timestamp,
+    // Real verification time when the surface was actually verified; null when it
+    // was not (honest + deterministic — never the build clock).
+    verified_at: surface.verification?.verified_at || null,
   }));
 
   const candidateClaims = candidateRows.slice(0, 250).map((candidate) => ({
@@ -6274,7 +6280,9 @@ function buildEvidenceLedger({
     subject: `candidate:${candidate.id}`,
     support_summary:
       candidate.review_notes || "Discovered from public source metadata.",
-    verified_at: candidate.verification?.verified_at || timestamp,
+    // Unverified discovery leads have no verification time — null, not the build
+    // clock (which falsely implied every candidate was "verified" at build time).
+    verified_at: candidate.verification?.verified_at || null,
   }));
 
   const claims = [...subnetClaims, ...surfaceClaims, ...candidateClaims].sort(

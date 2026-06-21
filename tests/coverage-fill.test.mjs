@@ -132,8 +132,12 @@ describe("submission-policy provider extraction and validation", () => {
         github_url: "http://169.254.169.254",
         team_url: "http://192.168.0.1",
         contact_url: "ftp://example.com",
-        social: { x: "http://169.254.169.254/latest/meta-data" },
+        social: {
+          x: "http://169.254.169.254/latest/meta-data",
+          mastodon: "https://social.example/@bad",
+        },
         authority: "official",
+        unexpected: "will-fail-schema",
         notes: "legacy notes",
       },
       document: { submission: {} },
@@ -141,6 +145,11 @@ describe("submission-policy provider extraction and validation", () => {
       providers,
     });
     const messages = result.errors.map((error) => error.message);
+    assert.equal(messages.includes("provider unexpected is not allowed"), true);
+    assert.equal(
+      messages.includes("provider social.mastodon is not allowed"),
+      true,
+    );
     assert.equal(messages.includes("provider schema_version must be 1"), true);
     assert.equal(
       messages.includes("provider id must be a lowercase slug"),
@@ -314,6 +323,59 @@ describe("submission-policy candidate schema shape branches", () => {
     assert.ok(
       !c.some((message) => message.startsWith("candidate rate_limit.")),
     );
+  });
+
+  test("flags malformed structured auth metadata (#1255 follow-up)", () => {
+    const messagesFor = (auth) =>
+      validateCandidateForSubmission({
+        candidate: { ...baseCandidate, auth },
+        document: validSubmissionDocument,
+        submitter: "jsonbored",
+        native,
+        providers,
+      }).errors.map((error) => error.message);
+
+    const malformed = messagesFor({
+      scheme: "bogus",
+      location: "body",
+      name: 7,
+      value_format: "real-token-value",
+      token_url: "http://169.254.169.254/latest/meta-data",
+      scopes_note: false,
+      extra: "not allowed",
+    });
+    assert.ok(malformed.includes("candidate auth.extra is not allowed"));
+    assert.ok(malformed.includes("candidate auth.scheme is unsupported"));
+    assert.ok(malformed.includes("candidate auth.location is unsupported"));
+    assert.ok(malformed.includes("candidate auth.name must be a string"));
+    assert.ok(
+      malformed.includes(
+        "candidate auth.value_format must be a placeholder string",
+      ),
+    );
+    assert.ok(
+      malformed.includes(
+        "candidate auth.token_url must be a public HTTP(S) URL",
+      ),
+    );
+    assert.ok(
+      malformed.includes("candidate auth.scopes_note must be a string"),
+    );
+
+    assert.ok(
+      messagesFor(42).includes("candidate auth must be an object or null"),
+    );
+    assert.ok(messagesFor({}).includes("candidate auth.scheme is required"));
+
+    const valid = messagesFor({
+      scheme: "oauth2",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+      token_url: "https://auth.example.com/oauth/token",
+      scopes_note: "Request read-only scopes.",
+    });
+    assert.ok(!valid.some((message) => message.startsWith("candidate auth.")));
   });
 
   test("flags malformed verification metadata inside a verification object", () => {

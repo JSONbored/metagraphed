@@ -1,16 +1,43 @@
-// Embeddable shields.io-style SVG badges (#744) — a distribution flywheel: a
-// subnet/provider drops `![metagraphed](…/badge.svg)` in its README, creating a
-// backlink + social pressure to improve the score we already compute.
+// Embeddable shields.io-style SVG badges: a subnet/provider drops
+// `![metagraphed](…/badge.svg)` in its README for a backlink + a visible score.
 //
-//   GET /api/v1/subnets/{netuid}/badge.svg   → that subnet's integration readiness
-//   GET /api/v1/providers/{slug}/badge.svg   → mean readiness across its subnets
+//   GET /api/v1/subnets/{netuid}/badge.svg   subnet score
+//   GET /api/v1/providers/{slug}/badge.svg   mean across its subnets
 //
-// Worker-computed (image/svg+xml, not a JSON-envelope route), read-only, edge-
-// cached. Unknown entities degrade to an "n/a" badge (HTTP 200) so an embedded
-// <img> never shows a broken image.
+// Query options (allow-listed / sanitized in parseBadgeOptions):
+//   metric=readiness   integration readiness 0–100 (default)
+//   metric=uptime      window uptime %, colored by the A–F reliability grade
+//                      (alias: reliability), from the live uptime rollup in D1
+//   style=flat-square  square corners, no gradient (default: flat)
+//   label=…            override the left "metagraphed" segment text
+//
+// Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
+// entities or missing data render an "n/a" badge (200) so an <img> never breaks.
+import { loadReliabilityAggregate } from "./health-serving.mjs";
 
 const BADGE_CACHE_SECONDS = 3600;
 const BADGE_LABEL = "metagraphed";
+const MAX_LABEL_LENGTH = 40;
+const NA_MESSAGE = "n/a";
+const UNKNOWN_COLOR = "#9f9f9f";
+const NA_CONTENT = { message: NA_MESSAGE, color: UNKNOWN_COLOR };
+
+// metric query value → internal metric ("uptime"/"reliability" are aliases).
+const BADGE_METRICS = {
+  readiness: "readiness",
+  uptime: "reliability",
+  reliability: "reliability",
+};
+// Allow-listed render styles; an unknown value falls back to "flat".
+const BADGE_STYLES = new Set(["flat", "flat-square"]);
+// A–F grade → color band (gray for unknown); bands match reliability.mjs.
+const GRADE_COLOR = {
+  A: "#2ea44f",
+  B: "#97ca00",
+  C: "#a4a61d",
+  D: "#dfb317",
+  F: "#e05d44",
+};
 
 function escapeXml(value) {
   return String(value ?? "")
@@ -33,16 +60,23 @@ function textWidth(text) {
   return Math.ceil(w);
 }
 
-// Accessible score → color (green / amber / red; gray for unknown).
+// Readiness score (0–100) → color (green / amber / red; gray for unknown).
 export function scoreColor(score) {
-  if (typeof score !== "number" || Number.isNaN(score)) return "#9f9f9f";
+  if (typeof score !== "number" || Number.isNaN(score)) return UNKNOWN_COLOR;
   if (score >= 80) return "#2ea44f";
   if (score >= 50) return "#dfb317";
   return "#e05d44";
 }
 
-// Render a flat two-segment badge: gray label + colored message.
-export function renderBadge(message, color, label = BADGE_LABEL) {
+// Reliability grade (A–F) → color band; gray when unknown / no data.
+export function gradeColor(grade) {
+  return GRADE_COLOR[grade] || UNKNOWN_COLOR;
+}
+
+// Render a two-segment badge: gray label + colored message. `style` is "flat"
+// (rounded + glossy gradient) or "flat-square" (square, matte).
+export function renderBadge(message, color, options = {}) {
+  const { label = BADGE_LABEL, style = "flat" } = options;
   const eLabel = escapeXml(label);
   const eMsg = escapeXml(message);
   const pad = 12;
@@ -51,15 +85,19 @@ export function renderBadge(message, color, label = BADGE_LABEL) {
   const total = labelW + msgW;
   const labelMid = labelW / 2;
   const msgMid = labelW + msgW / 2;
+  const square = style === "flat-square";
+  const rx = square ? 0 : 3;
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="20" role="img" aria-label="${eLabel}: ${eMsg}">`,
     `<title>${eLabel}: ${eMsg}</title>`,
-    `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>`,
-    `<clipPath id="r"><rect width="${total}" height="20" rx="3" fill="#fff"/></clipPath>`,
+    square
+      ? null
+      : `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>`,
+    `<clipPath id="r"><rect width="${total}" height="20" rx="${rx}" fill="#fff"/></clipPath>`,
     `<g clip-path="url(#r)">`,
     `<rect width="${labelW}" height="20" fill="#555"/>`,
     `<rect x="${labelW}" width="${msgW}" height="20" fill="${color}"/>`,
-    `<rect width="${total}" height="20" fill="url(#s)"/>`,
+    square ? null : `<rect width="${total}" height="20" fill="url(#s)"/>`,
     `</g>`,
     `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">`,
     `<text x="${labelMid}" y="15" fill="#010101" fill-opacity=".3">${eLabel}</text>`,
@@ -69,7 +107,9 @@ export function renderBadge(message, color, label = BADGE_LABEL) {
     `</g>`,
     `</svg>`,
     ``,
-  ].join("\n");
+  ]
+    .filter((line) => line != null)
+    .join("\n");
 }
 
 async function readData(readArtifact, env, path) {
@@ -81,7 +121,12 @@ async function readData(readArtifact, env, path) {
   }
 }
 
-// Mean integration_readiness across a provider's subnets, rounded — or null when
+// A provider entry by slug (providers carry either `slug` or legacy `id`).
+function findProvider(providers, slug) {
+  return (providers?.providers || []).find((p) => (p.slug || p.id) === slug);
+}
+
+// Mean integration_readiness across a provider's subnets, rounded; null when
 // none of them resolve to a numeric score.
 function averageReadiness(netuids, subnetsIndex) {
   const byNetuid = new Map(
@@ -97,6 +142,12 @@ function averageReadiness(netuids, subnetsIndex) {
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
+// uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%".
+function formatUptimePercent(ratio) {
+  const pct = Math.round((Number(ratio) || 0) * 10000) / 100;
+  return `${pct}%`;
+}
+
 export function parseBadgePath(pathname) {
   let m = /^\/api\/v1\/subnets\/(\d+)\/badge\.svg$/.exec(pathname);
   if (m) return { kind: "subnet", netuid: Number(m[1]) };
@@ -107,42 +158,117 @@ export function parseBadgePath(pathname) {
   return null;
 }
 
+// Drop C0 control chars + DEL (invalid in XML), trim, then length-cap so a label
+// override can't break the SVG or overflow a segment. A code-point filter (no
+// control-char regex literals) keeps the source clean.
+function sanitizeLabel(raw) {
+  let out = "";
+  for (const ch of String(raw)) {
+    const code = ch.codePointAt(0);
+    if (code >= 0x20 && code !== 0x7f) out += ch;
+  }
+  return out.trim().slice(0, MAX_LABEL_LENGTH) || BADGE_LABEL;
+}
+
+// Parse the public query options. Metric + style are allow-listed; the label is
+// sanitized (escapeXml runs again at render).
+export function parseBadgeOptions(searchParams) {
+  const metric =
+    BADGE_METRICS[(searchParams.get("metric") || "").toLowerCase()] ||
+    "readiness";
+  const styleParam = (searchParams.get("style") || "").toLowerCase();
+  const style = BADGE_STYLES.has(styleParam) ? styleParam : "flat";
+  const rawLabel = searchParams.get("label");
+  const label = rawLabel == null ? BADGE_LABEL : sanitizeLabel(rawLabel);
+  return { metric, style, label };
+}
+
+// Readiness: the subnet's own integration_readiness, or a provider's mean.
+async function readinessContent({ target, readArtifact, env }) {
+  let score = null;
+  if (target.kind === "subnet") {
+    const index = await readData(readArtifact, env, "/metagraph/subnets.json");
+    const s = (index?.subnets || []).find((x) => x.netuid === target.netuid);
+    if (s && typeof s.integration_readiness === "number") {
+      score = s.integration_readiness;
+    }
+  } else {
+    const [providers, index] = await Promise.all([
+      readData(readArtifact, env, "/metagraph/providers.json"),
+      readData(readArtifact, env, "/metagraph/subnets.json"),
+    ]);
+    const provider = findProvider(providers, target.slug);
+    if (provider) score = averageReadiness(provider.netuids, index);
+  }
+  return {
+    message: typeof score === "number" ? `${score}/100` : NA_MESSAGE,
+    color: scoreColor(score),
+  };
+}
+
+// Reliability: the subnet's netuid, or all of a provider's netuids, scored from
+// the live uptime rollup in one aggregate query. Message is the window uptime %.
+async function reliabilityContent({
+  target,
+  readArtifact,
+  env,
+  db,
+  loadReliability,
+}) {
+  let netuids = [];
+  if (target.kind === "subnet") {
+    netuids = [target.netuid];
+  } else {
+    const providers = await readData(
+      readArtifact,
+      env,
+      "/metagraph/providers.json",
+    );
+    const provider = findProvider(providers, target.slug);
+    if (provider) netuids = provider.netuids || [];
+  }
+  const rel = netuids.length ? await loadReliability({ db, netuids }) : null;
+  return rel
+    ? {
+        message: formatUptimePercent(rel.uptime_ratio),
+        color: gradeColor(rel.grade),
+      }
+    : NA_CONTENT;
+}
+
+function badgeHeaders() {
+  return {
+    "content-type": "image/svg+xml; charset=utf-8",
+    "cache-control": `public, max-age=${BADGE_CACHE_SECONDS}`,
+    "x-content-type-options": "nosniff",
+    // Public read-only SVG: fetchable cross-origin like every apiHeaders() response.
+    "access-control-allow-origin": "*",
+  };
+}
+
 export async function handleBadgeRequest(request, env, url, deps = {}) {
   const readArtifact = deps.readArtifact;
   const target = parseBadgePath(url.pathname);
-  let score = null;
+  const { metric, style, label } = parseBadgeOptions(url.searchParams);
+  const ctx = {
+    target,
+    readArtifact,
+    env,
+    db: deps.db ?? env?.METAGRAPH_HEALTH_DB,
+    loadReliability: deps.loadReliability || loadReliabilityAggregate,
+  };
 
+  let content = NA_CONTENT;
   if (target && typeof readArtifact === "function") {
-    if (target.kind === "subnet") {
-      const index = await readData(
-        readArtifact,
-        env,
-        "/metagraph/subnets.json",
-      );
-      const s = (index?.subnets || []).find((x) => x.netuid === target.netuid);
-      if (s && typeof s.integration_readiness === "number") {
-        score = s.integration_readiness;
-      }
-    } else {
-      const [providers, index] = await Promise.all([
-        readData(readArtifact, env, "/metagraph/providers.json"),
-        readData(readArtifact, env, "/metagraph/subnets.json"),
-      ]);
-      const p = (providers?.providers || []).find(
-        (x) => (x.slug || x.id) === target.slug,
-      );
-      if (p) score = averageReadiness(p.netuids, index);
-    }
+    content =
+      metric === "reliability"
+        ? await reliabilityContent(ctx)
+        : await readinessContent(ctx);
   }
 
-  const message = typeof score === "number" ? `${score}/100` : "n/a";
-  const svg = renderBadge(message, scoreColor(score));
+  const svg = renderBadge(content.message, content.color, { label, style });
   return new Response(request.method === "HEAD" ? null : svg, {
     status: 200,
-    headers: {
-      "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": `public, max-age=${BADGE_CACHE_SECONDS}`,
-      "x-content-type-options": "nosniff",
-    },
+    headers: badgeHeaders(),
   });
 }

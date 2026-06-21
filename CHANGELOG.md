@@ -19,6 +19,40 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.16.2](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.1...platform-v0.16.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **feeds:** return feed errors through the canonical API error envelope ([#1258](https://github.com/JSONbored/metagraphed/issues/1258)) ([cc0dc95](https://github.com/JSONbored/metagraphed/commit/cc0dc95542e1370ef261008c2e6f9ffa7f297a41))
+* **publish:** preserve R2 run id across jobs ([#1298](https://github.com/JSONbored/metagraphed/issues/1298)) ([308b7ee](https://github.com/JSONbored/metagraphed/commit/308b7ee3966d0ac8076c45ba90630c785f9ba9be))
+* **r2:** compare latest uploads by real sha ([#1297](https://github.com/JSONbored/metagraphed/issues/1297)) ([5ac13de](https://github.com/JSONbored/metagraphed/commit/5ac13de736d1cda7b8a64a1eff6d720bb53c91d4))
+* **submission:** restore manual review routing ([#1294](https://github.com/JSONbored/metagraphed/issues/1294)) ([19662bc](https://github.com/JSONbored/metagraphed/commit/19662bc21058fee004d7063f0ad6c537e194aac6))
+* **submissions:** reject unknown provider fields ([#1293](https://github.com/JSONbored/metagraphed/issues/1293)) ([86506a7](https://github.com/JSONbored/metagraphed/commit/86506a7bb756c51eb83b9ae72f67ab521cfedb78))
+* **submission:** validate candidate auth metadata ([#1292](https://github.com/JSONbored/metagraphed/issues/1292)) ([297605a](https://github.com/JSONbored/metagraphed/commit/297605ab867daf1d9c7093cfaf70be427630b75f))
+* **validate:** warn on on-chain name collisions ([#1296](https://github.com/JSONbored/metagraphed/issues/1296)) ([7891eff](https://github.com/JSONbored/metagraphed/commit/7891effc88136ef76ba160a39d0c61f2379ac761))
+
+## [0.16.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.0...platform-v0.16.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **ci:** contract at epoch stamp + de-flake /health max-age test (green main) ([#1290](https://github.com/JSONbored/metagraphed/issues/1290)) ([1a313ca](https://github.com/JSONbored/metagraphed/commit/1a313cabf012abfed68e58c36a71ce806eb327eb))
+* **client:** fetchAll reads nested data[&lt;collection&gt;], not a flat array ([#1257](https://github.com/JSONbored/metagraphed/issues/1257)) ([ba44312](https://github.com/JSONbored/metagraphed/commit/ba4431209ba8ee65840a253040fe1d64d4c2a1fc))
+* **evidence:** verified_at is the real verification time or null, never the build clock ([#1289](https://github.com/JSONbored/metagraphed/issues/1289)) ([8556a5b](https://github.com/JSONbored/metagraphed/commit/8556a5bbc80ecdc9b595d3f9a3c6f2499784e03b))
+* **registry:** drop stale colosseum overlay (slot reused to ChronoLLM) + add identity guardrail ([#1264](https://github.com/JSONbored/metagraphed/issues/1264)) ([03fd18a](https://github.com/JSONbored/metagraphed/commit/03fd18a97e1a0c517fba83052980bb7011cdc536))
+* **registry:** re-key Nodexo to netuid 106 (on-chain identity), revert 27 to Team TBC ([#1263](https://github.com/JSONbored/metagraphed/issues/1263)) ([060274f](https://github.com/JSONbored/metagraphed/commit/060274f459028eca78da858bd6b39ee715e25357))
+
+
+### Performance
+
+* **r2:** skip re-uploading artifacts whose only change is the build stamp ([#1271](https://github.com/JSONbored/metagraphed/issues/1271)) ([e133e82](https://github.com/JSONbored/metagraphed/commit/e133e829c92ccc53a644c5906eda86eae25c4ae6))
+
+
+### Documentation
+
+* **readme:** refresh subnet catalog ([#1020](https://github.com/JSONbored/metagraphed/issues/1020)) ([#1253](https://github.com/JSONbored/metagraphed/issues/1253)) ([b73aa58](https://github.com/JSONbored/metagraphed/commit/b73aa584f0f9f7da1dcb72c79c886acebcebb1bf))
+
 ## [0.16.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.15.0...platform-v0.16.0) (2026-06-20)
 
 

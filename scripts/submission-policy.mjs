@@ -31,6 +31,30 @@ const PROVIDER_KINDS = new Set([
   "registry",
 ]);
 
+const PROVIDER_SCHEMA_FIELDS = new Set([
+  "schema_version",
+  "id",
+  "name",
+  "kind",
+  "website_url",
+  "docs_url",
+  "github_url",
+  "logo_url",
+  "social",
+  "team_url",
+  "contact_url",
+  "authority",
+  "public_notes",
+  "notes",
+]);
+
+const PROVIDER_SOCIAL_SCHEMA_FIELDS = new Set([
+  "x",
+  "telegram",
+  "reddit",
+  "youtube",
+]);
+
 const STATUS_REPORT_TYPES = new Set([
   "down",
   "degraded",
@@ -72,6 +96,25 @@ const CANDIDATE_VERIFICATION_CLASSIFICATIONS = new Set([
   "timeout",
   "content-mismatch",
 ]);
+
+const CANDIDATE_AUTH_FIELDS = new Set([
+  "scheme",
+  "location",
+  "name",
+  "value_format",
+  "token_url",
+  "scopes_note",
+]);
+const CANDIDATE_AUTH_SCHEMES = new Set([
+  "none",
+  "bearer",
+  "api-key",
+  "basic",
+  "oauth2",
+  "custom",
+]);
+const CANDIDATE_AUTH_LOCATIONS = new Set(["header", "query", "cookie"]);
+const PLACEHOLDER_VALUE_FORMAT = /<[^<>]+>/;
 
 const CANDIDATE_SCHEMA_FIELDS = new Set([
   "schema_version",
@@ -604,14 +647,16 @@ export function buildPrSubmissionReport({
     }
   }
 
-  // reviewbot owns the merge / close / manual-review decision and defaults to
-  // close-or-escalate when in doubt (it must almost never merge false data as
-  // real). The gate therefore no longer pre-escalates whole risk CLASSES to a
-  // maintainer lane: a schema-valid submission is handed to the autonomous
-  // reviewer (submit_pr) regardless of manual_reasons, which are now ADVISORY
-  // risk signals the reviewer weighs — not a human gate. Only genuine,
-  // contributor-fixable problems block the PR (fix_required).
-  const publicState = errors.length > 0 ? "fix_required" : "submit_pr";
+  // Deterministic risk signals are review-routing gates for direct PR intake:
+  // schema-invalid submissions require contributor fixes, schema-valid submissions
+  // with high-trust/manual signals require maintainer review, and only the
+  // remaining low-risk submissions go to the autonomous private reviewer.
+  const publicState =
+    errors.length > 0
+      ? "fix_required"
+      : manual_reasons.length > 0
+        ? "manual_review"
+        : "submit_pr";
   const terminalRecommendation = errors.some((error) =>
     TERMINAL_FIX_CATEGORIES.has(error.category),
   )
@@ -636,7 +681,7 @@ export function buildPrSubmissionReport({
     publish_allowed: false,
     auto_merge_eligible: false,
     private_review_required: publicState === "submit_pr",
-    blocking: publicState === "fix_required",
+    blocking: publicState !== "submit_pr",
     terminal_recommendation: terminalRecommendation,
     review_marker: SUBMISSION_REVIEW_MARKER,
     labels: {
@@ -648,7 +693,9 @@ export function buildPrSubmissionReport({
     next_action:
       publicState === "submit_pr"
         ? "private-review"
-        : terminalRecommendation || "resubmission-needed",
+        : publicState === "manual_review"
+          ? "manual-review"
+          : terminalRecommendation || "resubmission-needed",
   };
 }
 
@@ -866,6 +913,78 @@ function validateCandidateSchemaShape(candidate) {
       category: "unsupported-shape",
       message: "candidate source_type must be a string",
     });
+  }
+  if (candidate.auth !== undefined && candidate.auth !== null) {
+    if (typeof candidate.auth !== "object" || Array.isArray(candidate.auth)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate auth must be an object or null",
+      });
+    } else {
+      if (candidate.auth.scheme === undefined) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is required",
+        });
+      }
+      for (const field of Object.keys(candidate.auth)) {
+        if (!CANDIDATE_AUTH_FIELDS.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} is not allowed`,
+          });
+        }
+      }
+      if (
+        candidate.auth.scheme !== undefined &&
+        !CANDIDATE_AUTH_SCHEMES.has(candidate.auth.scheme)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is unsupported",
+        });
+      }
+      if (
+        candidate.auth.location !== undefined &&
+        !CANDIDATE_AUTH_LOCATIONS.has(candidate.auth.location)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.location is unsupported",
+        });
+      }
+      for (const field of ["name", "scopes_note"]) {
+        if (
+          candidate.auth[field] !== undefined &&
+          typeof candidate.auth[field] !== "string"
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} must be a string`,
+          });
+        }
+      }
+      if (
+        candidate.auth.value_format !== undefined &&
+        (typeof candidate.auth.value_format !== "string" ||
+          !PLACEHOLDER_VALUE_FORMAT.test(candidate.auth.value_format))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.value_format must be a placeholder string",
+        });
+      }
+      if (
+        candidate.auth.token_url !== undefined &&
+        (typeof candidate.auth.token_url !== "string" ||
+          !normalizePublicHttpUrl(candidate.auth.token_url))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.token_url must be a public HTTP(S) URL",
+        });
+      }
+    }
   }
   if (candidate.rate_limit !== undefined) {
     if (
@@ -1402,6 +1521,23 @@ export function validateProviderForSubmission({
       warnings,
       manual_reasons,
     };
+  }
+
+  for (const field of Object.keys(provider)) {
+    if (!PROVIDER_SCHEMA_FIELDS.has(field)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider ${field} is not allowed`,
+      });
+    }
+  }
+  for (const [key] of socialEntries) {
+    if (!PROVIDER_SOCIAL_SCHEMA_FIELDS.has(key)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider social.${key} is not allowed`,
+      });
+    }
   }
 
   if (provider.schema_version !== 1) {

@@ -27,6 +27,13 @@ export const INCIDENTS_PATH_PATTERN =
 export const TRAJECTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
+// Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
+export const SUBNET_METAGRAPH_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/metagraph$/;
+export const SUBNET_NEURON_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
+export const SUBNET_VALIDATORS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/validators$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;

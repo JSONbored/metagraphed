@@ -368,7 +368,7 @@ describe("Metagraphed submission gate policy", () => {
   // artifacts are now R2-only (ADR 0001), so there is nothing committed to diff.
   // The reject-arbitrary-artifact safety checks above still guard contributor PRs.
 
-  test("hands a direct provider profile PR to the autonomous reviewer with the provider-review advisory flag", () => {
+  test("routes a direct provider profile PR to manual review with the provider-review flag", () => {
     const document = structuredClone(validProviderDocument);
     document.submission.submitted_by = "jsonbored";
     document.submission.submitted_by_url = "https://github.com/jsonbored";
@@ -381,13 +381,13 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "JSONbored",
     });
 
-    // Provider profiles no longer pre-escalate to a maintainer lane: a valid one
-    // is handed to reviewbot (submit_pr), which adjudicates using the advisory
-    // manual_reasons signal (provider identity affects future endpoint trust).
-    assert.equal(report.public_state, "submit_pr");
-    assert.equal(report.next_action, "private-review");
-    assert.equal(report.private_review_required, true);
-    assert.equal(report.blocking, false);
+    // Provider identity affects future endpoint trust, so direct provider
+    // profiles require deterministic maintainer review rather than autonomous
+    // private-review routing.
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
+    assert.equal(report.private_review_required, false);
+    assert.equal(report.blocking, true);
     assert.equal(
       report.direct_provider_file,
       "registry/providers/community/example-operator.json",
@@ -528,10 +528,12 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
 
-    // The inline provider satisfies the candidate's registration check, so a
-    // brand-new team's debut provider + first surface land in one PR → reviewbot.
-    assert.equal(report.public_state, "submit_pr");
-    assert.equal(report.blocking, false);
+    // The inline provider satisfies the candidate's registration check, but its
+    // identity is self-asserted in the same PR, so the pair requires maintainer
+    // review instead of autonomous routing.
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
+    assert.equal(report.blocking, true);
     assert.equal(
       report.errors.some((error) => /is not registered/.test(error)),
       false,
@@ -615,7 +617,7 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("hands auth-required and base-layer endpoint claims to reviewbot with high-trust advisory flags", () => {
+  test("routes auth-required and base-layer endpoint claims to manual review", () => {
     const authDocument = structuredClone(validCandidateDocument);
     authDocument.candidates[0].auth_required = true;
     const authReport = buildPrSubmissionReport({
@@ -626,9 +628,9 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    // High-trust surfaces are no longer pre-escalated to a maintainer lane —
-    // reviewbot adjudicates them, with the risk surfaced as advisory flags.
-    assert.equal(authReport.public_state, "submit_pr");
+    // High-trust surfaces require deterministic maintainer review.
+    assert.equal(authReport.public_state, "manual_review");
+    assert.equal(authReport.next_action, "manual-review");
     assert.equal(
       authReport.manual_reasons.includes(
         "authenticated interfaces require review",
@@ -647,7 +649,8 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    assert.equal(rpcReport.public_state, "submit_pr");
+    assert.equal(rpcReport.public_state, "manual_review");
+    assert.equal(rpcReport.next_action, "manual-review");
     assert.equal(
       rpcReport.manual_reasons.includes(
         "base-layer RPC/WSS/archive endpoint claims require review",
@@ -656,7 +659,7 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("hands an ownership-mismatched surface to reviewbot with the owner-mismatch advisory flag", () => {
+  test("routes an ownership-mismatched surface to manual review with the owner-mismatch flag", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {
       id: "community-sn-7-source-repo-mismatch",
@@ -673,7 +676,8 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    assert.equal(report.public_state, "submit_pr");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("does not match its registered provider"),
@@ -682,7 +686,7 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("hands a masked ownership-mismatch (url owner differs, source_url matches) to reviewbot with the advisory flag", () => {
+  test("routes a masked ownership-mismatch (url owner differs, source_url matches) to manual review", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {
       id: "community-sn-7-source-repo-masked-mismatch",
@@ -699,7 +703,8 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    assert.equal(report.public_state, "submit_pr");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("url owner does not match its registered provider"),
@@ -746,7 +751,7 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("hands a non-repo surface whose source_url equals its url (no independent proof) to reviewbot with the advisory flag", () => {
+  test("routes a non-repo surface whose source_url equals its url (no independent proof) to manual review", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {
       id: "community-sn-7-website-selfproof",
@@ -763,7 +768,8 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    assert.equal(report.public_state, "submit_pr");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("independent proof source"),
@@ -812,7 +818,8 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
-    assert.equal(report.public_state, "submit_pr");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("independent proof source"),
