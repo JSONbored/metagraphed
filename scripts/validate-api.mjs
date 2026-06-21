@@ -79,6 +79,30 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/metagraph",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.neurons), true);
+      assert.equal(typeof body.data.neuron_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/neurons/0",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      // Cold harness (no D1) → neuron present but null; never 404.
+      assert.equal("neuron" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/subnets/7/validators",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);

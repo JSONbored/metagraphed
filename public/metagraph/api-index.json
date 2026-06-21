@@ -352,6 +352,27 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-metagraph",
+      "path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-neuron",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "schema_ref": "#/components/schemas/NeuronDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-validators",
+      "path": "/metagraph/subnets/{netuid}/validators.json",
+      "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
@@ -3817,6 +3838,52 @@
       "id": "subnet-trajectory",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/trajectory",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "cache": "short",
+      "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+      "id": "subnet-metagraph",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/metagraph",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "validator_permit",
+          "schema": {
+            "enum": [
+              "true"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "cache": "short",
+      "description": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+      "id": "subnet-neuron",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/neurons/{uid}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/validators.json",
+      "cache": "short",
+      "description": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+      "id": "subnet-validators",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/validators",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

@@ -80,6 +80,12 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
+import {
+  NEURON_COLUMNS,
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+  buildNeuronDetail,
+} from "../src/metagraph-neurons.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -113,6 +119,9 @@ import {
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
+  SUBNET_METAGRAPH_PATH_PATTERN,
+  SUBNET_NEURON_PATH_PATTERN,
+  SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
@@ -439,6 +448,38 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
       return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+    }
+    // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (metagraphMatch) {
+      return handleSubnetMetagraph(
+        request,
+        env,
+        Number(metagraphMatch[1]),
+        resolved.url,
+      );
+    }
+    const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
+    if (neuronMatch) {
+      return handleNeuron(
+        request,
+        env,
+        Number(neuronMatch[1]),
+        Number(neuronMatch[2]),
+      );
+    }
+    const validatorsMatch = SUBNET_VALIDATORS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (validatorsMatch) {
+      return handleSubnetValidators(
+        request,
+        env,
+        Number(validatorsMatch[1]),
+        resolved.url,
+      );
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return handleGlobalIncidents(request, env, resolved.url);
@@ -1664,6 +1705,93 @@ async function handleTrajectory(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/trajectory.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
+// (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
+// unbound/cold D1 returns a schema-stable empty payload, like the other
+// D1-backed analytics routes.
+async function metagraphMeta(env, artifactPath, generatedAt) {
+  return {
+    artifact_path: artifactPath,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: generatedAt,
+    published_at: await publishedAt(env),
+    source: "metagraph-snapshot",
+  };
+}
+
+async function handleSubnetMetagraph(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["validator_permit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const validatorsOnly = url.searchParams.get("validator_permit") === "true";
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
+      validatorsOnly ? " AND validator_permit = 1" : ""
+    } ORDER BY uid`,
+    [netuid],
+  );
+  const data = buildSubnetMetagraph(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/metagraph.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+async function handleNeuron(request, env, netuid, uid) {
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
+    [netuid, uid],
+  );
+  // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
+  // tiers (health/economics never 404 on a cold store).
+  const data = buildNeuronDetail(rows[0] ?? null, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+async function handleSubnetValidators(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
+    [netuid],
+  );
+  const data = buildSubnetValidators(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
       ),
     },
     "short",

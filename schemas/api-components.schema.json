@@ -4713,6 +4713,147 @@
           }
         ]
       },
+      "Neuron": {
+        "additionalProperties": false,
+        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "axon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividends": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incentive": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_immunity_period": {
+            "type": "boolean"
+          },
+          "rank": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "registered_at_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_permit": {
+            "type": "boolean"
+          },
+          "validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "uid",
+          "hotkey",
+          "coldkey",
+          "active",
+          "validator_permit"
+        ],
+        "type": "object"
+      },
+      "NeuronDetailArtifact": {
+        "additionalProperties": true,
+        "description": "A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Neuron"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron"
+        ],
+        "type": "object"
+      },
       "OpenApiArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -9100,6 +9241,49 @@
         ],
         "type": "object"
       },
+      "SubnetMetagraphArtifact": {
+        "additionalProperties": true,
+        "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons": {
+            "items": {
+              "$ref": "#/components/schemas/Neuron"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "neurons"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {
@@ -10142,6 +10326,49 @@
           "root",
           "application"
         ]
+      },
+      "SubnetValidatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators": {
+            "items": {
+              "$ref": "#/components/schemas/Neuron"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "type": "object"
       },
       "SubnetVerificationArtifact": {
         "$ref": "#/components/schemas/VerificationArtifact"

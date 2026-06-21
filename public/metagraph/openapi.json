@@ -4735,6 +4735,147 @@
           }
         ]
       },
+      "Neuron": {
+        "additionalProperties": false,
+        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "axon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividends": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incentive": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_immunity_period": {
+            "type": "boolean"
+          },
+          "rank": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "registered_at_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_permit": {
+            "type": "boolean"
+          },
+          "validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "uid",
+          "hotkey",
+          "coldkey",
+          "active",
+          "validator_permit"
+        ],
+        "type": "object"
+      },
+      "NeuronDetailArtifact": {
+        "additionalProperties": true,
+        "description": "A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Neuron"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron"
+        ],
+        "type": "object"
+      },
       "OpenApiArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -9122,6 +9263,49 @@
         ],
         "type": "object"
       },
+      "SubnetMetagraphArtifact": {
+        "additionalProperties": true,
+        "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons": {
+            "items": {
+              "$ref": "#/components/schemas/Neuron"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "neurons"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {
@@ -10164,6 +10348,49 @@
           "root",
           "application"
         ]
+      },
+      "SubnetValidatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators": {
+            "items": {
+              "$ref": "#/components/schemas/Neuron"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "type": "object"
       },
       "SubnetVerificationArtifact": {
         "$ref": "#/components/schemas/VerificationArtifact"
@@ -23348,6 +23575,316 @@
         ]
       }
     },
+    "/api/v1/subnets/{netuid}/metagraph": {
+      "get": {
+        "operationId": "subnetMetagraph",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "validator_permit",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "netuid": 7,
+                    "neuron_count": 1,
+                    "neurons": [
+                      {
+                        "active": false,
+                        "coldkey": "example",
+                        "hotkey": "example",
+                        "uid": 1,
+                        "validator_permit": false
+                      }
+                    ],
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetMetagraphArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/neurons/{uid}": {
+      "get": {
+        "operationId": "subnetNeuron",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "netuid": 7,
+                    "neuron": {
+                      "active": false,
+                      "axon": "example",
+                      "coldkey": "example",
+                      "consensus": 0.5,
+                      "dividends": 0.5,
+                      "emission_tao": 0.5,
+                      "hotkey": "example",
+                      "incentive": 0.5,
+                      "is_immunity_period": false,
+                      "rank": 0.5,
+                      "registered_at_block": 5000000,
+                      "stake_tao": 0.5,
+                      "trust": 0.5,
+                      "uid": 1,
+                      "validator_permit": false,
+                      "validator_trust": 0.5
+                    },
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NeuronDetailArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/subnets/{netuid}/overview": {
       "get": {
         "operationId": "subnetOverview",
@@ -24601,6 +25138,147 @@
         "summary": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
         "tags": [
           "health",
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/validators": {
+      "get": {
+        "operationId": "subnetValidators",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "netuid": 7,
+                    "schema_version": 1,
+                    "validator_count": 1,
+                    "validators": [
+                      {
+                        "active": false,
+                        "coldkey": "example",
+                        "hotkey": "example",
+                        "uid": 1,
+                        "validator_permit": false
+                      }
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetValidatorsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+        "tags": [
           "subnets",
           "analytics"
         ]
