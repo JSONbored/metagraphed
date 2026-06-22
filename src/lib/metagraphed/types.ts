@@ -600,20 +600,32 @@ export interface SubnetOverview {
 
 /**
  * Health trend windows from /api/v1/subnets/{netuid}/health/trends.
- * NB the live API returns per-window `surfaces[]` (not a `points[]` series), so for
- * time-series sparklines prefer subnetTrajectoryQuery + subnetUptimeQuery.
+ *
+ * NB the live API returns each window as an aggregate snapshot with a
+ * per-surface breakdown (`surfaces[]`) — NOT a `points[]` time-series. Each
+ * surface carries its window-level uptime ratio + latency percentiles. For an
+ * actual daily time-series, use subnetUptimeQuery (surfaces[].days[]) instead.
  */
-export interface HealthTrendPoint {
-  t: string;
-  uptime?: number;
-  latency_p50?: number;
-  latency_p95?: number;
-  [key: string]: unknown;
+export interface HealthTrendLatency {
+  p50?: number;
+  p95?: number;
+  p99?: number;
+}
+
+export interface HealthTrendSurface {
+  surface_id: string;
+  samples?: number;
+  uptime_ratio?: number; // 0–1
+  avg_latency_ms?: number;
+  latency_sample_count?: number;
+  latency_ms?: HealthTrendLatency;
 }
 
 export interface HealthTrendWindow {
-  points?: HealthTrendPoint[];
-  surfaces?: unknown[];
+  samples?: number;
+  uptime_ratio?: number; // 0–1, aggregate across surfaces
+  latency_sample_count?: number;
+  surfaces?: HealthTrendSurface[];
   [key: string]: unknown;
 }
 

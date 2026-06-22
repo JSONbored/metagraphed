@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { subnetHealthTrendsQuery, subnetHealthPercentilesQuery } from "@/lib/metagraphed/queries";
+import {
+  subnetHealthTrendsQuery,
+  subnetHealthPercentilesQuery,
+  trendSurfaceSeries,
+} from "@/lib/metagraphed/queries";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
@@ -34,24 +38,20 @@ export function HealthTrends({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("7d");
   const { data: trendsRes, isLoading } = useQuery(subnetHealthTrendsQuery(netuid));
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
-  const points = trendsRes?.data?.windows?.[win]?.points ?? [];
+  // The window is an aggregate snapshot with a per-surface breakdown (no time
+  // dimension), so these series are distributions ACROSS surfaces, worst-uptime
+  // first — not a time-series. Headline uptime reads the window aggregate.
+  const window = trendsRes?.data?.windows?.[win];
+  const { uptimePct: uptimeSeries, p50: p50Series, p95: p95Series } = trendSurfaceSeries(window);
+  const windowUptime = typeof window?.uptime_ratio === "number" ? window.uptime_ratio * 100 : null;
+  const hasData = (window?.surfaces?.length ?? 0) > 0;
   const pct = aggregatePercentiles(pctRes?.data);
-
-  const uptimeSeries = points
-    .map((p) => (typeof p.uptime === "number" ? p.uptime * (p.uptime <= 1 ? 100 : 1) : null))
-    .filter((v): v is number => v != null);
-  const p50Series = points
-    .map((p) => (typeof p.latency_p50 === "number" ? p.latency_p50 : null))
-    .filter((v): v is number => v != null);
-  const p95Series = points
-    .map((p) => (typeof p.latency_p95 === "number" ? p.latency_p95 : null))
-    .filter((v): v is number => v != null);
 
   return (
     <SectionAnchor
       id="health-trends"
-      title="Health time-series"
-      subtitle="Uptime and latency percentiles over time."
+      title="Health by surface"
+      subtitle="Window uptime and latency percentiles, spread across surfaces."
       info="GET /api/v1/subnets/{netuid}/health/trends"
       right={
         <div className="inline-flex rounded-md border border-border bg-surface/40 p-0.5">
@@ -72,18 +72,16 @@ export function HealthTrends({ netuid }: { netuid: number }) {
     >
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : points.length === 0 ? (
+      ) : !hasData ? (
         <EmptyState
           title="No trend data"
-          description="Health time-series will appear here once the registry has enough samples."
+          description="Per-surface health will appear here once the registry has enough samples."
         />
       ) : (
         <div className="grid gap-3 md:grid-cols-3">
           <TrendCard
             label="Uptime"
-            value={
-              uptimeSeries.length ? `${uptimeSeries[uptimeSeries.length - 1]!.toFixed(1)}%` : "—"
-            }
+            value={windowUptime != null ? `${windowUptime.toFixed(2)}%` : "—"}
             series={uptimeSeries}
             color="var(--health-ok, #4ade80)"
           />

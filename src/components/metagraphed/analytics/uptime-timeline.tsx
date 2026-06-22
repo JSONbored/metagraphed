@@ -5,13 +5,13 @@ import {
   subnetHealthIncidentsQuery,
   flattenSurfaceIncidents,
 } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames, durationLabel } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useTimeRange, RANGE_LABEL, RANGE_HOURS } from "./time-range-context";
-import type { FlatSurfaceIncident } from "@/lib/metagraphed/types";
+import { useTimeRange, RANGE_LABEL } from "./time-range-context";
+import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
 
 type IncidentState = "ok" | "warn" | "down" | "info" | "unknown";
 const INCIDENT_FILTERS: ReadonlyArray<{ id: IncidentState; label: string; tint: string }> = [
@@ -28,40 +28,57 @@ function classifyIncident(i: FlatSurfaceIncident): IncidentState {
   return "info";
 }
 
-function durationLabel(start?: string, end?: string): string {
-  if (!start) return "—";
-  const s = Date.parse(start);
-  if (!Number.isFinite(s)) return "—";
-  const e = end ? Date.parse(end) : Date.now();
-  const ms = Math.max(0, (Number.isFinite(e) ? e : Date.now()) - s);
-  const min = Math.round(ms / 60000);
-  if (min < 60) return `${min}m`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h`;
-  return `${Math.round(hr / 24)}d`;
+/** Health tint for an uptime ratio (0–1). Mirrors the 95% guide on the bars. */
+function uptimeTint(ratio: number | undefined): string {
+  if (typeof ratio !== "number" || !Number.isFinite(ratio)) return "var(--ink-muted)";
+  if (ratio >= 0.99) return "var(--health-ok)";
+  if (ratio >= 0.95) return "var(--health-warn)";
+  return "var(--health-down)";
+}
+
+function pct(ratio: number | undefined, digits = 2): string {
+  if (typeof ratio !== "number" || !Number.isFinite(ratio)) return "—";
+  return `${(ratio * 100).toFixed(digits)}%`;
+}
+
+function ms(value: number | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${Math.round(value)}ms`;
+}
+
+/** Trim a fully-qualified surface_id down to something readable in a tight row. */
+function shortSurfaceId(id: string): string {
+  return id.replace(/^community-sn-\d+-/, "").replace(/^allways-/, "");
 }
 
 /**
- * Subnet uptime / latency timeline. Reads /health/trends and joins
- * /health/incidents as severity markers below the curve.
+ * Subnet uptime / latency breakdown. Reads /health/trends and joins
+ * /health/incidents as severity markers.
  *
- * Uses the active TimeRange: 1h/24h fall back to the 7d window with the
- * tail trimmed; 7d and 30d match upstream windows directly.
+ * IMPORTANT: the health-trends API returns each window as an *aggregate*
+ * snapshot with a per-surface breakdown (`windows[range].surfaces[]`), NOT a
+ * `points[]` time-series. So this renders one horizontal uptime bar per surface
+ * for the selected window (largest downtime first), with p50/p95 latency, plus
+ * an aggregate header. The active TimeRange selects the window: 7d and 30d map
+ * to upstream windows directly; 1h/24h have no finer-grained source upstream and
+ * fall back to the 7d window.
  */
 export function UptimeTimeline({ netuid, className }: { netuid: number; className?: string }) {
   const { range } = useTimeRange();
   const winKey: "7d" | "30d" = range === "30d" ? "30d" : "7d";
+  // 1h/24h have no sub-7d window upstream; surface that the bars are a 7d view.
+  const usingFallbackWindow = range === "1h" || range === "24h";
 
   const { data: tRes, isLoading } = useQuery(subnetHealthTrendsQuery(netuid));
-  const { data: iRes } = useQuery(subnetHealthIncidentsQuery(netuid));
+  const { data: iRes } = useQuery(subnetHealthIncidentsQuery(netuid, winKey));
 
-  const allPoints = tRes?.data?.windows?.[winKey]?.points ?? [];
+  const window = tRes?.data?.windows?.[winKey];
   const incidents = flattenSurfaceIncidents(iRes?.data ?? []);
   const trendsAt = tRes?.meta?.generated_at;
   const freshLine = formatFreshness(trendsAt, RANGE_LABEL[range]);
 
   // Per-severity filter — persists in component state and gates both the
-  // SVG markers and the count badges in the legend.
+  // incident markers and the count badges in the legend.
   const [activeFilters, setActiveFilters] = useState<Set<IncidentState>>(
     () => new Set<IncidentState>(["down", "warn", "info"]),
   );
@@ -75,96 +92,38 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
       return next;
     });
 
-  const visibleHours = RANGE_HOURS[range];
-  const points = useMemo(() => {
-    if (range === "1h" || range === "24h") {
-      const cutoff = Date.now() - visibleHours * 3_600_000;
-      return allPoints.filter((p) => {
-        const t = Date.parse(p.t ?? "");
-        return Number.isFinite(t) && t >= cutoff;
-      });
-    }
-    return allPoints;
-  }, [allPoints, range, visibleHours]);
-
-  const W = 720;
-  const H = 160;
-  const PAD_L = 36;
-  const PAD_R = 12;
-  const PAD_T = 12;
-  const PAD_B = 28;
-  const innerW = W - PAD_L - PAD_R;
-  const innerH = H - PAD_T - PAD_B;
+  // Surfaces, ordered worst-uptime-first so problem endpoints surface on top.
+  const surfaces = useMemo<HealthTrendSurface[]>(() => {
+    const list = Array.isArray(window?.surfaces) ? window!.surfaces! : [];
+    return [...list].sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
+  }, [window]);
 
   if (isLoading) {
     return <Skeleton className="h-48 w-full" />;
   }
 
-  if (points.length === 0) {
+  if (surfaces.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
         <EmptyState
-          title="No timeline data"
-          description="Uptime / latency trends will appear here once the registry has enough samples for this range."
+          title="No trend data"
+          description="Per-surface uptime &amp; latency will appear here once the prober has collected enough samples for this subnet."
+          lastChecked={trendsAt}
         />
       </div>
     );
   }
 
-  const tMin = Date.parse(points[0]!.t ?? "") || Date.now() - visibleHours * 3_600_000;
-  const tMax = Date.parse(points[points.length - 1]!.t ?? "") || Date.now();
-  const tSpan = tMax - tMin || 1;
-
-  // Uptime axis: always 0-100 so the area reads as a coverage chart.
-  const uptimePath = (() => {
-    const pts: string[] = [];
-    points.forEach((p, i) => {
-      const u = typeof p.uptime === "number" ? (p.uptime <= 1 ? p.uptime * 100 : p.uptime) : null;
-      if (u == null) return;
-      const t = Date.parse(p.t ?? "") || tMin;
-      const x = PAD_L + ((t - tMin) / tSpan) * innerW;
-      const y = PAD_T + innerH - (u / 100) * innerH;
-      pts.push(`${pts.length === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`);
-      void i;
-    });
-    return pts.join(" ");
-  })();
-
-  // Latency p50 as a faint secondary line (normalized into the same area).
-  const latencyValues = points
-    .map((p) => (typeof p.latency_p50 === "number" ? p.latency_p50 : null))
-    .filter((v): v is number => v != null);
-  const latencyMax = Math.max(1, ...latencyValues);
-  const latencyPath = (() => {
-    const pts: string[] = [];
-    points.forEach((p) => {
-      const v = typeof p.latency_p50 === "number" ? p.latency_p50 : null;
-      if (v == null) return;
-      const t = Date.parse(p.t ?? "") || tMin;
-      const x = PAD_L + ((t - tMin) / tSpan) * innerW;
-      const y = PAD_T + innerH - (v / latencyMax) * innerH;
-      pts.push(`${pts.length === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`);
-    });
-    return pts.join(" ");
-  })();
-
-  const areaPath = uptimePath
-    ? `${uptimePath} L${(PAD_L + innerW).toFixed(1)},${(PAD_T + innerH).toFixed(1)} L${PAD_L},${(PAD_T + innerH).toFixed(1)} Z`
-    : "";
-
-  // Plain derivations (no useMemo) — they sit after the early returns above, so
-  // hooks here would violate rules-of-hooks. The cost is trivial and recomputing
-  // each render keeps behavior identical.
-  const inWindowIncidents = incidents.filter((i) => {
-    const start = Date.parse(i.started_at ?? "");
-    return Number.isFinite(start) && start >= tMin - 3_600_000;
-  });
+  // Incident severity tallies + the filtered set that renders as markers. These
+  // sit after the early returns above so the visibleIncidents map can't run on a
+  // half-populated component; the cost is trivial (re-derived each render).
   const incidentCounts = (() => {
     const counts: Record<IncidentState, number> = { ok: 0, warn: 0, down: 0, info: 0, unknown: 0 };
-    for (const i of inWindowIncidents) counts[classifyIncident(i)]++;
+    for (const i of incidents) counts[classifyIncident(i)]++;
     return counts;
   })();
-  const visibleIncidents = inWindowIncidents.filter((i) => activeFilters.has(classifyIncident(i)));
+  const visibleIncidents = incidents.filter((i) => activeFilters.has(classifyIncident(i)));
+  const hasIncidents = incidents.length > 0;
 
   return (
     <div
@@ -172,200 +131,168 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper/40">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Uptime timeline · {RANGE_LABEL[range]}
+          Uptime by surface · {RANGE_LABEL[range]}
+          {usingFallbackWindow ? <span className="text-ink-muted/60"> (7d window)</span> : null}
         </div>
         {freshLine ? (
           <span className="font-mono text-[9.5px] text-ink-muted/70">· {freshLine}</span>
         ) : null}
-        <div
-          className="ml-auto flex flex-wrap items-center gap-1.5"
-          role="group"
-          aria-label="Filter incident markers by severity"
-        >
-          {INCIDENT_FILTERS.map((f) => {
-            const active = activeFilters.has(f.id);
-            const count = incidentCounts[f.id];
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => toggleFilter(f.id)}
-                aria-pressed={active}
-                aria-label={`${f.label} incidents (${count}). Click to ${active ? "hide" : "show"}.`}
-                className={classNames(
-                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  active
-                    ? "border-border bg-card text-ink-strong"
-                    : "border-border/60 bg-paper/40 text-ink-muted/60 opacity-60",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className="inline-block size-1.5 rounded-full"
-                  style={{ background: f.tint }}
-                />
-                {f.label}
-                <span className="tabular-nums text-ink-muted">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted basis-full md:basis-auto">
+        {/* Aggregate window stats. */}
+        <div className="ml-auto flex items-center gap-3 font-mono text-[10px] text-ink-muted">
           <span className="inline-flex items-center gap-1">
-            <span className="inline-block size-2 rounded-sm bg-health-ok" aria-hidden /> uptime
+            <span
+              className="inline-block size-2 rounded-full"
+              style={{ background: uptimeTint(window?.uptime_ratio) }}
+              aria-hidden
+            />
+            <span className="tabular-nums text-ink-strong">{pct(window?.uptime_ratio)}</span> uptime
           </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block size-2 rounded-sm bg-accent/60" aria-hidden /> p50 latency
-          </span>
-          <InfoTooltip label="Uptime % over the selected range (0–100 axis). Latency p50 is normalized into the same plot for trend comparison; absolute p50 reads from the KPI strip. Incident markers along the bottom axis are keyboard-focusable — Tab to one to see severity, start/end, and message." />
+          {typeof window?.samples === "number" ? (
+            <span className="tabular-nums">{window.samples.toLocaleString()} samples</span>
+          ) : null}
+          <span className="tabular-nums">{surfaces.length} surfaces</span>
+          <InfoTooltip label="Per-surface uptime ratio over the selected window, worst first. The bar fills to the uptime %; the dashed mark is the 95% SLA line. p50/p95 are latency percentiles for that surface. Reconstructed downtime windows (if any) are listed below as incident markers." />
         </div>
       </div>
 
-      <svg
-        width="100%"
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="block w-full"
-        role="img"
-        aria-label={`Subnet ${netuid} uptime over ${RANGE_LABEL[range]}`}
-      >
-        {/* Y-axis guides */}
-        {[0, 50, 95, 100].map((v) => {
-          const y = PAD_T + innerH - (v / 100) * innerH;
+      {/* Per-surface uptime bars. */}
+      <ul className="divide-y divide-border">
+        {surfaces.map((s) => {
+          const ratio = s.uptime_ratio;
+          const fillPct =
+            typeof ratio === "number" && Number.isFinite(ratio)
+              ? Math.max(0, Math.min(100, ratio * 100))
+              : 0;
+          const tint = uptimeTint(ratio);
           return (
-            <g key={v}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={y}
-                y2={y}
-                stroke="var(--border)"
-                strokeOpacity={v === 95 ? 0.5 : 0.25}
-                strokeDasharray={v === 95 ? "2 2" : undefined}
-              />
-              <text
-                x={PAD_L - 4}
-                y={y + 3}
-                textAnchor="end"
-                fontFamily="ui-monospace, monospace"
-                fontSize={9}
-                fill="var(--ink-muted)"
-              >
-                {v}%
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Uptime area + line */}
-        {areaPath ? <path d={areaPath} fill="var(--health-ok)" opacity={0.12} /> : null}
-        {uptimePath ? (
-          <path
-            d={uptimePath}
-            fill="none"
-            stroke="var(--health-ok)"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : null}
-
-        {/* Latency p50 line (normalized) */}
-        {latencyPath ? (
-          <path
-            d={latencyPath}
-            fill="none"
-            stroke="var(--accent)"
-            strokeOpacity={0.55}
-            strokeWidth={1}
-            strokeDasharray="3 2"
-          />
-        ) : null}
-
-        {/* Incident markers along the bottom axis. Each marker is a
-            focusable <g role="button"> with a Radix tooltip so keyboard
-            users can Tab through and read severity + duration + message. */}
-        {visibleIncidents.map((i, idx) => {
-          const t = Date.parse(i.started_at ?? "") || tMin;
-          const x = PAD_L + Math.max(0, Math.min(innerW, ((t - tMin) / tSpan) * innerW));
-          const sev = classifyIncident(i);
-          const tint =
-            sev === "down"
-              ? "var(--health-down)"
-              : sev === "warn"
-                ? "var(--health-warn)"
-                : "var(--ink-muted)";
-          const startLabel = i.started_at ? new Date(i.started_at).toLocaleString() : "—";
-          const endLabel = i.ended_at ? new Date(i.ended_at).toLocaleString() : "ongoing";
-          const dur = durationLabel(i.started_at ?? undefined, i.ended_at ?? undefined);
-          const aria = `${sev} incident, started ${startLabel}, ${i.ended_at ? `ended ${endLabel}` : "ongoing"}, duration ${dur}${i.surface_id ? `, ${i.surface_id}` : ""}`;
-          return (
-            <Tooltip key={`${i.surface_id}-${i.started_at ?? idx}`} delayDuration={150}>
-              <TooltipTrigger asChild>
-                <g
-                  role="button"
-                  tabIndex={0}
-                  aria-label={aria}
-                  className="focus:outline-none [&_circle]:focus-visible:stroke-[var(--ring)] [&_circle]:focus-visible:stroke-2 cursor-pointer"
+            <li key={s.surface_id} className="px-4 py-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span
+                  className="truncate font-mono text-[11px] text-ink-strong"
+                  title={s.surface_id}
                 >
-                  <line
-                    x1={x}
-                    x2={x}
-                    y1={PAD_T}
-                    y2={PAD_T + innerH}
-                    stroke={tint}
-                    strokeOpacity={0.18}
-                  />
-                  {/* invisible larger hit target for hover/focus */}
-                  <circle cx={x} cy={PAD_T + innerH + 10} r={8} fill="transparent" />
-                  <circle cx={x} cy={PAD_T + innerH + 10} r={3.5} fill={tint} />
-                </g>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-primary-foreground/80">
-                  {sev} · {dur}
-                </div>
-                <div className="mt-1 break-all">{i.surface_id}</div>
-                <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
-                  started {startLabel}
-                  <br />
-                  {i.ended_at ? `ended ${endLabel}` : "still open"}
-                </div>
-              </TooltipContent>
-            </Tooltip>
+                  {shortSurfaceId(s.surface_id)}
+                </span>
+                <span
+                  className="shrink-0 font-mono text-[10px] tabular-nums"
+                  style={{ color: tint }}
+                >
+                  {pct(ratio)}
+                </span>
+              </div>
+              {/* Uptime bar with a 95% SLA guide. */}
+              <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-paper">
+                <div
+                  className="h-full rounded-full transition-[width]"
+                  style={{ width: `${fillPct}%`, background: tint }}
+                />
+                <span
+                  className="absolute inset-y-0 w-px bg-border"
+                  style={{ left: "95%" }}
+                  aria-hidden
+                />
+              </div>
+              <div className="mt-1 flex items-center gap-3 font-mono text-[9.5px] text-ink-muted tabular-nums">
+                {typeof s.samples === "number" ? (
+                  <span>{s.samples.toLocaleString()} samples</span>
+                ) : null}
+                <span>p50 {ms(s.latency_ms?.p50 ?? s.avg_latency_ms)}</span>
+                <span>p95 {ms(s.latency_ms?.p95)}</span>
+              </div>
+            </li>
           );
         })}
+      </ul>
 
-        {/* X-axis label */}
-        <text
-          x={PAD_L}
-          y={H - 6}
-          fontFamily="ui-monospace, monospace"
-          fontSize={9}
-          fill="var(--ink-muted)"
-        >
-          {formatTime(tMin)}
-        </text>
-        <text
-          x={W - PAD_R}
-          y={H - 6}
-          textAnchor="end"
-          fontFamily="ui-monospace, monospace"
-          fontSize={9}
-          fill="var(--ink-muted)"
-        >
-          {formatTime(tMax)}
-        </text>
-      </svg>
+      {/* Incident markers — reconstructed downtime windows for this range.
+          Previously this overlay was dead code because the component always hit
+          the empty state (it read a `points[]` series the API never returns). */}
+      {hasIncidents ? (
+        <div className="border-t border-border bg-paper/30 px-4 py-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              Downtime windows
+            </span>
+            <div
+              className="ml-auto flex flex-wrap items-center gap-1.5"
+              role="group"
+              aria-label="Filter incident markers by severity"
+            >
+              {INCIDENT_FILTERS.map((f) => {
+                const active = activeFilters.has(f.id);
+                const count = incidentCounts[f.id];
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => toggleFilter(f.id)}
+                    aria-pressed={active}
+                    aria-label={`${f.label} incidents (${count}). Click to ${active ? "hide" : "show"}.`}
+                    className={classNames(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      active
+                        ? "border-border bg-card text-ink-strong"
+                        : "border-border/60 bg-paper/40 text-ink-muted/60 opacity-60",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="inline-block size-1.5 rounded-full"
+                      style={{ background: f.tint }}
+                    />
+                    {f.label}
+                    <span className="tabular-nums text-ink-muted">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {visibleIncidents.map((i, idx) => {
+              const sev = classifyIncident(i);
+              const tint =
+                sev === "down"
+                  ? "var(--health-down)"
+                  : sev === "warn"
+                    ? "var(--health-warn)"
+                    : "var(--ink-muted)";
+              const startLabel = i.started_at ? new Date(i.started_at).toLocaleString() : "—";
+              const endLabel = i.ended_at ? new Date(i.ended_at).toLocaleString() : "ongoing";
+              const dur = durationLabel(i.started_at ?? undefined, i.ended_at ?? undefined);
+              const aria = `${sev} incident, started ${startLabel}, ${i.ended_at ? `ended ${endLabel}` : "ongoing"}, duration ${dur}${i.surface_id ? `, ${i.surface_id}` : ""}`;
+              return (
+                <Tooltip key={`${i.surface_id}-${i.started_at ?? idx}`} delayDuration={150}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={aria}
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[9.5px] text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <span
+                        aria-hidden
+                        className="inline-block size-1.5 rounded-full"
+                        style={{ background: tint }}
+                      />
+                      <span className="tabular-nums">{dur}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-primary-foreground/80">
+                      {sev} · {dur}
+                    </div>
+                    <div className="mt-1 break-all">{i.surface_id}</div>
+                    <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
+                      started {startLabel}
+                      <br />
+                      {i.ended_at ? `ended ${endLabel}` : "still open"}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
-}
-
-function formatTime(ms: number): string {
-  if (!Number.isFinite(ms)) return "—";
-  try {
-    return new Date(ms).toISOString().slice(0, 16).replace("T", " ") + "Z";
-  } catch {
-    return "—";
-  }
 }

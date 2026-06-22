@@ -22,6 +22,7 @@ import type {
   HealthState,
   HealthSummary,
   HealthTrends,
+  HealthTrendWindow,
   LeaderboardBoardKey,
   LeaderboardRow,
   Leaderboards,
@@ -1056,9 +1057,9 @@ export const subnetOverviewQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
-// #1124 port: per-window health trends. NB the live API returns per-window
-// `surfaces[]`, not a `points[]` series — consumers wanting a time-series should use
-// subnetTrajectoryQuery + subnetUptimeQuery instead.
+// #1124 port: per-window health trends. NB the live API returns each window as an
+// aggregate snapshot with a per-surface breakdown (`surfaces[]`), not a `points[]`
+// series — consumers wanting a daily time-series should use subnetUptimeQuery instead.
 export const subnetHealthTrendsQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-health-trends", netuid),
@@ -1072,6 +1073,34 @@ export const subnetHealthTrendsQuery = (netuid: number) =>
     },
     staleTime: STALE_MED,
   });
+
+/**
+ * Extract honest per-surface distribution series from a health-trends window.
+ *
+ * The window has no time dimension — it is an aggregate snapshot with a
+ * per-surface breakdown — so these are distributions ACROSS surfaces (worst
+ * uptime first), not time-series. Use them for spread sparklines, never for a
+ * "trend over time". Returns empty arrays when the window has no surfaces.
+ */
+export function trendSurfaceSeries(window: HealthTrendWindow | undefined): {
+  uptimePct: number[];
+  p50: number[];
+  p95: number[];
+} {
+  const surfaces = Array.isArray(window?.surfaces) ? [...window!.surfaces!] : [];
+  surfaces.sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
+  const finite = (v: number | undefined): v is number =>
+    typeof v === "number" && Number.isFinite(v);
+  return {
+    uptimePct: surfaces
+      .map((s) => (finite(s.uptime_ratio) ? s.uptime_ratio * 100 : null))
+      .filter((v): v is number => v != null),
+    p50: surfaces
+      .map((s) => (finite(s.latency_ms?.p50) ? s.latency_ms!.p50! : (s.avg_latency_ms ?? null)))
+      .filter((v): v is number => v != null && Number.isFinite(v)),
+    p95: surfaces.map((s) => s.latency_ms?.p95).filter((v): v is number => finite(v)),
+  };
+}
 
 // Candidate rows carry `review_notes` (not `notes`) and a nested
 // `verification.verified_at` (no top-level `discovered_at`).

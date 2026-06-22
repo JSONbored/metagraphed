@@ -7,6 +7,7 @@ import {
   subnetHealthPercentilesQuery,
   subnetUptimeQuery,
   subnetProfileQuery,
+  trendSurfaceSeries,
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SurfaceLatencyPercentiles, Uptime } from "@/lib/metagraphed/types";
@@ -57,34 +58,19 @@ export function SubnetKpiStrip({ netuid, className }: { netuid: number; classNam
   const up = uptimeRes?.data;
 
   const trendWin: "7d" | "30d" = range === "30d" ? "30d" : "7d";
-  const points = trends?.windows?.[trendWin]?.points ?? [];
-
-  const uptimeSeries = useMemo(
-    () =>
-      points
-        .map((p) =>
-          typeof p.uptime === "number" ? (p.uptime <= 1 ? p.uptime * 100 : p.uptime) : null,
-        )
-        .filter((v): v is number => v != null),
-    [points],
-  );
-  const p50Series = useMemo(
-    () =>
-      points
-        .map((p) => (typeof p.latency_p50 === "number" ? p.latency_p50 : null))
-        .filter((v): v is number => v != null),
-    [points],
-  );
-  const p95Series = useMemo(
-    () =>
-      points
-        .map((p) => (typeof p.latency_p95 === "number" ? p.latency_p95 : null))
-        .filter((v): v is number => v != null),
-    [points],
-  );
+  // The trend window is an aggregate snapshot with a per-surface breakdown (no
+  // time dimension), so these sparkline series are distributions ACROSS surfaces
+  // (worst-uptime first), not trends over time.
+  const window = trends?.windows?.[trendWin];
+  const { uptimeSeries, p50Series, p95Series } = useMemo(() => {
+    const s = trendSurfaceSeries(window);
+    return { uptimeSeries: s.uptimePct, p50Series: s.p50, p95Series: s.p95 };
+  }, [window]);
 
   const uptimeRangeValue = pickUptimeForRange(range, h?.uptime_24h, up);
-  const uptimeDelta = computeDelta(uptimeSeries);
+  // No time order across the per-surface distribution, so there is no honest
+  // first→last delta to report.
+  const uptimeDelta = null;
 
   const tiles: Array<{
     label: string;
@@ -99,7 +85,7 @@ export function SubnetKpiStrip({ netuid, className }: { netuid: number; classNam
     {
       label: `Uptime · ${RANGE_LABEL[range]}`,
       value: uptimeRangeValue != null ? `${uptimeRangeValue.toFixed(2)}%` : "—",
-      hint: trendWin === "30d" ? "trend 30d" : "trend 7d",
+      hint: uptimeSeries.length ? `${trendWin} · by surface` : trendWin,
       delta: uptimeDelta,
       icon: Activity,
       series: uptimeSeries,
@@ -258,9 +244,4 @@ function pickUptimeForRange(
   if (range === "1h" || range === "24h") return pct(uptime24h);
   if (range === "7d") return pct(uptime24h) ?? longRange;
   return longRange ?? pct(uptime24h);
-}
-
-function computeDelta(series: number[]): number | null {
-  if (series.length < 2) return null;
-  return series[series.length - 1]! - series[0]!;
 }
