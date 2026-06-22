@@ -5,6 +5,7 @@ import { Activity, ArrowRight, Layers, Network, Search, Wifi, Workflow } from "l
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Kbd } from "./kbd";
+import { safeExternalUrl } from "./external-link";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 
 interface Props {
@@ -115,8 +116,9 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       return;
     }
     const href = hrefFor(item.hit);
-    if (/^https?:/i.test(href)) {
-      window.open(href, "_blank", "noopener,noreferrer");
+    const safeHref = safeExternalUrl(href);
+    if (safeHref) {
+      window.open(safeHref, "_blank", "noopener,noreferrer");
       return;
     }
     // Navigate using TanStack Router via concrete `to` + `params`.
