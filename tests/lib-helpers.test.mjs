@@ -865,6 +865,36 @@ describe("buildSubnetLineageLinks", () => {
     );
   });
 
+  test("surfaces conflicting testnet lineage approvals", () => {
+    const mainnet = [
+      sub(34, "BitMind", "https://github.com/BitMind-AI/bitmind-subnet"),
+      sub(68, "NOVA", null),
+    ];
+    const testnet = [sub(379, "NOVA", null)];
+    const broken = [];
+    const links = buildSubnetLineageLinks(
+      mainnet,
+      testnet,
+      [
+        { source_netuid: 68, target_netuid: 379, matched_by: "chain_name" },
+        { source_netuid: 34, target_netuid: 379, matched_by: "github_repo" },
+      ],
+      broken,
+    );
+
+    assert.deepEqual(links, [
+      { source_netuid: 68, target_netuid: 379, matched_by: "chain_name" },
+    ]);
+    assert.deepEqual(broken, [
+      {
+        source_netuid: 34,
+        target_netuid: 379,
+        reason: "target-netuid-conflict",
+        conflicts_with_source_netuid: 68,
+      },
+    ]);
+  });
+
   test("#1012: surfaces broken approvals instead of silently dropping them", () => {
     const mainnet = [
       sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
