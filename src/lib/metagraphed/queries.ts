@@ -1771,11 +1771,20 @@ export const providerEndpointsQuery = (slug: string) =>
 // ({ netuid, name, slug, coverage_level, curation_level, gaps: { missing_kinds,
 // gap_notes, supported_kinds } }), not flat gap records. Reshape each subnet that
 // has missing surface kinds into a single displayable gap card.
+function stringArrayFromUnknown(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string") return item;
+    if (typeof item === "number" || typeof item === "boolean") return String(item);
+    return [];
+  });
+}
+
 function normalizeGap(raw: unknown): Gap {
   const r = (raw ?? {}) as Record<string, unknown>;
   const g = (r.gaps as Record<string, unknown> | undefined) ?? {};
-  const missing = Array.isArray(g.missing_kinds) ? (g.missing_kinds as string[]) : [];
-  const notes = Array.isArray(g.gap_notes) ? (g.gap_notes as string[]) : [];
+  const missing = stringArrayFromUnknown(g.missing_kinds);
+  const notes = stringArrayFromUnknown(g.gap_notes);
   const netuid = r.netuid as number | undefined;
   const name = (r.name as string) ?? (netuid != null ? `SN${netuid}` : "subnet");
   const core = missing.filter((kind) => kind === "openapi" || kind === "subnet-api").length;
