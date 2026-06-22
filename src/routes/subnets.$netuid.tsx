@@ -30,6 +30,7 @@ import {
   subnetProfileQuery,
   subnetSurfacesQuery,
   subnetEndpointsQuery,
+  subnetHealthQuery,
   subnetCandidatesQuery,
   fixturesIndexQuery,
   lineageQuery,
@@ -193,11 +194,11 @@ function ProfileShell({ netuid }: { netuid: number }) {
               <StaleBanner
                 generatedAt={meta?.generated_at}
                 refreshQueryKeys={[
-                  ["metagraphed", "subnet-profile", netuid],
-                  ["metagraphed", "subnet-surfaces", netuid],
-                  ["metagraphed", "subnet-endpoints", netuid],
-                  ["metagraphed", "subnet-health", netuid],
-                  ["metagraphed", "subnet-candidates", netuid],
+                  subnetProfileQuery(netuid).queryKey,
+                  subnetSurfacesQuery(netuid).queryKey,
+                  subnetEndpointsQuery(netuid).queryKey,
+                  subnetHealthQuery(netuid).queryKey,
+                  subnetCandidatesQuery(netuid).queryKey,
                 ]}
                 refreshLabel="Refresh health now"
               />

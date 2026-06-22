@@ -380,9 +380,9 @@ function StatusBoard({ interval }: { interval: number | false }) {
         <StaleBanner
           generatedAt={hRes.meta?.generated_at}
           refreshQueryKeys={[
-            ["metagraphed", "health"],
-            ["metagraphed", "freshness"],
-            ["metagraphed", "source-health"],
+            healthQuery().queryKey,
+            freshnessQuery().queryKey,
+            sourceHealthQuery().queryKey,
           ]}
           refreshLabel="Refresh health now"
         />

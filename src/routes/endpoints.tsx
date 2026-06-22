@@ -35,6 +35,7 @@ import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
+  endpointIncidentsQuery,
   rpcPoolsQuery,
   providersQuery,
   subnetsQuery,
@@ -261,9 +262,9 @@ function PoolsTable() {
         <StaleBanner
           generatedAt={data.meta?.generated_at}
           refreshQueryKeys={[
-            ["metagraphed", "rpc-pools"],
-            ["metagraphed", "endpoints"],
-            ["metagraphed", "endpoint-incidents"],
+            rpcPoolsQuery().queryKey,
+            endpointsQuery().queryKey,
+            endpointIncidentsQuery().queryKey,
           ]}
         />
       ) : null}
