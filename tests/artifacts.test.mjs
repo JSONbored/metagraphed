@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   cpSync,
@@ -443,6 +444,72 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       env: process.env,
       stdio: "pipe",
     });
+    restoreSupportArtifacts(supportArtifacts);
+  }
+}, 30_000);
+
+// #510 refactor invariant: the artifact build is deterministic, so two
+// consecutive builds (epoch timestamp, no METAGRAPH_BUILD_TIMESTAMP) must emit a
+// byte-identical R2 staging tree. This is the regression guard that lets the
+// build-artifacts/lib decomposition stay safe — any future code-motion that
+// silently reorders keys, changes a number, or drops an artifact flips this hash.
+// It deliberately compares the whole staging tree (not a hardcoded golden), so it
+// never needs touching when the committed source data legitimately refreshes.
+function digestArtifactTree(root) {
+  const hash = createHash("sha256");
+  for (const file of walkFilesRecursive(root)
+    .filter((file) => path.basename(file) !== ".DS_Store") // OS noise, not an artifact
+    .sort()) {
+    hash.update(path.relative(root, file));
+    hash.update("\0");
+    hash.update(readFileSync(file));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+test("artifact build is deterministic (byte-identical across rebuilds)", () => {
+  const supportArtifacts = snapshotSupportArtifacts();
+  const buildEnv = { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" };
+  delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
+  const runBuild = () =>
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: buildEnv,
+      stdio: "pipe",
+    });
+  try {
+    runBuild();
+    const firstDigest = digestArtifactTree(r2StagingRoot);
+
+    // The build must actually produce the artifacts whose derivation was
+    // extracted to scripts/lib/ — a broken import would yield empty/missing
+    // output, which this asserts before the cheaper hash comparison.
+    for (const relativePath of [
+      "endpoints.json",
+      "rpc-endpoints.json",
+      "economics.json",
+      "endpoint-pools.json",
+      "endpoint-incidents.json",
+    ]) {
+      const artifact = readArtifact(relativePath);
+      assert.ok(
+        artifact && typeof artifact === "object",
+        `${relativePath} should build to a non-empty object`,
+      );
+    }
+
+    runBuild();
+    const secondDigest = digestArtifactTree(r2StagingRoot);
+
+    assert.equal(
+      secondDigest,
+      firstDigest,
+      "two consecutive builds must emit a byte-identical R2 staging tree",
+    );
+  } finally {
+    runBuild();
     restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
