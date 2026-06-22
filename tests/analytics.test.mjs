@@ -318,6 +318,28 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.date, "2026-06-10");
     assert.equal(db.calls.batched[0].length, 2);
   });
+  test("still writes structural rows when optional economics read throws", async () => {
+    const db = fakeBatchDb();
+    const r = await writeSubnetSnapshot(
+      {},
+      {
+        db,
+        readArtifact: (_env, path) => {
+          if (path === "/metagraph/economics.json") {
+            throw new Error("malformed economics artifact");
+          }
+          return Promise.resolve(profiles);
+        },
+        now: () => Date.UTC(2026, 5, 10),
+      },
+    );
+
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 2);
+    assert.equal(db.calls.batched[0].length, 2);
+    assert.equal(db.calls.batched[0][0].__params[7], null);
+    assert.equal(db.calls.batched[0][0].__params[11], null);
+  });
   test("returns write_failed when the batch throws", async () => {
     const db = {
       prepare: () => ({ bind: () => ({}) }),
@@ -511,6 +533,16 @@ describe("analytics routes (cold local D1)", () => {
       assert.equal(body.meta.parameter, parameter);
     }
   });
+  test("invalid window value names the bad value and valid options in the error", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
+      env,
+    );
+    assert.ok(body.error.message.includes("90d"), body.error.message);
+    assert.ok(body.error.message.includes("7d"), body.error.message);
+    assert.ok(body.error.message.includes("30d"), body.error.message);
+  });
+
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
