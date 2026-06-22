@@ -6,6 +6,8 @@ export interface SparklinePoint {
   v: number;
 }
 
+const MAX_SPARKLINE_POINTS = 500;
+
 interface Props {
   values: number[];
   /** Optional aligned labels for hover tooltip. Must match `values.length`. */
@@ -44,7 +46,9 @@ export function Sparkline({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
 
-  const pts = values.filter((v) => typeof v === "number" && Number.isFinite(v));
+  const pts = values
+    .slice(-MAX_SPARKLINE_POINTS)
+    .filter((v) => typeof v === "number" && Number.isFinite(v));
   if (pts.length === 0) {
     return (
       <svg
@@ -67,8 +71,12 @@ export function Sparkline({
       </svg>
     );
   }
-  const min = Math.min(...pts);
-  const max = Math.max(...pts);
+  let min = pts[0]!;
+  let max = pts[0]!;
+  for (const value of pts) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
   const span = max - min || 1;
   const step = pts.length > 1 ? width / (pts.length - 1) : 0;
   const coords = pts.map((v, i) => {
