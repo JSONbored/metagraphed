@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense, useEffect, useMemo } from "react";
 import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
@@ -9,7 +9,7 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { Skeleton, StaleBanner, ErrorState, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, StaleBanner, EmptyState } from "@/components/metagraphed/states";
 import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { PageSection } from "@/components/metagraphed/page-section";
@@ -19,12 +19,11 @@ import { MethodologyCallout } from "@/components/metagraphed/methodology-callout
 import { SchemaDriftMatrix } from "@/components/metagraphed/analytics/schema-drift-matrix";
 import { DriftActivity } from "@/components/metagraphed/analytics/drift-activity";
 import { SchemaDriftDetail } from "@/components/metagraphed/schema-drift-detail";
+import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
-import { apiFetch } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
-import { lineDiff, diffStats } from "@/lib/metagraphed/diff";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 
 const schemasSearchSchema = z.object({
@@ -426,88 +425,15 @@ function SchemaExplorer() {
 
 /* --------------------------- Schema viewer --------------------------- */
 
-interface SchemaSnapshot {
-  current?: unknown;
-  previous?: unknown;
-  current_at?: string;
-  previous_at?: string;
-  current_version?: string;
-  previous_version?: string;
-}
-
-interface SnapshotMeta {
-  version?: string;
-  id?: string;
-  at?: string;
-}
-
-function snapshotKey(s: SnapshotMeta, idx: number): string {
-  return s.version ?? s.id ?? s.at ?? `snap-${idx}`;
-}
-
 function SchemaViewer({ schema }: { schema: SchemaInfo }) {
   const { copied, copy } = useCopy({ label: "schema url" });
   const navigate = useNavigate({ from: Route.fullPath });
 
-  // Snapshot a/b selectors (KEEP-OURS): choose which previous/current snapshot
-  // to diff. Reset whenever the selected schema changes.
-  const [a, setA] = useState<string>("");
-  const [b, setB] = useState<string>("");
-  useEffect(() => {
-    setA("");
-    setB("");
-  }, [schema.id]);
-
+  // No backend /schemas/{id}/diff or /snapshots endpoint exists — both 404. The
+  // drift/snapshot summary is rendered inline from the record's own fields
+  // (snapshot + hash + previous_hash + drift_status), so the viewer never errors
+  // on a normal row.
   const artifactUrl = sameOriginApiUrl(schema.url);
-
-  // List of available snapshots (best effort — empty if endpoint absent).
-  const snapshots = useQuery({
-    queryKey: metagraphedQueryKey("schema-snapshots", schema.id),
-    queryFn: async ({ signal }) => {
-      try {
-        const res = await apiFetch<SnapshotMeta[]>(
-          `/api/v1/schemas/${encodeURIComponent(schema.id)}/snapshots`,
-          { signal },
-        );
-        return Array.isArray(res.data) ? res.data : [];
-      } catch {
-        return [] as SnapshotMeta[];
-      }
-    },
-    staleTime: 5 * 60_000,
-  });
-
-  const snapList = snapshots.data ?? [];
-
-  const diff = useQuery({
-    queryKey: metagraphedQueryKey("schema-diff", schema.id, a, b),
-    queryFn: async ({ signal }) => {
-      const params: Record<string, string> = {};
-      if (a) params.a = a;
-      if (b) params.b = b;
-      try {
-        const res = await apiFetch<SchemaSnapshot>(
-          `/api/v1/schemas/${encodeURIComponent(schema.id)}/diff`,
-          { signal, params },
-        );
-        return res.data;
-      } catch {
-        if (!artifactUrl) {
-          throw new Error("No diff endpoint and no trusted same-origin schema URL");
-        }
-        const r = await fetch(artifactUrl, { signal });
-        const text = await r.text();
-        let parsed: unknown = text;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          /* keep as text */
-        }
-        return { current: parsed } as SchemaSnapshot;
-      }
-    },
-    staleTime: 5 * 60_000,
-  });
 
   return (
     <div className="flex flex-col h-full">
@@ -572,162 +498,8 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
       </header>
 
       <div className="flex-1 overflow-auto p-5 space-y-3">
-        {/* Snapshot a/b selector (KEEP-OURS): only shown when ≥2 snapshots exist. */}
-        {snapList.length >= 2 ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-paper p-2 text-[11px]">
-            <span className="font-mono uppercase tracking-widest text-ink-muted">previous</span>
-            <select
-              value={a}
-              onChange={(e) => setA(e.target.value)}
-              className="rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none"
-            >
-              <option value="">auto (one before current)</option>
-              {snapList.map((s, i) => (
-                <option key={snapshotKey(s, i)} value={s.version ?? s.id ?? s.at ?? ""}>
-                  {s.version ?? s.id ?? "snap"} · {s.at ?? "—"}
-                </option>
-              ))}
-            </select>
-            <span className="text-ink-muted">→</span>
-            <span className="font-mono uppercase tracking-widest text-ink-muted">current</span>
-            <select
-              value={b}
-              onChange={(e) => setB(e.target.value)}
-              className="rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none"
-            >
-              <option value="">latest</option>
-              {snapList.map((s, i) => (
-                <option key={snapshotKey(s, i)} value={s.version ?? s.id ?? s.at ?? ""}>
-                  {s.version ?? s.id ?? "snap"} · {s.at ?? "—"}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => {
-                setA("");
-                setB("");
-              }}
-              className="ml-auto text-[11px] text-ink-muted hover:text-ink-strong underline underline-offset-2"
-            >
-              reset
-            </button>
-          </div>
-        ) : null}
-
-        {diff.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : diff.error ? (
-          <ErrorState error={diff.error} onRetry={() => diff.refetch()} />
-        ) : !diff.data ? (
-          <EmptyState title="No snapshot" />
-        ) : (
-          <DriftBody data={diff.data} />
-        )}
+        <SchemaSnapshotSummary schema={schema} />
       </div>
     </div>
   );
-}
-
-function DriftBody({ data }: { data: SchemaSnapshot }) {
-  const currentStr = stringify(data.current);
-  const previousStr = data.previous != null ? stringify(data.previous) : "";
-
-  if (!previousStr) {
-    return (
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-ink-muted">
-          <span>current: {data.current_version ?? "—"}</span>
-          <span>·</span>
-          <span>
-            captured <TimeAgo at={data.current_at} />
-          </span>
-        </div>
-        <EmptyState
-          title="No previous version recorded"
-          description="Drift can only be shown once a second snapshot is published."
-        />
-        {currentStr ? (
-          <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-paper p-4 font-mono text-[11px] text-ink-strong whitespace-pre leading-relaxed">
-            {currentStr.slice(0, 5000)}
-            {currentStr.length > 5000 ? "\n…(truncated)" : ""}
-          </pre>
-        ) : null}
-      </div>
-    );
-  }
-
-  const lines = lineDiff(previousStr, currentStr);
-  const stats = diffStats(lines);
-  const total = stats.added + stats.removed + stats.unchanged || 1;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
-        <span className="text-ink-muted">
-          previous: {data.previous_version ?? "—"} · <TimeAgo at={data.previous_at} />
-        </span>
-        <span className="text-ink-muted">→</span>
-        <span className="text-ink-strong">
-          current: {data.current_version ?? "—"} · <TimeAgo at={data.current_at} />
-        </span>
-        <span className="ml-auto inline-flex items-center gap-3">
-          <span className="text-health-ok">+{stats.added}</span>
-          <span className="text-health-down">−{stats.removed}</span>
-          <span className="text-ink-muted">{stats.unchanged} unchanged</span>
-        </span>
-      </div>
-      {/* Diff distribution bar */}
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-        <div style={{ width: `${(stats.added / total) * 100}%` }} className="bg-health-ok" />
-        <div style={{ width: `${(stats.removed / total) * 100}%` }} className="bg-health-down" />
-        <div
-          style={{ width: `${(stats.unchanged / total) * 100}%` }}
-          className="bg-ink-subtle/40"
-        />
-      </div>
-
-      <div className="max-h-[480px] overflow-auto rounded-lg border border-border bg-paper font-mono text-[11px]">
-        <table className="w-full">
-          <tbody>
-            {lines.map((l, idx) => {
-              const bg =
-                l.kind === "add" ? "bg-health-ok/5" : l.kind === "del" ? "bg-health-down/5" : "";
-              const marker = l.kind === "add" ? "+" : l.kind === "del" ? "−" : " ";
-              const color =
-                l.kind === "add"
-                  ? "text-health-ok"
-                  : l.kind === "del"
-                    ? "text-health-down"
-                    : "text-ink";
-              return (
-                <tr key={idx} className={bg}>
-                  <td className="select-none px-2 py-0.5 text-right text-ink-muted w-10 border-r border-border">
-                    {"aLine" in l ? l.aLine : ""}
-                  </td>
-                  <td className="select-none px-2 py-0.5 text-right text-ink-muted w-10 border-r border-border">
-                    {"bLine" in l ? l.bLine : ""}
-                  </td>
-                  <td className={`px-2 py-0.5 ${color}`}>
-                    <span className="select-none mr-2 opacity-50">{marker}</span>
-                    <span className="whitespace-pre-wrap break-all">{l.text || " "}</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function stringify(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  try {
-    return JSON.stringify(v, null, 2);
-  } catch {
-    return String(v);
-  }
 }

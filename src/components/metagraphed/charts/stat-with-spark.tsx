@@ -137,7 +137,7 @@ export function MiniRadial({
   value,
   size = 28,
   stroke = 4,
-  color = "hsl(var(--ink-strong))",
+  color = "var(--ink-strong)",
 }: {
   value: number;
   size?: number;
@@ -154,7 +154,7 @@ export function MiniRadial({
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="hsl(var(--border))"
+        stroke="var(--border)"
         strokeWidth={stroke}
         opacity={0.5}
       />

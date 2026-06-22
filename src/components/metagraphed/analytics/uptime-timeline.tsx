@@ -306,7 +306,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                   role="button"
                   tabIndex={0}
                   aria-label={aria}
-                  className="focus:outline-none [&_circle]:focus-visible:stroke-[hsl(var(--ring))] [&_circle]:focus-visible:stroke-2 cursor-pointer"
+                  className="focus:outline-none [&_circle]:focus-visible:stroke-[var(--ring)] [&_circle]:focus-visible:stroke-2 cursor-pointer"
                 >
                   <line
                     x1={x}

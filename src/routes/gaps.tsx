@@ -247,9 +247,9 @@ function GapsKpiStrip() {
         viz={
           <MiniStack
             segments={[
-              { label: "high", value: high, color: "hsl(var(--health-down))" },
-              { label: "med", value: medium, color: "hsl(var(--health-warn))" },
-              { label: "low", value: low, color: "hsl(var(--ink-subtle))" },
+              { label: "high", value: high, color: "var(--health-down)" },
+              { label: "med", value: medium, color: "var(--health-warn)" },
+              { label: "low", value: low, color: "var(--ink-subtle)" },
             ]}
           />
         }
@@ -318,11 +318,13 @@ function MissingKindsAtAGlance() {
   );
 
   const counts = useMemo(() => {
+    // Bind to the real per-row missing kinds (data.gaps[].gaps.missing_kinds),
+    // preserved by normalizeGap — not the curation_level in g.category.
     const m = new Map<string, number>();
     for (const g of rows) {
-      const cat = (g.category ?? "").toLowerCase();
-      for (const k of MISSING_KINDS) {
-        if (cat.includes(k)) m.set(k, (m.get(k) ?? 0) + 1);
+      for (const k of g.missing_kinds ?? []) {
+        const key = k.toLowerCase();
+        m.set(key, (m.get(key) ?? 0) + 1);
       }
     }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
@@ -466,8 +468,8 @@ function OpenGapsSection() {
       const target = (g as Record<string, unknown>).target_curation as CurationLevel | undefined;
       if (search.target !== "all" && target !== search.target) return false;
       if (missingSet.size > 0) {
-        const cat = (g.category ?? "").toLowerCase();
-        const has = Array.from(missingSet).some((m) => cat.includes(String(m)));
+        const kinds = (g.missing_kinds ?? []).map((k) => k.toLowerCase());
+        const has = Array.from(missingSet).some((m) => kinds.includes(String(m).toLowerCase()));
         if (!has) return false;
       }
       if (!needle) return true;
@@ -668,9 +670,9 @@ function GapRow({
   const sevTint =
     sev === "high" ? "bg-health-down" : sev === "medium" ? "bg-health-warn" : "bg-ink-subtle/60";
 
-  const category = (gap.category ?? "").toLowerCase();
+  const gapKinds = (gap.missing_kinds ?? []).map((k) => k.toLowerCase());
   const matchedKind = highlightKinds
-    ? Array.from(highlightKinds).find((k) => category.includes(k))
+    ? Array.from(highlightKinds).find((k) => gapKinds.includes(k.toLowerCase()))
     : undefined;
 
   // Surface any source/evidence links already on the gap row. Falls back to
@@ -916,17 +918,26 @@ function AdapterCandidates() {
           key={`${r.netuid}-${i}`}
           className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5"
         >
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: r.netuid }}
-            className="font-mono text-[11px] text-ink-muted hover:text-accent w-12"
-          >
-            SN{r.netuid}
-          </Link>
-          <span className="flex-1 text-[13px] text-ink">{r.reason ?? "—"}</span>
+          {r.netuid != null ? (
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: r.netuid }}
+              className="font-mono text-[11px] text-ink-muted hover:text-accent w-12"
+            >
+              SN{r.netuid}
+            </Link>
+          ) : (
+            <span className="font-mono text-[11px] text-ink-muted w-12">—</span>
+          )}
+          <span className="flex-1 text-[13px] text-ink">
+            {r.reason ?? <span className="text-ink-muted">No recommendation recorded</span>}
+          </span>
           {r.score != null ? (
-            <span className="font-mono text-[11px] text-ink-strong tabular-nums">
-              {r.score.toFixed(2)}
+            <span
+              className="font-mono text-[11px] text-ink-strong tabular-nums"
+              title="Priority score"
+            >
+              {Math.round(r.score)}
             </span>
           ) : null}
         </li>

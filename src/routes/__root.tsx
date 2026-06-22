@@ -70,9 +70,7 @@ function NotFoundComponent() {
     <div className="min-h-dvh bg-paper px-4 py-10 text-ink-strong">
       <div className="mx-auto max-w-5xl">
         <main aria-labelledby="nf-title">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Metagraphed / missing route · 404
-          </div>
+          <div className="mg-label">Metagraphed / missing route · 404</div>
           <h1
             id="nf-title"
             className="mt-3 font-display text-4xl font-semibold leading-tight text-ink-strong md:text-5xl"
@@ -86,7 +84,7 @@ function NotFoundComponent() {
 
           {/* Attempted URL + copy */}
           <div className="mt-6 rounded-xl border border-border bg-card p-3">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <div className="flex items-center gap-2 mg-label">
               <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -112,10 +110,7 @@ function NotFoundComponent() {
 
           {/* Search */}
           <form onSubmit={onSubmit} className="mt-4" role="search" aria-label="Find a subnet">
-            <label
-              htmlFor="nf-search"
-              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-            >
+            <label htmlFor="nf-search" className="mg-label">
               Jump to subnet
             </label>
             <div className="mt-1 flex flex-wrap items-stretch gap-2">
@@ -150,10 +145,7 @@ function NotFoundComponent() {
 
           {/* Example deep links */}
           <section aria-labelledby="nf-examples" className="mt-6">
-            <h2
-              id="nf-examples"
-              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-            >
+            <h2 id="nf-examples" className="mg-label">
               Example deep links
             </h2>
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -234,7 +226,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             continue browsing the public registry while the error report is captured.
           </p>
           <div className="mt-4 rounded-md border border-border bg-paper p-3 text-xs text-ink-muted">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <div className="flex items-center gap-2 mg-label">
               <AlertTriangle className="size-3.5 text-health-warn" /> Diagnostic
             </div>
             <code className="mt-2 block break-words font-mono text-[11px]">{error.message}</code>

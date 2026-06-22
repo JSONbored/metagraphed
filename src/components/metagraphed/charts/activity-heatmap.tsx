@@ -165,11 +165,11 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
 }
 
 function tone(score: number, max: number): string {
-  if (score <= 0) return "hsl(var(--surface))";
+  if (score <= 0) return "var(--surface)";
   const t = Math.min(1, score / max);
   // 4 discrete steps for the github-like feel.
-  if (t < 0.25) return "color-mix(in oklab, hsl(var(--accent)) 18%, hsl(var(--surface)))";
-  if (t < 0.5) return "color-mix(in oklab, hsl(var(--accent)) 38%, hsl(var(--surface)))";
-  if (t < 0.75) return "color-mix(in oklab, hsl(var(--accent)) 62%, hsl(var(--surface)))";
-  return "hsl(var(--accent))";
+  if (t < 0.25) return "color-mix(in oklab, var(--accent) 18%, var(--surface))";
+  if (t < 0.5) return "color-mix(in oklab, var(--accent) 38%, var(--surface))";
+  if (t < 0.75) return "color-mix(in oklab, var(--accent) 62%, var(--surface))";
+  return "var(--accent)";
 }

@@ -66,18 +66,18 @@ const KIND_BUCKETS: Array<{
   {
     id: "rpc",
     label: "RPC/WSS",
-    color: "hsl(var(--accent))",
+    color: "var(--accent)",
     match: (k) => k === "rpc" || k === "wss" || k === "archive",
   },
   {
     id: "api",
     label: "API/gRPC",
-    color: "hsl(var(--ink-strong))",
+    color: "var(--ink-strong)",
     match: (k) => k === "api" || k === "grpc",
   },
-  { id: "sse", label: "SSE", color: "hsl(var(--health-ok))", match: (k) => k === "sse" },
-  { id: "data", label: "Data", color: "hsl(var(--health-warn))", match: (k) => k === "data" },
-  { id: "other", label: "Other", color: "hsl(var(--border))", match: () => true },
+  { id: "sse", label: "SSE", color: "var(--health-ok)", match: (k) => k === "sse" },
+  { id: "data", label: "Data", color: "var(--health-warn)", match: (k) => k === "data" },
+  { id: "other", label: "Other", color: "var(--border)", match: () => true },
 ];
 
 function classifyKind(k: unknown): string {
@@ -197,12 +197,12 @@ export function SubnetMasthead({
   const health = profile?.health ?? "unknown";
   const accentColor =
     health === "ok"
-      ? "hsl(var(--health-ok))"
+      ? "var(--health-ok)"
       : health === "warn"
-        ? "hsl(var(--health-warn))"
+        ? "var(--health-warn)"
         : health === "down"
-          ? "hsl(var(--health-down))"
-          : "hsl(var(--accent))";
+          ? "var(--health-down)"
+          : "var(--accent)";
 
   const completenessPct =
     profile?.completeness != null ? Math.round(profile.completeness * 100) : null;
@@ -246,7 +246,7 @@ export function SubnetMasthead({
         aria-hidden
         className="h-[3px] w-full rounded-full opacity-80 mb-3"
         style={{
-          background: `linear-gradient(90deg, ${accentColor} 0%, ${accentColor} 40%, hsl(var(--border)) 100%)`,
+          background: `linear-gradient(90deg, ${accentColor} 0%, ${accentColor} 40%, var(--border) 100%)`,
         }}
       />
 
@@ -366,7 +366,7 @@ export function SubnetMasthead({
               {surfaceCountSeries.length > 1 ? (
                 <Sparkline
                   values={surfaceCountSeries}
-                  color="hsl(var(--ink-muted))"
+                  color="var(--ink-muted)"
                   fill={false}
                   height={18}
                   ariaLabel="Verified surface count trend"
@@ -401,12 +401,12 @@ export function SubnetMasthead({
                 {
                   label: "verified",
                   value: profile?.surface_count ?? 0,
-                  color: "hsl(var(--accent))",
+                  color: "var(--accent)",
                 },
                 {
                   label: "missing",
                   value: profile?.missing_kinds?.length ?? 0,
-                  color: "hsl(var(--health-warn))",
+                  color: "var(--health-warn)",
                 },
               ]}
             />
@@ -428,12 +428,12 @@ export function SubnetMasthead({
                   values={uptimeSeries}
                   color={
                     uptimeTone === "ok"
-                      ? "hsl(var(--health-ok))"
+                      ? "var(--health-ok)"
                       : uptimeTone === "warn"
-                        ? "hsl(var(--health-warn))"
+                        ? "var(--health-warn)"
                         : uptimeTone === "down"
-                          ? "hsl(var(--health-down))"
-                          : "hsl(var(--accent))"
+                          ? "var(--health-down)"
+                          : "var(--accent)"
                   }
                   height={18}
                   ariaLabel="Uptime sparkline"
@@ -460,7 +460,7 @@ export function SubnetMasthead({
               {latencySeries.length > 1 ? (
                 <Sparkline
                   values={latencySeries}
-                  color="hsl(var(--ink-muted))"
+                  color="var(--ink-muted)"
                   height={18}
                   ariaLabel="Latency sparkline"
                   formatValue={(v) => `${Math.round(v)}ms`}

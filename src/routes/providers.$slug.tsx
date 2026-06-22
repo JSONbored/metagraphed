@@ -189,7 +189,7 @@ function OverviewPanel({ slug }: { slug: string }) {
       </SectionAnchor>
 
       <SectionAnchor
-        id="subnets-served"
+        id="subnets-served-preview"
         title="Subnets served"
         subtitle="Active netuids where this provider operates endpoints."
         info="Grouped by netuid — click any to open the subnet profile."

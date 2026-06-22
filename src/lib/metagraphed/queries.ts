@@ -1198,14 +1198,19 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCurso
   infiniteQueryOptions({
     queryKey: k("surfaces-infinite", baseParams, initialCursor),
     initialPageParam: initialCursor,
-    queryFn: ({ pageParam, signal }) =>
-      fetchInfinitePage<Surface>(
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await fetchInfinitePage<unknown>(
         "/api/v1/surfaces",
         "surfaces",
         baseParams,
         pageParam as string,
         signal,
-      ),
+      );
+      // Normalize on the infinite-query path so provider_slug, curation_level
+      // (from authority), provider, last_verified_at, and the provider filter
+      // are populated — same mapping the non-paginated surfacesQuery applies.
+      return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
+    },
     getNextPageParam: (last) => {
       const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
       return nc ?? undefined;
@@ -1799,6 +1804,10 @@ function normalizeGap(raw: unknown): Gap {
     title: `${name} — ${missing.length} missing surface${missing.length === 1 ? "" : "s"}`,
     description: missing.length ? `Missing: ${missing.join(", ")}` : undefined,
     suggested_action: notes[0],
+    // Preserve the raw arrays so consumers (e.g. the missing-kinds glance) can
+    // bind to the real per-row missing kinds instead of parsing the description.
+    missing_kinds: missing,
+    gap_notes: notes,
   } as Gap;
 }
 
@@ -1844,13 +1853,33 @@ export const reviewProfileCompletenessQuery = () =>
 export const reviewAdapterCandidatesQuery = () =>
   queryOptions({
     queryKey: k("review-adapter-candidates"),
-    queryFn: ({ signal }) =>
-      fetchList<{ netuid: number; reason?: string; score?: number }>(
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
         "/api/v1/review/adapter-candidates",
         "candidates",
         undefined,
         signal,
-      ),
+      );
+      // API rows: { netuid, name, slug, suggested_next_action, priority_score,
+      // recommended_adapter_kind, reason_codes, ... }. Map to the fields the UI
+      // reads (reason/score); the historical reason/score keys are not present.
+      const rows = res.data.map((r) => ({
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        slug: r.slug as string | undefined,
+        reason:
+          (r.reason as string) ??
+          (r.suggested_next_action as string) ??
+          (r.recommended_adapter_kind as string),
+        score:
+          typeof r.score === "number"
+            ? (r.score as number)
+            : typeof r.priority_score === "number"
+              ? (r.priority_score as number)
+              : undefined,
+      }));
+      return { ...res, data: rows };
+    },
     staleTime: STALE_LONG,
   });
 

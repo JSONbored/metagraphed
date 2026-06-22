@@ -114,8 +114,8 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
   const inP = num(econ?.alpha_in_pool);
   const outP = num(econ?.alpha_out_pool);
   const poolSegments = [
-    { label: "Alpha in", value: inP, color: "hsl(var(--accent))" },
-    { label: "Alpha out", value: outP, color: "hsl(var(--health-warn))" },
+    { label: "Alpha in", value: inP, color: "var(--accent)" },
+    { label: "Alpha out", value: outP, color: "var(--health-warn)" },
   ];
   const ratio = inP + outP > 0 ? (inP / (inP + outP)) * 100 : null;
 
@@ -177,7 +177,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
 
   return (
     <SectionAnchor
-      id="economics"
+      id="subnet-profile"
       title="Subnet profile"
       subtitle="Chain identity, AMM economics, ownership keys, and registry curation."
       info="Joined from /api/v1/lineage · /api/v1/economics · /api/v1/subnets/{netuid}/profile"
@@ -210,12 +210,10 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
           />
         </div>
 
-        {/* Lineage callout */}
+        {/* Lineage callout — the canonical #lineage anchor lives in the route's
+            SubnetLineageSection; this is an inline summary, so it carries no id. */}
         {lineagePeer ? (
-          <div
-            id="lineage"
-            className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/20"
-          >
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/20">
             <GitMerge className="size-3.5 text-accent" />
             <span className="text-[12px] text-ink">
               Paired with its {lineagePeer.label.toLowerCase()} counterpart
@@ -259,7 +257,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                         <span
                           aria-hidden
                           className="inline-block size-2 rounded-sm"
-                          style={{ background: "hsl(var(--accent))" }}
+                          style={{ background: "var(--accent)" }}
                         />
                         <span className="text-ink">In</span>
                         <span className="ml-auto tabular-nums text-ink-strong">
@@ -270,7 +268,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                         <span
                           aria-hidden
                           className="inline-block size-2 rounded-sm"
-                          style={{ background: "hsl(var(--health-warn))" }}
+                          style={{ background: "var(--health-warn)" }}
                         />
                         <span className="text-ink">Out</span>
                         <span className="ml-auto tabular-nums text-ink-strong">
@@ -479,17 +477,17 @@ const TOPOLOGY_BUCKETS: Array<{
   {
     id: "rpc",
     label: "RPC/WSS",
-    color: "hsl(var(--accent))",
+    color: "var(--accent)",
     match: (k) => k === "rpc" || k === "wss" || k === "archive",
   },
   {
     id: "api",
     label: "API/gRPC",
-    color: "hsl(var(--ink-strong))",
+    color: "var(--ink-strong)",
     match: (k) => k === "api" || k === "grpc",
   },
-  { id: "sse", label: "SSE", color: "hsl(var(--health-ok))", match: (k) => k === "sse" },
-  { id: "data", label: "Data", color: "hsl(var(--health-warn))", match: (k) => k === "data" },
+  { id: "sse", label: "SSE", color: "var(--health-ok)", match: (k) => k === "sse" },
+  { id: "data", label: "Data", color: "var(--health-warn)", match: (k) => k === "data" },
 ];
 
 function topologyOf(endpoints: Endpoint[]): TopologySeg[] {
@@ -507,7 +505,7 @@ function topologyOf(endpoints: Endpoint[]): TopologySeg[] {
     }),
   );
   const other = counts.get("other") ?? 0;
-  if (other > 0) result.push({ label: "Other", value: other, color: "hsl(var(--border))" });
+  if (other > 0) result.push({ label: "Other", value: other, color: "var(--border)" });
   return result;
 }
 

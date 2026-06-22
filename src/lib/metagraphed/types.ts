@@ -152,6 +152,12 @@ export interface Surface {
   schema_url?: string;
   curation_level?: CurationLevel;
   updated_at?: string;
+  // Per-surface payload fields from /surfaces and /subnets/{n}/surfaces.
+  authority?: string; // official | registry-observed | community | native-chain
+  last_verified_at?: string | null;
+  stale?: boolean;
+  subnet_name?: string;
+  subnet_slug?: string;
   [key: string]: unknown;
 }
 
@@ -350,6 +356,9 @@ export interface Gap {
   title?: string;
   description?: string;
   suggested_action?: string;
+  /** Raw per-row missing surface kinds from /api/v1/gaps → data.gaps[].gaps.missing_kinds. */
+  missing_kinds?: string[];
+  gap_notes?: string[];
   [key: string]: unknown;
 }
 

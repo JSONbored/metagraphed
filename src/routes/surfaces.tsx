@@ -347,13 +347,13 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           {renderProviderCell(s)}
         </span>
         <SparkLegend
-          metric="Surface freshness"
+          metric="Surface verification"
           source="/api/v1/surfaces"
           windowLabel={windowLabel}
-          updatedAt={s.updated_at}
-          staleness="Re-verified on every registry build; stale rows fall back to last known status."
+          updatedAt={s.last_verified_at ?? undefined}
+          staleness="Re-verified on every registry build; unverified rows have never been probed."
         >
-          <TimeAgo at={s.updated_at} />
+          <TimeAgo at={s.last_verified_at} fallback="never verified" />
         </SparkLegend>
       </div>
     </div>
@@ -412,9 +412,9 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                 <th className="px-3 py-2">Curation</th>
                 <th className="px-3 py-2 text-right">
                   <SortHeader
-                    label="Updated"
-                    field="updated_at"
-                    active={search.sort === "updated_at"}
+                    label="Last verified"
+                    field="last_verified_at"
+                    active={search.sort === "last_verified_at"}
                     order={search.order}
                     onSort={onSort}
                     align="right"
@@ -451,13 +451,13 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
                     <SparkLegend
-                      metric="Surface freshness"
+                      metric="Surface verification"
                       source="/api/v1/surfaces"
                       windowLabel={windowLabel}
-                      updatedAt={s.updated_at}
-                      staleness="Re-verified on every registry build; stale rows fall back to last known status."
+                      updatedAt={s.last_verified_at ?? undefined}
+                      staleness="Re-verified on every registry build; unverified rows have never been probed."
                     >
-                      <TimeAgo at={s.updated_at} />
+                      <TimeAgo at={s.last_verified_at} fallback="never verified" />
                     </SparkLegend>
                   </td>
                 </tr>

@@ -75,8 +75,8 @@ export function EconomicsMini({ netuid }: Props) {
 
   const ratio = inP + outP > 0 ? (inP / (inP + outP)) * 100 : null;
   const poolSegments = [
-    { label: "Alpha in", value: inP, color: "hsl(var(--accent))" },
-    { label: "Alpha out", value: outP, color: "hsl(var(--health-warn))" },
+    { label: "Alpha in", value: inP, color: "var(--accent)" },
+    { label: "Alpha out", value: outP, color: "var(--health-warn)" },
   ];
 
   return (
@@ -174,8 +174,8 @@ function EconomicsDrilldown({
   ratio: number | null;
 }) {
   const poolSegments = [
-    { label: "Alpha in", value: inP, color: "hsl(var(--accent))" },
-    { label: "Alpha out", value: outP, color: "hsl(var(--health-warn))" },
+    { label: "Alpha in", value: inP, color: "var(--accent)" },
+    { label: "Alpha out", value: outP, color: "var(--health-warn)" },
   ];
   const hasPool = inP > 0 || outP > 0;
   return (
@@ -268,7 +268,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
             <div className="h-[88px] w-full">
               <Sparkline
                 values={uptime}
-                color="hsl(var(--health-ok))"
+                color="var(--health-ok)"
                 height={88}
                 width={520}
                 ariaLabel="Uptime trend"

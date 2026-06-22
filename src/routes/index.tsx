@@ -281,20 +281,13 @@ function HeroKpis() {
   const ages = (freshness?.sources ?? [])
     .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
     .filter((v): v is number => typeof v === "number");
-  const freshSeries = ages.length ? ages.slice(0, 24).reverse() : [70, 60, 65, 55, 60, 50, 55, 48];
+  // Real per-source freshness ages (newest first). No fabricated fallback —
+  // the sparkline simply hides when there's no series.
+  const freshSeries = ages.length ? ages.slice(0, 24).reverse() : undefined;
 
-  const total =
-    (health?.ok ?? 0) + (health?.warn ?? 0) + (health?.down ?? 0) + (health?.unknown ?? 0);
-  const okPct = total > 0 ? (health?.ok ?? 0) / total : null;
-  const uptimeSeries = Array.from({ length: 24 }, (_, i) => {
-    const base = uptime != null ? uptime * 100 : okPct != null ? okPct * 100 : 99;
-    return Math.max(85, base - 4 + Math.sin(i / 1.7) * 2);
-  });
-
-  // Build hour-based timestamp labels aligned to the trailing 24h window so
-  // sparkline tooltips read like "12:00 UTC · 99.4%".
-  const uptimePoints = buildHourlyPoints(uptimeSeries);
-  const freshPoints = buildHourlyPoints(freshSeries);
+  // No per-hour uptime series is exposed by /api/v1/health, so the uptime cell
+  // shows the honest number with no invented trend line.
+  const freshPoints = freshSeries ? buildHourlyPoints(freshSeries) : undefined;
 
   return (
     <div className="w-[min(380px,100%)] rounded-xl border border-border bg-card/80 overflow-hidden">
@@ -328,15 +321,14 @@ function HeroKpis() {
         </div>
       </div>
 
-      {/* Two stat cells with mini sparklines */}
+      {/* Two stat cells. Uptime has no exposed per-hour series, so it shows the
+          number alone; freshness charts the real per-source ages when present. */}
       <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
         <HeroStatCell
-          label="Uptime 24h"
+          label="Healthy now"
           value={uptime != null ? `${(uptime * 100).toFixed(1)}%` : "—"}
-          series={uptimeSeries}
-          points={uptimePoints}
           formatValue={(v) => `${v.toFixed(1)}%`}
-          tooltip="Percent of successful probes against verified endpoints over the last 24 hours. Failures are non-2xx, timeouts, or schema-invalid responses. The sparkline shape is illustrative — no per-hour series is exposed yet. Source: /api/v1/health."
+          tooltip="Share of verified endpoints passing their most recent probe. Failures are non-2xx, timeouts, or schema-invalid responses. Source: /api/v1/health."
           accent
         />
         <HeroStatCell
@@ -403,12 +395,14 @@ function HeroStatCell({
 }: {
   label: string;
   value: string;
-  series: number[];
+  /** Real data series. When absent, no sparkline is rendered (no fabrication). */
+  series?: number[];
   points?: SparklinePoint[];
   formatValue?: (v: number) => string;
   tooltip?: string;
   accent?: boolean;
 }) {
+  const hasSeries = !!series && series.length > 1;
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -422,25 +416,29 @@ function HeroStatCell({
       >
         {value}
       </div>
-      <div className="mt-2">
-        <Sparkline
-          values={series}
-          points={points}
-          formatValue={formatValue}
-          width={150}
-          height={20}
-          color={accent ? "var(--accent)" : "var(--ink-strong)"}
-          ariaLabel={label}
-        />
-      </div>
-      <div className="mt-1.5 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-ink-muted">
-        <span
-          aria-hidden
-          className="inline-block h-px w-3"
-          style={{ background: accent ? "var(--accent)" : "var(--ink-strong)" }}
-        />
-        <span>24h · hourly</span>
-      </div>
+      {hasSeries ? (
+        <>
+          <div className="mt-2">
+            <Sparkline
+              values={series}
+              points={points}
+              formatValue={formatValue}
+              width={150}
+              height={20}
+              color={accent ? "var(--accent)" : "var(--ink-strong)"}
+              ariaLabel={label}
+            />
+          </div>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-ink-muted">
+            <span
+              aria-hidden
+              className="inline-block h-px w-3"
+              style={{ background: accent ? "var(--accent)" : "var(--ink-strong)" }}
+            />
+            <span>24h · hourly</span>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -580,9 +578,6 @@ function LivePerformance() {
   const total =
     (health?.ok ?? 0) + (health?.warn ?? 0) + (health?.down ?? 0) + (health?.unknown ?? 0);
   const okPct = total > 0 ? Math.round(((health?.ok ?? 0) / total) * 100) : 0;
-  const fakeSeries = Array.from({ length: 24 }, (_, i) =>
-    Math.max(0, okPct - 6 + Math.sin(i / 2) * 3 + (i === 23 ? 0 : 0)),
-  );
 
   return (
     <AccentBand className="mt-20">
@@ -610,13 +605,12 @@ function LivePerformance() {
             freshness?.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—"
           }
           hint="avg poll lag"
-          series={ages.length ? ages : [60, 55, 70, 65, 80, 72, 68, 60]}
+          series={ages.length ? ages : undefined}
         />
         <PerfCard
           label="Global health"
           value={`${okPct}%`}
           hint={`${health?.ok ?? 0}/${total} OK`}
-          series={fakeSeries}
           accent
         />
       </div>
@@ -634,9 +628,11 @@ function PerfCard({
   label: string;
   value: string;
   hint: string;
-  series: number[];
+  /** Real data series. When absent, no sparkline is rendered (no fabrication). */
+  series?: number[];
   accent?: boolean;
 }) {
+  const hasSeries = !!series && series.length > 1;
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-baseline justify-between mb-3">
@@ -650,15 +646,17 @@ function PerfCard({
       >
         {value}
       </div>
-      <div className="mt-4">
-        <Sparkline
-          values={series}
-          width={520}
-          height={56}
-          color={accent ? "var(--accent)" : "var(--ink-strong)"}
-          ariaLabel={label}
-        />
-      </div>
+      {hasSeries ? (
+        <div className="mt-4">
+          <Sparkline
+            values={series}
+            width={520}
+            height={56}
+            color={accent ? "var(--accent)" : "var(--ink-strong)"}
+            ariaLabel={label}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

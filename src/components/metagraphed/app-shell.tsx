@@ -204,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <X className="size-4" />
                   </button>
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-1">
+                <div className="mg-label inline-flex items-center gap-1">
                   <Compass className="size-3" /> Unofficial registry
                 </div>
                 <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />

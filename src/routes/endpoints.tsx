@@ -206,8 +206,13 @@ function EndpointsStatStrip() {
   const total = rows.length;
   const archive = rows.filter((e) => e.archive).length;
   const proxy = pools.filter((p) => p.proxy_enabled).length;
-  const ok = rows.filter((e) => e.health === "ok").length;
-  const okPct = total > 0 ? Math.round((ok / total) * 100) : null;
+  // "Healthy %" must divide by the PROBED population, not all ~1173 endpoints —
+  // most rows are unprobed directory links (health "unknown") and dragged the
+  // ratio down to ~5%. A row is probed once it has a real probe-derived health
+  // state (normalizeEndpoint leaves unprobed rows as "unknown").
+  const probed = rows.filter((e) => e.health && e.health !== "unknown");
+  const ok = probed.filter((e) => e.health === "ok").length;
+  const okPct = probed.length > 0 ? Math.round((ok / probed.length) * 100) : null;
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <StatTile icon={Radio} eyebrow="Endpoints" value={total} hint="tracked" />
@@ -223,7 +228,7 @@ function EndpointsStatStrip() {
         icon={Activity}
         eyebrow="Healthy"
         value={okPct != null ? `${okPct}%` : "—"}
-        hint={`${ok}/${total}`}
+        hint={`${ok}/${probed.length} probed`}
         tone={okPct != null && okPct > 90 ? "ok" : okPct != null && okPct < 70 ? "warn" : "default"}
       />
     </div>
@@ -232,7 +237,11 @@ function EndpointsStatStrip() {
 
 function LatencyHeatmapSection() {
   const rows = (useSuspenseQuery(endpointsQuery()).data.data ?? []) as Endpoint[];
-  return <LatencyHeatmap endpoints={rows} />;
+  // The callable-endpoints table below is scoped to callable kinds (rpc/wss/api/
+  // sse/data — i.e. not "other" directory links). Feed the heatmap the same
+  // callable-scoped population so both describe the same set of endpoints.
+  const callable = useMemo(() => rows.filter((e) => endpointCategory(e.kind) !== "other"), [rows]);
+  return <LatencyHeatmap endpoints={callable} />;
 }
 
 function PoolsTable() {

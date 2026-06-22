@@ -390,16 +390,14 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             {recent.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    Recent
-                  </div>
+                  <div className="mg-label">Recent</div>
                   <button
                     type="button"
                     onClick={() => {
                       clearRecent();
                       setRecent([]);
                     }}
-                    className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong transition-colors"
+                    className="mg-label hover:text-ink-strong transition-colors"
                   >
                     Clear
                   </button>
@@ -420,9 +418,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               </div>
             ) : null}
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-                Try
-              </div>
+              <div className="mg-label mb-1.5">Try</div>
               <ul className="flex flex-wrap gap-1">
                 {SUGGESTED_QUERIES.map((s) => (
                   <li key={s}>

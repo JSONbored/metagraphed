@@ -49,6 +49,9 @@ const KIND_META = {
   agent: { icon: Bot, tone: "text-accent" },
   skill: { icon: Sparkles, tone: "text-accent" },
   index: { icon: BookOpen, tone: "text-ink-muted" },
+  // The catalog returns kind:'guide' (e.g. the agent integration guide). Give it
+  // its own icon instead of falling through to the api fallback (Boxes).
+  guide: { icon: BookOpen, tone: "text-ink-muted" },
   contract: { icon: FileCode2, tone: "text-ink-muted" },
   api: { icon: Boxes, tone: "text-ink-muted" },
   data: { icon: Database, tone: "text-ink-muted" },

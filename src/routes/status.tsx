@@ -5,14 +5,14 @@ import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { healthQuery, globalIncidentsQuery } from "@/lib/metagraphed/queries";
-import { classNames, humaniseSeconds } from "@/lib/metagraphed/format";
+import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
 
 const REFRESH_MS = 60_000;
@@ -122,10 +122,22 @@ function Verdict() {
     { label: "Down", value: down, color: "var(--health-down, #ef4444)" },
     { label: "Unknown", value: unknown, color: "var(--ink-muted, #94a3b8)" },
   ].filter((s) => s.value > 0);
-  const uptimePct = h?.uptime_24h != null ? (h.uptime_24h * 100).toFixed(2) + "%" : "—";
+  // /api/v1/health carries no real 24h uptime series — this is the share of
+  // surfaces healthy in the latest snapshot (ok / total), so label it as such.
+  const healthyRatio = total > 0 ? ok / total : null;
+  const healthyPct = healthyRatio != null ? (healthyRatio * 100).toFixed(2) + "%" : "—";
+
+  const stale = isStaleFreshness(hRes.meta?.generated_at);
 
   return (
     <div className="space-y-4">
+      {stale ? (
+        <StaleBanner
+          generatedAt={hRes.meta?.generated_at}
+          refreshQueryKeys={[healthQuery().queryKey, globalIncidentsQuery("7d").queryKey]}
+          refreshLabel="Refresh health now"
+        />
+      ) : null}
       <div
         className={classNames("flex items-center gap-4 rounded-lg border bg-card p-5", toneBorder)}
         role="status"
@@ -147,11 +159,14 @@ function Verdict() {
             segments={segs}
             size={96}
             strokeWidth={12}
-            centerLabel={uptimePct}
-            centerSub="uptime 24h"
+            centerLabel={healthyPct}
+            centerSub="healthy now"
           />
           <div className="min-w-0 flex-1">
             <div className="mg-label mb-1">Status mix</div>
+            <div className="mb-1 font-mono text-[11px] tabular-nums text-ink-muted">
+              {ok} of {total} healthy
+            </div>
             <DonutLegend segments={segs} />
           </div>
         </div>

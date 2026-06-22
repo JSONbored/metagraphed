@@ -11,7 +11,6 @@ import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { SparklineCell } from "@/components/metagraphed/charts/sparkline-cell";
 import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
 import { DensityToggle, type Density } from "@/components/metagraphed/density-toggle";
 import { ViewModeToggle, type ViewMode } from "@/components/metagraphed/view-mode-toggle";
@@ -138,10 +137,22 @@ function SubnetsPage() {
 function SubnetsStatStrip() {
   const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
   const health = useSuspenseQuery(healthQuery()).data.data ?? {};
-  const active = coverage.netuids_active;
-  const total = coverage.netuids_total;
-  const adapter = coverage.adapter_backed;
-  const manifested = coverage.manifested ?? coverage.surfaces_total;
+  // Wired to the live /api/v1/coverage shape (same as CoverageFunnel): the older
+  // netuids_active/adapter_backed/manifested fields are null on the live payload.
+  const active =
+    (coverage.netuids_active as number | undefined) ??
+    (coverage.chain_subnet_count as number | undefined);
+  const total =
+    (coverage.netuids_total as number | undefined) ??
+    (coverage.chain_subnet_count as number | undefined);
+  const adapter =
+    (coverage.curation_level_counts as Record<string, number> | undefined)?.["adapter-backed"] ??
+    (coverage.adapter_backed as number | undefined);
+  const manifested =
+    (coverage.manifested_count as number | undefined) ??
+    (coverage.curated_overlay_count as number | undefined) ??
+    (coverage.manifested as number | undefined) ??
+    (coverage.surfaces_total as number | undefined);
   const ok = health.ok;
   const totalH = health.total;
   const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
@@ -404,7 +415,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         const monoSize = compact ? "text-[11px]" : "text-[12px]";
         return (
           <table className="w-full text-left text-sm">
-            <thead className="sticky top-[6.5rem] z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+            <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
               <tr>
                 <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
                 <th className={cellPad}>
@@ -464,11 +475,6 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   />
                 </th>
                 <th className={cellPad}>Health</th>
-                <th className={classNames(cellPad, "text-right")}>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    Trend 7d
-                  </span>
-                </th>
                 <th className={classNames(cellPad, "text-right")}>
                   <SortHeader
                     label="Updated"
@@ -535,9 +541,6 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   </td>
                   <td className={cellPad}>
                     <HealthPill state={s.health} />
-                  </td>
-                  <td className={classNames(cellPad, "text-right")}>
-                    <TrendCell subnet={s} density={density} />
                   </td>
                   <td
                     className={classNames(
@@ -778,65 +781,6 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         <span className={classNames("flex-1", compact ? "max-w-[64px]" : "max-w-[80px]")}>
           <MiniStack segments={segments} height={compact ? 4 : 6} />
         </span>
-      </span>
-    </SparkLegend>
-  );
-}
-
-function TrendCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
-  // The /api/v1/subnets list payload has NO real per-subnet health series, so we
-  // only render a sparkline when one is genuinely present on the row. We never
-  // fabricate a netuid-seeded illustrative shape — an absent series renders an
-  // honest no-data state (the column + SparkLegend label still stand).
-  const rec = subnet as unknown as Record<string, unknown>;
-  const candidate =
-    rec.health_history ?? rec.uptime_series ?? rec.health_series ?? rec.uptime_history;
-  const series = Array.isArray(candidate)
-    ? (candidate as unknown[])
-        .map((v) =>
-          typeof v === "number"
-            ? v
-            : typeof v === "object" && v && "value" in v
-              ? Number((v as { value: unknown }).value)
-              : Number(v),
-        )
-        .filter((n) => Number.isFinite(n))
-    : [];
-  const hasReal = series.length >= 2;
-  const compact = density === "compact";
-  const width = compact ? 48 : 64;
-  const height = compact ? 14 : 18;
-
-  return (
-    <SparkLegend
-      metric="Health trend"
-      source="Mean probe result per bucket across tracked endpoints, from /api/v1/subnets/{netuid}/health."
-      windowLabel="7d"
-      updatedAt={subnet.updated_at ?? subnet.freshness ?? null}
-      staleness={
-        hasReal
-          ? "Stale snapshots still render with the last known values; the page-level retry refreshes them."
-          : "The subnets list carries no per-subnet trend series — open the subnet to see its probe history."
-      }
-      side="left"
-    >
-      <span className="inline-flex justify-end">
-        {hasReal ? (
-          <SparklineCell
-            values={series}
-            health={subnet.health ?? "unknown"}
-            width={width}
-            height={height}
-          />
-        ) : (
-          <span
-            className="inline-flex items-center justify-center font-mono text-[10px] text-ink-muted"
-            style={{ width, height }}
-            aria-label={`No trend series for SN${subnet.netuid}`}
-          >
-            —
-          </span>
-        )}
       </span>
     </SparkLegend>
   );

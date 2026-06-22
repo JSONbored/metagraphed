@@ -166,15 +166,18 @@ function Term({ name, desc }: { name: string; desc: string }) {
 }
 
 function AtAGlance() {
-  const coverage = (useQuery(coverageQuery()).data?.data ?? {}) as Record<
-    string,
-    number | undefined
-  >;
+  const coverageRaw = (useQuery(coverageQuery()).data?.data ?? {}) as Record<string, unknown>;
+  const coverage = coverageRaw as Record<string, number | undefined>;
   const freshness = (useQuery(freshnessQuery()).data?.data ?? {}) as Record<
     string,
     number | undefined
   >;
   const health = (useQuery(healthQuery()).data?.data ?? {}) as Record<string, number | undefined>;
+  // The accurate adapter-backed count is curation_level_counts['adapter-backed']
+  // (=2). coverage.adapter_backed does not exist; the old fallback path could
+  // surface first_party_subnet_count (73), which is a different metric.
+  const curationCounts = (coverageRaw.curation_level_counts ?? {}) as Record<string, number>;
+  const adapterBacked = curationCounts["adapter-backed"];
   const stats: Array<{ icon: React.ElementType; label: string; value: string; to: string }> = [
     {
       icon: NetworkIcon,
@@ -184,8 +187,8 @@ function AtAGlance() {
     },
     {
       icon: FileCode2,
-      label: "Adapter pilots",
-      value: coverage.adapter_backed != null ? formatNumber(coverage.adapter_backed) : "—",
+      label: "Adapter-backed",
+      value: adapterBacked != null ? formatNumber(adapterBacked) : "—",
       to: "/providers",
     },
     {

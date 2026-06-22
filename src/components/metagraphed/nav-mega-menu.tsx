@@ -422,9 +422,7 @@ function SubnetPreviewCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-2 w-56">
       <div className="flex items-center justify-between">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          netuid {sub.netuid}
-        </div>
+        <div className="mg-label">netuid {sub.netuid}</div>
         <span
           className={classNames(
             "inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest",
@@ -472,9 +470,7 @@ function ProviderPreviewCard({ slug }: { slug: string }) {
   if (!p) return <PreviewMissing to={`/providers/${slug}`} />;
   return (
     <div className="space-y-2 w-56">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-        {p.kind ?? "provider"}
-      </div>
+      <div className="mg-label">{p.kind ?? "provider"}</div>
       <div className="font-display text-sm font-semibold text-ink-strong truncate">
         {p.name ?? p.slug}
       </div>
@@ -672,9 +668,7 @@ function MegaPanelBody({
 
       {/* Browse */}
       <div className="col-span-5">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3">
-          Browse
-        </div>
+        <div className="mg-label mb-3">Browse</div>
         {browseEmpty && !supportsLive ? (
           <div className="text-[11px] text-ink-muted">No matches in this section.</div>
         ) : browseEmpty ? null : (
@@ -707,9 +701,7 @@ function MegaPanelBody({
         {/* Live matches (subnets/providers) */}
         {supportsLive && ql ? (
           <div className="mt-4">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
-              Matches
-            </div>
+            <div className="mg-label mb-2">Matches</div>
             {liveLoading ? (
               <ul className="space-y-1.5" aria-busy="true">
                 {[0, 1, 2].map((i) => (
@@ -778,9 +770,7 @@ function MegaPanelBody({
 
         {recents.length > 0 && !ql ? (
           <div className="mt-5">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
-              Recent
-            </div>
+            <div className="mg-label mb-2">Recent</div>
             <ul className="flex flex-wrap gap-1">
               {recents.map((r) => {
                 const i = nextIdx();
@@ -805,9 +795,7 @@ function MegaPanelBody({
 
       {/* Filters */}
       <div className="col-span-4">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3">
-          Quick filters
-        </div>
+        <div className="mg-label mb-3">Quick filters</div>
         {filtersFiltered.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5">
             {filtersFiltered.map((l) => {
@@ -835,9 +823,7 @@ function MegaPanelBody({
 
       {/* Snapshot */}
       <div className="col-span-3">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3">
-          Live snapshot
-        </div>
+        <div className="mg-label mb-3">Live snapshot</div>
         {snapshot.isPending ? (
           <div className="grid grid-cols-2 gap-2">
             {[0, 1].map((i) => (
@@ -1248,9 +1234,7 @@ export function MobileMegaMenu({ onNavigate }: { onNavigate?: () => void }) {
                   ) : null}
                   {quick.length > 0 ? (
                     <div>
-                      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5">
-                        Quick filters
-                      </div>
+                      <div className="mg-label mb-1.5">Quick filters</div>
                       <ul className="flex flex-wrap gap-1.5">
                         {quick.map((l) => (
                           <li key={l.label}>

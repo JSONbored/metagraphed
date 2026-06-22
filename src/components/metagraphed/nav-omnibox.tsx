@@ -200,9 +200,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         >
           {showSuggestions ? (
             <div className="p-3">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
-                Jump to
-              </div>
+              <div className="mg-label mb-2">Jump to</div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {[
                   { to: "/subnets", label: "Subnets", Icon: Layers },
@@ -223,9 +221,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
               </div>
               {recent.length > 0 ? (
                 <>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mt-3 mb-2">
-                    Recent
-                  </div>
+                  <div className="mg-label mt-3 mb-2">Recent</div>
                   <div className="flex flex-wrap gap-1.5">
                     {recent.slice(0, 6).map((r) => (
                       <button
