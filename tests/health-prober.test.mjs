@@ -1527,4 +1527,38 @@ describe("rollupDailyUptime (durable daily history)", () => {
       "daily rollup must run before the raw prune so history is never lost",
     );
   });
+
+  test("hourly cron skips prune when uptime rollup fails", async () => {
+    const order = [];
+    const orderDb = {
+      prepare(sql) {
+        return {
+          sql,
+          bind: () => ({
+            sql,
+            async run() {
+              order.push(`run:${sql}`);
+              return { meta: { changes: 0 } };
+            },
+          }),
+        };
+      },
+      async batch() {
+        order.push("batch:uptime-rollup");
+        throw new Error("d1 unavailable");
+      },
+    };
+    const result = await handleScheduled(
+      { cron: "0 * * * *" },
+      { METAGRAPH_HEALTH_DB: orderDb },
+      {},
+    );
+    assert.equal(result.rollup_skipped_prune, true);
+    assert.equal(result.uptime_rolled, false);
+    assert.equal(result.pruned, false);
+    assert.ok(
+      !order.some((o) => o.includes("DELETE FROM surface_checks")),
+      "raw surface_checks must not be pruned when rollup fails",
+    );
+  });
 });

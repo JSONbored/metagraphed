@@ -258,6 +258,30 @@ describe("/api/v1/rpc/usage route", () => {
     assert.equal(bucketCall.params[1], 60 * 60 * 1000);
     assert.equal(bucketCall.params[3], 7 * 24);
   });
+
+  test("bucket query keeps the most-recent buckets (current bucket not dropped)", async () => {
+    // Regression: `since` is unaligned to bucket boundaries, so a full window
+    // spans maxBuckets+1 buckets. The LIMIT must keep the NEWEST maxBuckets
+    // (inner ORDER BY ts DESC) and re-order ascending for the chart — a bare
+    // ascending LIMIT would drop the current (leading-edge) bucket.
+    const calls = [];
+    const usageDb = {
+      prepare: (sql) => ({
+        bind: (...params) => ({
+          async all() {
+            calls.push({ sql, params });
+            return { results: [] };
+          },
+        }),
+      }),
+    };
+    const env = { ...createLocalArtifactEnv(), METAGRAPH_HEALTH_DB: usageDb };
+    await getJson("https://api.metagraph.sh/api/v1/rpc/usage", env);
+    const sql = calls.find((call) => call.sql.includes("GROUP BY ts")).sql;
+    // Inner query takes the newest buckets; outer query restores chronological order.
+    assert.match(sql, /ORDER BY ts DESC\s+LIMIT \?/);
+    assert.match(sql, /\)\s*ORDER BY ts ASC\s*$/);
+  });
 });
 
 // --- recordRpcUsage telemetry (via the live proxy) --------------------------

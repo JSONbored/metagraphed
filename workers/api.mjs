@@ -139,6 +139,8 @@ import {
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
+  MAX_STAGED_EVENTS_BYTES,
+  MAX_STAGED_EVENT_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -397,6 +399,17 @@ export async function loadStagedEvents(env) {
   const key = "events/account-events-pending.json";
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
+  // Byte cap: never materialize a pathological body. `size` is object metadata,
+  // available before the body is streamed. Do NOT delete — that would drop rows the
+  // producer staged; leave it (loud) and let the overlapping poller's next window
+  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
+  // producer, not parsed here.
+  if (Number(object.size || 0) > MAX_STAGED_EVENTS_BYTES) {
+    console.warn(
+      `loadStagedEvents: staged file ${object.size} bytes exceeds ${MAX_STAGED_EVENTS_BYTES}; skipping (poller overlap self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
+  }
   let parsed;
   try {
     parsed = await object.json();
@@ -409,13 +422,30 @@ export async function loadStagedEvents(env) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
-  const statements = eventInsertStatements(db, rows);
+  // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
+  // now; if rows remain, rewrite the object with ONLY the remainder so the next tick
+  // continues — never delete while rows are un-persisted. Order matters: write to D1
+  // FIRST, then shrink R2. A crash between them re-reads the full file next tick and
+  // re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so nothing is dropped.
+  const batch =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(0, MAX_STAGED_EVENT_ROWS)
+      : rows;
+  const remainder =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(MAX_STAGED_EVENT_ROWS)
+      : [];
+  const statements = eventInsertStatements(db, batch);
   const STMTS_PER_BATCH = 50;
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
+  if (remainder.length) {
+    await bucket.put(key, JSON.stringify(remainder));
+    return { ok: true, rows: batch.length, remaining: remainder.length };
+  }
   await bucket.delete(key);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: batch.length };
 }
 
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
@@ -519,13 +549,25 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
     // deleted (PR3). Roll the chain events the same way (#1346) before their
-    // 90-day window is pruned. Then prune + snapshot.
-    await rollupDailyUptime(env);
-    await rollupAccountEventsDaily(env).catch(() => {});
+    // 90-day window is pruned. Skip prune when either rollup fails so raw rows
+    // are never deleted without being aggregated first.
+    const uptimeRollup = await rollupDailyUptime(env);
+    const eventsRollup = await rollupAccountEventsDaily(env);
+    const snapshotPromise = writeSubnetSnapshot(env, { readArtifact });
+    if (!uptimeRollup.rolled || !eventsRollup.rolled) {
+      const snapshot = await snapshotPromise;
+      return {
+        pruned: false,
+        rollup_skipped_prune: true,
+        uptime_rolled: uptimeRollup.rolled,
+        events_rolled: eventsRollup.rolled,
+        snapshot,
+      };
+    }
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      writeSubnetSnapshot(env, { readArtifact }),
+      snapshotPromise,
     ]);
     return pruned;
   }
@@ -2302,9 +2344,11 @@ async function handleUptime(request, env, netuid, url) {
      LIMIT ?`,
     [netuid, cutoff, MAX_UPTIME_ROWS],
   );
+  const healthMeta = await readHealthMetaKv(env);
   const data = formatUptime({
     netuid,
     window: windowParam,
+    observedAt: healthMeta?.last_run_at || null,
     rows,
     now: new Date().toISOString(),
   });
@@ -2315,7 +2359,7 @@ async function handleUptime(request, env, netuid, url) {
       meta: await analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/uptime.json`,
-        null,
+        data.observed_at,
       ),
     },
     "short",
@@ -2564,15 +2608,24 @@ async function handleRpcUsage(request, env, url) {
       ),
       d1All(
         env,
-        `SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
-                COUNT(*) AS requests,
-                SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
-                AVG(latency_ms) AS avg_latency_ms
-         FROM rpc_proxy_events
-         WHERE observed_at >= ?
-         GROUP BY ts
-         ORDER BY ts ASC
-         LIMIT ?`,
+        // Buckets are aligned to absolute boundaries but `since` is not, so a
+        // full window spans maxBuckets+1 buckets. Keep the most-recent
+        // maxBuckets (inner ORDER BY ts DESC LIMIT) — dropping the partial
+        // oldest bucket rather than the current one — then re-order ascending
+        // for the chart. A bare `ORDER BY ts ASC LIMIT` would drop the current
+        // bucket, leaving the series permanently missing its leading edge.
+        `SELECT ts, requests, errors, avg_latency_ms FROM (
+           SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
+                  COUNT(*) AS requests,
+                  SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
+                  AVG(latency_ms) AS avg_latency_ms
+           FROM rpc_proxy_events
+           WHERE observed_at >= ?
+           GROUP BY ts
+           ORDER BY ts DESC
+           LIMIT ?
+         )
+         ORDER BY ts ASC`,
         [
           bucketConfig.bucketMs,
           bucketConfig.bucketMs,
@@ -3381,6 +3434,28 @@ async function handleHealthRequest(request, env) {
     ? (Date.now() - opRunAtMs) / 60_000
     : null;
 
+  // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
+  // MAX(observed_at) is the chain timestamp of the latest indexed event; age_seconds
+  // is ~12-30s while the streamer is live, growing toward the ~5-min poller backstop
+  // if it's down. Reported for observability (does NOT gate the HTTP status, like
+  // operational_health); best-effort + null on a cold/unbound store.
+  let chainEvents = null;
+  if (bindings.health_db) {
+    const rows = await d1All(
+      env,
+      "SELECT MAX(block_number) AS block, MAX(observed_at) AS at FROM account_events",
+      [],
+    );
+    const row = rows[0] || {};
+    const atMs = Number(row.at);
+    const fresh = Number.isFinite(atMs);
+    chainEvents = {
+      latest_indexed_block: row.block ?? null,
+      latest_event_at: fresh ? new Date(atMs).toISOString() : null,
+      age_seconds: fresh ? Math.round((Date.now() - atMs) / 1000) : null,
+    };
+  }
+
   const body = JSON.stringify({
     status: stale ? "degraded" : "ok",
     service: "metagraphed",
@@ -3400,6 +3475,7 @@ async function handleHealthRequest(request, env) {
       probed_count: meta?.probed_count ?? null,
       status_counts: meta?.status_counts ?? null,
     },
+    chain_events: chainEvents,
   });
 
   const headers = apiHeaders("short");
