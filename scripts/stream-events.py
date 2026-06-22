@@ -78,7 +78,13 @@ def push(rows):
         INGEST_URL,
         data=body,
         method="POST",
-        headers={"content-type": "application/json", TOKEN_HEADER: SECRET},
+        headers={
+            "content-type": "application/json",
+            # A real User-Agent: the default Python-urllib UA is blocked by the
+            # Cloudflare WAF in front of the Worker (403).
+            "user-agent": "metagraphed-streamer/1.0",
+            TOKEN_HEADER: SECRET,
+        },
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         resp.read()
