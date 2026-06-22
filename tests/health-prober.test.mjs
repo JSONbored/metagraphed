@@ -8,6 +8,8 @@ import {
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
   rollupDailyUptime,
+  runD1StatementBatches,
+  D1_STATEMENTS_PER_BATCH,
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
@@ -1048,9 +1050,50 @@ describe("persistToD1 via runHealthProber", () => {
       },
     );
     assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, false);
     // KV write happened despite the D1 batch throwing.
     assert.ok(kv.json(KV_HEALTH_CURRENT));
   });
+
+  test("chunks large D1 persists into bounded batches", async () => {
+    const db = makeDb();
+    const surfaces = Array.from({ length: 30 }, (_, i) => ({
+      ...SURFACES[0],
+      surface_id: `sn-api-${i}`,
+      surface_key: `srf-key-${String(i).padStart(14, "0")}`,
+    }));
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 1,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => surfaces,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, true);
+    assert.equal(db.calls.batches.length, 2);
+    assert.equal(db.calls.batches[0].length, D1_STATEMENTS_PER_BATCH);
+    assert.equal(db.calls.batches[1].length, 10);
+  });
+});
+
+test("runD1StatementBatches splits statements at the D1 cap", async () => {
+  const batches = [];
+  const db = {
+    batch: async (statements) => {
+      batches.push(statements.length);
+    },
+  };
+  const statements = Array.from({ length: 55 }, (_, i) => i);
+  const result = await runD1StatementBatches(db, statements);
+  assert.equal(result.ok, true);
+  assert.equal(result.batches, 2);
+  assert.deepEqual(batches, [50, 5]);
 });
 
 describe("persistToKv via runHealthProber", () => {
