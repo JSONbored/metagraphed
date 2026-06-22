@@ -346,6 +346,14 @@
       "review_state": "maintainer-approved",
       "reviewed_at": "2026-06-15T00:00:00.000Z",
       "notes": "Investing SN88 ↔ testnet 339 (kana_na). Documented in mobiusfund/investing README.md: '--netuid 88 #339 --subtensor.network test'. Repo-config evidence for maintainer review, not proof."
+    },
+    {
+      "mainnet_netuid": 34,
+      "testnet_netuid": 379,
+      "matched_by": "github_repo",
+      "review_state": "maintainer-approved",
+      "reviewed_at": "2026-06-22T00:00:00.000Z",
+      "notes": "BitMind SN34 ↔ testnet 379 (NOVA). Documented in BitMind-AI/bitmind-subnet gas/config.py: 'TESTNET_UID = 379'. Repo-config evidence for maintainer review, not proof."
     }
   ]
 }
