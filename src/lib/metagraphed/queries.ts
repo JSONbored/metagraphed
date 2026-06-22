@@ -1313,6 +1313,12 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCurso
     staleTime: STALE_MED,
   });
 
+function asString(v: unknown): string | undefined {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
+  return undefined;
+}
+
 function statusToHealth(v: unknown): HealthState | undefined {
   if (typeof v !== "string") return undefined;
   if (v === "ok" || v === "live") return "ok";
@@ -1326,15 +1332,15 @@ function normalizeEndpoint(raw: unknown): Endpoint {
   const e = raw as Record<string, unknown>;
   return {
     ...(e as object),
-    id: e.id as string,
+    id: asString(e.id) ?? "",
     health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
-    provider_slug: (e.provider_slug as string) ?? (e.provider as string) ?? (e.operator as string),
+    provider_slug: asString(e.provider_slug) ?? asString(e.provider) ?? asString(e.operator),
     archive:
       (e.archive as boolean | undefined) ??
       (e.archive_support as boolean | undefined) ??
       (e.archive_capable as boolean | undefined),
     last_probed_at:
-      (e.last_probed_at as string) ?? (e.last_checked as string) ?? (e.observed_at as string),
+      asString(e.last_probed_at) ?? asString(e.last_checked) ?? asString(e.observed_at),
   } as Endpoint;
 }
 
@@ -1372,14 +1378,13 @@ function normalizeIncident(raw: unknown): EndpointIncident {
   const ended = i.state === "resolved" || i.resolved_at;
   return {
     ...(i as object),
-    id: i.id as string,
+    id: asString(i.id) ?? "",
+    endpoint_id: asString(i.endpoint_id),
     state: stateHealth,
-    message: (i.message as string) ?? (i.reason as string),
-    started_at: (i.started_at as string) ?? (i.detected_at as string) ?? (i.observed_at as string),
+    message: asString(i.message) ?? asString(i.reason),
+    started_at: asString(i.started_at) ?? asString(i.detected_at) ?? asString(i.observed_at),
     ended_at:
-      (i.ended_at as string | null | undefined) ??
-      (i.resolved_at as string | null | undefined) ??
-      (ended ? (i.last_checked as string) : null),
+      asString(i.ended_at) ?? asString(i.resolved_at) ?? (ended ? asString(i.last_checked) : null),
   } as EndpointIncident;
 }
 
@@ -1414,8 +1419,8 @@ function normalizePool(raw: unknown): RpcPool {
   const endpoints = Array.isArray(p.endpoints) ? p.endpoints.filter(isPlainRecord) : [];
   return {
     ...(p as object),
-    id: p.id as string,
-    name: (p.name as string) ?? (p.id as string) ?? (p.kind as string),
+    id: asString(p.id) ?? "",
+    name: asString(p.name) ?? asString(p.id) ?? asString(p.kind),
     members_count: (p.members_count as number) ?? (p.endpoint_count as number) ?? endpoints.length,
     proxy_enabled:
       (p.proxy_enabled as boolean) ??

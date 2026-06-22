@@ -52,7 +52,10 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   // Map endpoint_id → endpoint metadata so each incident can deep-link.
   const endpointMap = useMemo(() => {
     const m = new Map<string, Endpoint>();
-    for (const e of endpoints) m.set(e.id, e);
+    for (const e of endpoints) {
+      const id = asString(e.id);
+      if (id) m.set(id, e);
+    }
     return m;
   }, [endpoints]);
 
@@ -89,10 +92,11 @@ export function IncidentsTimeline({ className }: { className?: string }) {
     const out: Row[] = [];
     for (const [host, items] of byHost) {
       const sample = items[0]!;
-      const ep = sample.endpoint_id ? endpointMap.get(sample.endpoint_id) : undefined;
+      const endpointId = asString(sample.endpoint_id);
+      const ep = endpointId ? endpointMap.get(endpointId) : undefined;
       const netuid =
         (sample.netuid as number | undefined) ?? (ep?.netuid as number | undefined) ?? null;
-      const pool = (ep?.pool as string | undefined) ?? null;
+      const pool = asString(ep?.pool) ?? null;
       const worst = items.reduce<HealthState>(
         (acc, cur) =>
           (SEVERITY_RANK[cur.state ?? "unknown"] ?? 0) > (SEVERITY_RANK[acc ?? "unknown"] ?? 0)
@@ -133,7 +137,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   const poolByHost = useMemo(() => {
     const m = new Map<string, RpcPool>();
     for (const p of pools) {
-      const name = (p.name ?? p.id ?? "").toLowerCase();
+      const name = (asString(p.name) ?? asString(p.id) ?? "").toLowerCase();
       if (!name) continue;
       m.set(name, p);
     }
@@ -312,8 +316,17 @@ function TimelineTrack({
   );
 }
 
-function hostKey(id: string | null | undefined): string {
-  if (!id) return "—";
-  const m = id.match(/^endpoint-sn-?\d+-(.+)$/i);
-  return m ? m[1]! : id;
+function asString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+  return undefined;
+}
+
+function hostKey(id: unknown): string {
+  const key = asString(id);
+  if (!key) return "—";
+  const m = key.match(/^endpoint-sn-?\d+-(.+)$/i);
+  return m ? m[1]! : key;
 }
