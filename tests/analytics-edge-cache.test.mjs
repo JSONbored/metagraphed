@@ -70,7 +70,10 @@ function rowsForSql(sql) {
 // Local artifact env + a query-recording D1 + a KV control plane that serves the
 // snapshot stamp. `queries` records every {sql, params} so a test can assert
 // whether D1 was touched at all (the whole point of the cache).
-function analyticsEnv(queries, { lastRunAt = LAST_RUN_AT } = {}) {
+function analyticsEnv(
+  queries,
+  { lastRunAt = LAST_RUN_AT, d1Error = null } = {},
+) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
@@ -79,7 +82,10 @@ function analyticsEnv(queries, { lastRunAt = LAST_RUN_AT } = {}) {
           bind(...params) {
             queries.push({ sql, params });
             return {
-              all: () => Promise.resolve({ results: rowsForSql(sql) }),
+              all: () =>
+                d1Error
+                  ? Promise.reject(d1Error)
+                  : Promise.resolve({ results: rowsForSql(sql) }),
             };
           },
         };
@@ -335,6 +341,30 @@ describe("analytics edge cache", () => {
       0,
       "a cold snapshot skips the cache lookup entirely",
     );
+  });
+
+  test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries, { d1Error: new Error("D1 unavailable") });
+
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "a D1 fallback response must not poison the edge cache",
+    );
+    assert.equal(cache.store.size, 0);
   });
 
   test("transparency: the cached body equals the uncached body for the same handler", async () => {
