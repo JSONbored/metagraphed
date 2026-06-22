@@ -742,7 +742,12 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
-  const economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  let economicsResult;
+  try {
+    economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  } catch {
+    economicsResult = null;
+  }
   const economicsByNetuid = new Map(
     (Array.isArray(economicsResult?.data?.subnets)
       ? economicsResult.data.subnets
