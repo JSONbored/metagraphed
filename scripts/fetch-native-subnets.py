@@ -142,10 +142,69 @@ def classify_name(raw_name, netuid):
     return "chain"
 
 
-def _at(values, uid):
-    if not values or uid < 0 or uid >= len(values):
+MAX_UIDS_PER_SUBNET = 4096
+PER_UID_ARRAY_FIELDS = (
+    "hotkeys",
+    "coldkeys",
+    "active",
+    "validator_permit",
+    "rank",
+    "trust",
+    "consensus",
+    "incentives",
+    "dividends",
+    "emission",
+    "total_stake",
+    "block_at_registration",
+    "axons",
+)
+
+
+def _as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return []
+
+
+def _sanitize_ss58(value):
+    if not isinstance(value, str):
         return None
-    return values[uid]
+    candidate = value.strip()
+    if not candidate.startswith("5") or len(candidate) < 40:
+        return None
+    return candidate
+
+
+def _safe_int(value, default=None):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def validate_info_for_neurons(netuid, info):
+    """Return (ok, reason). Skip subnets with malformed MetagraphInfo arrays."""
+    num_uids = _safe_int(getattr(info, "num_uids", None), -1)
+    if num_uids is None or num_uids < 0:
+        return False, "invalid num_uids"
+    if num_uids > MAX_UIDS_PER_SUBNET:
+        return False, f"num_uids out of range ({num_uids})"
+    if num_uids == 0:
+        return True, None
+    for field in PER_UID_ARRAY_FIELDS:
+        arr = _as_list(getattr(info, field, None))
+        if arr and len(arr) < num_uids:
+            return False, f"{field} shorter than num_uids ({len(arr)} < {num_uids})"
+    return True, None
+
+
+def _at(values, uid):
+    arr = _as_list(values)
+    if uid < 0 or uid >= len(arr):
+        return None
+    return arr[uid]
 
 
 def _bool_int(value):
@@ -163,15 +222,21 @@ def _ratio(value):
 
 
 def format_axon(axon):
-    if not axon:
+    if not axon or isinstance(axon, (str, int, float, bool)):
         return None
     ip = getattr(axon, "ip", None) or ""
+    if not isinstance(ip, str):
+        ip = str(ip)
     if not ip or ip == "0.0.0.0":
         return None
     port = getattr(axon, "port", None)
-    if port:
+    try:
+        port = int(port) if port is not None else None
+    except (TypeError, ValueError):
+        port = None
+    if port and port > 0:
         return f"{ip}:{port}"
-    return str(ip)
+    return ip
 
 
 def normalize_neuron(netuid, uid, info, captured_at_ms):
@@ -182,37 +247,39 @@ def normalize_neuron(netuid, uid, info, captured_at_ms):
       stake_tao / emission_tao = Balance -> TAO float (Σ stake matches economics)
       trust/consensus/incentive/dividends/rank = SDK u16-normalized 0..1 ratios
     """
-    block = int(getattr(info, "block", 0) or 0)
-    immunity_period = int(getattr(info, "immunity_period", 0) or 0)
-    registered_at_block = _at(getattr(info, "block_at_registration", None) or [], uid)
+    block = _safe_int(getattr(info, "block", 0), 0) or 0
+    immunity_period = _safe_int(getattr(info, "immunity_period", 0), 0) or 0
+    registered_at_block = _safe_int(
+        _at(getattr(info, "block_at_registration", None), uid)
+    )
     is_immunity_period = bool(
         registered_at_block is not None
         and immunity_period > 0
         and block - registered_at_block < immunity_period
     )
-    stake = to_tao(_at(getattr(info, "total_stake", None) or [], uid))
+    stake = to_tao(_at(getattr(info, "total_stake", None), uid))
     if stake is not None:
         stake = round(stake, 9)
     return {
         "netuid": int(netuid),
         "uid": int(uid),
-        "hotkey": _at(getattr(info, "hotkeys", None) or [], uid),
-        "coldkey": _at(getattr(info, "coldkeys", None) or [], uid),
-        "active": _bool_int(_at(getattr(info, "active", None) or [], uid)),
+        "hotkey": _sanitize_ss58(_at(getattr(info, "hotkeys", None), uid)),
+        "coldkey": _sanitize_ss58(_at(getattr(info, "coldkeys", None), uid)),
+        "active": _bool_int(_at(getattr(info, "active", None), uid)),
         "validator_permit": _bool_int(
-            _at(getattr(info, "validator_permit", None) or [], uid)
+            _at(getattr(info, "validator_permit", None), uid)
         ),
-        "rank": _ratio(_at(getattr(info, "rank", None) or [], uid)),
-        "trust": _ratio(_at(getattr(info, "trust", None) or [], uid)),
+        "rank": _ratio(_at(getattr(info, "rank", None), uid)),
+        "trust": _ratio(_at(getattr(info, "trust", None), uid)),
         "validator_trust": None,
-        "consensus": _ratio(_at(getattr(info, "consensus", None) or [], uid)),
-        "incentive": _ratio(_at(getattr(info, "incentives", None) or [], uid)),
-        "dividends": _ratio(_at(getattr(info, "dividends", None) or [], uid)),
-        "emission_tao": to_tao(_at(getattr(info, "emission", None) or [], uid)),
+        "consensus": _ratio(_at(getattr(info, "consensus", None), uid)),
+        "incentive": _ratio(_at(getattr(info, "incentives", None), uid)),
+        "dividends": _ratio(_at(getattr(info, "dividends", None), uid)),
+        "emission_tao": to_tao(_at(getattr(info, "emission", None), uid)),
         "stake_tao": stake,
         "registered_at_block": registered_at_block,
         "is_immunity_period": _bool_int(is_immunity_period),
-        "axon": format_axon(_at(getattr(info, "axons", None) or [], uid)),
+        "axon": format_axon(_at(getattr(info, "axons", None), uid)),
         "block_number": block,
         "captured_at": captured_at_ms,
     }
@@ -220,12 +287,21 @@ def normalize_neuron(netuid, uid, info, captured_at_ms):
 
 def emit_neurons(by_netuid, captured_at_ms):
     rows = []
+    skipped = 0
     for netuid in sorted(by_netuid):
         info = by_netuid[netuid]
-        num_uids = int(getattr(info, "num_uids", 0) or 0)
+        ok, reason = validate_info_for_neurons(netuid, info)
+        if not ok:
+            skipped += 1
+            print(
+                f"netuid {netuid}: skip neurons ({reason})",
+                file=sys.stderr,
+            )
+            continue
+        num_uids = _safe_int(getattr(info, "num_uids", 0), 0) or 0
         for uid in range(num_uids):
             rows.append(normalize_neuron(netuid, uid, info, captured_at_ms))
-    return rows
+    return rows, skipped
 
 
 def verify_neuron_economics(by_netuid, rows):
@@ -274,13 +350,40 @@ def write_neurons_json(path, rows):
 def select_primary_infos(infos):
     by_netuid = {}
     mechanisms = {}
-    for info in infos:
-        netuid = int(info.netuid)
-        mechid = int(getattr(info, "mechid", 0) or 0)
+    for info in infos or []:
+        netuid = _safe_int(getattr(info, "netuid", None))
+        if netuid is None:
+            print("skip metagraph info with invalid netuid", file=sys.stderr)
+            continue
+        mechid = _safe_int(getattr(info, "mechid", 0), 0) or 0
         mechanisms.setdefault(netuid, set()).add(mechid)
         if mechid == 0 or netuid not in by_netuid:
             by_netuid[netuid] = info
     return by_netuid, mechanisms
+
+
+def finalize_neuron_fetch(by_netuid, rows, skipped, *, strict=False):
+    if not by_netuid:
+        print("aborting: no subnets returned by SDK", file=sys.stderr)
+        sys.exit(1)
+    if not rows:
+        print("aborting: zero neuron rows emitted", file=sys.stderr)
+        sys.exit(1)
+    subnet_total = len(by_netuid)
+    if skipped > subnet_total / 2:
+        print(
+            f"aborting: {skipped}/{subnet_total} subnets skipped due to malformed arrays",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    warnings = verify_neuron_economics(by_netuid, rows)
+    if strict and warnings:
+        print(
+            f"aborting: {warnings} subnet(s) failed economics cross-check",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return warnings
 
 
 def run_self_test():
@@ -325,9 +428,25 @@ def run_self_test():
     assert row["dividends"] == 0.53974212252994583047
 
     by_netuid = {1: MockInfo()}
-    rows = emit_neurons(by_netuid, 1000)
+    rows, skipped = emit_neurons(by_netuid, 1000)
     assert len(rows) == 253
+    assert skipped == 0
     assert verify_neuron_economics(by_netuid, rows) == 0
+
+    class ShortHotkeysInfo(MockInfo):
+        hotkeys = ["5HbNZ77cXQXbUjXG3YLVBGk6N4WbtKtGQYAWLXd2aWa8fqGe"]
+
+    short_rows, short_skipped = emit_neurons({2: ShortHotkeysInfo()}, 1000)
+    assert short_rows == []
+    assert short_skipped == 1
+
+    bad_row = normalize_neuron(3, 0, MockInfo(), 1000)
+    assert bad_row["hotkey"] is not None
+    bad_info = MockInfo()
+    bad_info.hotkeys = [123, None]
+    assert normalize_neuron(3, 0, bad_info, 1000)["hotkey"] is None
+    assert format_axon("not-an-axon") is None
+
     print("fetch-native-subnets self-test ok", file=sys.stderr)
 
 
@@ -345,22 +464,37 @@ def main():
         action="store_true",
         help="Only fetch neurons (skip subnet stdout + identity RPC)",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero when validation/economics checks fail (CI path)",
+    )
     args = parser.parse_args()
 
     if args.neurons_only and not args.neurons_out:
         parser.error("--neurons-only requires --neurons-out")
 
-    subtensor = bt.SubtensorApi(network=args.network)
-    infos = subtensor.metagraphs.get_all_metagraphs_info(all_mechanisms=True)
+    try:
+        subtensor = bt.SubtensorApi(network=args.network)
+        infos = subtensor.metagraphs.get_all_metagraphs_info(all_mechanisms=True)
+    except Exception as exc:
+        print(f"SDK fetch failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     by_netuid, mechanisms = select_primary_infos(infos)
     captured_at_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 
     if args.neurons_out:
-        rows = emit_neurons(by_netuid, captured_at_ms)
-        warnings = verify_neuron_economics(by_netuid, rows)
+        rows, skipped = emit_neurons(by_netuid, captured_at_ms)
+        warnings = finalize_neuron_fetch(
+            by_netuid,
+            rows,
+            skipped,
+            strict=args.strict,
+        )
         write_neurons_json(args.neurons_out, rows)
         print(
-            f"wrote {len(rows)} neurons across {len(by_netuid)} subnets -> {args.neurons_out}",
+            f"wrote {len(rows)} neurons across {len(by_netuid) - skipped}/{len(by_netuid)} subnets -> {args.neurons_out}",
             file=sys.stderr,
         )
         if warnings:

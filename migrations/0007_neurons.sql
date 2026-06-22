@@ -1,7 +1,7 @@
 -- Per-UID metagraph snapshot (#1303, epic #1302): the chain-level depth
 -- metagraphed previously lacked. One row per (netuid, uid), refreshed daily by
 -- the refresh-metagraph workflow (Bittensor SDK source #1348; Taostats fallback
--- via scripts/fetch-metagraph.mjs) — latest-only, REPLACE-on-conflict, so the
+-- via scripts/fetch-metagraph.mjs) - latest-only, REPLACE-on-conflict, so the
 -- table stays bounded (~33k rows: 129 subnets x <=256 UIDs) and never grows
 -- unbounded. Powers /api/v1/subnets/{netuid}/metagraph + /neurons/{uid}
 -- (#1304) and /validators (#1305).

@@ -1,13 +1,13 @@
 name: Refresh Metagraph (per-UID neurons)
 
 # Chain-direct per-UID metagraph via Bittensor SDK get_all_metagraphs_info (#1348,
-# epic #1345) — FIRST-PARTY, public RPC, no API key. Powers
+# epic #1345) with Taostats fallback when the SDK path fails (#1303). Powers
 # /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, and /validators. Daily +
-# manual. Taostats fallback (scripts/fetch-metagraph.mjs + TAOSTATS_API_KEY) is
-# documented for manual recovery only — not scheduled here.
+# manual. A failed fetch (both sources) aborts before signing/staging so the
+# previous D1 snapshot stays in place.
 #
-# Stage snapshot to R2; the Worker's scheduled handler loads it into D1 through
-# its METAGRAPH_HEALTH_DB binding (loadStagedNeurons) — no API-token D1 permission.
+# Stage signed snapshot to R2; the Worker's scheduled handler authenticates and
+# loads it into D1 through its METAGRAPH_HEALTH_DB binding (loadStagedNeurons).
 on:
   schedule:
     - cron: "23 5 * * *" # daily 05:23 UTC
@@ -23,7 +23,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -43,13 +43,36 @@ jobs:
       - name: Install
         run: npm ci
 
-      # bittensor is PINNED to the same version sync-subnets uses — bump deliberately
-      # after re-verifying neuron row parity against economics ground truth.
-      - name: Fetch per-UID metagraph (Bittensor SDK, first-party)
-        run: uv run --from bittensor==10.4.0 python scripts/fetch-native-subnets.py --neurons-only --neurons-out dist/metagraph-neurons.json --network finney
+      # bittensor==10.4.0 matches sync-subnets.mjs. On SDK failure, fall back to
+      # Taostats when TAOSTATS_API_KEY is configured; otherwise fail closed.
+      - name: Fetch per-UID metagraph (SDK primary, Taostats fallback)
+        id: fetch
+        env:
+          TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
+        run: |
+          set -euo pipefail
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          echo "source=none" >> "$GITHUB_OUTPUT"
+          if uv run --from bittensor==10.4.0 python scripts/fetch-native-subnets.py \
+            --neurons-only \
+            --neurons-out dist/metagraph-neurons.json \
+            --network finney \
+            --strict; then
+            echo "source=sdk" >> "$GITHUB_OUTPUT"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::warning::SDK neuron fetch failed; attempting Taostats fallback"
+          if [ -z "${TAOSTATS_API_KEY:-}" ]; then
+            echo "::error::TAOSTATS_API_KEY not set — cannot fall back; previous D1 snapshot preserved"
+            exit 1
+          fi
+          node scripts/fetch-metagraph.mjs
+          echo "source=taostats" >> "$GITHUB_OUTPUT"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Sign staged neuron snapshot
-        if: steps.gate.outputs.ready == 'true'
+        if: steps.fetch.outputs.ready == 'true'
         run: node scripts/sign-staged-neurons.mjs dist/metagraph-neurons.json
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
@@ -58,6 +81,7 @@ jobs:
       # then the Worker's scheduled handler authenticates and bounds it before
       # loading into D1 through its METAGRAPH_HEALTH_DB binding.
       - name: Stage neurons to R2 for the Worker to load into D1
+        if: steps.fetch.outputs.ready == 'true'
         run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.json --file=dist/metagraph-neurons.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

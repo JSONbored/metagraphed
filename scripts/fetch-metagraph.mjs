@@ -2,8 +2,8 @@
 // Taostats FALLBACK fetch for per-UID metagraph rows (#1303, epic #1302).
 //
 // Primary path is chain-direct via Bittensor SDK get_all_metagraphs_info in
-// scripts/fetch-native-subnets.py (#1348); refresh-metagraph.yml schedules that,
-// not this script. Use this only for manual recovery when the SDK path fails:
+// scripts/fetch-native-subnets.py (#1348); refresh-metagraph.yml tries SDK first
+// and falls back here when TAOSTATS_API_KEY is set. Manual recovery:
 //   set TAOSTATS_API_KEY=... && node scripts/fetch-metagraph.mjs
 //
 // Reads TAOSTATS_API_KEY from the env; the netuid list from the committed native

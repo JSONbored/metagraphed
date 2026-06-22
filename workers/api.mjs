@@ -309,10 +309,9 @@ function validStagedNeuronRow(row) {
 }
 
 // Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
-// refresh-metagraph CI job fetches chain-direct via Bittensor SDK (#1348) and
-// writes neuron rows as JSON to R2 (metagraph/neurons-pending.json) using its
-// existing R2 permission; Taostats (scripts/fetch-metagraph.mjs) is a documented
-// manual fallback only. We load here through the METAGRAPH_HEALTH_DB binding — which needs no API-token D1
+// refresh-metagraph CI job fetches chain-direct via Bittensor SDK (#1348) with
+// Taostats fallback when the SDK path fails; writes signed neuron rows to R2
+// (metagraph/neurons-pending.json). We load here through the METAGRAPH_HEALTH_DB
 // permission — with PARAMETERIZED inserts (values are always bound, never
 // interpolated, so a tampered/garbage staged file can only fail, never inject
 // SQL), then delete the object so it loads exactly once. Batched to stay under
