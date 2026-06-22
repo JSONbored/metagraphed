@@ -1,4 +1,5 @@
 const KEY = "mg.search.recent";
+const STATE_KEY = "mg.search.state.v1";
 const MAX = 5;
 
 export function loadRecent(): string[] {
@@ -36,3 +37,34 @@ export function clearRecent(): void {
 }
 
 export const SUGGESTED_QUERIES = ["bittensor", "taostats", "rpc", "openapi", "sn7"];
+
+// --- Persisted palette state (query + scope) ---
+
+export interface PaletteState {
+  q: string;
+  scope: string;
+}
+
+export function loadPaletteState(): PaletteState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PaletteState>;
+    return {
+      q: typeof parsed.q === "string" ? parsed.q : "",
+      scope: typeof parsed.scope === "string" ? parsed.scope : "all",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function savePaletteState(state: PaletteState): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}

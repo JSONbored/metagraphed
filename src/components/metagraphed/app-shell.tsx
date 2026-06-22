@@ -15,10 +15,13 @@ import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
 import { RegistryTicker } from "./registry-ticker";
 import { ShortcutsPopover } from "./shortcuts-popover";
-import { CommandPalette, NavSearchTrigger } from "./command-palette";
+import { CommandPalette } from "./command-palette";
+import { NavOmnibox } from "./nav-omnibox";
 import { ApiDrawer, ApiDrawerTrigger } from "./api-drawer";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
+import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
+import { BackToTop } from "./back-to-top";
 
 function buildCrumbs(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
@@ -56,13 +59,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
 
   // Close mobile sheet on route change
   useEffect(() => {
     setMobileOpen(false);
     setPaletteOpen(false);
+    // Track visit for the "Continue exploring" rail.
+    const v = visitFromPath(pathname);
+    if (v) pushRecentVisit(v);
   }, [pathname]);
+
+  // Scroll-aware header
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Global ⌘K / Ctrl+K / `/` opens the palette
   useEffect(() => {
@@ -96,7 +113,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             Skip to main content
           </a>
           {/* Top bar */}
-          <header className="sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
+          <header
+            data-scrolled={scrolled ? "true" : "false"}
+            className="mg-header sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
+          >
             <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
                 className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
@@ -109,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
               <div className="flex-1 flex justify-end">
-                <NavSearchTrigger onOpen={() => setPaletteOpen(true)} />
+                <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
               </div>
               <div className="flex items-center gap-1">
                 <ApiDrawerTrigger />
@@ -200,7 +220,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <main
             id="main-content"
-            className="flex-1 px-4 md:px-10 py-10 md:py-14 max-w-[1400px] mx-auto w-full"
+            key={pathname}
+            className="flex-1 px-4 md:px-10 py-10 md:py-14 max-w-[1400px] mx-auto w-full mg-route-enter"
           >
             {children}
           </main>
@@ -208,6 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SiteFooter />
           <ApiDrawer />
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <BackToTop />
         </div>
       </ApiSourceProvider>
     </TooltipProvider>

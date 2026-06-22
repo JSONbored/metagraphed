@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   Activity,
   Bot,
   Compass,
+  Copy,
+  ExternalLink,
   FileJson,
   Gauge,
   Layers,
@@ -32,8 +43,17 @@ import {
   loadRecent,
   pushRecent,
   clearRecent,
+  loadPaletteState,
+  savePaletteState,
   SUGGESTED_QUERIES,
 } from "@/lib/metagraphed/search-history";
+import {
+  trackOpen,
+  trackScope,
+  trackQuery,
+  trackSelection,
+  trackAction,
+} from "@/lib/metagraphed/palette-analytics";
 import { Kbd } from "./kbd";
 import { safeExternalUrl } from "./external-link";
 
@@ -120,6 +140,39 @@ const KIND_META: Record<string, { label: string; icon: typeof Layers; cls: strin
   provider: { label: "Provider", icon: Network, cls: "text-curation-machine" },
 };
 
+type Target = { to: string; params?: Record<string, string> } | { external: string };
+
+function targetToHref(target: Target): string {
+  if ("external" in target) return target.external;
+  let path = target.to;
+  if (target.params) {
+    for (const [k, v] of Object.entries(target.params))
+      path = path.replace(`$${k}`, encodeURIComponent(v));
+  }
+  return path;
+}
+
+function absoluteUrl(href: string): string {
+  if (/^https?:/i.test(href)) return href;
+  if (typeof window === "undefined") return href;
+  return `${window.location.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+}
+
+function scoreHit(hit: SearchHit, q: string, recentSet: Set<string>): number {
+  const t = (hit.title ?? hit.url ?? hit.id ?? "").toLowerCase();
+  const n = q.toLowerCase();
+  let s = 0;
+  if (!n) return 0;
+  if (t === n) s += 100;
+  else if (t.startsWith(n)) s += 60;
+  else if (t.includes(` ${n}`)) s += 30;
+  else if (t.includes(n)) s += 10;
+  if (recentSet.has(n) && t.includes(n)) s += 8;
+  // Prefer concrete entities slightly
+  if (hit.kind === "subnet" || hit.kind === "provider") s += 2;
+  return s;
+}
+
 export function CommandPalette({ open, onOpenChange }: Props) {
   const router = useRouter();
   const navigate = useNavigate();
@@ -127,9 +180,33 @@ export function CommandPalette({ open, onOpenChange }: Props) {
   const [debounced, setDebounced] = useState("");
   const [scope, setScope] = useState<SearchScope>("all");
   const [recent, setRecent] = useState<string[]>([]);
+  const hydrated = useRef(false);
 
+  // Hydrate persisted state once
   useEffect(() => {
-    if (open) setRecent(loadRecent());
+    if (hydrated.current) return;
+    hydrated.current = true;
+    const saved = loadPaletteState();
+    if (saved) {
+      setQ(saved.q ?? "");
+      const validScope = SCOPES.find((s) => s.key === saved.scope)?.key ?? "all";
+      setScope(validScope as SearchScope);
+    }
+    setRecent(loadRecent());
+  }, []);
+
+  // Persist on change
+  useEffect(() => {
+    if (!hydrated.current) return;
+    savePaletteState({ q, scope });
+  }, [q, scope]);
+
+  // Track opens + refresh recent list
+  useEffect(() => {
+    if (open) {
+      trackOpen();
+      setRecent(loadRecent());
+    }
   }, [open]);
 
   useEffect(() => {
@@ -137,24 +214,33 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     return () => window.clearTimeout(t);
   }, [q]);
 
-  // Reset query when palette closes
-  useEffect(() => {
-    if (!open) {
-      const t = window.setTimeout(() => {
-        setQ("");
-        setScope("all");
-      }, 200);
-      return () => window.clearTimeout(t);
-    }
-  }, [open]);
-
   const { data, isFetching } = useQuery({
     ...searchQuery(debounced, 20),
     retry: 0,
   });
   const allHits = (data?.data ?? []) as SearchHit[];
-  const hits =
-    scope === "all" ? allHits : allHits.filter((h) => (h.kind ?? "").toLowerCase() === scope);
+
+  // Track zero-result + top queries (only once per settled query)
+  const lastTracked = useRef<string>("");
+  useEffect(() => {
+    if (!debounced || isFetching) return;
+    if (lastTracked.current === debounced) return;
+    lastTracked.current = debounced;
+    trackQuery(debounced, allHits.length);
+  }, [debounced, isFetching, allHits.length]);
+
+  const recentSet = useMemo(() => new Set(recent.map((r) => r.toLowerCase())), [recent]);
+
+  const hits = useMemo(() => {
+    const filtered =
+      scope === "all" || scope === ("route" as SearchScope)
+        ? allHits
+        : allHits.filter((h) => (h.kind ?? "").toLowerCase() === scope);
+    if (!debounced) return filtered;
+    return [...filtered].sort(
+      (a, b) => scoreHit(b, debounced, recentSet) - scoreHit(a, debounced, recentSet),
+    );
+  }, [allHits, scope, debounced, recentSet]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, SearchHit[]>();
@@ -172,10 +258,15 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     const n = debounced.toLowerCase();
     return ROUTE_INDEX.filter(
       (r) => r.label.toLowerCase().includes(n) || (r.hint ?? "").toLowerCase().includes(n),
-    );
+    ).sort((a, b) => {
+      const an = a.label.toLowerCase();
+      const bn = b.label.toLowerCase();
+      const ax = an === n ? 3 : an.startsWith(n) ? 2 : 1;
+      const bx = bn === n ? 3 : bn.startsWith(n) ? 2 : 1;
+      return bx - ax;
+    });
   }, [debounced, scope]);
 
-  type Target = { to: string; params?: Record<string, string> } | { external: string };
   const resolveHref = useCallback((hit: SearchHit): Target => {
     const kind = (hit.kind ?? "").toLowerCase();
     if (kind === "subnet" && hit.netuid != null)
@@ -191,31 +282,47 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     return { to: "/" };
   }, []);
 
-  const go = useCallback(
-    (target: Target, openNew = false) => {
+  const openTarget = useCallback(
+    (target: Target, kind: string, openNew = false) => {
       if (debounced) pushRecent(debounced);
+      trackSelection(kind);
       if ("external" in target) {
         window.open(target.external, "_blank", "noopener,noreferrer");
         onOpenChange(false);
         return;
       }
       if (openNew) {
-        let path = target.to;
-        if (target.params) {
-          for (const [k, v] of Object.entries(target.params))
-            path = path.replace(`$${k}`, encodeURIComponent(v));
-        }
-        window.open(path, "_blank", "noopener,noreferrer");
+        trackAction("open:new-tab");
+        window.open(targetToHref(target), "_blank", "noopener,noreferrer");
         onOpenChange(false);
         return;
       }
+      trackAction("open:same-tab");
       onOpenChange(false);
       router.navigate({ to: target.to, params: target.params as never });
     },
     [router, onOpenChange, debounced],
   );
 
-  // Detect ⌘+Enter for "open in new tab"
+  const copyLink = useCallback(async (target: Target, label: string) => {
+    try {
+      const url = absoluteUrl(targetToHref(target));
+      await navigator.clipboard.writeText(url);
+      trackAction("copy:link");
+      toast.success("Link copied", { description: label });
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  }, []);
+
+  const openInNewTab = useCallback(
+    (target: Target, kind: string) => {
+      openTarget(target, kind, true);
+    },
+    [openTarget],
+  );
+
+  // Detect ⌘/Ctrl for "open in new tab" hint + ⌘C copy
   const [modifier, setModifier] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -232,6 +339,11 @@ export function CommandPalette({ open, onOpenChange }: Props) {
       window.removeEventListener("keyup", up);
     };
   }, [open]);
+
+  const onScopeChange = (next: SearchScope) => {
+    setScope(next);
+    trackScope(next);
+  };
 
   const showSuggestions = !debounced;
 
@@ -251,7 +363,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             <button
               key={s.key}
               type="button"
-              onClick={() => setScope(s.key)}
+              onClick={() => onScopeChange(s.key)}
               className={classNames(
                 "shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
                 active
@@ -332,12 +444,13 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           <CommandGroup heading="Jump to">
             {filteredRoutes.map((r) => {
               const Icon = r.icon;
+              const target: Target = { to: r.to };
               return (
                 <CommandItem
                   key={r.to}
                   value={`route ${r.label} ${r.hint ?? ""}`}
-                  onSelect={() => go({ to: r.to }, modifier)}
-                  className="flex items-center gap-3"
+                  onSelect={() => openTarget(target, "route", modifier)}
+                  className="group/item flex items-center gap-3"
                 >
                   <Icon className="size-4 text-ink-muted shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -346,6 +459,10 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                       <div className="font-mono text-[10px] text-ink-muted truncate">{r.hint}</div>
                     ) : null}
                   </div>
+                  <ItemActions
+                    onCopy={() => copyLink(target, r.label)}
+                    onNewTab={() => openInNewTab(target, "route")}
+                  />
                   <CommandShortcut className="font-mono text-[10px]">page</CommandShortcut>
                 </CommandItem>
               );
@@ -371,8 +488,8 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                   <CommandItem
                     key={h.id}
                     value={`${kind} ${title} ${subtitle}`}
-                    onSelect={() => go(target, modifier)}
-                    className="flex items-center gap-3"
+                    onSelect={() => openTarget(target, kind, modifier)}
+                    className="group/item flex items-center gap-3"
                   >
                     <Icon className={classNames("size-4 shrink-0", meta.cls)} />
                     <div className="flex-1 min-w-0">
@@ -383,6 +500,10 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                         </div>
                       ) : null}
                     </div>
+                    <ItemActions
+                      onCopy={() => copyLink(target, String(title))}
+                      onNewTab={() => openInNewTab(target, kind)}
+                    />
                     <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest">
                       {meta.label}
                     </CommandShortcut>
@@ -401,6 +522,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                 value={`filter subnets ${debounced}`}
                 onSelect={() => {
                   pushRecent(debounced);
+                  trackAction("filter:subnets");
                   onOpenChange(false);
                   navigate({ to: "/subnets", search: { q: debounced } as never });
                 }}
@@ -413,6 +535,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                 value={`filter endpoints ${debounced}`}
                 onSelect={() => {
                   pushRecent(debounced);
+                  trackAction("filter:endpoints");
                   onOpenChange(false);
                   navigate({ to: "/endpoints", search: { q: debounced } as never });
                 }}
@@ -426,7 +549,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
         ) : null}
       </CommandList>
       <div className="border-t border-border px-3 py-2 flex items-center justify-between text-[10px] font-mono text-ink-muted">
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 flex-wrap">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> move <Kbd>⏎</Kbd> open <Kbd>⌘</Kbd>
           <Kbd>⏎</Kbd> new tab <Kbd>Esc</Kbd> close
@@ -440,25 +563,41 @@ export function CommandPalette({ open, onOpenChange }: Props) {
   );
 }
 
-/**
- * Controlled trigger button used in the navbar. Looks like a search field
- * but opens the real command palette modal on click / focus / ⌘K / `/`.
- */
-export function NavSearchTrigger({ onOpen }: { onOpen: () => void }) {
+function ItemActions({ onCopy, onNewTab }: { onCopy: () => void; onNewTab: () => void }) {
+  const stop = (e: MouseEvent | PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      onFocus={onOpen}
-      aria-label="Open command palette"
-      className="group relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl inline-flex items-center gap-2 rounded-full border border-border bg-card pl-3 pr-2 py-2 text-left text-sm text-ink-muted hover:border-accent/40 hover:text-ink-strong focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all min-h-10"
+    <span
+      className="hidden group-hover/item:inline-flex group-data-[selected=true]/item:inline-flex items-center gap-1 mr-1"
+      onPointerDown={stop}
+      onMouseDown={stop}
     >
-      <Search className="size-3.5 shrink-0" />
-      <span className="flex-1 truncate">Search subnets, surfaces, providers…</span>
-      <span className="hidden sm:inline-flex items-center gap-0.5 shrink-0">
-        <Kbd>⌘</Kbd>
-        <Kbd>K</Kbd>
-      </span>
-    </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          stop(e);
+          onCopy();
+        }}
+        title="Copy link"
+        aria-label="Copy link"
+        className="inline-flex items-center justify-center size-6 rounded border border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
+      >
+        <Copy className="size-3" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          stop(e);
+          onNewTab();
+        }}
+        title="Open in new tab"
+        aria-label="Open in new tab"
+        className="inline-flex items-center justify-center size-6 rounded border border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
+      >
+        <ExternalLink className="size-3" />
+      </button>
+    </span>
   );
 }

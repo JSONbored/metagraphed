@@ -8,7 +8,17 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  Copy,
+  Home,
+  RefreshCw,
+  Search,
+  ServerCrash,
+} from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -18,22 +28,181 @@ import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 
 function NotFoundComponent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState(false);
+  const attempted =
+    typeof window !== "undefined" ? window.location.href : `https://metagraph.sh${pathname}`;
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(attempted);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const raw = query.trim();
+    if (!raw) return;
+    const n = Number(raw.replace(/[^\d]/g, ""));
+    if (Number.isFinite(n) && n >= 0 && n <= 1024) {
+      router.navigate({ to: "/subnets/$netuid", params: { netuid: n } });
+    } else {
+      router.navigate({ to: "/subnets", search: { q: raw } as never });
+    }
+  };
+
+  const examples: Array<{ href: string; label: string; note: string }> = [
+    { href: "/subnets/0", label: "/subnets/0", note: "Root · Subtensor RPC/WSS" },
+    { href: "/subnets/7", label: "/subnets/7", note: "Allways · adapter-backed" },
+    { href: "/subnets/74", label: "/subnets/74", note: "Gittensor · adapter-backed" },
+    { href: "/providers", label: "/providers", note: "Provider directory" },
+    { href: "/endpoints", label: "/endpoints", note: "All public endpoints" },
+    { href: "/schemas", label: "/schemas", note: "OpenAPI & schema drift" },
+  ];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+    <div className="min-h-dvh bg-paper px-4 py-10 text-ink-strong">
+      <div className="mx-auto max-w-5xl">
+        <main aria-labelledby="nf-title">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            Metagraphed / missing route · 404
+          </div>
+          <h1
+            id="nf-title"
+            className="mt-3 font-display text-4xl font-semibold leading-tight text-ink-strong md:text-5xl"
           >
-            Go home
-          </Link>
-        </div>
+            No registry resource at this URL.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+            The path you followed isn&rsquo;t a curated registry view. Search a subnet by netuid,
+            copy the attempted URL for a bug report, or jump into one of the primary indexes below.
+          </p>
+
+          {/* Attempted URL + copy */}
+          <div className="mt-6 rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono text-[12px] text-ink">
+                {attempted}
+              </code>
+              <button
+                type="button"
+                onClick={onCopy}
+                aria-label="Copy attempted URL"
+                aria-live="polite"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-paper px-3 text-xs text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-health-ok" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+                {copied ? "Copied" : "Copy URL"}
+              </button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <form onSubmit={onSubmit} className="mt-4" role="search" aria-label="Find a subnet">
+            <label
+              htmlFor="nf-search"
+              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+            >
+              Jump to subnet
+            </label>
+            <div className="mt-1 flex flex-wrap items-stretch gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
+                />
+                <input
+                  id="nf-search"
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g. 7, 74, or a keyword"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="min-h-10 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-accent/60 bg-primary-soft px-4 text-sm font-medium text-ink-strong hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Go <ArrowRight className="size-4" />
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-ink-muted">
+              Enter a netuid (0–1024) to deep-link to its profile, or any keyword to search the
+              registry.
+            </p>
+          </form>
+
+          {/* Example deep links */}
+          <section aria-labelledby="nf-examples" className="mt-6">
+            <h2
+              id="nf-examples"
+              className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+            >
+              Example deep links
+            </h2>
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {examples.map((ex) => (
+                <li key={ex.href}>
+                  <Link
+                    to={ex.href}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 hover:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-mono text-[12px] text-ink-strong">
+                        {ex.label}
+                      </span>
+                      <span className="block truncate text-[11px] text-ink-muted">{ex.note}</span>
+                    </span>
+                    <ArrowRight aria-hidden className="size-3.5 text-ink-muted" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <nav aria-label="Primary registry indexes" className="mt-6 flex flex-wrap gap-2">
+            <Link
+              to="/"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-strong hover:border-accent/60"
+            >
+              <Home className="size-4" /> Overview
+            </Link>
+            <Link
+              to="/subnets"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+            >
+              Subnets
+            </Link>
+            <Link
+              to="/providers"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+            >
+              Providers
+            </Link>
+            <Link
+              to="/health"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+            >
+              Health
+            </Link>
+          </nav>
+        </main>
       </div>
     </div>
   );
@@ -42,36 +211,58 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
+    <div className="min-h-screen bg-paper px-4 py-8 text-ink-strong">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center">
+        <main className="w-full rounded-xl border border-health-down/30 bg-card p-5 md:p-8">
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-health-down">
+            <ServerCrash className="size-4" /> Route error
+            <span className="rounded border border-border bg-paper px-1.5 py-0.5 text-ink-muted">
+              {pathname}
+            </span>
+          </div>
+          <h1 className="mt-4 font-display text-3xl font-semibold leading-tight text-ink-strong md:text-5xl">
+            This page hit a registry UI error.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+            Retry reloads only the current route data. If it keeps failing, the links below let you
+            continue browsing the public registry while the error report is captured.
+          </p>
+          <div className="mt-4 rounded-md border border-border bg-paper p-3 text-xs text-ink-muted">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <AlertTriangle className="size-3.5 text-health-warn" /> Diagnostic
+            </div>
+            <code className="mt-2 block break-words font-mono text-[11px]">{error.message}</code>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                router.invalidate();
+                reset();
+              }}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-accent/60 bg-primary-soft px-4 text-sm font-medium text-ink-strong transition-colors hover:border-accent"
+            >
+              <RefreshCw className="size-4" /> Retry route
+            </button>
+            <Link
+              to="/subnets"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+            >
+              Browse subnets
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+            >
+              <Home className="size-4" /> Overview
+            </Link>
+          </div>
+        </main>
       </div>
     </div>
   );
