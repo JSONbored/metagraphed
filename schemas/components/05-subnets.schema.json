@@ -1411,7 +1411,10 @@
           "subnet_count": { "type": "integer", "minimum": 0 },
           "first_block": { "type": ["integer", "null"] },
           "last_block": { "type": ["integer", "null"] },
-          "first_seen_at": { "type": ["string", "null"], "format": "date-time" },
+          "first_seen_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
           "last_seen_at": { "type": ["string", "null"], "format": "date-time" },
           "event_kinds": {
             "type": "array",
