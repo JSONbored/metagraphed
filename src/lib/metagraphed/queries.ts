@@ -22,6 +22,7 @@ import type {
   HealthState,
   HealthSummary,
   HealthTrends,
+  HealthTrendSurface,
   HealthTrendWindow,
   LeaderboardBoardKey,
   LeaderboardRow,
@@ -58,6 +59,7 @@ const STALE_LONG = 5 * 60_000;
 const MAX_TRAJECTORY_POINTS = 104;
 const MAX_UPTIME_SURFACES = 500;
 const MAX_UPTIME_DAYS = 366;
+const MAX_HEALTH_TREND_SURFACES = 500;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1064,15 +1066,80 @@ export const subnetHealthTrendsQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-health-trends", netuid),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<{ windows?: HealthTrends["windows"] }>(
+      const res = await apiFetch<{ windows?: unknown }>(
         `/api/v1/subnets/${netuid}/health/trends`,
         { signal },
       );
-      const d = (res.data ?? {}) as { windows?: HealthTrends["windows"] };
-      return { data: { windows: d.windows ?? {} } as HealthTrends, meta: res.meta, url: res.url };
+      return { data: normalizeHealthTrends(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });
+
+function normalizeHealthTrendLatency(raw: unknown): HealthTrendSurface["latency_ms"] {
+  if (!isPlainRecord(raw)) return undefined;
+  return {
+    p50: optionalNumber(raw.p50),
+    p95: optionalNumber(raw.p95),
+    p99: optionalNumber(raw.p99),
+  };
+}
+
+function normalizeHealthTrendSurface(raw: unknown): HealthTrendSurface | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const surfaceId = coerceString(raw.surface_id);
+  if (!surfaceId) return undefined;
+
+  return {
+    ...(raw as object),
+    surface_id: surfaceId,
+    samples: optionalNumber(raw.samples),
+    uptime_ratio: optionalNumber(raw.uptime_ratio),
+    avg_latency_ms: optionalNumber(raw.avg_latency_ms),
+    latency_sample_count: optionalNumber(raw.latency_sample_count),
+    latency_ms: normalizeHealthTrendLatency(raw.latency_ms),
+  };
+}
+
+function normalizeHealthTrendWindow(raw: unknown): HealthTrendWindow | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const surfaces = Array.isArray(raw.surfaces)
+    ? raw.surfaces.slice(0, MAX_HEALTH_TREND_SURFACES).flatMap((surface) => {
+        const normalized = normalizeHealthTrendSurface(surface);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+
+  return {
+    ...(raw as object),
+    samples: optionalNumber(raw.samples),
+    uptime_ratio: optionalNumber(raw.uptime_ratio),
+    latency_sample_count: optionalNumber(raw.latency_sample_count),
+    surfaces,
+  };
+}
+
+function normalizeHealthTrends(raw: unknown): HealthTrends {
+  const d = isPlainRecord(raw) ? raw : {};
+  const windows = isPlainRecord(d.windows)
+    ? Object.fromEntries(
+        Object.entries(d.windows).flatMap(([range, window]) => {
+          const normalized = normalizeHealthTrendWindow(window);
+          return normalized ? [[range, normalized]] : [];
+        }),
+      )
+    : {};
+  return { windows };
+}
+
+export function sortedHealthTrendSurfaces(window: HealthTrendWindow | undefined) {
+  const surfaces = Array.isArray(window?.surfaces)
+    ? window.surfaces.slice(0, MAX_HEALTH_TREND_SURFACES).flatMap((surface) => {
+        const normalized = normalizeHealthTrendSurface(surface);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return surfaces.sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
+}
 
 /**
  * Extract honest per-surface distribution series from a health-trends window.
@@ -1087,8 +1154,7 @@ export function trendSurfaceSeries(window: HealthTrendWindow | undefined): {
   p50: number[];
   p95: number[];
 } {
-  const surfaces = Array.isArray(window?.surfaces) ? [...window!.surfaces!] : [];
-  surfaces.sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
+  const surfaces = sortedHealthTrendSurfaces(window);
   const finite = (v: number | undefined): v is number =>
     typeof v === "number" && Number.isFinite(v);
   return {

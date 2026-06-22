@@ -4,6 +4,7 @@ import {
   subnetHealthTrendsQuery,
   subnetHealthIncidentsQuery,
   flattenSurfaceIncidents,
+  sortedHealthTrendSurfaces,
 } from "@/lib/metagraphed/queries";
 import { classNames, durationLabel } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
@@ -94,8 +95,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   // Surfaces, ordered worst-uptime-first so problem endpoints surface on top.
   const surfaces = useMemo<HealthTrendSurface[]>(() => {
-    const list = Array.isArray(window?.surfaces) ? window!.surfaces! : [];
-    return [...list].sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
+    return sortedHealthTrendSurfaces(window);
   }, [window]);
 
   if (isLoading) {
