@@ -123,6 +123,45 @@ describe("handleGraphQLRequest — validation rules", () => {
     );
   });
 
+  test("complexity counts fields inside named fragments (no spread bypass)", async () => {
+    // Moving the whole selection into a fragment must NOT bypass the limit: the
+    // spread is transparent, so its fields are counted at the operation level.
+    const fields = Array.from(
+      { length: GRAPHQL_MAX_COMPLEXITY + 1 },
+      (_, i) => `t${i}: __typename`,
+    ).join(" ");
+    const q = `query { ...Big } fragment Big on Query { ${fields} }`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected COMPLEXITY_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("depth counts nesting inside named fragments (no spread bypass)", async () => {
+    // Deep nesting hidden inside a fragment must still be counted. Without
+    // following the spread, the operation's selection set is just `...Big` and
+    // counts as depth 0, bypassing the limit.
+    const nested =
+      "subnets { items { ".repeat(GRAPHQL_MAX_DEPTH + 1) +
+      "netuid" +
+      " } }".repeat(GRAPHQL_MAX_DEPTH + 1);
+    const q = `query { ...Big } fragment Big on Query { ${nested} }`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
   test("complexity exceeded returns COMPLEXITY_LIMIT_EXCEEDED extension", async () => {
     // GRAPHQL_MAX_COMPLEXITY is 50. Build a query with many fields by using
     // inline fragments or repeating aliases to exceed the limit.
