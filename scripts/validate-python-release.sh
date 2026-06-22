@@ -31,11 +31,16 @@ if release_tag_commit="$(git rev-parse "$release_tag^{commit}" 2>/dev/null)"; th
     echo "::error::GITHUB_SHA is required for release-please-triggered releases."
     exit 1
   fi
-  if [ "$release_tag_commit" != "$GITHUB_SHA" ]; then
-    echo "::error::Release tag $release_tag points to $release_tag_commit, not the workflow commit $GITHUB_SHA."
+  # The publish dispatches on --ref main, so by the time this runs main may have
+  # advanced past the release-please tag (e.g. other PRs merged in the gap). Strict
+  # SHA-equality would spuriously fail then. Require instead that the tag is an
+  # ANCESTOR of the workflow commit: it must be a real release-please tag on this
+  # branch's history (a forged/divergent tag fails), while tolerating later commits.
+  if ! git merge-base --is-ancestor "$release_tag_commit" "$GITHUB_SHA" 2>/dev/null; then
+    echo "::error::Release tag $release_tag ($release_tag_commit) is not an ancestor of the workflow commit $GITHUB_SHA — refusing a tag that is not on this branch's history."
     exit 1
   fi
-  echo "Tag $release_tag exists and points to the workflow commit; continuing."
+  echo "Tag $release_tag is on the workflow commit's history; continuing."
 elif [ "${RELEASE_PLEASE_TRIGGERED:-}" = "true" ]; then
   echo "::error::Release tag is required for release-please-triggered releases: $release_tag"
   exit 1
