@@ -18,6 +18,12 @@ import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
+import { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
+import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
+import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
+import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
+import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
+import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 
 import {
   coverageQuery,
@@ -63,6 +69,45 @@ function OverviewPage() {
       </section>
 
       <LivePerformance />
+
+      {/* #1124: live registry signal band — curation funnel + network pulse +
+          what-changed feed, scoped to a shared time range. Wired to real coverage/
+          health/changelog/incident data. */}
+      <ScrollReveal>
+        <section className="mt-section-gap">
+          <TimeRangeProvider>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <SectionHeader
+                inline
+                eyebrow="Signal"
+                live
+                title="Live registry signal."
+                description="Curation depth, network pulse, and the latest changes."
+              />
+              <TimeRangeScrub />
+            </div>
+            <QueryErrorBoundary>
+              <div className="grid gap-4 lg:grid-cols-12">
+                <Suspense fallback={<Skeleton className="h-72 lg:col-span-5" />}>
+                  <div className="lg:col-span-5">
+                    <CoverageFunnel />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<Skeleton className="h-72 lg:col-span-7" />}>
+                  <div className="lg:col-span-7">
+                    <NetworkPulseBand />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<Skeleton className="h-64 lg:col-span-12" />}>
+                  <div className="lg:col-span-12">
+                    <WhatChangedFeed />
+                  </div>
+                </Suspense>
+              </div>
+            </QueryErrorBoundary>
+          </TimeRangeProvider>
+        </section>
+      </ScrollReveal>
 
       <LeaderboardsModule />
 
