@@ -2683,7 +2683,7 @@ const RPC_EJECT_COOLDOWN_MS = 30_000;
 export function recordRpcFailure(map, id, now) {
   const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
   entry.fails += 1;
-  if (entry.fails >= RPC_EJECT_THRESHOLD) {
+  if (entry.fails >= RPC_EJECT_THRESHOLD && entry.ejectedUntil <= now) {
     entry.ejectedUntil = now + RPC_EJECT_COOLDOWN_MS;
   }
   map.set(id, entry);
