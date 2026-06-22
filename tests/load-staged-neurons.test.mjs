@@ -170,3 +170,26 @@ test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
   const r2 = await loadStagedNeurons(m2.env);
   assert.equal(r2.reason, "too_many_rows");
 });
+
+test("loadStagedNeurons rejects rows that fail per-field bounding (#1360)", async () => {
+  // Each case is a correctly-signed, in-range (netuid/uid) row that still fails
+  // one of the per-field guards in validStagedNeuronRow — exercising the column
+  // allow-list, string-length cap, finiteness, and type checks that the
+  // netuid/uid-only cases never reach.
+  const cases = {
+    unknown_column: { ...neuronRow(1, 0), evil_extra: 1 },
+    oversized_string: { ...neuronRow(1, 0), hotkey: "x".repeat(513) },
+    non_finite_number: { ...neuronRow(1, 0), rank: Infinity },
+    wrong_typed_value: { ...neuronRow(1, 0), active: true },
+    out_of_range_uid: neuronRow(1, 999_999), // valid netuid, uid past MAX_STAGED_UID
+    non_object_row: null,
+  };
+  for (const [name, row] of Object.entries(cases)) {
+    const m = mockEnv({ rows: signedEnvelope([row]) });
+    const r = await loadStagedNeurons(m.env);
+    assert.equal(r.ok, false, `${name} must be rejected`);
+    assert.equal(r.reason, "invalid", `${name} must be rejected as invalid`);
+    assert.equal(m.batches.length, 0, `${name} must never reach a D1 write`);
+    assert.deepEqual(m.deleted, ["metagraph/neurons-pending.json"]);
+  }
+});
