@@ -6,12 +6,18 @@
 // without cycles.
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
-// trigger prunes the D1 time-series; every other trigger runs the 15-minute probe.
+// trigger prunes the D1 time-series; the fast trigger only drains staged batches
+// into D1; every other trigger runs the 15-minute probe.
 export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Daily embedding-sync trigger (Worker-runtime, since CI has no AI bindings).
 // Distinct minute (odd) so it never collides with the 15-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
+// Fast event-load trigger (#1346 Option A): drains any R2-staged chain-event /
+// neuron batch into D1 within ~3 min — cutting ingestion latency from ~20 min to
+// ~5 min WITHOUT running the (heavier) health probe. Must match a wrangler.jsonc
+// `triggers.crons` entry.
+export const EVENTS_LOAD_CRON = "*/3 * * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =

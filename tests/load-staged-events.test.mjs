@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { loadStagedEvents } from "../workers/api.mjs";
+import { handleScheduled, loadStagedEvents } from "../workers/api.mjs";
+import { EVENTS_LOAD_CRON } from "../workers/config.mjs";
 
 function eventRow(block_number, event_index) {
   return {
@@ -105,4 +106,45 @@ test("loadStagedEvents is a safe no-op without bindings", async () => {
   const r = await loadStagedEvents({});
   assert.equal(r.ok, false);
   assert.equal(r.reason, "unavailable");
+});
+
+test("handleScheduled fast-load cron drains staged batches + skips the probe (#1346 Option A)", async () => {
+  const drained = [];
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        // Only the events batch is staged; the neuron key returns nothing.
+        return key === "events/account-events-pending.json"
+          ? {
+              async json() {
+                return [
+                  {
+                    block_number: 1,
+                    event_index: 0,
+                    event_kind: "StakeAdded",
+                    observed_at: 1,
+                  },
+                ];
+              },
+            }
+          : null;
+      },
+      async delete(key) {
+        drained.push(key);
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {},
+    },
+  };
+  const r = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
+  // Early-returns the fast-load marker (i.e. never falls through to the prober).
+  assert.deepEqual(r, { ok: true, fast_load: true });
+  assert.ok(
+    drained.includes("events/account-events-pending.json"),
+    "the staged event batch was loaded + deleted",
+  );
 });

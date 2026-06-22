@@ -113,7 +113,10 @@
   // far politer to the probed subnets than the old 2-min sweep. Registered
   // automatically on the next Workers Builds deploy.
   "triggers": {
-    "crons": ["*/15 * * * *", "0 * * * *", "37 3 * * *"],
+    // */3 = fast drain of R2-staged chain-event/neuron batches into D1 (#1346
+    // Option A, ~5-min ingestion); */15 = health probe; 0 = hourly prune/rollup;
+    // 37 3 = daily embedding sync.
+    "crons": ["*/3 * * * *", "*/15 * * * *", "0 * * * *", "37 3 * * *"],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
   // for enabling METAGRAPH_ENABLE_RPC_PROXY). 100 requests / 60s per client IP;

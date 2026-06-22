@@ -120,6 +120,7 @@ import {
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
+  EVENTS_LOAD_CRON,
   HEALTH_PRUNE_CRON,
   HEALTH_TREND_WINDOWS,
   INCIDENTS_PATH_PATTERN,
@@ -355,6 +356,12 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   // the first-party poller and load it via the binding. Isolated like the neuron
   // load so a failure never affects the prober/prune below.
   await loadStagedEvents(env).catch(() => {});
+  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
+  // D1 quickly (above) — return without running the heavier probe/prune so we can
+  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  if (cron === EVENTS_LOAD_CRON) {
+    return { ok: true, fast_load: true };
+  }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
