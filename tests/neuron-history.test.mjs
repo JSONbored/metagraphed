@@ -7,6 +7,8 @@ import {
   pruneNeuronDaily,
   coldArchiveKey,
   NEURON_DAILY_RETENTION_DAYS,
+  neuronDailyUpsertStatements,
+  validNeuronDailyRows,
   buildNeuronHistory,
   buildSubnetHistory,
   HISTORY_WINDOWS,
@@ -291,5 +293,68 @@ describe("R2 cold archive + prune (PR-A2)", () => {
       .toISOString()
       .slice(0, 10);
     assert.deepEqual(cap.params, [expectedCutoff]);
+  });
+
+  test("retention window covers a rolling 1-year history (>= 365 days)", () => {
+    assert.ok(
+      NEURON_DAILY_RETENTION_DAYS >= 365,
+      "1y window must stay D1-served",
+    );
+  });
+});
+
+describe("backfill ingest helpers (#1345 Phase 1)", () => {
+  test("validNeuronDailyRows keeps well-formed rows, drops the rest", () => {
+    const good = {
+      netuid: 7,
+      uid: 1,
+      snapshot_date: "2025-12-01",
+      hotkey: "5Hk",
+    };
+    const rows = validNeuronDailyRows([
+      good,
+      { netuid: 7, uid: 2, snapshot_date: "2025-12-01" }, // no hotkey
+      { netuid: 7, uid: 3, snapshot_date: "bad", hotkey: "5Hk" }, // bad date
+      { netuid: 7, uid: "x", snapshot_date: "2025-12-01", hotkey: "5Hk" }, // uid not int
+      { uid: 4, snapshot_date: "2025-12-01", hotkey: "5Hk" }, // no netuid
+      { netuid: 7, uid: 5, snapshot_date: "2025-12-01", hotkey: "" }, // empty hotkey
+    ]);
+    assert.deepEqual(rows, [good]);
+    assert.deepEqual(validNeuronDailyRows("nope"), []);
+  });
+
+  test("neuronDailyUpsertStatements upserts with the rollup column set + ON CONFLICT", () => {
+    const cap = [];
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...v) {
+            cap.push({ sql, v });
+            return { sql, v };
+          },
+        };
+      },
+    };
+    const now = 1700000000000;
+    const stmts = neuronDailyUpsertStatements(
+      db,
+      [{ netuid: 7, uid: 1, snapshot_date: "2025-12-01", hotkey: "5Hk" }],
+      { now },
+    );
+    assert.equal(stmts.length, 1);
+    const { sql, v } = cap[0];
+    assert.match(sql, /INSERT INTO neuron_daily/);
+    assert.match(sql, /snapshot_date/);
+    assert.match(
+      sql,
+      /ON CONFLICT\(netuid, uid, snapshot_date\) DO UPDATE SET/,
+    );
+    assert.doesNotMatch(sql, /netuid = excluded/); // PK columns never in SET
+    assert.doesNotMatch(sql, /uid = excluded/);
+    assert.match(sql, /updated_at = excluded\.updated_at/);
+    // updated_at (now) is the last bound param; missing fields bind as null.
+    assert.equal(v[v.length - 1], now);
+    assert.ok(v.includes("5Hk") && v.includes("2025-12-01"));
+    assert.ok(v.includes(null)); // unspecified columns → null, not undefined
   });
 });

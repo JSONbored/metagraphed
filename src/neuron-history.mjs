@@ -77,9 +77,12 @@ export async function rollupNeuronDaily(env, { now = Date.now() } = {}) {
 }
 
 // D1 keeps a bounded hot window; older days live only in the R2 cold archive
-// (written BEFORE any prune). 90 days serves every 7d/30d/90d query from D1 with
-// zero R2 fallthrough while keeping the table ~0.7GB — far under D1's 10GB cap.
-export const NEURON_DAILY_RETENTION_DAYS = 90;
+// (written BEFORE any prune). 400 days (~13 months) keeps a ROLLING 1-year history
+// permanently D1-served — "1 year ago" is always ≤ 400 days old, so every
+// 7d/30d/90d/1y query is answered from D1 with zero R2 fallthrough. At the measured
+// ~7.8 MB/day this caps the table ~3.1 GB — comfortably under D1's 10 GB limit.
+// Only >13-month deep history ages into the R2 cold tier (served later by PR-A2b).
+export const NEURON_DAILY_RETENTION_DAYS = 400;
 
 // R2 cold-archive key: one immutable gzip-NDJSON object per subnet per UTC day.
 export function coldArchiveKey(netuid, day) {
@@ -166,6 +169,53 @@ export async function pruneNeuronDaily(env, { now = Date.now() } = {}) {
     .bind(cutoff)
     .run();
   return { pruned: true, cutoff, rows: res?.meta?.changes ?? null };
+}
+
+// Backfill ingest (#1345 Phase 1): batched idempotent upsert of HISTORICAL
+// neuron_daily rows produced by scripts/backfill-neuron-history.py. Each row already
+// carries its own snapshot_date (the historical UTC day) + captured_at (that block's
+// ms); updated_at is stamped server-side. Same column set + ON CONFLICT target as the
+// forward rollup, so a backfilled row is byte-identical to a rolled one and any
+// re-POST is a no-op upsert on the (netuid,uid,snapshot_date) PK. Column list + bind
+// order are both driven off `cols`, so they cannot drift apart.
+export function neuronDailyUpsertStatements(
+  db,
+  rows,
+  { now = Date.now() } = {},
+) {
+  const cols = [...ROLLUP_COLUMNS, "snapshot_date"];
+  const setClause = ROLLUP_COLUMNS.filter((c) => c !== "netuid" && c !== "uid")
+    .map((c) => `${c} = excluded.${c}`)
+    .concat("updated_at = excluded.updated_at")
+    .join(", ");
+  const placeholders = cols.map(() => "?").join(", ");
+  const sql =
+    `INSERT INTO neuron_daily (${cols.join(", ")}, updated_at) ` +
+    `VALUES (${placeholders}, ?) ` +
+    `ON CONFLICT(netuid, uid, snapshot_date) DO UPDATE SET ${setClause}`;
+  return rows.map((row) =>
+    db.prepare(sql).bind(...cols.map((c) => row[c] ?? null), now),
+  );
+}
+
+const SNAPSHOT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Keep only well-formed backfill rows: integer netuid+uid, a YYYY-MM-DD
+// snapshot_date, and a non-empty hotkey (mirrors the forward path, which drops
+// null-hotkey UIDs). Anything else is silently dropped so a partial/garbage batch
+// can never poison the table.
+export function validNeuronDailyRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(
+    (row) =>
+      row &&
+      Number.isInteger(row.netuid) &&
+      Number.isInteger(row.uid) &&
+      typeof row.snapshot_date === "string" &&
+      SNAPSHOT_DATE_RE.test(row.snapshot_date) &&
+      typeof row.hotkey === "string" &&
+      row.hotkey.length > 0,
+  );
 }
 
 // SELECT list for reading a neuron_daily row back as a live-shaped neuron

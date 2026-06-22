@@ -1,0 +1,73 @@
+name: Backfill Neuron History (one-time, #1345)
+
+# One-time chain-direct backfill of historical per-UID metagraph snapshots into the
+# `neuron_daily` tier, so the history endpoints serve a real time-series immediately
+# instead of accruing forward over months. Reads the public ARCHIVE node (full
+# historical state, no API key) via scripts/backfill-neuron-history.py and POSTs each
+# day's rows to the Worker's secret-gated /api/v1/internal/backfill-neurons ingest
+# (idempotent upsert → safe to re-run). Manual only.
+#
+# Sharded into 4 quarters because a full year (~365 days x ~100 subnets) exceeds the
+# 6h job limit; each shard runs ~a quarter in parallel. days_per_shard*4 days total.
+on:
+  workflow_dispatch:
+    inputs:
+      days_per_shard:
+        description: "Days each of the 4 shards backfills (4 x this = total)"
+        required: false
+        default: "92"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-neuron-history
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # ~a quarter of subnet-days at ~0.7s/subnet
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      # Chain-direct off the public archive node (pinned bittensor, matching
+      # refresh-metagraph). Each shard covers a contiguous, non-overlapping day range;
+      # the ingest upsert is idempotent so a rerun or overlap is harmless.
+      - name: Backfill shard ${{ matrix.shard }}
+        run: |
+          DAYS="${{ github.event.inputs.days_per_shard }}"
+          END_OFFSET=$(( ${{ matrix.shard }} * DAYS + 1 ))
+          echo "shard ${{ matrix.shard }}: --days $DAYS --end-offset $END_OFFSET"
+          uvx --from bittensor==10.4.0 python scripts/backfill-neuron-history.py \
+            --days "$DAYS" --end-offset "$END_OFFSET"
+        env:
+          METAGRAPH_EVENTS_INGEST_SECRET: ${{ secrets.METAGRAPH_EVENTS_INGEST_SECRET }}
+          METAGRAPH_API_BASE: https://api.metagraph.sh
+
+  notify-on-failure:
+    needs: [backfill]
+    if: ${{ always() && needs.backfill.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Notify on failure
+        env:
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "$METAGRAPH_ALERT_WEBHOOK_URL" ]; then
+            exit 0
+          fi
+          curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d '{"content":"🔴 metagraphed backfill-neuron-history FAILED — historical metagraph backfill incomplete."}'

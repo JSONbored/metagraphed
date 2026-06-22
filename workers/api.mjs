@@ -102,6 +102,8 @@ import {
   rollupNeuronDaily,
   archiveNeuronDaily,
   pruneNeuronDaily,
+  neuronDailyUpsertStatements,
+  validNeuronDailyRows,
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
@@ -147,6 +149,8 @@ import {
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
+  MAX_BACKFILL_INGEST_BODY_BYTES,
+  MAX_BACKFILL_INGEST_ROWS,
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
@@ -645,6 +649,89 @@ export async function handleEventIngest(request, env) {
   });
 }
 
+// POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
+// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until
+// METAGRAPH_EVENTS_INGEST_SECRET is configured (reuses the internal-ingest secret +
+// header — same trust boundary); then a constant-time token compare. The body is an
+// array of neuron_daily rows (or {rows:[...]}), each carrying its own snapshot_date,
+// upserted with the SAME column set + ON CONFLICT target as the forward rollup, so a
+// backfilled row is byte-identical to a rolled one and any re-POST is idempotent on
+// (netuid,uid,snapshot_date). NOT in the public contract.
+export async function handleNeuronBackfill(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "backfill_disabled",
+      "Historical backfill requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "History store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_BACKFILL_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
+      413,
+    );
+  }
+  const rows = validNeuronDailyRows(incoming);
+  if (rows.length) {
+    await db.batch(neuronDailyUpsertStatements(db, rows));
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      received: incoming.length,
+      inserted: rows.length,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
+}
+
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
@@ -775,6 +862,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
   if (url.pathname === "/api/v1/internal/events") {
     return handleEventIngest(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/backfill-neurons") {
+    return handleNeuronBackfill(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
