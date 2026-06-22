@@ -10,6 +10,8 @@ import { readArtifact } from "../workers/storage.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
+export const GRAPHQL_MAX_BODY_BYTES = 64 * 1024;
+export const GRAPHQL_MAX_QUERY_BYTES = 16 * 1024;
 
 const SDL = `
   type Query {
@@ -221,6 +223,12 @@ const rootValue = {
 
 const GRAPHQL_CONTENT_TYPE = "application/graphql-response+json";
 
+const graphqlError = (message, status = 400, extraHeaders = {}) =>
+  new Response(JSON.stringify({ errors: [{ message }] }), {
+    status,
+    headers: graphqlHeaders(extraHeaders),
+  });
+
 const graphqlHeaders = (extra = {}) => ({
   "content-type": GRAPHQL_CONTENT_TYPE,
   "access-control-allow-origin": "*",
@@ -229,6 +237,67 @@ const graphqlHeaders = (extra = {}) => ({
 });
 
 // --- Handler ---
+
+async function readLimitedJson(request) {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const length = Number(declaredLength);
+    if (!Number.isFinite(length) || length < 0) {
+      return {
+        error: graphqlError("Invalid Content-Length header."),
+      };
+    }
+    if (length > GRAPHQL_MAX_BODY_BYTES) {
+      return {
+        error: graphqlError("GraphQL request body is too large.", 413),
+      };
+    }
+  }
+
+  if (!request.body) {
+    return { value: null };
+  }
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > GRAPHQL_MAX_BODY_BYTES) {
+        await reader.cancel();
+        return {
+          error: graphqlError("GraphQL request body is too large.", 413),
+        };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return {
+      error: graphqlError("Request body must be valid JSON."),
+    };
+  }
+}
+
+function utf8ByteLength(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
 
 export async function handleGraphQLRequest(request, env) {
   if (request.method !== "POST") {
@@ -243,17 +312,8 @@ export async function handleGraphQLRequest(request, env) {
     );
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(
-      JSON.stringify({
-        errors: [{ message: "Request body must be valid JSON." }],
-      }),
-      { status: 400, headers: graphqlHeaders() },
-    );
-  }
+  const { value: body, error: bodyError } = await readLimitedJson(request);
+  if (bodyError) return bodyError;
 
   const { query, variables, operationName } = body || {};
   if (typeof query !== "string" || !query.trim()) {
@@ -263,6 +323,10 @@ export async function handleGraphQLRequest(request, env) {
       }),
       { status: 400, headers: graphqlHeaders() },
     );
+  }
+
+  if (utf8ByteLength(query) > GRAPHQL_MAX_QUERY_BYTES) {
+    return graphqlError("GraphQL query is too large.", 413);
   }
 
   let document;

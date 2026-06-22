@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { Blob } from "node:buffer";
 import { describe, test } from "vitest";
 import {
+  GRAPHQL_MAX_BODY_BYTES,
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_DEPTH,
+  GRAPHQL_MAX_QUERY_BYTES,
   handleGraphQLRequest,
   maxComplexityRule,
   maxDepthRule,
@@ -73,6 +76,48 @@ describe("handleGraphQLRequest — request validation", () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.ok(body.errors[0].message.includes("JSON"));
+  });
+
+  test("oversized Content-Length is rejected before reading the body", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(GRAPHQL_MAX_BODY_BYTES + 1),
+      },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("body"));
+  });
+
+  test("oversized streaming body without Content-Length is rejected", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: new Blob([" ".repeat(GRAPHQL_MAX_BODY_BYTES + 1)]).stream(),
+      duplex: "half",
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("body"));
+  });
+
+  test("oversized GraphQL query is rejected before parsing", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `# ${"x".repeat(GRAPHQL_MAX_QUERY_BYTES)}\n{ __typename }`,
+      }),
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("query"));
   });
 
   test("missing query field returns 400", async () => {
