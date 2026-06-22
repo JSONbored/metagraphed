@@ -3379,6 +3379,28 @@ async function handleHealthRequest(request, env) {
     ? (Date.now() - opRunAtMs) / 60_000
     : null;
 
+  // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
+  // MAX(observed_at) is the chain timestamp of the latest indexed event; age_seconds
+  // is ~12-30s while the streamer is live, growing toward the ~5-min poller backstop
+  // if it's down. Reported for observability (does NOT gate the HTTP status, like
+  // operational_health); best-effort + null on a cold/unbound store.
+  let chainEvents = null;
+  if (bindings.health_db) {
+    const rows = await d1All(
+      env,
+      "SELECT MAX(block_number) AS block, MAX(observed_at) AS at FROM account_events",
+      [],
+    );
+    const row = rows[0] || {};
+    const atMs = Number(row.at);
+    const fresh = Number.isFinite(atMs);
+    chainEvents = {
+      latest_indexed_block: row.block ?? null,
+      latest_event_at: fresh ? new Date(atMs).toISOString() : null,
+      age_seconds: fresh ? Math.round((Date.now() - atMs) / 1000) : null,
+    };
+  }
+
   const body = JSON.stringify({
     status: stale ? "degraded" : "ok",
     service: "metagraphed",
@@ -3398,6 +3420,7 @@ async function handleHealthRequest(request, env) {
       probed_count: meta?.probed_count ?? null,
       status_counts: meta?.status_counts ?? null,
     },
+    chain_events: chainEvents,
   });
 
   const headers = apiHeaders("short");
