@@ -261,15 +261,28 @@ async function resolveNetuid(ctx, args) {
 // Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
 // the AI layer is available, else keyword overlap over the enriched search index
 // (categories + service_kinds). Returns the discovery mode + ordered candidates.
-async function rankSubnetsForTask(ctx, task, poolSize) {
+async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
+  // Only subnets exposing callable services can perform a task, so apply the
+  // callability filter BEFORE truncating to the pool. Otherwise a callable
+  // subnet ranked behind `poolSize` non-callable matches is cut from the pool
+  // and the tool falsely reports "no callable subnet matched". (Mirrors the
+  // filter-before-slice order in find_subnets_by_capability.)
+  const isCallable = (netuid) => callableByNetuid.has(netuid);
   if (aiEnabled(ctx.env)) {
     try {
       const out = await semanticSearch(ctx.env, task, {
         limit: Math.min(poolSize, 20),
       });
       const ranked = (out.results || [])
-        .filter((r) => r.type === "subnet" && Number.isInteger(r.netuid))
+        .filter(
+          (r) =>
+            r.type === "subnet" &&
+            Number.isInteger(r.netuid) &&
+            isCallable(r.netuid),
+        )
         .map((r) => ({ netuid: r.netuid, relevance: r.score }));
+      // Only commit to semantic mode when it yields callable hits; a pool of
+      // purely non-callable matches falls through to keyword discovery.
       if (ranked.length > 0) return { mode: "semantic", ranked };
     } catch {
       // AI hiccup → fall back to keyword discovery below.
@@ -284,7 +297,7 @@ async function rankSubnetsForTask(ctx, task, poolSize) {
       netuid: doc.netuid,
       relevance: scoreDocument(doc, terms),
     }))
-    .filter((entry) => entry.relevance > 0)
+    .filter((entry) => entry.relevance > 0 && isCallable(entry.netuid))
     .sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid)
     .slice(0, poolSize);
   return { mode: "keyword", ranked };
@@ -1146,13 +1159,18 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
-      const { mode, ranked } = await rankSubnetsForTask(ctx, task, 50);
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
       );
       const byNetuid = new Map(
         (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
+      );
+      const { mode, ranked } = await rankSubnetsForTask(
+        ctx,
+        task,
+        50,
+        byNetuid,
       );
       const results = [];
       for (const { netuid, relevance } of ranked) {
