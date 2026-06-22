@@ -444,6 +444,53 @@ describe("runHealthProber", () => {
     assert.equal(apiUpsert.binds[12], 3);
   });
 
+  test("a degraded run resets the breaker (only FAILED runs accrue)", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "sn7-api",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    // The subnet-api surface probes `degraded` (e.g. rate-limited), not failed.
+    const degradedProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          }
+        : {
+            status: "degraded",
+            classification: "rate-limited",
+            latency_ms: null,
+            status_code: 429,
+          };
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedProbe,
+        probeOptions: {},
+      },
+    );
+    const apiUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "sn7-api");
+    // binds[12] = consecutive_failures: a degraded run must NOT bump 2 -> 3; it
+    // resets to 0 so a persistently-degraded (still-usable) endpoint is not
+    // evicted from the RPC pool by the sustained-down breaker.
+    assert.equal(apiUpsert.binds[12], 0);
+  });
+
   test("no-ops cleanly when there are no operational surfaces", async () => {
     const result = await runHealthProber(
       {},
