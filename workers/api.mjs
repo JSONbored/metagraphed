@@ -98,7 +98,11 @@ import {
   buildNeuronDetail,
 } from "../src/metagraph-neurons.mjs";
 import {
+  ACCOUNT_EVENT_COLUMNS,
   EVENT_INSERT_COLUMNS,
+  buildAccountEvents,
+  buildAccountSubnets,
+  buildAccountSummary,
   rollupAccountEventsDaily,
   pruneAccountEvents,
 } from "../src/account-events.mjs";
@@ -115,12 +119,16 @@ import {
   withinRateLimit,
 } from "../src/ai-search.mjs";
 import {
+  ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_PATH_PATTERN,
+  ACCOUNT_SUBNETS_PATH_PATTERN,
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   BULK_TRENDS_PATH_PATTERN,
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
+  EVENTS_LOAD_CRON,
   HEALTH_PRUNE_CRON,
   HEALTH_TREND_WINDOWS,
   INCIDENTS_PATH_PATTERN,
@@ -356,6 +364,12 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   // the first-party poller and load it via the binding. Isolated like the neuron
   // load so a failure never affects the prober/prune below.
   await loadStagedEvents(env).catch(() => {});
+  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
+  // D1 quickly (above) — return without running the heavier probe/prune so we can
+  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  if (cron === EVENTS_LOAD_CRON) {
+    return { ok: true, fast_load: true };
+  }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
@@ -628,6 +642,29 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         Number(validatorsMatch[1]),
         resolved.url,
       );
+    }
+    // Account entity routes (#1347): computed live from the account_events +
+    // neurons D1 tiers. More-specific paths first (each pattern is anchored).
+    const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountEventsMatch) {
+      return handleAccountEvents(
+        request,
+        env,
+        accountEventsMatch[1],
+        resolved.url,
+      );
+    }
+    const accountSubnetsMatch = ACCOUNT_SUBNETS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountSubnetsMatch) {
+      return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
+    }
+    const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountMatch) {
+      return handleAccount(request, env, accountMatch[1]);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return handleGlobalIncidents(request, env, resolved.url);
@@ -1924,6 +1961,127 @@ async function handleSubnetValidators(request, env, netuid, url) {
   );
 }
 
+// ---- Account entity handlers (#1347) ---------------------------------------
+function clampInt(raw, def, min, max) {
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+async function accountMeta(env, artifactPath, generatedAt) {
+  return {
+    artifact_path: artifactPath,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: generatedAt,
+    published_at: await publishedAt(env),
+    source: "chain-events",
+  };
+}
+
+// GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
+// (account_events, matched by hotkey OR coldkey) joined to current registrations
+// (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
+async function handleAccount(request, env, ss58) {
+  const where = "hotkey = ? OR coldkey = ?";
+  const [aggRows, kindRows, regRows, recentRows] = await Promise.all([
+    d1All(
+      env,
+      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
+      [ss58, ss58],
+    ),
+    d1All(
+      env,
+      `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
+      [ss58, ss58],
+    ),
+    d1All(
+      env,
+      `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+      [ss58],
+    ),
+    d1All(
+      env,
+      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+      [ss58, ss58],
+    ),
+  ]);
+  const data = buildAccountSummary(ss58, {
+    agg: aggRows[0],
+    kinds: kindRows,
+    registrations: regRows,
+    recent: recentRows,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}.json`,
+        data.last_seen_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
+// optional ?kind= filter, ?limit (<=1000) / ?offset.
+async function handleAccountEvents(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const kind = url.searchParams.get("kind");
+  const params = [ss58, ss58];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (hotkey = ? OR coldkey = ?)`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
+  params.push(limit, offset);
+  const rows = await d1All(env, sql, params);
+  const data = buildAccountEvents(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/events.json`,
+        data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
+// registered (the cross-subnet footprint), from the neurons tier.
+async function handleAccountSubnets(request, env, ss58) {
+  const rows = await d1All(
+    env,
+    `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY netuid`,
+    [ss58],
+  );
+  const data = buildAccountSubnets(rows, ss58);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/subnets.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
 // Long-term daily uptime history for one subnet's operational surfaces, served
 // live from the surface_uptime_daily rollup (PR3). 90d/1y window. Returns a
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
@@ -2690,7 +2848,7 @@ const RPC_EJECT_COOLDOWN_MS = 30_000;
 export function recordRpcFailure(map, id, now) {
   const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
   entry.fails += 1;
-  if (entry.fails >= RPC_EJECT_THRESHOLD) {
+  if (entry.fails >= RPC_EJECT_THRESHOLD && entry.ejectedUntil <= now) {
     entry.ejectedUntil = now + RPC_EJECT_COOLDOWN_MS;
   }
   map.set(id, entry);

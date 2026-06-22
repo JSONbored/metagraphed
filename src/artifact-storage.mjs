@@ -40,6 +40,11 @@ const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/metagraph\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
+  // Account entity tiers (#1347): computed live from account_events + neurons at
+  // /api/v1/accounts/{ss58}(/events|/subnets) — never written as files.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/events\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
   /^registry\/leaderboards\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
