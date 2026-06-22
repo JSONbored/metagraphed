@@ -510,6 +510,19 @@ export interface SurfaceLatencyPercentiles {
   };
 }
 
+/**
+ * One reconstructed downtime window inside a {@link SurfaceSla}. The API emits
+ * epoch-ms timestamps and a duration; it does NOT carry an id, severity, or
+ * message (these are derived downtime windows, not labeled incidents).
+ */
+export interface SurfaceSlaIncident {
+  started_at?: number;
+  ended_at?: number | null;
+  duration_ms?: number;
+  failed_samples?: number;
+  [key: string]: unknown;
+}
+
 /** Per-surface SLA + reconstructed downtime from /subnets/{n}/health/incidents. */
 export interface SurfaceSla {
   surface_id: string;
@@ -517,11 +530,26 @@ export interface SurfaceSla {
   uptime_ratio?: number;
   incident_count?: number;
   downtime_ms?: number;
-  incidents?: Array<{
-    started_at?: number;
-    ended_at?: number | null;
-    [key: string]: unknown;
-  }>;
+  incidents?: SurfaceSlaIncident[];
+}
+
+/**
+ * A flattened per-surface downtime window — one {@link SurfaceSlaIncident}
+ * lifted out of its {@link SurfaceSla} row, tagged with the owning surface_id
+ * and normalized to ISO timestamps for display. Severity is always "down"
+ * because the source only reconstructs failure windows (no severity field
+ * exists upstream).
+ */
+export interface FlatSurfaceIncident {
+  surface_id: string;
+  /** ISO string (converted from epoch-ms) for TimeAgo / date rendering. */
+  started_at?: string;
+  /** ISO string, or null when the incident is still open. */
+  ended_at?: string | null;
+  duration_ms?: number;
+  failed_samples?: number;
+  /** Derived, not from the API: these are reconstructed downtime windows. */
+  severity: "high";
 }
 
 /** One weekly structural snapshot from /subnets/{n}/trajectory. */

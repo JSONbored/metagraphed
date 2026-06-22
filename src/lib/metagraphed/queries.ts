@@ -11,6 +11,7 @@ import type {
   Endpoint,
   EndpointIncident,
   EvidenceItem,
+  FlatSurfaceIncident,
   Fixture,
   FixtureIndexEntry,
   Freshness,
@@ -976,6 +977,41 @@ export const subnetHealthIncidentsQuery = (netuid: number, window = "7d") =>
     },
     staleTime: STALE_SHORT,
   });
+
+function epochMsToIso(value: unknown): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const d = new Date(value);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : undefined;
+}
+
+/**
+ * Flatten the per-surface SLA rows from {@link subnetHealthIncidentsQuery} into
+ * a single chronological list of downtime windows, newest-first. Each window is
+ * tagged with its owning surface_id and has epoch-ms timestamps converted to ISO
+ * strings (for TimeAgo / date rendering). The upstream payload carries no id,
+ * severity, or message per incident — these are reconstructed failure windows —
+ * so severity is fixed to "high" and identity comes from surface_id + start.
+ */
+export function flattenSurfaceIncidents(slas: SurfaceSla[]): FlatSurfaceIncident[] {
+  const out: FlatSurfaceIncident[] = [];
+  for (const sla of slas) {
+    for (const inc of sla.incidents ?? []) {
+      out.push({
+        surface_id: sla.surface_id,
+        started_at: epochMsToIso(inc.started_at),
+        ended_at: inc.ended_at == null ? null : (epochMsToIso(inc.ended_at) ?? null),
+        duration_ms: typeof inc.duration_ms === "number" ? inc.duration_ms : undefined,
+        failed_samples: typeof inc.failed_samples === "number" ? inc.failed_samples : undefined,
+        severity: "high",
+      });
+    }
+  }
+  return out.sort((a, b) => {
+    const at = a.started_at ? Date.parse(a.started_at) : 0;
+    const bt = b.started_at ? Date.parse(b.started_at) : 0;
+    return bt - at;
+  });
+}
 
 // #1115: weekly structural trajectory (completeness / surface / endpoint counts
 // over time) from D1 snapshots.

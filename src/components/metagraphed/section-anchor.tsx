@@ -9,12 +9,22 @@ import { InfoTooltip } from "./info-tooltip";
  * button that writes #id to the URL and clipboard. Wraps content in a
  * <section data-section-anchor> so global scroll-margin applies.
  */
+export type SectionTone = "accent" | "warn" | "ink" | "muted";
+
+const TONE_CLASS: Record<SectionTone, string> = {
+  accent: "before:bg-accent",
+  warn: "before:bg-health-warn",
+  ink: "before:bg-ink-strong",
+  muted: "before:bg-border",
+};
+
 export function SectionAnchor({
   id,
   title,
   subtitle,
   info,
   right,
+  tone,
   children,
 }: {
   id: string;
@@ -22,6 +32,8 @@ export function SectionAnchor({
   subtitle?: ReactNode;
   info?: string;
   right?: ReactNode;
+  /** Optional left accent rail color. Omitting it renders no rail (back-compat). */
+  tone?: SectionTone;
   children: ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
@@ -42,7 +54,18 @@ export function SectionAnchor({
   };
 
   return (
-    <section id={id} data-section-anchor className={classNames("mg-section scroll-mt-32")}>
+    <section
+      id={id}
+      data-section-anchor
+      className={classNames(
+        "mg-section scroll-mt-32",
+        tone &&
+          classNames(
+            "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
+            TONE_CLASS[tone],
+          ),
+      )}
+    >
       <div className="mb-3 flex items-baseline gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
