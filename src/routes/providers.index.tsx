@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Globe, Github, BookOpen, Radio, Layers, Network, Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
@@ -8,6 +10,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import { providersQuery, providerCountsQuery, endpointsQuery } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
@@ -15,7 +18,12 @@ import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
 
+const providersSearchSchema = z.object({
+  view: fallback(z.enum(["grid", "table"]), "grid").default("grid"),
+});
+
 export const Route = createFileRoute("/providers/")({
+  validateSearch: zodValidator(providersSearchSchema),
   head: () => ({
     meta: [
       { title: "Providers — Metagraphed" },
@@ -34,6 +42,9 @@ export const Route = createFileRoute("/providers/")({
 });
 
 function ProvidersPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const view = search.view ?? "grid";
   return (
     <AppShell>
       <PageHero
@@ -41,10 +52,22 @@ function ProvidersPage() {
         live
         title="Providers"
         description="Teams, infra operators, docs registries, and community sources behind public interfaces."
+        actions={
+          <ViewModeToggle
+            value={view}
+            options={["table", "grid"]}
+            onChange={(v) =>
+              navigate({
+                search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+                replace: true,
+              })
+            }
+          />
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<ProvidersSkeleton />}>
-          <ProvidersGrid />
+          <ProvidersGrid view={view} />
         </Suspense>
       </QueryErrorBoundary>
       <ApiSourceFooter
@@ -102,7 +125,7 @@ function authorityTone(a?: string): string {
 
 type SortKey = "name" | "surfaces" | "endpoints" | "subnets";
 
-function ProvidersGrid() {
+function ProvidersGrid({ view }: { view: "grid" | "table" }) {
   const { data: providersRes } = useSuspenseQuery(providersQuery());
   const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = useMemo(() => (providersRes.data ?? []) as Provider[], [providersRes]);
@@ -243,6 +266,84 @@ function ProvidersGrid() {
           description="Try clearing filters or adjusting your search."
           action={{ label: "Browse all endpoints", href: "/endpoints" }}
         />
+      ) : view === "table" ? (
+        <div className="rounded border border-border bg-card overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+              <tr>
+                <th className="px-3 py-2">Provider</th>
+                <th className="px-3 py-2">Kind</th>
+                <th className="px-3 py-2">Authority</th>
+                <th className="px-3 py-2">Host</th>
+                <th className="px-3 py-2 text-right">Subnets</th>
+                <th className="px-3 py-2 text-right">Surfaces</th>
+                <th className="px-3 py-2 text-right">Endpoints</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {sorted.map((p) => {
+                const host = maskHost(p.website ?? p.homepage);
+                const c = counts[p.slug];
+                return (
+                  <tr key={p.slug} className="hover:bg-surface/40">
+                    <td className="px-3 py-2">
+                      <Link
+                        to="/providers/$slug"
+                        params={{ slug: p.slug }}
+                        className="inline-flex items-center gap-2 min-w-0"
+                      >
+                        <BrandIcon
+                          url={p.website ?? p.homepage}
+                          iconUrl={p.icon_url}
+                          repoUrl={p.repo}
+                          providerSlug={p.slug}
+                          name={p.name ?? p.slug}
+                          fallback={p.slug}
+                          size={20}
+                        />
+                        <span className="font-medium text-ink-strong truncate">
+                          {p.name ?? p.slug}
+                        </span>
+                        <span className="font-mono text-[10px] text-ink-muted truncate">
+                          {p.slug}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                      {p.kind ?? "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {p.authority ? (
+                        <span
+                          className={classNames(
+                            "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5",
+                            authorityTone(p.authority),
+                          )}
+                        >
+                          {p.authority}
+                        </span>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted truncate max-w-[22ch]">
+                      {host ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      {c?.subnets ?? 0}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      {c?.surfaces ?? 0}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      {c?.endpoints ?? 0}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((p) => {
