@@ -115,13 +115,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^10.5.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.4",
-    "vitest": "^4.1.8",
+    "vitest": "^4.1.9",
     "wrangler": "4.102.0"
   },
   "overrides": {
