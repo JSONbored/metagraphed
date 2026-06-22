@@ -150,10 +150,29 @@ test("loadStagedNeurons rejects unsigned or tampered staged payloads", async () 
   assert.equal(m2.batches.length, 0);
 });
 
+test("loadStagedNeurons accepts full-network snapshots above the old 2 MB cap", async () => {
+  const rows = Array.from({ length: 2_000 }, (_, i) => ({
+    ...neuronRow(1, i),
+    hotkey: `h${"x".repeat(511)}`.slice(0, 512),
+    coldkey: `c${"y".repeat(511)}`.slice(0, 512),
+    axon: `a${"z".repeat(511)}`.slice(0, 512),
+  }));
+  const envelope = signedEnvelope(rows);
+  const size = JSON.stringify(envelope).length;
+  assert.ok(size > 2_000_000, "fixture must exceed the regressed 2 MB cap");
+
+  const m = mockEnv({ rows: envelope, size });
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, rows.length);
+  assert.ok(m.batches.length > 0);
+  assert.deepEqual(m.deleted, ["metagraph/neurons-pending.json"]);
+});
+
 test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
   const oversized = mockEnv({
     rows: signedEnvelope([neuronRow(1, 0)]),
-    size: 2_000_001,
+    size: 32_000_001,
   });
   const oversizedResult = await loadStagedNeurons(oversized.env);
   assert.equal(oversizedResult.reason, "too_large");

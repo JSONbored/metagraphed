@@ -242,11 +242,13 @@ export default {
 
 // Sanity bounds for an authenticated, HMAC-signed staged neuron batch (the data
 // is already trusted; these are defense-in-depth caps so a malformed signed file
-// can't blow up the D1 load). netuid and uid are both u16 on-chain, so each is
+// can't blow up the D1 load). The byte cap intentionally allows the
+// expected all-subnet signed JSON envelope (~33k rows) while still bounding
+// memory use before parsing. netuid and uid are both u16 on-chain, so each is
 // capped at the u16 max (65535) — matching the existing netuid guard in
 // src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
 const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
-const MAX_STAGED_NEURONS_BYTES = 2_000_000;
+const MAX_STAGED_NEURONS_BYTES = 32_000_000;
 const MAX_STAGED_NEURON_ROWS = 50_000;
 const MAX_STAGED_NEURON_STRING_BYTES = 512;
 const MAX_STAGED_NETUID = 65_535;
