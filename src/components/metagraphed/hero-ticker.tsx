@@ -6,6 +6,9 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { classNames } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 
+const safeText = (value: unknown, fallback = "") =>
+  typeof value === "string" && value.trim().length > 0 ? value : fallback;
+
 type TickerItem = {
   id: string;
   icon: typeof GitBranch;
@@ -34,27 +37,32 @@ export function HeroTicker({ limit = 8 }: { limit?: number }) {
   const items = useMemo<TickerItem[]>(() => {
     const out: Array<TickerItem & { ts: number }> = [];
     for (const c of cRes.data ?? []) {
-      const ts = c.at ? Date.parse(c.at) : 0;
-      const k = (c.kind ?? "registry").toLowerCase();
+      const at = safeText(c.at);
+      const id = safeText(c.id, safeText(c.title, "changelog"));
+      const ts = at ? Date.parse(at) : 0;
+      const k = safeText(c.kind, "registry").toLowerCase();
       out.push({
-        id: `c:${c.id}`,
+        id: `c:${id}`,
         icon: GitBranch,
         kind: k,
-        title: c.title || c.id,
-        at: c.at,
+        title: safeText(c.title, id),
+        at,
         tone: k.includes("adapter") ? "accent" : "default",
         ts,
       });
     }
     for (const inc of (iRes.data ?? []) as EndpointIncident[]) {
-      const ts = inc.started_at ? Date.parse(inc.started_at) : 0;
-      const state = (inc.state ?? "down").toString();
+      const at = safeText(inc.started_at);
+      const endpointId = safeText(inc.endpoint_id);
+      const state = safeText(inc.state, "down");
+      const id = safeText(inc.id, endpointId || safeText(inc.message, "incident"));
+      const ts = at ? Date.parse(at) : 0;
       out.push({
-        id: `i:${inc.id}`,
+        id: `i:${id}`,
         icon: AlertTriangle,
         kind: `endpoint ${state}`,
-        title: inc.message || `Endpoint ${inc.endpoint_id ?? ""} ${state}`,
-        at: inc.started_at,
+        title: safeText(inc.message, `Endpoint ${endpointId} ${state}`),
+        at,
         tone: state === "warn" ? "warn" : "down",
         ts,
       });

@@ -66,13 +66,17 @@ function OverviewPage() {
       {/* #1124: hero discovery rail — live ticker, trending subnet chips, and a
           "continue exploring" rail (recent searches + visits). Each renders null
           until it has data, so they never clutter a cold first paint. */}
-      <Suspense fallback={null}>
-        <HeroTicker />
-      </Suspense>
+      <QueryErrorBoundary fallback={() => null}>
+        <Suspense fallback={null}>
+          <HeroTicker />
+        </Suspense>
+      </QueryErrorBoundary>
 
-      <Suspense fallback={null}>
-        <HeroSubnetChips />
-      </Suspense>
+      <QueryErrorBoundary fallback={() => null}>
+        <Suspense fallback={null}>
+          <HeroSubnetChips />
+        </Suspense>
+      </QueryErrorBoundary>
 
       <ContinueExploring />
 
