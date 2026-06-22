@@ -17,9 +17,11 @@
 import {
   isUnsafePublicUrl,
   mapLimit,
+  okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
 } from "./health-probe-core.mjs";
+import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -333,6 +335,8 @@ function summarizeGroup(rows) {
     avg_latency_ms: latencies.length
       ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
       : null,
+    // How many surfaces backed the mean (a 1-reading mean vs a 300-reading one).
+    latency_sample_count: latencies.length,
   };
 }
 
@@ -426,7 +430,8 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       url: surface.url,
       status: base.status,
       classification: base.classification || null,
-      latency_ms: Number.isFinite(base.latency_ms) ? base.latency_ms : null,
+      // Success-only: failures store null latency (counted in uptime, not latency).
+      latency_ms: okLatencyMs(base.status, base.latency_ms),
       status_code: Number.isInteger(base.status_code) ? base.status_code : null,
       archive_support: base.archive_support ?? null,
       latest_block: safeRpcBlockNumber(base.latest_block),
@@ -634,57 +639,58 @@ function utcDayBounds(ms) {
 // retained indefinitely for long-term uptime analytics — so the 30-day raw
 // prune never loses history. MUST run before pruneHealthHistory. Rolls up today
 // + yesterday each hour (the post-midnight fire finalizes the prior day; upsert
-// keeps it idempotent). No-ops when D1 is unbound/cold.
+// keeps it idempotent). No-ops when D1 is unbound/cold. Latency is rolled up
+// success-only with its sample count, plus the day's exact p50/p95/p99 so tail
+// latency survives the raw prune (percentiles can't be rebuilt from a mean).
 export async function rollupDailyUptime(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
   const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { rolled: false };
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
-  const stmt = db.prepare(
-    `INSERT INTO surface_uptime_daily
-       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
-        avg_latency_ms, status, updated_at)
-     SELECT
-       MAX(surface_id) AS surface_id,
-       COALESCE(surface_key, surface_id) AS surface_key,
-       netuid,
-       ? AS day,
-       COUNT(*) AS samples,
-       SUM(ok) AS ok_count,
-       ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
-       CAST(ROUND(AVG(latency_ms)) AS INTEGER) AS avg_latency_ms,
-       CASE
-         WHEN SUM(ok) = COUNT(*) THEN 'ok'
-         WHEN SUM(ok) = 0 THEN 'failed'
-         ELSE 'degraded'
-       END AS status,
-       ? AS updated_at
-     FROM surface_checks
-     WHERE checked_at >= ? AND checked_at < ?
-     GROUP BY COALESCE(surface_key, surface_id), netuid
-     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
+  const conflictColumns = `
        surface_id = excluded.surface_id,
-       netuid = excluded.netuid,
-       samples = excluded.samples,
-       ok_count = excluded.ok_count,
-       uptime_ratio = excluded.uptime_ratio,
-       avg_latency_ms = excluded.avg_latency_ms,
-       status = excluded.status,
-       updated_at = excluded.updated_at
-     ON CONFLICT(surface_id, day) DO UPDATE SET
        surface_key = excluded.surface_key,
        netuid = excluded.netuid,
        samples = excluded.samples,
        ok_count = excluded.ok_count,
        uptime_ratio = excluded.uptime_ratio,
        avg_latency_ms = excluded.avg_latency_ms,
+       latency_samples = excluded.latency_samples,
+       p50_latency_ms = excluded.p50_latency_ms,
+       p95_latency_ms = excluded.p95_latency_ms,
+       p99_latency_ms = excluded.p99_latency_ms,
        status = excluded.status,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at`;
+  const stmt = db.prepare(
+    `${rankedChecksCte("checked_at >= ? AND checked_at < ?")}
+     INSERT INTO surface_uptime_daily
+       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
+        latency_samples, avg_latency_ms, p50_latency_ms, p95_latency_ms,
+        p99_latency_ms, status, updated_at)
+     SELECT
+       MAX(surface_id) AS surface_id,
+       surface_key,
+       netuid,
+       ? AS day,
+       COUNT(*) AS samples,
+       SUM(ok) AS ok_count,
+       ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
+       ${latencyStatColumns({ roundedAvg: true, includeMinMax: false })},
+       CASE
+         WHEN SUM(ok) = COUNT(*) THEN 'ok'
+         WHEN SUM(ok) = 0 THEN 'failed'
+         ELSE 'degraded'
+       END AS status,
+       ? AS updated_at
+     FROM ranked
+     GROUP BY surface_key, netuid
+     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET${conflictColumns}
+     ON CONFLICT(surface_id, day) DO UPDATE SET${conflictColumns}`,
   );
   try {
     await db.batch(
-      days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
+      days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
     return { rolled: true, days: days.map((d) => d.date) };
   } catch {
@@ -742,7 +748,12 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
-  const economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  let economicsResult;
+  try {
+    economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  } catch {
+    economicsResult = null;
+  }
   const economicsByNetuid = new Map(
     (Array.isArray(economicsResult?.data?.subnets)
       ? economicsResult.data.subnets
@@ -752,6 +763,13 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
 
   const date = new Date(now()).toISOString().slice(0, 10);
   const capturedAt = now();
+  // The structural columns + captured_at are owned by the first same-day fire.
+  // The economics columns can arrive late (economics.json is pure chain state
+  // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
+  // would freeze a NULL-economics first fire and the 23 later hourly fires could
+  // never backfill it — a permanent gap in the trajectory series. Backfill them
+  // with COALESCE(existing, excluded): a later fire fills a NULL, but a later
+  // NULL can never wipe an earlier fire's good value.
   const stmt = db.prepare(
     `INSERT INTO subnet_snapshots
        (netuid, snapshot_date, completeness_score, surface_count,
@@ -759,7 +777,12 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
         validator_count, miner_count, total_stake_tao, alpha_price_tao,
         emission_share, captured_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (netuid, snapshot_date) DO NOTHING`,
+     ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
+       validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
+       miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
+       total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
+       alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
+       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`,
   );
   const statements = profiles
     .filter((profile) => Number.isInteger(profile.netuid))

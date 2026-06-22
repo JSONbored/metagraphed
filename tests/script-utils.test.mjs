@@ -575,6 +575,32 @@ describe("script utility contracts", () => {
     );
   });
 
+  test("README netuid affinity requires a digit boundary (no substring match)", () => {
+    const repo = { owner: "acme", repo: "widget" };
+    // netuid 1 must NOT match an unrelated "sn123" reference for subnet 123.
+    assert.equal(
+      isReviewableReadmeLink(
+        {
+          classification: { kind: "docs", label: "docs" },
+          url: "https://vendor-portal.example/sn123",
+        },
+        { netuid: 1, repo },
+      ),
+      false,
+    );
+    // ...but an exact "sn1" reference for subnet 1 is still reviewable.
+    assert.equal(
+      isReviewableReadmeLink(
+        {
+          classification: { kind: "docs", label: "docs" },
+          url: "https://vendor-portal.example/sn1",
+        },
+        { netuid: 1, repo },
+      ),
+      true,
+    );
+  });
+
   test("native subnet sync reports missing uvx without masking the error", () => {
     const result = spawnSync(
       process.execPath,

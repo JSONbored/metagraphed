@@ -125,6 +125,14 @@ describe("circuit breaker", () => {
     assert.equal(isRpcEndpointEjected(map, "a", 1000 + 31_000), false);
   });
 
+  test("failures during ejection do not extend the cooldown", () => {
+    const map = new Map();
+    for (let i = 0; i < 3; i += 1) recordRpcFailure(map, "a", 0);
+    assert.equal(isRpcEndpointEjected(map, "a", 0), true);
+    recordRpcFailure(map, "a", 1000);
+    assert.equal(isRpcEndpointEjected(map, "a", 31_000), false);
+  });
+
   test("success clears breaker state", () => {
     const map = new Map();
     for (let i = 0; i < 3; i += 1) recordRpcFailure(map, "a", 0);

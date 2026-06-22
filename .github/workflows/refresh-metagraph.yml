@@ -1,13 +1,12 @@
 name: Refresh Metagraph (per-UID neurons)
 
-# Fetches the per-UID metagraph for every subnet from Taostats and loads it into
-# the metagraphed-health D1 `neurons` table (#1303, epic #1302). Powers
-# /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, and /validators. Daily +
-# manual. Tolerant: a failed/partial fetch aborts before writing (the script
-# guards on >50% subnet failures), so the previous snapshot stays in place.
-#
-# Gated on TAOSTATS_API_KEY: until the maintainer adds that repo secret the job
-# is a no-op (green), not a daily red failure.
+# Fetches the per-UID metagraph for every subnet FIRST-PARTY via the Bittensor SDK
+# (#1348 — chain-direct, no Taostats, no API key) and loads it into the
+# metagraphed-health D1 `neurons` table (#1303). Powers
+# /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators, and the account
+# entity API (#1347). Daily + manual. The snapshot is signed (sign-staged-neurons)
+# before staging to R2; the Worker authenticates + bounds it before loading into D1
+# via its binding (loadStagedNeurons) — no API-token D1 permission required.
 on:
   schedule:
     - cron: "23 5 * * *" # daily 05:23 UTC
@@ -15,60 +14,93 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: refresh-metagraph
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 40 # the Taostats fetch is rate-limited (~129 subnets w/ backoff)
+    timeout-minutes: 30 # one get_all_metagraphs_info call + per-subnet storage reads
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+
+      # First-party chain-direct fetch (pinned bittensor, matching sync-subnets):
+      # get_all_metagraphs_info for the per-UID core + SubtensorModule.ValidatorTrust
+      # storage; rank is derived from incentive. Units parity-verified vs the prior
+      # Taostats source (#1348). No Taostats, no API key.
+      - name: Fetch per-UID metagraph (Bittensor SDK)
+        run: uvx --from bittensor==10.4.0 python scripts/fetch-metagraph-native.py
+
+      - name: Upload unsigned neuron snapshot
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: metagraph-neurons-unsigned
+          path: dist/metagraph-neurons.json
+          if-no-files-found: error
+          retention-days: 1
+
+  sign-and-stage:
+    needs: fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      # Keep the secret-bearing job in a fresh workspace. The unpinned PyPI
+      # execution boundary above can only pass the JSON data artifact forward, not
+      # mutated repository scripts, shell startup files, or node_modules.
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 22.22.3
-          cache: npm
+          node-version: 22.23.0
 
       - name: Install
         run: npm ci
 
-      - name: Gate on Taostats key
-        id: gate
-        env:
-          TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
-        run: |
-          if [ -n "$TAOSTATS_API_KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::TAOSTATS_API_KEY not set — skipping metagraph refresh."
-          fi
+      - name: Download unsigned neuron snapshot
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: metagraph-neurons-unsigned
+          path: dist
 
-      - name: Fetch per-UID metagraph (Taostats)
-        if: steps.gate.outputs.ready == 'true'
-        run: node scripts/fetch-metagraph.mjs
+      - name: Sign staged neuron snapshot
+        run: node scripts/sign-staged-neurons.mjs dist/metagraph-neurons.json
         env:
-          TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
-      - name: Load neurons into D1
-        if: steps.gate.outputs.ready == 'true'
-        run: npx wrangler d1 execute metagraphed-health --remote --file=dist/metagraph-neurons.sql
+      # Stage the signed snapshot to R2 (the token's existing R2 permission); the
+      # Worker authenticates + bounds it before loading into D1 via its binding.
+      - name: Stage neurons to R2 for the Worker to load into D1
+        run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.json --file=dist/metagraph-neurons.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+  notify-on-failure:
+    needs: [fetch, sign-and-stage]
+    if: ${{ always() && (needs.fetch.result == 'failure' || needs.sign-and-stage.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Notify on failure
-        if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
         env:
           METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
         run: |
+          if [ -z "$METAGRAPH_ALERT_WEBHOOK_URL" ]; then
+            exit 0
+          fi
           curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
-            -d '{"content":"🔴 metagraphed refresh-metagraph FAILED — the per-UID neurons D1 tier may go stale."}' || true
+            -d '{"content":"🔴 metagraphed refresh-metagraph FAILED — the per-UID neurons D1 tier may go stale."}'

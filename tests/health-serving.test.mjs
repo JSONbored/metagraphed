@@ -245,6 +245,33 @@ describe("formatTrends", () => {
     });
     assert.equal(out.windows["7d"].uptime_ratio, null);
     assert.equal(out.windows["7d"].samples, 0);
+    assert.equal(out.windows["7d"].latency_sample_count, 0);
+  });
+  test("exposes p50/p95/p99 tail + healthy-sample count per surface", () => {
+    const out = formatTrends({
+      netuid: 7,
+      observedAt: "r",
+      windows: {
+        "7d": [
+          {
+            surface_id: "a",
+            total: 100,
+            ok_count: 96,
+            latency_samples: 96,
+            avg_latency_ms: 50.4,
+            p50: 40.6,
+            p95: 410.2,
+            p99: 900,
+          },
+        ],
+      },
+    });
+    const surface = out.windows["7d"].surfaces[0];
+    assert.equal(surface.avg_latency_ms, 50);
+    assert.equal(surface.latency_sample_count, 96);
+    assert.deepEqual(surface.latency_ms, { p50: 41, p95: 410, p99: 900 });
+    // Window total rolls up the healthy-sample counts.
+    assert.equal(out.windows["7d"].latency_sample_count, 96);
   });
 });
 
@@ -340,6 +367,7 @@ describe("summarizeRows / rollupStatus", () => {
       row("ok", { latency_ms: null, last_checked: null, last_ok: null }),
     ]);
     assert.equal(out.avg_latency_ms, 18); // round((10+25)/2)
+    assert.equal(out.latency_sample_count, 2); // the null-latency row is excluded
     assert.equal(out.last_checked, "2026-06-11T00:05:00.000Z"); // latest
     assert.equal(out.last_ok, "2026-06-11T00:00:00.000Z"); // latest non-null
   });
@@ -736,6 +764,40 @@ describe("formatBulkTrends", () => {
     assert.equal(sn7.points[1].uptime_ratio, 0.9);
     assert.equal(sn7.points[1].avg_latency_ms, 50);
     assert.equal(out.windows["30d"].subnet_count, 0);
+  });
+
+  test("weights the mean by latency_samples (not total) and reports the count", () => {
+    const out = formatBulkTrends({
+      windowDays: { "7d": 7 },
+      windows: {
+        "7d": [
+          // 100ms backed by 10 healthy readings, 200ms by 90 — failure-heavy day
+          // one must NOT drag the mean toward 100 by its larger total.
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 100,
+            ok_count: 10,
+            avg_latency_ms: 100,
+            latency_samples: 10,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: 90,
+            ok_count: 90,
+            avg_latency_ms: 200,
+            latency_samples: 90,
+          },
+        ],
+      },
+    });
+    const sn7 = out.windows["7d"].subnets[0];
+    // (100*10 + 200*90) / 100 = 190, weighted by healthy readings.
+    assert.equal(sn7.avg_latency_ms, 190);
+    assert.equal(sn7.latency_sample_count, 100);
+    assert.equal(sn7.points[0].latency_sample_count, 10);
+    assert.equal(sn7.points[1].latency_sample_count, 90);
   });
 
   test("empty or invalid rows keep the schema-stable cold shape", () => {
@@ -1899,6 +1961,7 @@ describe("formatUptime (daily uptime history)", () => {
     });
     assert.equal(out.netuid, 7);
     assert.equal(out.window, "90d");
+    assert.equal(out.observed_at, null);
     assert.equal(out.source, "live-cron-prober");
     // sorted by surface_id (a before b)
     assert.equal(out.surfaces[0].surface_id, "a");
@@ -1958,6 +2021,17 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.reliability, null);
   });
 
+  test("propagates observedAt into observed_at", () => {
+    const ts = "2026-06-22T00:00:00.000Z";
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      observedAt: ts,
+      rows: [],
+    });
+    assert.equal(out.observed_at, ts);
+  });
+
   test("handles null ratios/latency, missing status, zero samples, and no window", () => {
     const out = formatUptime({
       netuid: 7,
@@ -1982,6 +2056,7 @@ describe("formatUptime (daily uptime history)", () => {
 
 describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
   test("serves the live daily uptime rollup from D1", async () => {
+    const UPTIME_RUN = "2026-06-22T01:00:00.000Z";
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
@@ -1994,6 +2069,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
           status: "ok",
         },
       ]),
+      METAGRAPH_CONTROL: kvWith({ "health:meta": { last_run_at: UPTIME_RUN } }),
     });
     const res = await handleRequest(
       req("/api/v1/subnets/7/uptime?window=1y"),
@@ -2004,9 +2080,11 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     const body = await res.json();
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "1y");
+    assert.equal(body.data.observed_at, UPTIME_RUN);
     assert.equal(body.data.surfaces[0].surface_id, "7:subnet-api:x");
     assert.equal(body.data.surfaces[0].uptime_ratio, 1);
     assert.equal(body.meta.source, "live-cron-prober");
+    assert.equal(body.meta.generated_at, UPTIME_RUN);
   });
 
   test("defaults to 90d and returns an empty series when D1 is cold", async () => {
@@ -2074,6 +2152,52 @@ describe("computeReliability (score from uptime history)", () => {
     // healthy surface a -> high score; failing+slow surface b -> low
     assert.ok(out.surfaces.a.score > out.surfaces.b.score);
     assert.equal(out.surfaces.b.grade, "F");
+  });
+
+  test("weights latency by healthy readings and reports latency_sample_count", () => {
+    const out = computeReliability(
+      [
+        // Same day-means as a samples-weighted view, but the failure-heavy day
+        // carries few healthy readings, so it must barely move the mean.
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 36,
+          avg_latency_ms: 100,
+          latency_samples: 36,
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-13",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 200,
+          latency_samples: 720,
+        },
+      ],
+      { window: "30d", now: "2026-06-13T00:00:00.000Z" },
+    );
+    // (100*36 + 200*720) / 756 = 195 (healthy-weighted), NOT 150 (samples-weighted).
+    assert.equal(out.subnet.avg_latency_ms, 195);
+    assert.equal(out.subnet.latency_sample_count, 756);
+    assert.equal(out.surfaces.a.latency_sample_count, 756);
+    // sample_count remains the total probe count behind uptime.
+    assert.equal(out.subnet.sample_count, 1440);
+  });
+
+  test("legacy rows without latency_samples fall back to total samples", () => {
+    const out = computeReliability([
+      {
+        surface_id: "a",
+        day: "2026-06-12",
+        samples: 100,
+        ok_count: 90,
+        avg_latency_ms: 300,
+      },
+    ]);
+    assert.equal(out.subnet.avg_latency_ms, 300);
+    assert.equal(out.subnet.latency_sample_count, 100);
   });
 
   test("latency penalty is bounded and only applies above 500ms", () => {
@@ -2246,6 +2370,22 @@ describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () 
     // One IN-list query over a deduped, sorted netuid set + the day cutoff.
     assert.match(sink.sql, /netuid IN \(\?,\?\)/);
     assert.deepEqual(sink.params, [7, 12, "2026-05-14"]);
+  });
+
+  test("weights the latency mean by healthy readings, not total probes", async () => {
+    // Regression for the badge under-scoring failure-heavy days: avg_latency_ms
+    // is a success-only mean, so re-aggregating it must weight by latency_samples
+    // (healthy readings), not samples (total probes incl. failures). Mirrors the
+    // canonical dailyLatencyColumns() helper. The mocked .first() can't run SQL,
+    // so assert the weighting lives in the emitted query.
+    const sink = {};
+    await loadReliabilityAggregate({
+      db: aggregateDb({ samples: 10, ok_count: 8 }, sink),
+      netuids: [7],
+    });
+    assert.match(sink.sql, /COALESCE\(latency_samples, samples\)/);
+    // The bare `avg_latency_ms * samples` total-probe weighting must be gone.
+    assert.doesNotMatch(sink.sql, /avg_latency_ms \* samples\b/);
   });
 
   test("dedupes netuids and ignores non-integers", async () => {

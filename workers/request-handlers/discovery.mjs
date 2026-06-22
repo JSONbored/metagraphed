@@ -1,5 +1,5 @@
 import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.mjs";
-import { errorResponse, weakEtag } from "../http.mjs";
+import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.mjs";
 import { readArtifact, readHealthKv } from "../storage.mjs";
 import { contractVersion, publishedAt } from "../responses.mjs";
 import { KV_HEALTH_CURRENT } from "../../src/health-prober.mjs";
@@ -90,7 +90,7 @@ export async function handleBadgeSvgRequest(request, env, url) {
     `public, max-age=${maxAge}, stale-while-revalidate=300`,
   );
   headers.set("etag", await weakEtag(svg));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : svg, {
@@ -298,7 +298,7 @@ export async function mcpServerCardResponse(request, env) {
   const body = `${JSON.stringify(card, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -325,7 +325,7 @@ export async function agentToolsResponse(request, env, kind) {
   const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {

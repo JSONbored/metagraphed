@@ -2320,12 +2320,13 @@ function hasNetuidAffinity(value, netuid) {
     return true;
   }
 
+  // Bound the trailing edge so a short netuid isn't matched as the prefix of a
+  // longer number (netuid 1 must not match "sn123" / "subnets1000"). The leading
+  // edge can't be enforced on the compacted value — compaction strips the
+  // separators that would delimit it (e.g. "example.com/sn1" -> "examplecomsn1")
+  // — so only guard the digit boundary immediately after the netuid.
   const compactValue = compactReadmeValue(value);
-  return (
-    compactValue.includes(`sn${netuid}`) ||
-    compactValue.includes(`subnet${netuid}`) ||
-    compactValue.includes(`subnets${netuid}`)
-  );
+  return new RegExp(`(sn|subnets?)${escaped}(?![0-9])`).test(compactValue);
 }
 
 function repoTokens(repo = {}) {
@@ -2393,12 +2394,14 @@ export function computeMinerReadiness(economics, openSlots, emissionShare) {
   if (economics.registration_allowed) score += 40; // can register at all
   if (typeof openSlots === "number" && openSlots > 0) score += 30; // room
   const cost = economics.registration_cost_tao;
-  if (typeof cost === "number") {
+  if (Number.isFinite(cost)) {
     if (cost <= 1) score += 20;
     else if (cost <= 10) score += 10;
     else if (cost <= 100) score += 5;
   } else {
-    score += 10; // unknown cost — don't over-penalize
+    // unknown cost (missing, or a NaN/Infinity that slipped through a typeof
+    // check) — don't over-penalize.
+    score += 10;
   }
   const active =
     (typeof emissionShare === "number" && emissionShare > 0) ||

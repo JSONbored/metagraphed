@@ -205,13 +205,16 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/health/history/{date}` — Fetch compact daily health history.
 - `GET /api/v1/subnets/{netuid}/health` — Fetch health detail for one subnet.
 - `GET /api/v1/health/trends` — Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).
-- `GET /api/v1/subnets/{netuid}/health/trends` — Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).
+- `GET /api/v1/subnets/{netuid}/health/trends` — Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/health/percentiles` — Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/health/incidents` — Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/trajectory` — Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).
 - `GET /api/v1/subnets/{netuid}/metagraph` — Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.
 - `GET /api/v1/subnets/{netuid}/neurons/{uid}` — Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.
 - `GET /api/v1/subnets/{netuid}/validators` — Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.
+- `GET /api/v1/accounts/{ss58}` — Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.
+- `GET /api/v1/accounts/{ss58}/events` — Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.
+- `GET /api/v1/accounts/{ss58}/subnets` — Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.
 - `GET /api/v1/subnets/{netuid}/uptime` — Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).
 - `GET /api/v1/registry/leaderboards` — Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.
 - `GET /api/v1/rpc/usage` — Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).
