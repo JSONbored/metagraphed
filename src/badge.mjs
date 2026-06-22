@@ -167,7 +167,10 @@ function sanitizeLabel(raw) {
     const code = ch.codePointAt(0);
     if (code >= 0x20 && code !== 0x7f) out += ch;
   }
-  return out.trim().slice(0, MAX_LABEL_LENGTH) || BADGE_LABEL;
+  // Cap by code points, not UTF-16 code units: a plain slice() can sever a
+  // non-BMP character (e.g. an emoji) straddling the boundary into a lone
+  // surrogate, which is invalid in XML and corrupts the SVG.
+  return [...out.trim()].slice(0, MAX_LABEL_LENGTH).join("") || BADGE_LABEL;
 }
 
 // Parse the public query options. Metric + style are allow-listed; the label is
