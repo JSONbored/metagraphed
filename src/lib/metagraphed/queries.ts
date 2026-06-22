@@ -2050,16 +2050,33 @@ export const evidenceQuery = (params?: QueryParams) =>
     staleTime: STALE_LONG,
   });
 
+type ChangelogEntry = { id: string; at?: string; title?: string; kind?: string };
+
+function normalizeChangelogEntries(raw: unknown[]): ChangelogEntry[] {
+  return raw.flatMap((entry, index) => {
+    if (!isRecord(entry)) return [];
+
+    const id = optionalString(entry.id)?.trim() || `entry-${index}`;
+    const title = optionalString(entry.title)?.trim() || id;
+
+    return [
+      {
+        id,
+        title,
+        at: finiteTimestamp(entry.at),
+        kind: optionalString(entry.kind)?.trim(),
+      },
+    ];
+  });
+}
+
 export const changelogQuery = () =>
   queryOptions({
     queryKey: k("changelog"),
-    queryFn: ({ signal }) =>
-      fetchList<{ id: string; at?: string; title?: string; kind?: string }>(
-        "/api/v1/changelog",
-        "entries",
-        undefined,
-        signal,
-      ),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/changelog", "entries", undefined, signal);
+      return { ...res, data: normalizeChangelogEntries(res.data) };
+    },
     staleTime: STALE_LONG,
   });
 
