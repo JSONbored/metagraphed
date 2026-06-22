@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { test } from "vitest";
 import { loadStagedNeurons } from "../workers/api.mjs";
 
@@ -26,6 +27,18 @@ function neuronRow(netuid, uid) {
   };
 }
 
+const SIGNING_KEY = "test-staged-neurons-secret";
+
+function signedEnvelope(rows, key = SIGNING_KEY) {
+  return {
+    schema_version: 1,
+    hmac_sha256: createHmac("sha256", key)
+      .update(JSON.stringify(rows))
+      .digest("hex"),
+    rows,
+  };
+}
+
 function mockEnv({
   rows,
   bad = false,
@@ -33,14 +46,17 @@ function mockEnv({
   deleted = [],
   prepared = [],
   batches = [],
+  size,
 }) {
   return {
     env: {
+      METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
       METAGRAPH_ARCHIVE: {
         async get(key) {
           getCalls.push(key);
           if (rows == null) return null;
           return {
+            size: size ?? JSON.stringify(rows).length,
             async json() {
               if (bad) throw new Error("bad json");
               return rows;
@@ -70,7 +86,7 @@ function mockEnv({
 
 test("loadStagedNeurons loads JSON via parameterized batches + deletes it (#1303)", async () => {
   const rows = Array.from({ length: 12 }, (_, i) => neuronRow(1, i));
-  const m = mockEnv({ rows });
+  const m = mockEnv({ rows: signedEnvelope(rows) });
   const r = await loadStagedNeurons(m.env);
   assert.equal(r.ok, true);
   assert.equal(r.rows, 12);
@@ -105,9 +121,9 @@ test("loadStagedNeurons deletes + bails on unparseable JSON", async () => {
 });
 
 test("loadStagedNeurons deletes a no-valid-rows payload without loading", async () => {
-  const m = mockEnv({ rows: [{ foo: 1 }] }); // no netuid/uid → filtered out
+  const m = mockEnv({ rows: signedEnvelope([{ foo: 1 }]) }); // no netuid/uid → invalid
   const r = await loadStagedNeurons(m.env);
-  assert.equal(r.reason, "empty");
+  assert.equal(r.reason, "invalid");
   assert.equal(m.batches.length, 0);
   assert.deepEqual(m.deleted, ["metagraph/neurons-pending.json"]);
 });
@@ -116,4 +132,41 @@ test("loadStagedNeurons is a safe no-op without bindings", async () => {
   const r = await loadStagedNeurons({});
   assert.equal(r.ok, false);
   assert.equal(r.reason, "unavailable");
+});
+
+test("loadStagedNeurons rejects unsigned or tampered staged payloads", async () => {
+  const m = mockEnv({ rows: [neuronRow(1, 0)] });
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "unauthenticated");
+  assert.equal(m.batches.length, 0);
+  assert.deepEqual(m.deleted, ["metagraph/neurons-pending.json"]);
+
+  const tampered = signedEnvelope([neuronRow(1, 0)]);
+  tampered.rows[0].uid = 1;
+  const m2 = mockEnv({ rows: tampered });
+  const r2 = await loadStagedNeurons(m2.env);
+  assert.equal(r2.reason, "unauthenticated");
+  assert.equal(m2.batches.length, 0);
+});
+
+test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
+  const oversized = mockEnv({
+    rows: signedEnvelope([neuronRow(1, 0)]),
+    size: 2_000_001,
+  });
+  const oversizedResult = await loadStagedNeurons(oversized.env);
+  assert.equal(oversizedResult.reason, "too_large");
+  assert.equal(oversized.batches.length, 0);
+
+  const m = mockEnv({ rows: signedEnvelope([neuronRow(999999, -7)]) });
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "invalid");
+  assert.equal(m.batches.length, 0);
+
+  const bigRows = Array.from({ length: 50_001 }, (_, i) => neuronRow(1, i));
+  const m2 = mockEnv({ rows: signedEnvelope(bigRows), size: 1 });
+  const r2 = await loadStagedNeurons(m2.env);
+  assert.equal(r2.reason, "too_many_rows");
 });

@@ -236,37 +236,116 @@ export default {
   },
 };
 
+const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
+const MAX_STAGED_NEURONS_BYTES = 2_000_000;
+const MAX_STAGED_NEURON_ROWS = 50_000;
+const MAX_STAGED_NEURON_STRING_BYTES = 512;
+const MAX_STAGED_NETUID = 1024;
+const MAX_STAGED_UID = 65_535;
+
+function utf8Bytes(value) {
+  return new TextEncoder().encode(value);
+}
+
+function timingSafeStringEqual(a, b) {
+  const left = utf8Bytes(String(a || ""));
+  const right = utf8Bytes(String(b || ""));
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i += 1) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
+
+async function hmacHex(key, value) {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    utf8Bytes(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, utf8Bytes(value));
+  return [...new Uint8Array(sig)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function validStagedNeuronRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > MAX_STAGED_NETUID
+  )
+    return false;
+  if (!Number.isInteger(row.uid) || row.uid < 0 || row.uid > MAX_STAGED_UID)
+    return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
+    if (
+      typeof value === "string" &&
+      utf8Bytes(value).length > MAX_STAGED_NEURON_STRING_BYTES
+    )
+      return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+    if (
+      typeof value === "boolean" ||
+      typeof value === "bigint" ||
+      typeof value === "symbol" ||
+      typeof value === "function"
+    )
+      return false;
+  }
+  return true;
+}
+
 // Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
-// refresh-metagraph CI job fetches Taostats and writes the neuron rows as JSON to
-// R2 (metagraph/neurons-pending.json) using its existing R2 permission; we load
-// them here through the METAGRAPH_HEALTH_DB binding — which needs no API-token D1
-// permission — with PARAMETERIZED inserts (values are always bound, never
-// interpolated, so a tampered/garbage staged file can only fail, never inject
-// SQL), then delete the object so it loads exactly once. Batched to stay under
-// D1's 100-param-per-statement limit (→ 5 rows/statement) and the Worker's
-// subrequest limit.
+// refresh-metagraph CI job fetches Taostats, wraps the neuron rows in an
+// HMAC-signed envelope, and writes it to R2 (metagraph/neurons-pending.json)
+// using its existing R2 permission; we load only authenticated, bounded,
+// schema-valid rows through the METAGRAPH_HEALTH_DB binding — which needs no
+// API-token D1 permission — with PARAMETERIZED inserts (values are always bound,
+// never interpolated), then delete the object so it loads exactly once.
 export async function loadStagedNeurons(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
-  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
-  const key = "metagraph/neurons-pending.json";
-  const object = await bucket.get(key);
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const object = await bucket.get(STAGED_NEURONS_KEY);
   if (!object) return { ok: false, reason: "none" };
-  let rows;
+  if (Number(object.size || 0) > MAX_STAGED_NEURONS_BYTES) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "too_large" };
+  }
+  let envelope;
   try {
-    rows = await object.json();
+    envelope = await object.json();
   } catch {
-    await bucket.delete(key);
+    await bucket.delete(STAGED_NEURONS_KEY);
     return { ok: false, reason: "parse_failed" };
   }
-  rows = Array.isArray(rows)
-    ? rows.filter(
-        (r) => Number.isInteger(r?.netuid) && Number.isInteger(r?.uid),
-      )
-    : [];
-  if (!rows.length) {
-    await bucket.delete(key);
-    return { ok: false, reason: "empty" };
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (rows.length > MAX_STAGED_NEURON_ROWS) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "too_many_rows" };
+  }
+  const expected = await hmacHex(signingKey, JSON.stringify(rows));
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (!rows.length || rows.some((row) => !validStagedNeuronRow(row))) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "invalid" };
   }
   const cols = NEURON_INSERT_COLUMNS;
   const colList = cols.join(",");
@@ -288,7 +367,7 @@ export async function loadStagedNeurons(env) {
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
-  await bucket.delete(key);
+  await bucket.delete(STAGED_NEURONS_KEY);
   return { ok: true, rows: rows.length };
 }
 
