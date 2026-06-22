@@ -42,14 +42,15 @@ class ComputeFromBlockTest(unittest.TestCase):
             compute_from_block(None, self.HEAD, self.WINDOW), self.floor()
         )
 
-    def test_fresh_cursor_resumes_at_cursor_plus_one(self):
-        # A cursor just behind the head → cursor + 1 (no needless rescan, and
-        # ahead of the floor).
+    def test_fresh_cursor_still_uses_window_floor(self):
+        # A cursor just behind the head only proves the range was staged to R2,
+        # not that the asynchronous Worker imported it into D1. Keep re-scanning
+        # the overlap floor so an overwritten pending batch can be recreated.
         cursor = self.HEAD - 10
         self.assertEqual(
-            compute_from_block(cursor, self.HEAD, self.WINDOW), cursor + 1
+            compute_from_block(cursor, self.HEAD, self.WINDOW), self.floor()
         )
-        self.assertGreater(cursor + 1, self.floor())
+        self.assertLess(self.floor(), cursor + 1)
 
     def test_stale_cursor_older_than_window_is_capped_at_floor(self):
         # A cursor far older than the window must NOT trigger a whole-chain rescan;
@@ -75,10 +76,10 @@ class ComputeFromBlockTest(unittest.TestCase):
             compute_from_block(self.HEAD, self.HEAD, self.WINDOW), self.floor()
         )
 
-    def test_cursor_exactly_one_behind_resumes_at_head(self):
-        # Boundary: cursor == head - 1 → from == head (scan just the new block).
+    def test_cursor_exactly_one_behind_still_uses_floor(self):
+        # Boundary: cursor == head - 1 still re-scans the overlap window.
         self.assertEqual(
-            compute_from_block(self.HEAD - 1, self.HEAD, self.WINDOW), self.HEAD
+            compute_from_block(self.HEAD - 1, self.HEAD, self.WINDOW), self.floor()
         )
 
     def test_cursor_at_window_boundary_prefers_cursor(self):
@@ -91,9 +92,9 @@ class ComputeFromBlockTest(unittest.TestCase):
     def test_never_negative_near_genesis(self):
         # Window larger than the head must clamp the floor to 0, never go negative.
         self.assertEqual(compute_from_block(None, 5, 250), 0)
-        # With a low cursor near genesis we still resume at cursor+1 (block 2 is
-        # already staged → start at 3); the point is the result is never negative.
-        self.assertEqual(compute_from_block(2, 5, 250), 3)
+        # With a low cursor near genesis we still use the overlap floor because
+        # staging is not proof of D1 persistence.
+        self.assertEqual(compute_from_block(2, 5, 250), 0)
         self.assertGreaterEqual(compute_from_block(2, 5, 250), 0)
         # A None cursor with head 0 and any window clamps to 0 (not -249).
         self.assertEqual(compute_from_block(None, 0, 250), 0)

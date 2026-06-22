@@ -81,12 +81,11 @@ jobs:
       - name: Poll finney events (first-party, public RPC, no key)
         run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
-          # Overlap FLOOR (not the whole story anymore): ~250 blocks ≈ 50 min of
-          # chain guarantees generous idempotent overlap so a cold/empty cursor is
-          # safe and re-loads are harmless. The cursor (above) handles gaps LONGER
-          # than this; the window just bounds the per-run scan + provides overlap.
+          # Bounded overlap: ~250 blocks ≈ 50 min of chain is re-scanned every
+          # run so staged-but-not-yet-loaded event batches can be regenerated if
+          # the single pending R2 object is overwritten before the Worker drains it.
           EVENTS_WINDOW: "250"
-          # Highest block already staged (blank on a cold start → window floor).
+          # Highest block already staged; used for lag/health accounting only.
           EVENTS_CURSOR: ${{ steps.cursor.outputs.block }}
           # Emit a ::warning:: (and webhook alert, if configured) when the cursor
           # falls within a window of the public-RPC prune horizon.
@@ -100,11 +99,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # Advance the durable cursor ONLY after a successful stage above. fetch-events
-      # wrote the next cursor (the max block it scanned) to dist/events-cursor.json;
-      # promote it to R2 so the next run resumes from here. If staging failed, this
-      # step is skipped and the cursor stays put — so the next run re-scans from the
-      # last *confirmed-staged* block rather than skipping the un-staged range.
+      # Advance the cursor ONLY after a successful stage above. fetch-events wrote
+      # the next cursor (the max block it scanned) to dist/events-cursor.json; promote
+      # it to R2 for lag/health accounting. The poller still re-scans the bounded
+      # overlap window because R2 staging is not proof of asynchronous D1 import.
       - name: Advance event cursor in R2
         run: npx wrangler r2 object put metagraphed-artifacts/events/cursor.json --file=dist/events-cursor.json --remote
         env:
