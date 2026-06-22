@@ -34,11 +34,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # No `cache: npm` here on purpose: this workflow holds Cloudflare secrets, so
+      # we don't consume a shared npm cache another workflow could poison.
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22.22.3
-          cache: npm
 
       - name: Setup uv
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
@@ -46,8 +47,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      # substrate-interface is PINNED to an exact, verified version: this step runs
+      # with Cloudflare secrets in scope, so we never auto-pull a future (possibly
+      # compromised) release from PyPI. Bump deliberately after re-verifying.
       - name: Poll finney events (first-party, public RPC, no key)
-        run: uv run --with substrate-interface python scripts/fetch-events.py
+        run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
           EVENTS_WINDOW: "250"
 
