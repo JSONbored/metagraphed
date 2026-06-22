@@ -57,9 +57,15 @@ jobs:
         env:
           TAOSTATS_API_KEY: ${{ secrets.TAOSTATS_API_KEY }}
 
-      # Stage the snapshot to R2 (the token's existing R2 permission), then the
-      # Worker's scheduled handler loads it into D1 through its METAGRAPH_HEALTH_DB
-      # binding (loadStagedNeurons) — no API-token D1 permission required.
+      - name: Sign staged neuron snapshot
+        if: steps.gate.outputs.ready == 'true'
+        run: node scripts/sign-staged-neurons.mjs dist/metagraph-neurons.json
+        env:
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
+
+      # Stage the signed snapshot to R2 (the token's existing R2 permission),
+      # then the Worker's scheduled handler authenticates and bounds it before
+      # loading into D1 through its METAGRAPH_HEALTH_DB binding.
       - name: Stage neurons to R2 for the Worker to load into D1
         if: steps.gate.outputs.ready == 'true'
         run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.json --file=dist/metagraph-neurons.json --remote
