@@ -20,6 +20,7 @@ import type {
   GlobalIncidentSurface,
   HealthState,
   HealthSummary,
+  HealthTrends,
   LeaderboardBoardKey,
   LeaderboardRow,
   Leaderboards,
@@ -34,6 +35,7 @@ import type {
   SchemaInfo,
   Subnet,
   SubnetEconomics,
+  SubnetOverview,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -1000,6 +1002,37 @@ export const subnetUptimeQuery = (netuid: number, window = "90d") =>
         signal,
       });
       return { data: normalizeUptime(res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1124 port: composed subnet overview (profile + health + curation + gaps + counts)
+// in one call — for the redesigned subnet-detail header/overview.
+export const subnetOverviewQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-overview", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<SubnetOverview>(`/api/v1/subnets/${netuid}/overview`, {
+        signal,
+      });
+      return { data: (res.data ?? { netuid }) as SubnetOverview, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1124 port: per-window health trends. NB the live API returns per-window
+// `surfaces[]`, not a `points[]` series — consumers wanting a time-series should use
+// subnetTrajectoryQuery + subnetUptimeQuery instead.
+export const subnetHealthTrendsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-health-trends", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ windows?: HealthTrends["windows"] }>(
+        `/api/v1/subnets/${netuid}/health/trends`,
+        { signal },
+      );
+      const d = (res.data ?? {}) as { windows?: HealthTrends["windows"] };
+      return { data: { windows: d.windows ?? {} } as HealthTrends, meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

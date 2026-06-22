@@ -546,6 +546,44 @@ export interface Trajectory {
   deltas?: Record<string, TrajectoryDelta | null>;
 }
 
+/** Composed subnet overview from /api/v1/subnets/{netuid}/overview (#1124 port). */
+export interface SubnetOverview {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  status?: string;
+  profile?: Record<string, unknown>;
+  health?: Record<string, unknown>;
+  curation?: Record<string, unknown>;
+  gaps?: Record<string, unknown>;
+  gap_priorities?: unknown[];
+  counts?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+/**
+ * Health trend windows from /api/v1/subnets/{netuid}/health/trends.
+ * NB the live API returns per-window `surfaces[]` (not a `points[]` series), so for
+ * time-series sparklines prefer subnetTrajectoryQuery + subnetUptimeQuery.
+ */
+export interface HealthTrendPoint {
+  t: string;
+  uptime?: number;
+  latency_p50?: number;
+  latency_p95?: number;
+  [key: string]: unknown;
+}
+
+export interface HealthTrendWindow {
+  points?: HealthTrendPoint[];
+  surfaces?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface HealthTrends {
+  windows: Record<string, HealthTrendWindow>;
+}
+
 /** Reliability grade (A–F) + score for a surface or the whole subnet. */
 export interface ReliabilityGrade {
   score?: number;

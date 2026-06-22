@@ -182,5 +182,4 @@ export function onNetworkChange(cb: (next: ChainNetwork) => void): () => void {
   return () => window.removeEventListener(NETWORK_EVT, handler);
 }
 
-export const GITHUB_REPO =
-  env?.VITE_METAGRAPHED_REPO || "https://github.com/metagraphed/metagraphed";
+export const GITHUB_REPO = env?.VITE_METAGRAPHED_REPO || "https://github.com/JSONbored/metagraphed";
