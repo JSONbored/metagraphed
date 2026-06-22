@@ -47,16 +47,79 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Guard against client-bundle regressions. Budget is ~28% above the current
-      # ~233 KB gzipped; raise it deliberately (in the same PR) when a real
-      # feature legitimately grows the bundle.
-      - name: Bundle size budget (client JS, gzipped)
+      # Guard against client-bundle regressions. This measures the INITIAL client
+      # transfer for a cold visit to "/" — the entry chunk plus the transitive
+      # closure of its STATIC imports (the shared/vendor graph). It deliberately
+      # EXCLUDES the lazily-loaded route chunks (dynamic import()), which the
+      # browser never fetches on first paint. (The old gate gzipped every JS
+      # asset concatenated together — ~55 chunks — which over-counted by ~100 KB
+      # and punished route code-splitting.) Source of truth is TanStack Start's
+      # per-route preload manifest (.output/server/_tanstack-start-manifest_v-*.mjs):
+      # each route's `preloads` is its static module graph, so the cold first-load
+      # set is __root__ (the entry) ∪ the "/" route preloads.
+      #
+      # Budget is ~28% above the current ~233 KB gzipped; raise it deliberately
+      # (in the same PR) when a real feature legitimately grows the initial load.
+      - name: Bundle size budget (initial client JS, gzipped)
+        env:
+          BUDGET_KB: 300
         run: |
-          BUDGET_KB=300
-          BYTES=$(find .output/public/assets -name '*.js' | sort | xargs cat | gzip -c | wc -c)
-          KB=$(( (BYTES + 1023) / 1024 ))
-          echo "Client JS (gzipped, concatenated): ${KB} KB / budget ${BUDGET_KB} KB"
-          if [ "$KB" -gt "$BUDGET_KB" ]; then
-            echo "::error::Client JS bundle ${KB} KB exceeds the ${BUDGET_KB} KB budget — investigate the regression or raise the budget deliberately."
-            exit 1
-          fi
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from "node:fs";
+          import { gzipSync } from "node:zlib";
+          import path from "node:path";
+
+          const PUBLIC_DIR = ".output/public";
+          const SERVER_DIR = ".output/server";
+
+          const manifestFile = readdirSync(SERVER_DIR).find((f) =>
+            /^_tanstack-start-manifest_v-.*\.mjs$/.test(f),
+          );
+          if (!manifestFile) {
+            console.error(
+              "::error::Could not find the TanStack Start manifest (_tanstack-start-manifest_v-*.mjs) in " +
+                SERVER_DIR +
+                " — the bundle-size gate cannot measure the initial load. Did the build setup change?",
+            );
+            process.exit(1);
+          }
+
+          const mod = await import(path.resolve(SERVER_DIR, manifestFile));
+          const accessor = mod.default ?? Object.values(mod).find((v) => typeof v === "function");
+          const manifest = typeof accessor === "function" ? accessor() : accessor;
+          const routes = manifest?.routes;
+          if (!routes?.__root__) {
+            console.error("::error::Manifest has no routes/__root__ — cannot determine the entry chunk.");
+            process.exit(1);
+          }
+
+          // Entry chunk + the landing route's static-import closure. Dynamic
+          // route chunks are absent from `preloads` by construction, so they are
+          // excluded automatically.
+          const rootPreloads = routes.__root__.preloads ?? [];
+          const homePreloads = routes["/"]?.preloads ?? [];
+          const initial = [...new Set([...rootPreloads, ...homePreloads])].filter((f) =>
+            f.endsWith(".js"),
+          );
+          if (initial.length === 0) {
+            console.error("::error::No initial JS preloads found in the manifest — refusing to report 0 KB.");
+            process.exit(1);
+          }
+
+          const buffers = initial
+            .sort()
+            .map((f) => readFileSync(path.join(PUBLIC_DIR, f.replace(/^\//, ""))));
+          const bytes = gzipSync(Buffer.concat(buffers)).length;
+          const kb = Math.ceil(bytes / 1024);
+
+          const BUDGET_KB = Number(process.env.BUDGET_KB ?? 300);
+          console.log(
+            `Initial client JS (entry + static-import closure, gzipped): ${kb} KB / budget ${BUDGET_KB} KB  [${initial.length} chunks, lazy route chunks excluded]`,
+          );
+          if (kb > BUDGET_KB) {
+            console.error(
+              `::error::Initial client JS ${kb} KB exceeds the ${BUDGET_KB} KB budget — investigate the regression or raise the budget deliberately.`,
+            );
+            process.exit(1);
+          }
+          NODE
