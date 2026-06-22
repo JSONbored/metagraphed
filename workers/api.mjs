@@ -317,18 +317,6 @@ async function signedEventEnvelope(signingKey, rows) {
   };
 }
 
-async function purgeStaleNeuronRows(db, refreshed_netuids, captured_at) {
-  let purged = 0;
-  for (const netuid of refreshed_netuids) {
-    const result = await db
-      .prepare(`DELETE FROM neurons WHERE netuid = ? AND captured_at < ?`)
-      .bind(netuid, captured_at)
-      .run();
-    purged += result?.meta?.changes ?? 0;
-  }
-  return purged;
-}
-
 function utf8Bytes(value) {
   return new TextEncoder().encode(value);
 }
