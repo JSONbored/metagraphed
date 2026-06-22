@@ -289,7 +289,7 @@ function LeaderboardRowItem({
                      sm:grid-cols-[32px_52px_minmax(0,1fr)_88px_180px]"
         >
           {/* Rank */}
-          <span className="font-mono text-[11px] tabular-nums text-ink-subtle group-hover:text-ink-strong transition-colors">
+          <span className="font-mono text-[11px] tabular-nums text-ink-subtle-text group-hover:text-ink-strong transition-colors">
             {String(rank).padStart(2, "0")}
           </span>
 
@@ -335,7 +335,7 @@ function LeaderboardRowItem({
                 <TooltipTrigger asChild>
                   <span
                     tabIndex={0}
-                    className="mg-lb-value mg-lb-value-missing inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums whitespace-nowrap text-ink-subtle decoration-dotted underline underline-offset-4 decoration-ink-subtle/60 cursor-help"
+                    className="mg-lb-value mg-lb-value-missing inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums whitespace-nowrap text-ink-subtle-text decoration-dotted underline underline-offset-4 decoration-ink-subtle/60 cursor-help"
                     aria-label="Metric unavailable"
                     onClick={(e) => e.preventDefault()}
                   >

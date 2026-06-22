@@ -330,7 +330,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     <Search className="size-3.5 text-ink-muted shrink-0" />
                     <span className="text-sm text-ink-strong">
                       Filter /subnets by{" "}
-                      <span className="font-mono text-accent">"{debounced}"</span>
+                      <span className="font-mono text-accent-text">"{debounced}"</span>
                     </span>
                     <span className="ml-auto font-mono text-[10px] text-ink-muted">
                       <Kbd>↵</Kbd>

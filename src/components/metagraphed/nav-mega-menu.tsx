@@ -382,7 +382,7 @@ function PreviewSkeleton() {
 function PreviewMissing({ to }: { to: string }) {
   return (
     <div className="w-56 text-[11px] text-ink-muted">
-      Details not cached yet. <span className="text-accent">Open page →</span>
+      Details not cached yet. <span className="text-accent-text">Open page →</span>
       <span className="sr-only">{to}</span>
     </div>
   );
@@ -854,7 +854,7 @@ function MegaPanelBody({
           to={panel.to}
           onClick={onNavigate}
           ref={(el) => registerItem(el, nextIdx())}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline focus:underline underline-offset-4 focus:outline-none"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-text hover:underline focus:underline underline-offset-4 focus:outline-none"
           preload="intent"
         >
           Open {panel.label}
@@ -1255,7 +1255,7 @@ export function MobileMegaMenu({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     to={p.to}
                     onClick={onNavigate}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-accent"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-text"
                     preload="intent"
                   >
                     Open {p.label} <ArrowUpRight className="size-3" />

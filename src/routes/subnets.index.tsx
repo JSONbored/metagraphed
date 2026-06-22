@@ -19,6 +19,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
+  ariaSort,
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
@@ -418,7 +419,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
               <tr>
                 <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
-                <th className={cellPad}>
+                <th
+                  className={cellPad}
+                  aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                >
                   <SortHeader
                     label="UID"
                     field="netuid"
@@ -427,7 +431,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     onSort={onSort}
                   />
                 </th>
-                <th className={cellPad}>
+                <th className={cellPad} aria-sort={ariaSort(search.sort === "name", search.order)}>
                   <SortHeader
                     label="Name"
                     field="name"
@@ -436,7 +440,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     onSort={onSort}
                   />
                 </th>
-                <th className={cellPad}>
+                <th
+                  className={cellPad}
+                  aria-sort={ariaSort(search.sort === "symbol", search.order)}
+                >
                   <SortHeader
                     label="Symbol"
                     field="symbol"
@@ -445,7 +452,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     onSort={onSort}
                   />
                 </th>
-                <th className={classNames(cellPad, "text-right")}>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "participants", search.order)}
+                >
                   <SortHeader
                     label="Participants"
                     field="participants"
@@ -455,7 +465,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     align="right"
                   />
                 </th>
-                <th className={cellPad}>
+                <th
+                  className={cellPad}
+                  aria-sort={ariaSort(search.sort === "curation_level", search.order)}
+                >
                   <SortHeader
                     label="Curation"
                     field="curation_level"
@@ -464,7 +477,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     onSort={onSort}
                   />
                 </th>
-                <th className={classNames(cellPad, "text-right")}>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
+                >
                   <SortHeader
                     label="Surfaces"
                     field="surfaces_count"
@@ -475,7 +491,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   />
                 </th>
                 <th className={cellPad}>Health</th>
-                <th className={classNames(cellPad, "text-right")}>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "updated_at", search.order)}
+                >
                   <SortHeader
                     label="Updated"
                     field="updated_at"

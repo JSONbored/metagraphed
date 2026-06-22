@@ -17,9 +17,9 @@ const COMPONENT_ORDER: Array<[string, string]> = [
 
 function scoreTone(score: number): { label: string; cls: string } {
   if (score >= 80) return { label: "Ready to integrate", cls: "text-health-ok" };
-  if (score >= 50) return { label: "Emerging", cls: "text-health-warn" };
+  if (score >= 50) return { label: "Emerging", cls: "text-health-warn-text" };
   if (score >= 20) return { label: "Identity only", cls: "text-ink-muted" };
-  return { label: "Dormant", cls: "text-ink-subtle" };
+  return { label: "Dormant", cls: "text-ink-subtle-text" };
 }
 
 /**
@@ -49,17 +49,17 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="mg-label text-ink-subtle">Integration readiness</div>
+          <div className="mg-label text-ink-subtle-text">Integration readiness</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span
               className={classNames(
                 "font-display text-3xl font-semibold tabular-nums",
-                typeof score === "number" ? "text-ink-strong" : "text-ink-subtle",
+                typeof score === "number" ? "text-ink-strong" : "text-ink-subtle-text",
               )}
             >
               {typeof score === "number" ? score : "—"}
             </span>
-            <span className="text-xs text-ink-subtle">/ 100</span>
+            <span className="text-xs text-ink-subtle-text">/ 100</span>
             {tone ? (
               <span className={classNames("text-sm font-medium", tone.cls)}>{tone.label}</span>
             ) : null}
@@ -93,7 +93,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
                 ) : (
                   <Minus className="size-3.5 text-ink-subtle" />
                 )}
-                <span className={met ? "text-ink-muted" : "text-ink-subtle"}>{label}</span>
+                <span className={met ? "text-ink-muted" : "text-ink-subtle-text"}>{label}</span>
               </span>
             );
           })}
@@ -105,7 +105,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           <span className="font-medium text-ink-strong tabular-nums">{operational.length}</span>{" "}
           operational interface{operational.length === 1 ? "" : "s"}
           {missing.length > 0 ? (
-            <span className="text-ink-subtle"> · missing {missing.join(", ")}</span>
+            <span className="text-ink-subtle-text"> · missing {missing.join(", ")}</span>
           ) : null}
         </div>
       ) : null}

@@ -3,6 +3,20 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
 
+/**
+ * Maps the live sort state of a column to the WAI-ARIA `aria-sort` value for
+ * its `<th>`. Apply the result to the column-header cell (the element with the
+ * implicit `columnheader` role) — `aria-sort` is only honored there, not on a
+ * nested button. Columns that aren't the active sort report `"none"`.
+ */
+export function ariaSort(
+  active?: boolean,
+  order?: "asc" | "desc",
+): "ascending" | "descending" | "none" {
+  if (!active) return "none";
+  return order === "asc" ? "ascending" : "descending";
+}
+
 export function SortHeader({
   label,
   field,
@@ -18,9 +32,12 @@ export function SortHeader({
   onSort: (field: string) => void;
   align?: "left" | "right";
 }) {
+  const sortHint = active ? `, sorted ${order === "asc" ? "ascending" : "descending"}` : "";
   return (
     <button
+      type="button"
       onClick={() => onSort(field)}
+      aria-label={`Sort by ${label}${sortHint}`}
       className={classNames(
         "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest hover:text-ink-strong transition-colors",
         active ? "text-ink-strong" : "text-ink-muted",
@@ -30,9 +47,9 @@ export function SortHeader({
       <span>{label}</span>
       {active ? (
         order === "asc" ? (
-          <ArrowUp className="size-3" />
+          <ArrowUp className="size-3" aria-hidden />
         ) : (
-          <ArrowDown className="size-3" />
+          <ArrowDown className="size-3" aria-hidden />
         )
       ) : null}
     </button>

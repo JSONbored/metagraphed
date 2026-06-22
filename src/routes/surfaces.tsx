@@ -23,6 +23,7 @@ import {
 } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import {
+  ariaSort,
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
@@ -380,7 +381,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/50">
               <tr>
-                <th className="px-3 py-2">
+                <th
+                  className="px-3 py-2"
+                  aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                >
                   <SortHeader
                     label="Netuid"
                     field="netuid"
@@ -389,7 +393,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                     onSort={onSort}
                   />
                 </th>
-                <th className="px-3 py-2">
+                <th
+                  className="px-3 py-2"
+                  aria-sort={ariaSort(search.sort === "kind", search.order)}
+                >
                   <SortHeader
                     label="Kind"
                     field="kind"
@@ -398,7 +405,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                     onSort={onSort}
                   />
                 </th>
-                <th className="px-3 py-2">
+                <th
+                  className="px-3 py-2"
+                  aria-sort={ariaSort(search.sort === "name", search.order)}
+                >
                   <SortHeader
                     label="Name"
                     field="name"
@@ -410,7 +420,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                 <th className="px-3 py-2">URL</th>
                 <th className="px-3 py-2">Provider</th>
                 <th className="px-3 py-2">Curation</th>
-                <th className="px-3 py-2 text-right">
+                <th
+                  className="px-3 py-2 text-right"
+                  aria-sort={ariaSort(search.sort === "last_verified_at", search.order)}
+                >
                   <SortHeader
                     label="Last verified"
                     field="last_verified_at"

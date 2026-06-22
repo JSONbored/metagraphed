@@ -188,7 +188,7 @@ function OverviewPage() {
             truncate={false}
           />
           <div className="mt-3 flex gap-4 text-xs">
-            <Link to="/schemas" className="text-accent hover:underline">
+            <Link to="/schemas" className="text-accent-text hover:underline">
               API reference →
             </Link>
             <a

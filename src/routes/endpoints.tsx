@@ -1018,17 +1018,23 @@ function Th({
   const alignCls =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
   return (
-    <th className={classNames("px-3 py-2", alignCls)}>
+    <th
+      className={classNames("px-3 py-2", alignCls)}
+      aria-sort={active ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}
+    >
       <button
         type="button"
         onClick={() => onSort(k)}
+        aria-label={`Sort by ${label}${active ? `, sorted ${sortOrder === "asc" ? "ascending" : "descending"}` : ""}`}
         className={classNames(
           "inline-flex items-center gap-1 uppercase tracking-widest hover:text-ink-strong",
           active ? "text-ink-strong" : "text-ink-muted",
         )}
       >
         {label}
-        <span className="text-[8px]">{arrow}</span>
+        <span className="text-[8px]" aria-hidden>
+          {arrow}
+        </span>
       </button>
     </th>
   );

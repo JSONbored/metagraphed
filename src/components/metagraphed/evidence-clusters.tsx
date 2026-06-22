@@ -184,7 +184,7 @@ function GroupRow({
         <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           {label}
         </span>
-        <span className="font-mono text-[10px] text-ink-subtle">{count}</span>
+        <span className="font-mono text-[10px] text-ink-subtle-text">{count}</span>
       </span>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>

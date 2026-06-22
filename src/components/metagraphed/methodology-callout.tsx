@@ -74,9 +74,9 @@ export function MethodologyCallout({
               Staleness
             </div>
             <p className="mt-1">
-              Tiles show a <span className="text-health-warn">stale</span> chip when the snapshot is
-              older than the refresh budget. Visuals still render with the last known values; retry
-              buttons re-fetch just the affected panel. Each tile carries its own{" "}
+              Tiles show a <span className="text-health-warn-text">stale</span> chip when the
+              snapshot is older than the refresh budget. Visuals still render with the last known
+              values; retry buttons re-fetch just the affected panel. Each tile carries its own{" "}
               <span className="text-ink-strong">updated · window</span> stamp so you can tell stale
               from missing at a glance.
             </p>

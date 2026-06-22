@@ -27,6 +27,10 @@
   --color-ink-strong: var(--ink-strong);
   --color-ink-muted: var(--ink-muted);
   --color-ink-subtle: var(--ink-subtle);
+  /* AA-compliant text-only variant of --ink-subtle. The shared --ink-subtle is
+     also used as a border/fill where its lighter value is correct; this token is
+     for small body text that must clear WCAG AA (4.5:1) on paper/card. */
+  --color-ink-subtle-text: var(--ink-subtle-text);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -41,6 +45,10 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  /* AA-compliant text-only variant of --accent. --accent stays the brand mint
+     for fills, borders, focus rings and icons (graphics, 3:1); this darker token
+     is only for small accent *text* on paper/card, which needs 4.5:1. */
+  --color-accent-text: var(--accent-text);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -49,6 +57,11 @@
 
   --color-health-ok: var(--health-ok);
   --color-health-warn: var(--health-warn);
+  /* AA-compliant text-only variant of --health-warn. The shared token stays the
+     softened amber for status dots, chips and borders; this darker token is only
+     for small "warn" *text* on paper/card, which needs 4.5:1 (light theme only —
+     dark-theme --health-warn already passes). */
+  --color-health-warn-text: var(--health-warn-text);
   --color-health-down: var(--health-down);
   --color-health-unknown: var(--health-unknown);
 
@@ -94,6 +107,9 @@
   --ink-strong: oklch(0.2 0.012 200); /* deep ink */
   --ink-muted: oklch(0.52 0.012 200);
   --ink-subtle: oklch(0.74 0.008 200);
+  /* AA text variant of --ink-subtle (same hue/chroma, darker L). 4.69:1 on
+     paper, 5.04:1 on card. Used only where --ink-subtle styles small text. */
+  --ink-subtle-text: oklch(0.54 0.008 200);
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
@@ -112,6 +128,9 @@
   --muted-foreground: var(--ink-muted);
   --accent: oklch(0.74 0.15 168);
   --accent-foreground: oklch(0.2 0.012 200);
+  /* AA text variant of --accent (same hue/chroma, darker L). 4.58:1 on paper,
+     4.92:1 on card. Used only where --accent styles small text. */
+  --accent-text: oklch(0.515 0.15 168);
 
   --destructive: oklch(0.58 0.22 28);
   --destructive-foreground: oklch(1 0 0);
@@ -122,6 +141,9 @@
 
   --health-ok: oklch(0.72 0.14 168); /* brand mint — same hue family as --accent */
   --health-warn: oklch(0.76 0.12 80); /* softened amber, not neon */
+  /* AA text variant of --health-warn (same hue/chroma, darker L). 4.58:1 on
+     paper, 4.92:1 on card. Used only where --health-warn styles small text. */
+  --health-warn-text: oklch(0.55 0.12 80);
   --health-down: oklch(0.58 0.22 28);
   --health-unknown: oklch(0.66 0.01 200);
 
@@ -156,6 +178,9 @@
   --ink-strong: oklch(0.96 0.014 200);
   --ink-muted: oklch(0.64 0.012 200);
   --ink-subtle: oklch(0.42 0.01 200);
+  /* AA text variant of --ink-subtle (same hue/chroma, lighter L for the dark
+     canvas). 4.98:1 on paper, 4.63:1 on card. */
+  --ink-subtle-text: oklch(0.61 0.01 200);
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
@@ -174,6 +199,9 @@
   --muted-foreground: var(--ink-muted);
   --accent: oklch(0.85 0.14 168);
   --accent-foreground: oklch(0.16 0.008 200);
+  /* Dark --accent already clears AA as text (≈11.7:1), so the text variant is
+     the brand mint itself — no visual change in dark mode. */
+  --accent-text: var(--accent);
 
   --destructive: oklch(0.7 0.22 28);
   --destructive-foreground: oklch(0.16 0.008 200);
@@ -184,6 +212,9 @@
 
   --health-ok: oklch(0.85 0.14 168); /* brand mint — already matches --accent */
   --health-warn: oklch(0.84 0.12 80); /* softened amber, not neon */
+  /* Dark --health-warn already clears AA as text (≈10.6:1), so the text variant
+     is the shared token itself — no visual change in dark mode. */
+  --health-warn-text: var(--health-warn);
   --health-down: oklch(0.72 0.2 28);
   --health-unknown: oklch(0.52 0.01 200);
 
