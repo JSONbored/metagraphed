@@ -1631,6 +1631,63 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.ok(out.results.every((r) => r.netuid !== 8));
   });
 
+  test("find_subnet_for_task surfaces a callable subnet ranked beyond the non-callable pool", async () => {
+    // Regression: callability must be filtered BEFORE the rank pool is
+    // truncated. Here 51 non-callable subnets tie with (and, by the ascending
+    // netuid tiebreak, out-rank) the single callable subnet 999, pushing it to
+    // pool position 52 — past the hard-coded poolSize of 50. Filtering after the
+    // slice would drop it and falsely report "no callable subnet matched".
+    const documents = [];
+    for (let netuid = 1; netuid <= 51; netuid += 1) {
+      documents.push({
+        id: `subnet:${netuid}`,
+        type: "subnet",
+        netuid,
+        slug: `sn-${netuid}`,
+        title: "Data tool",
+        tokens: ["data"],
+        categories: ["data"],
+      });
+    }
+    documents.push({
+      id: "subnet:999",
+      type: "subnet",
+      netuid: 999,
+      slug: "sn-999",
+      title: "Data tool",
+      tokens: ["data"],
+      categories: ["data"],
+    });
+    const fixture = {
+      "/metagraph/search.json": { documents },
+      "/metagraph/agent-catalog.json": {
+        subnets: [
+          {
+            netuid: 999,
+            name: "Callable data API",
+            slug: "sn-999",
+            categories: ["data"],
+            integration_readiness: 60,
+            callable_count: 3,
+            service_kinds: ["subnet-api"],
+            base_url: "https://api.example.io",
+            health: "operational",
+          },
+        ],
+      },
+    };
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "data", limit: 5 },
+      { deps: makeDeps(fixture) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(out.count, 1);
+    assert.equal(out.results[0].netuid, 999);
+    assert.equal(out.note, undefined);
+  });
+
   test("find_subnet_for_task notes when nothing callable matches", async () => {
     const res = await callTool(
       "find_subnet_for_task",
@@ -2082,10 +2139,18 @@ describe("MCP goal-shaped tools — branch coverage", () => {
 
   test("find_subnet_for_task tolerates a catalog with no subnets field", async () => {
     const env = aiEnvWithMatches([1, 2]);
+    // Semantic hits that aren't callable (empty catalog) now fall through to
+    // keyword discovery, so search.json must be present (empty here) — still 0.
     const res = await callTool(
       "find_subnet_for_task",
       { task: "anything" },
-      { deps: makeDeps({ "/metagraph/agent-catalog.json": {} }), env },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog.json": {},
+          "/metagraph/search.json": { documents: [] },
+        }),
+        env,
+      },
     );
     assert.equal(res.body.result.structuredContent.count, 0);
   });
