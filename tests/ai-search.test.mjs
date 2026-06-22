@@ -168,6 +168,12 @@ describe("embedding helpers", () => {
     const long = "surface:" + "x".repeat(80);
     assert.ok(vectorId(long).startsWith("h:"));
     assert.ok(vectorId(long).length <= 64);
+    // Vectorize caps ids at 64 BYTES, not UTF-16 length: a multi-byte id that is
+    // <=64 chars but >64 bytes must still be folded to a hashed id.
+    const multibyte = "é".repeat(40); // 40 chars, 80 UTF-8 bytes
+    assert.ok(new TextEncoder().encode(multibyte).length > 64);
+    assert.equal(multibyte.length <= 64, true); // would wrongly pass the old check
+    assert.ok(vectorId(multibyte).startsWith("h:"));
   });
   test("embeddingMetadata normalises missing fields to null", () => {
     assert.deepEqual(embeddingMetadata({ type: "subnet", netuid: 7 }), {

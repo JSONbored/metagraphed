@@ -119,9 +119,12 @@ export function embeddingText(doc) {
 
 // Vectorize ids are capped at 64 bytes; long surface ids are folded to a stable
 // hashed id. The real identity lives in metadata, so query results are unaffected.
+// Measure UTF-8 BYTES, not UTF-16 `.length`: a multi-byte id can be <=64 chars
+// yet >64 bytes, which would slip past the cap and be rejected on upsert.
 export function vectorId(docId) {
   const id = String(docId);
-  return id.length <= VECTOR_ID_MAX_BYTES ? id : `h:${contentHash(id)}`;
+  const byteLength = new TextEncoder().encode(id).length;
+  return byteLength <= VECTOR_ID_MAX_BYTES ? id : `h:${contentHash(id)}`;
 }
 
 export function embeddingMetadata(doc) {
