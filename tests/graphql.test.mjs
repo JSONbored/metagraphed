@@ -207,6 +207,23 @@ describe("handleGraphQLRequest — validation rules", () => {
     );
   });
 
+  test("validation memoizes repeated named fragment spreads", async () => {
+    const fragments = ["fragment F0 on Query { __typename }"];
+    for (let i = 1; i <= 20; i += 1) {
+      fragments.push(`fragment F${i} on Query { ...F${i - 1} ...F${i - 1} }`);
+    }
+    const q = `query { ...F20 } ${fragments.join(" ")}`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected COMPLEXITY_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
   test("complexity exceeded returns COMPLEXITY_LIMIT_EXCEEDED extension", async () => {
     // GRAPHQL_MAX_COMPLEXITY is 50. Build a query with many fields by using
     // inline fragments or repeating aliases to exceed the limit.
