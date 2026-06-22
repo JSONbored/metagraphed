@@ -17,6 +17,10 @@ export const tableSearchSchema = z.object({
   health: fallback(z.string(), "").default(""),
   kind: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
+  // Layout state for list routes that support multiple views + row density.
+  // Additive + optional with safe fallbacks so the toggles persist in the URL.
+  view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),
+  density: fallback(z.enum(["comfortable", "compact"]), "comfortable").default("comfortable"),
 });
 
 export type TableSearch = z.infer<typeof tableSearchSchema>;

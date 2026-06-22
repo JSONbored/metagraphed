@@ -10,6 +10,12 @@ import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
+import { SparklineCell } from "@/components/metagraphed/charts/sparkline-cell";
+import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
+import { DensityToggle, type Density } from "@/components/metagraphed/density-toggle";
+import { ViewModeToggle, type ViewMode } from "@/components/metagraphed/view-mode-toggle";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
@@ -21,13 +27,18 @@ import {
   SortHeader,
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
+import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
+import {
+  SubnetsCompareDrawer,
+  CompareToggle,
+} from "@/components/metagraphed/subnets-compare-drawer";
 import {
   subnetsInfiniteQuery,
   coverageQuery,
   healthQuery,
   subnetHealthMapQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Subnet } from "@/lib/metagraphed/types";
@@ -60,7 +71,24 @@ function SubnetsPage() {
     !!search.q || !!search.sort || !!search.curation || !!search.health || !!search.cursor;
   const onReset = () =>
     navigate({
-      search: { limit: search.limit } as never,
+      search: { limit: search.limit, view: search.view } as never,
+      replace: true,
+    });
+  const setView = (v: ViewMode) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+      replace: true,
+    });
+  const isMobile = useIsMobile();
+  const effectiveDensity: Density =
+    search.density === "compact" || search.density === "comfortable"
+      ? search.density
+      : isMobile
+        ? "compact"
+        : "comfortable";
+  const setDensity = (d: Density) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
       replace: true,
     });
   return (
@@ -72,6 +100,10 @@ function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
+            <ViewModeToggle value={search.view} onChange={setView} />
+            {search.view === "table" ? (
+              <DensityToggle value={effectiveDensity} onChange={setDensity} />
+            ) : null}
             <ResetFiltersButton active={filtersActive} onReset={onReset} />
             <ShareButton />
           </>
@@ -91,12 +123,14 @@ function SubnetsPage() {
           <SubnetsStatStrip />
         </Suspense>
       </QueryErrorBoundary>
+      <SubnetsSavedViews />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <SubnetsTable />
+          <SubnetsTable view={search.view} density={effectiveDensity} />
         </Suspense>
       </QueryErrorBoundary>
       <ApiSourceFooter paths={["/api/v1/subnets"]} artifacts={["/metagraph/subnets.json"]} />
+      <SubnetsCompareDrawer />
     </AppShell>
   );
 }
@@ -137,7 +171,7 @@ function SubnetsStatStrip() {
   );
 }
 
-function SubnetsTable() {
+function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
@@ -265,30 +299,63 @@ function SubnetsTable() {
     </>
   );
 
+  const emptyNode = (
+    <EmptyState
+      title="No subnets match these filters"
+      description={
+        filtersActive
+          ? "Try clearing one or more filters, or broaden the search."
+          : "The registry returned no subnets — the source artifact may be temporarily unavailable."
+      }
+      action={
+        filtersActive
+          ? { label: "Reset filters", href: "/subnets" }
+          : {
+              label: "Open /api/v1/subnets",
+              href: `${API_BASE}/api/v1/subnets`,
+              external: true,
+            }
+      }
+    />
+  );
+
+  const footerNode = (
+    <LoadMore
+      shown={rows.length}
+      total={total}
+      hasMore={!!hasNextPage}
+      isLoading={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
+      error={isFetchNextPageError ? (error as Error) : null}
+      cursorInvalid={cursorInvalid}
+    />
+  );
+
+  // Grid / matrix views skip ListShell so they're not boxed in a table card.
+  if (view === "grid" || view === "matrix") {
+    return (
+      <div>
+        <div className="sticky top-14 z-20 -mx-4 md:mx-0 mb-3 bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5">
+          <div className="flex flex-wrap items-center gap-2">{filters}</div>
+        </div>
+        {rows.length === 0 && !hasNextPage ? (
+          emptyNode
+        ) : view === "grid" ? (
+          <SubnetGrid rows={rows} />
+        ) : (
+          <SubnetMatrix rows={rows} />
+        )}
+        <div className="mt-3">{footerNode}</div>
+      </div>
+    );
+  }
+
   return (
     <ListShell
       filters={filters}
       isEmpty={rows.length === 0 && !hasNextPage}
       isStale={isFetching && !isFetchingNextPage}
-      empty={
-        <EmptyState
-          title="No subnets match these filters"
-          description={
-            filtersActive
-              ? "Try clearing one or more filters, or broaden the search."
-              : "The registry returned no subnets — the source artifact may be temporarily unavailable."
-          }
-          action={
-            filtersActive
-              ? { label: "Reset filters", href: "/subnets" }
-              : {
-                  label: "Open /api/v1/subnets",
-                  href: `${API_BASE}/api/v1/subnets`,
-                  external: true,
-                }
-          }
-        />
-      }
+      empty={emptyNode}
       cards={rows.map((s) => (
         <Link
           key={s.netuid}
@@ -330,146 +397,447 @@ function SubnetsTable() {
           </div>
         </Link>
       ))}
-      table={
-        <table className="w-full text-left text-sm">
-          <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
-            <tr>
-              <th className="px-4 py-2.5">
-                <SortHeader
-                  label="UID"
-                  field="netuid"
-                  active={search.sort === "netuid"}
-                  order={search.order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-4 py-2.5">
-                <SortHeader
-                  label="Name"
-                  field="name"
-                  active={search.sort === "name"}
-                  order={search.order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-4 py-2.5">
-                <SortHeader
-                  label="Symbol"
-                  field="symbol"
-                  active={search.sort === "symbol"}
-                  order={search.order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-4 py-2.5 text-right">
-                <SortHeader
-                  label="Participants"
-                  field="participants"
-                  active={search.sort === "participants"}
-                  order={search.order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th className="px-4 py-2.5">
-                <SortHeader
-                  label="Curation"
-                  field="curation_level"
-                  active={search.sort === "curation_level"}
-                  order={search.order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-4 py-2.5 text-right">
-                <SortHeader
-                  label="Surfaces"
-                  field="surfaces_count"
-                  active={search.sort === "surfaces_count"}
-                  order={search.order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th className="px-4 py-2.5">Health</th>
-              <th className="px-4 py-2.5 text-right">
-                <SortHeader
-                  label="Updated"
-                  field="updated_at"
-                  active={search.sort === "updated_at"}
-                  order={search.order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[12px] text-ink-muted">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="hover:text-ink-strong"
-                    >
-                      {String(s.netuid).padStart(3, "0")}
-                    </Link>
-                  </EntityHoverCard>
-                </td>
-                <td className="px-4 py-2.5">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                    >
-                      <BrandIcon
-                        url={s.website}
-                        iconUrl={s.icon_url}
-                        netuid={s.netuid}
-                        name={s.name}
-                        fallback={s.netuid}
-                        size={20}
-                      />
-                      <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                    </Link>
-                  </EntityHoverCard>
-                </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {s.symbol ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px]">
-                  {formatNumber(s.participants)}
-                </td>
-                <td className="px-4 py-2.5">
-                  <CurationChip level={s.curation_level} />
-                </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px]">
-                  {s.surfaces_count ?? "—"}
-                </td>
-                <td className="px-4 py-2.5">
-                  <HealthPill state={s.health} />
-                </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
-                  <TimeAgo at={s.updated_at ?? s.freshness} />
-                </td>
+      table={(() => {
+        const compact = density === "compact";
+        const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
+        const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
+        const monoSize = compact ? "text-[11px]" : "text-[12px]";
+        return (
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-[6.5rem] z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+              <tr>
+                <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
+                <th className={cellPad}>
+                  <SortHeader
+                    label="UID"
+                    field="netuid"
+                    active={search.sort === "netuid"}
+                    order={search.order}
+                    onSort={onSort}
+                  />
+                </th>
+                <th className={cellPad}>
+                  <SortHeader
+                    label="Name"
+                    field="name"
+                    active={search.sort === "name"}
+                    order={search.order}
+                    onSort={onSort}
+                  />
+                </th>
+                <th className={cellPad}>
+                  <SortHeader
+                    label="Symbol"
+                    field="symbol"
+                    active={search.sort === "symbol"}
+                    order={search.order}
+                    onSort={onSort}
+                  />
+                </th>
+                <th className={classNames(cellPad, "text-right")}>
+                  <SortHeader
+                    label="Participants"
+                    field="participants"
+                    active={search.sort === "participants"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th className={cellPad}>
+                  <SortHeader
+                    label="Curation"
+                    field="curation_level"
+                    active={search.sort === "curation_level"}
+                    order={search.order}
+                    onSort={onSort}
+                  />
+                </th>
+                <th className={classNames(cellPad, "text-right")}>
+                  <SortHeader
+                    label="Surfaces"
+                    field="surfaces_count"
+                    active={search.sort === "surfaces_count"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th className={cellPad}>Health</th>
+                <th className={classNames(cellPad, "text-right")}>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    Trend 7d
+                  </span>
+                </th>
+                <th className={classNames(cellPad, "text-right")}>
+                  <SortHeader
+                    label="Updated"
+                    field="updated_at"
+                    active={search.sort === "updated_at"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      }
-      footer={
-        <LoadMore
-          shown={rows.length}
-          total={total}
-          hasMore={!!hasNextPage}
-          isLoading={isFetchingNextPage}
-          onLoadMore={() => fetchNextPage()}
-          error={isFetchNextPageError ? (error as Error) : null}
-          cursorInvalid={cursorInvalid}
-        />
-      }
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((s) => (
+                <tr key={s.netuid} className="mg-row-accent hover:bg-surface/40">
+                  <td className={classNames(firstPad, "align-middle")}>
+                    <CompareToggle netuid={s.netuid} />
+                  </td>
+                  <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+                    <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="hover:text-ink-strong"
+                      >
+                        {String(s.netuid).padStart(3, "0")}
+                      </Link>
+                    </EntityHoverCard>
+                  </td>
+                  <td className={cellPad}>
+                    <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                      >
+                        <BrandIcon
+                          url={s.website}
+                          iconUrl={s.icon_url}
+                          netuid={s.netuid}
+                          name={s.name}
+                          fallback={s.netuid}
+                          size={compact ? 18 : 20}
+                        />
+                        <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                      </Link>
+                    </EntityHoverCard>
+                  </td>
+                  <td className={classNames(cellPad, "font-mono text-[11px] text-ink-muted")}>
+                    {s.symbol ?? "—"}
+                  </td>
+                  <td className={classNames(cellPad, "text-right")}>
+                    <ParticipantsCell
+                      value={s.participants}
+                      density={density}
+                      updatedAt={s.updated_at ?? s.freshness}
+                    />
+                  </td>
+                  <td className={cellPad}>
+                    <CurationChip level={s.curation_level} />
+                  </td>
+                  <td className={classNames(cellPad, "text-right")}>
+                    <SurfacesCell subnet={s} density={density} />
+                  </td>
+                  <td className={cellPad}>
+                    <HealthPill state={s.health} />
+                  </td>
+                  <td className={classNames(cellPad, "text-right")}>
+                    <TrendCell subnet={s} density={density} />
+                  </td>
+                  <td
+                    className={classNames(
+                      cellPad,
+                      "text-right font-mono text-[11px] text-ink-muted",
+                    )}
+                  >
+                    <TimeAgo at={s.updated_at ?? s.freshness} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
+      })()}
+      footer={footerNode}
     />
+  );
+}
+
+/* ---------- Grid view ---------- */
+
+function SubnetGrid({ rows }: { rows: Subnet[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {rows.map((s) => (
+        <Link
+          key={s.netuid}
+          to="/subnets/$netuid"
+          params={{ netuid: s.netuid }}
+          className="group relative flex flex-col gap-3 rounded border border-border bg-card p-4 mg-hover-lift mg-fade-in"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <BrandIcon
+                url={s.website}
+                iconUrl={s.icon_url}
+                netuid={s.netuid}
+                name={s.name}
+                fallback={s.netuid}
+                size={36}
+              />
+              <div className="min-w-0">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  #{String(s.netuid).padStart(3, "0")}
+                  {s.symbol ? ` · ${s.symbol}` : ""}
+                </div>
+                <div className="font-display font-semibold text-ink-strong truncate">
+                  {s.name ?? `Subnet ${s.netuid}`}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <CompareToggle netuid={s.netuid} />
+              <HealthPill state={s.health} />
+            </div>
+          </div>
+
+          {(s as { description?: string }).description ? (
+            <p className="text-[12px] text-ink-muted leading-relaxed line-clamp-2">
+              {(s as { description?: string }).description}
+            </p>
+          ) : null}
+
+          <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+            <CurationChip level={s.curation_level} />
+            <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted">
+              <span title="Participants">{formatNumber(s.participants)}</span>
+              <span title="Surfaces">{s.surfaces_count ?? 0} surf</span>
+              <TimeAgo at={s.updated_at ?? s.freshness} />
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Matrix view ---------- */
+
+const HEALTH_BG: Record<string, string> = {
+  ok: "bg-health-ok/90 hover:bg-health-ok",
+  warn: "bg-health-warn/80 hover:bg-health-warn",
+  down: "bg-health-down/85 hover:bg-health-down",
+  unknown: "bg-health-unknown/40 hover:bg-health-unknown/70",
+};
+
+function SubnetMatrix({ rows }: { rows: Subnet[] }) {
+  return (
+    <div className="rounded border border-border bg-card p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          Health matrix · {rows.length} subnets
+        </div>
+        <div className="flex items-center gap-3 text-[10px] font-mono text-ink-muted">
+          <Legend color="bg-health-ok" label="ok" />
+          <Legend color="bg-health-warn" label="warn" />
+          <Legend color="bg-health-down" label="down" />
+          <Legend color="bg-health-unknown" label="unknown" />
+        </div>
+      </div>
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(2.25rem, 1fr))" }}
+      >
+        {rows.map((s) => (
+          <EntityHoverCard key={s.netuid} kind="subnet" netuid={s.netuid}>
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: s.netuid }}
+              aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
+              title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
+              className={classNames(
+                "mg-pulse-cell flex aspect-square items-center justify-center rounded-sm font-mono text-[10px] font-medium text-white/95 transition-transform",
+                HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
+              )}
+            >
+              {s.netuid}
+            </Link>
+          </EntityHoverCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={classNames("size-2 rounded-sm", color)} />
+      {label}
+    </span>
+  );
+}
+
+/* ---------- Row visualization cells ---------- */
+
+const SURFACE_KIND_COLORS: Record<string, string> = {
+  api: "var(--accent)",
+  openapi: "var(--accent)",
+  docs: "var(--health-ok)",
+  repo: "var(--ink-strong)",
+  dashboard: "var(--health-warn)",
+  data: "var(--ink-muted)",
+  sdk: "var(--accent)",
+  example: "var(--health-ok)",
+  sse: "var(--health-warn)",
+  rpc: "var(--ink-strong)",
+};
+
+function ParticipantsCell({
+  value,
+  density = "comfortable",
+  updatedAt,
+}: {
+  value?: number;
+  density?: Density;
+  updatedAt?: string | null;
+}) {
+  const n = typeof value === "number" ? value : 0;
+  const pct = Math.max(0, Math.min(1, n / 256));
+  const compact = density === "compact";
+  return (
+    <SparkLegend
+      metric="Participant density"
+      source="Live participant count from the on-chain metagraph, scaled against the 256-slot subnet cap."
+      windowLabel="live"
+      updatedAt={updatedAt ?? null}
+      staleness="Reflects the most recent block snapshot; bar disappears when the count is zero or unknown."
+      side="left"
+    >
+      <span className="inline-flex flex-col items-end gap-0.5 min-w-[64px]">
+        <span
+          className={classNames(
+            "font-mono tabular-nums text-ink",
+            compact ? "text-[11px]" : "text-[12px]",
+          )}
+        >
+          {formatNumber(value)}
+        </span>
+        <span
+          className={classNames(
+            "overflow-hidden rounded-full bg-border/50 w-14",
+            compact ? "h-0.5" : "h-1",
+          )}
+          aria-hidden
+        >
+          <span className="block h-full bg-accent/70" style={{ width: `${pct * 100}%` }} />
+        </span>
+      </span>
+    </SparkLegend>
+  );
+}
+
+function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
+  const count = subnet.surfaces_count ?? 0;
+  const rec = subnet as unknown as Record<string, unknown>;
+  const byKind = (rec.surfaces_by_kind ?? rec.surface_kinds) as Record<string, number> | undefined;
+  const segments = byKind
+    ? Object.entries(byKind)
+        .filter(([, v]) => typeof v === "number" && v > 0)
+        .map(([k, v]) => ({
+          label: k,
+          value: v,
+          color: SURFACE_KIND_COLORS[k.toLowerCase()] ?? "var(--ink-muted)",
+        }))
+    : count > 0
+      ? [{ label: "surfaces", value: count, color: "var(--accent)" }]
+      : [];
+  const compact = density === "compact";
+  const kindSummary = byKind
+    ? Object.entries(byKind)
+        .filter(([, v]) => typeof v === "number" && v > 0)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(", ")
+    : null;
+
+  return (
+    <SparkLegend
+      metric="Surface kinds"
+      source={`Verified public surfaces from /api/v1/subnets/${subnet.netuid}/surfaces, grouped by kind.${kindSummary ? ` — ${kindSummary}` : ""}`}
+      windowLabel="latest snapshot"
+      updatedAt={subnet.updated_at ?? subnet.freshness ?? null}
+      staleness="Unverified candidates are excluded; the bar collapses to a single segment when per-kind counts are missing."
+      side="top"
+    >
+      <span
+        className={classNames("flex items-center gap-2", compact ? "min-w-[72px]" : "min-w-[88px]")}
+      >
+        <span
+          className={classNames(
+            "font-mono tabular-nums text-ink w-6 text-right",
+            compact ? "text-[11px]" : "text-[12px]",
+          )}
+        >
+          {count || "—"}
+        </span>
+        <span className={classNames("flex-1", compact ? "max-w-[64px]" : "max-w-[80px]")}>
+          <MiniStack segments={segments} height={compact ? 4 : 6} />
+        </span>
+      </span>
+    </SparkLegend>
+  );
+}
+
+function TrendCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
+  // The /api/v1/subnets list payload has NO real per-subnet health series, so we
+  // only render a sparkline when one is genuinely present on the row. We never
+  // fabricate a netuid-seeded illustrative shape — an absent series renders an
+  // honest no-data state (the column + SparkLegend label still stand).
+  const rec = subnet as unknown as Record<string, unknown>;
+  const candidate =
+    rec.health_history ?? rec.uptime_series ?? rec.health_series ?? rec.uptime_history;
+  const series = Array.isArray(candidate)
+    ? (candidate as unknown[])
+        .map((v) =>
+          typeof v === "number"
+            ? v
+            : typeof v === "object" && v && "value" in v
+              ? Number((v as { value: unknown }).value)
+              : Number(v),
+        )
+        .filter((n) => Number.isFinite(n))
+    : [];
+  const hasReal = series.length >= 2;
+  const compact = density === "compact";
+  const width = compact ? 48 : 64;
+  const height = compact ? 14 : 18;
+
+  return (
+    <SparkLegend
+      metric="Health trend"
+      source="Mean probe result per bucket across tracked endpoints, from /api/v1/subnets/{netuid}/health."
+      windowLabel="7d"
+      updatedAt={subnet.updated_at ?? subnet.freshness ?? null}
+      staleness={
+        hasReal
+          ? "Stale snapshots still render with the last known values; the page-level retry refreshes them."
+          : "The subnets list carries no per-subnet trend series — open the subnet to see its probe history."
+      }
+      side="left"
+    >
+      <span className="inline-flex justify-end">
+        {hasReal ? (
+          <SparklineCell
+            values={series}
+            health={subnet.health ?? "unknown"}
+            width={width}
+            height={height}
+          />
+        ) : (
+          <span
+            className="inline-flex items-center justify-center font-mono text-[10px] text-ink-muted"
+            style={{ width, height }}
+            aria-label={`No trend series for SN${subnet.netuid}`}
+          >
+            —
+          </span>
+        )}
+      </span>
+    </SparkLegend>
   );
 }
