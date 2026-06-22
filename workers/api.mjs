@@ -101,6 +101,7 @@ import {
 import {
   rollupNeuronDaily,
   archiveNeuronDaily,
+  archivePrunableNeuronDaily,
   pruneNeuronDaily,
   buildNeuronHistory,
   buildSubnetHistory,
@@ -702,21 +703,28 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   }
   if (cron === NEURON_HISTORY_ROLLUP_CRON) {
     // Once/day (#1345): snapshot the current `neurons` tier into the dated
-    // neuron_daily table, archive that day to the R2 cold tier, then prune D1 to
-    // the 90-day hot window. Archive runs BEFORE prune and the prune is GATED on
-    // a confirmed archive, so a day is never dropped from D1 before it exists in
-    // R2. Its own cron minute so the ~33k-row work never piles onto the
-    // probe/prune/fast crons; each step is .catch-isolated.
+    // neuron_daily table, archive that day and any prunable backlog to the R2
+    // cold tier, then prune D1 to the 90-day hot window. Archive runs BEFORE
+    // prune and the prune is GATED on confirmed archives for every day eligible
+    // for deletion, so a day is never dropped from D1 before it exists in R2. Its
+    // own cron minute so the ~33k-row work never piles onto the probe/prune/fast
+    // crons; each step is .catch-isolated.
     const rolled = await rollupNeuronDaily(env).catch(() => ({
       rolled: false,
     }));
     const archived = await archiveNeuronDaily(env).catch(() => ({
       archived: false,
     }));
-    const pruned = archived.archived
-      ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
-      : { pruned: false, reason: "archive-not-confirmed" };
-    return { rolled, archived, pruned };
+    const archivedPrunable = await archivePrunableNeuronDaily(env).catch(
+      () => ({
+        archived: false,
+      }),
+    );
+    const pruned =
+      archived.archived && archivedPrunable.archived
+        ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+        : { pruned: false, reason: "archive-not-confirmed" };
+    return { rolled, archived, archivedPrunable, pruned };
   }
   return runHealthProber(env, ctx);
 }

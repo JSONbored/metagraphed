@@ -4,6 +4,7 @@ import {
   parseHistoryWindow,
   rollupNeuronDaily,
   archiveNeuronDaily,
+  archivePrunableNeuronDaily,
   pruneNeuronDaily,
   coldArchiveKey,
   NEURON_DAILY_RETENTION_DAYS,
@@ -265,6 +266,62 @@ describe("R2 cold archive + prune (PR-A2)", () => {
 
   test("archiveNeuronDaily no-ops without bindings", async () => {
     assert.equal((await archiveNeuronDaily({})).archived, false);
+  });
+
+  test("archivePrunableNeuronDaily archives every day older than the retention cutoff before prune", async () => {
+    const oldDay = "2026-03-20";
+    const newerOldDay = "2026-03-21";
+    const latestDay = "2026-06-21";
+    const rowsByDay = new Map([
+      [oldDay, [{ netuid: 7, uid: 0, snapshot_date: oldDay, stake_tao: 1 }]],
+      [
+        newerOldDay,
+        [{ netuid: 8, uid: 0, snapshot_date: newerOldDay, stake_tao: 2 }],
+      ],
+      [
+        latestDay,
+        [{ netuid: 9, uid: 0, snapshot_date: latestDay, stake_tao: 3 }],
+      ],
+    ]);
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: [{ day: oldDay }, { day: newerOldDay }],
+                  });
+                }
+                return Promise.resolve({
+                  results: rowsByDay.get(params[0]) ?? [],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const puts = [];
+    const bucket = {
+      put: (key) => {
+        puts.push(key);
+        return Promise.resolve();
+      },
+    };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+
+    const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
+
+    assert.equal(res.archived, true);
+    assert.deepEqual(res.days, [oldDay, newerOldDay]);
+    assert.equal(res.rows, 2);
+    assert.deepEqual(
+      puts.sort(),
+      [coldArchiveKey(7, oldDay), coldArchiveKey(8, newerOldDay)].sort(),
+    );
+    assert.equal(puts.includes(coldArchiveKey(9, latestDay)), false);
   });
 
   test("pruneNeuronDaily deletes below the 90-day retention cutoff", async () => {

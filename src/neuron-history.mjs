@@ -150,6 +150,65 @@ export async function archiveNeuronDaily(env, { day, db, bucket } = {}) {
   return { archived: true, day: targetDay, subnets, rows: rows.length };
 }
 
+function neuronDailyRetentionCutoff(now = Date.now()) {
+  return new Date(now - NEURON_DAILY_RETENTION_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+async function prunableDays(db, cutoff) {
+  const res = await db
+    .prepare(
+      "SELECT DISTINCT snapshot_date AS day FROM neuron_daily " +
+        "WHERE snapshot_date < ? ORDER BY snapshot_date",
+    )
+    .bind(cutoff)
+    .all();
+  return (res?.results ?? []).map((r) => r.day).filter(Boolean);
+}
+
+/**
+ * Archive every neuron_daily day that would be removed by the retention prune.
+ * This closes the data-loss gap where a successful latest-day archive could gate
+ * deletion of older days that had never been written to R2.
+ */
+export async function archivePrunableNeuronDaily(
+  env,
+  { now = Date.now(), db, bucket } = {},
+) {
+  const database = db || env?.METAGRAPH_HEALTH_DB;
+  const r2 = bucket || env?.METAGRAPH_ARCHIVE;
+  if (!database?.prepare || !r2?.put) {
+    return { archived: false, reason: "no-binding" };
+  }
+  const cutoff = neuronDailyRetentionCutoff(now);
+  const days = await prunableDays(database, cutoff);
+  let rows = 0;
+  let subnets = 0;
+  const archivedDays = [];
+  for (const day of days) {
+    const res = await archiveNeuronDaily(env, {
+      day,
+      db: database,
+      bucket: r2,
+    });
+    if (!res.archived) {
+      return {
+        archived: false,
+        reason: "archive-failed",
+        cutoff,
+        day,
+        days: archivedDays,
+        failed: res,
+      };
+    }
+    archivedDays.push(day);
+    rows += res.rows ?? 0;
+    subnets += res.subnets ?? 0;
+  }
+  return { archived: true, cutoff, days: archivedDays, subnets, rows };
+}
+
 /**
  * Prune neuron_daily rows older than the retention window from D1. The caller
  * gates this on a successful archive so a day is never deleted before it exists
@@ -158,9 +217,7 @@ export async function archiveNeuronDaily(env, { day, db, bucket } = {}) {
 export async function pruneNeuronDaily(env, { now = Date.now() } = {}) {
   const db = env?.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { pruned: false, reason: "no-db" };
-  const cutoff = new Date(now - NEURON_DAILY_RETENTION_DAYS * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const cutoff = neuronDailyRetentionCutoff(now);
   const res = await db
     .prepare("DELETE FROM neuron_daily WHERE snapshot_date < ?")
     .bind(cutoff)
