@@ -164,6 +164,23 @@ describe("feeds — item builders", () => {
     assert.ok(!loneSurrogate.test(items[0].summary));
   });
 
+  test("registryItems coverage delta describes only the present side", () => {
+    // Partial coverage_delta (candidate_count only) must not emit "+0 surfaces"
+    // or "Surfaces undefined→undefined" for the absent surface side.
+    const items = registryItems({
+      summary: {
+        coverage_delta: {
+          candidate_count: { before: 50, after: 49, delta: -1 },
+        },
+      },
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, "Coverage updated: -1 candidates");
+    assert.equal(items[0].summary, "candidates 50→49.");
+    assert.ok(!items[0].summary.includes("undefined"));
+    assert.ok(!items[0].title.includes("surfaces"));
+  });
+
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {
     const all = incidentItems(INCIDENTS);
     assert.equal(all.length, 2); // the no-incidents surface contributes none
