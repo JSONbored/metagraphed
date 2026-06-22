@@ -30,6 +30,7 @@ import logging
 import os
 import random
 import signal
+import ssl
 import sys
 import time
 import urllib.error
@@ -105,8 +106,13 @@ def decode_head(s, block_number, head_ts):
 
 
 def push(rows):
-    """POST rows to the ingest endpoint. Returns True on success; logs + returns
-    False on failure (the CI poller backstop covers any gap — never raises)."""
+    """POST rows to the ingest endpoint. Returns True on success; logs WARN +
+    returns False on a transient network failure (the CI poller backstop covers
+    the gap). A TLS/certificate verification failure is NOT a transient blip —
+    it's logged at ERROR and the process exits, so a possible MITM on the
+    secret-bearing POST is surfaced (Railway restarts a transient one; a persistent
+    one crash-loops to the retry cap + goes visibly down) rather than silently
+    swallowed."""
     if not rows:
         return True
     req = urllib.request.Request(
@@ -131,7 +137,29 @@ def push(rows):
             e.code,
         )
         return False
-    except Exception as e:  # noqa: BLE001 — network blip; backstop covers it
+    except urllib.error.URLError as e:
+        # urlopen surfaces a cert verification failure as URLError(reason=SSLError).
+        # Never silently swallow a TLS failure on this secret-bearing endpoint.
+        if isinstance(e.reason, ssl.SSLError):
+            log.error(
+                "TLS verification FAILED for the ingest endpoint (%s) — possible "
+                "cert/MITM issue; exiting rather than continuing unverified.",
+                repr(e.reason)[:160],
+            )
+            sys.exit(1)
+        log.warning(
+            "ingest push failed (%s) — poller backstop will cover this gap",
+            repr(e.reason)[:120],
+        )
+        return False
+    except ssl.SSLError as e:  # a raw (unwrapped) TLS error — same security stance
+        log.error(
+            "TLS error talking to the ingest endpoint (%s) — exiting rather than "
+            "continuing unverified.",
+            repr(e)[:160],
+        )
+        sys.exit(1)
+    except (TimeoutError, ConnectionError, OSError) as e:
         log.warning(
             "ingest push failed (%s) — poller backstop will cover this gap",
             repr(e)[:120],
