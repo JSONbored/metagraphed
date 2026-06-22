@@ -11,6 +11,28 @@ idempotent on `(block_number, event_index)`, so any overlap is free.
 This needs one small always-on host (**~$0–5/mo**): Oracle Cloud Free Tier or
 Fly.io's free allowance ($0), or a cheap VPS / Railway / Render worker (~$5/mo).
 
+## Deployed on Railway (current)
+
+This project runs the streamer on Railway (project `metagraphed-streamer`). Cost is
+**RAM-dominated** — the streamer idles on a WebSocket between blocks, so CPU is
+near-zero; realistically **~$1.5/mo** (~150 MB held 24/7) on usage-based billing.
+
+Config is **config-as-code in `railway.json`** (build via `deploy/streamer.Dockerfile`,
+`ON_FAILURE` restart capped at 10 retries, and `watchPatterns` so a GitHub-connected
+deploy only rebuilds when the streamer's own files change — important because this
+repo's `main` is very active). To enable auto-deploys like the Cloudflare Workers
+Builds pipeline: **Service → Settings → Connect Repo** → `JSONbored/metagraphed`,
+branch `main`. The watch paths in `railway.json` keep unrelated merges from
+triggering pointless rebuilds.
+
+**Cost caps (set once, so the bill can't balloon):**
+
+- **Service → Settings → Scale → Replica Limits:** drop Memory to ~512 MB (the
+  streamer uses ~150 MB; this hard-caps the per-service cost). CPU can stay/at ~2 vCPU.
+- **Workspace → Settings → Usage:** set an account usage limit (hard stop) at your
+  comfort threshold. Note the limit is shared across every service on the account,
+  so size it to cover them all — Railway pauses services if the limit is hit.
+
 ## 1. Configure the Worker secret (one-time)
 
 The ingest endpoint is disabled until the secret is set. Generate a strong token
