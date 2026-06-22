@@ -30,8 +30,8 @@ triggering pointless rebuilds.
 - **Service → Settings → Scale → Replica Limits:** drop Memory to ~512 MB (the
   streamer uses ~150 MB; this hard-caps the per-service cost). CPU can stay/at ~2 vCPU.
 - **Workspace → Settings → Usage:** set an account usage limit (hard stop) at your
-  comfort threshold. Note it's shared with other services (e.g. Umami), so size it to
-  cover both — Railway pauses services if the limit is hit.
+  comfort threshold. Note the limit is shared across every service on the account,
+  so size it to cover them all — Railway pauses services if the limit is hit.
 
 ## 1. Configure the Worker secret (one-time)
 
