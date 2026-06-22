@@ -67,6 +67,22 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
+// Fixed bucket used as the rate-limit key (and request-scoped client id) when no
+// trustworthy client IP is available.
+export const ANONYMOUS_CLIENT_KEY = "anonymous";
+
+// Resolve the client IP for rate-limiting / per-client keys. On Cloudflare,
+// `CF-Connecting-IP` is set by the edge and cannot be spoofed by the client.
+// `X-Forwarded-For` is fully client-controlled and MUST NOT be trusted here: an
+// attacker could rotate it to mint a fresh rate-limit bucket per request and
+// evade the limiter. So we read `cf-connecting-ip` ONLY; when it is absent
+// (non-CF / local / the test harness) we collapse to a single fixed bucket
+// rather than honoring any client-supplied header. A shared fixed bucket is the
+// safe failure mode — worst case all such callers share one limit.
+export function resolveClientIp(request) {
+  return request.headers.get("cf-connecting-ip") || ANONYMOUS_CLIENT_KEY;
+}
+
 // Read-only, bounded Substrate/Subtensor methods safe to expose through the
 // public proxy. Deliberately excludes heavy/abusable reads (state_getMetadata,
 // state_getStorage) and anything mutating — those stay blocked by the allowlist

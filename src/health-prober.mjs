@@ -38,6 +38,21 @@ const PROBE_CONCURRENCY = 8;
 // headroom). Early signal to raise concurrency or shard before runs overlap.
 const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Cloudflare D1 batch() calls are capped (~100 statements per batch). Chunk large
+// probe/snapshot writes so a growing surface/subnet catalog cannot fail silently.
+export const D1_STATEMENTS_PER_BATCH = 50;
+
+export async function runD1StatementBatches(
+  db,
+  statements,
+  batchSize = D1_STATEMENTS_PER_BATCH,
+) {
+  if (!statements.length) return { ok: true, batches: 0 };
+  for (let i = 0; i < statements.length; i += batchSize) {
+    await db.batch(statements.slice(i, i + batchSize));
+  }
+  return { ok: true, batches: Math.ceil(statements.length / batchSize) };
+}
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];
@@ -419,7 +434,18 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     const stableLookupKey = surface.surface_key || surface.surface_id;
     const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
-    const consecutiveFailures = ok ? 0 : (prior?.consecutive_failures ?? 0) + 1;
+    // The sustained-down breaker protects the public RPC pool from repeatedly
+    // routing to unusable endpoints. For RPC surfaces, any non-ok prober run
+    // counts toward that eviction threshold because `degraded` includes
+    // auth-required, rate-limited, transient, and timeout outcomes that are not
+    // necessarily usable by the proxy. Non-RPC degraded runs remain soft signals
+    // and reset the hard-failure streak.
+    const countsTowardBreaker =
+      base.status === "failed" ||
+      (surface.kind === "subtensor-rpc" && base.status !== "ok");
+    const consecutiveFailures = countsTowardBreaker
+      ? (prior?.consecutive_failures ?? 0) + 1
+      : 0;
     return {
       surface_id: surface.surface_id,
       // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.
@@ -443,7 +469,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   sanitizeRpcLatestBlocks(probed);
 
-  await persistToD1(db, probed, runAt);
+  const d1Persist = await persistToD1(db, probed, runAt);
   await persistToKv(kv, probed, runAt);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
@@ -464,11 +490,12 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     counts,
     run_at: iso(runAt),
     duration_ms: durationMs,
+    d1_persisted: d1Persist.ok === true,
   };
 }
 
 async function persistToD1(db, probed, runAt) {
-  if (!db?.prepare) return;
+  if (!db?.prepare) return { ok: false, reason: "unavailable" };
   try {
     const checkStmt = db.prepare(
       `INSERT INTO surface_checks
@@ -532,9 +559,12 @@ async function persistToD1(db, probed, runAt) {
         ),
       );
     }
-    await db.batch(statements);
+    return await runD1StatementBatches(db, statements);
   } catch {
-    // D1 unavailable / schema cold: KV still gets written so serving stays live.
+    // D1 unavailable / schema cold: KV still gets written so serving stays live,
+    // but surface the split so operators can spot analytics drift.
+    console.warn("health prober: D1 persist failed; KV snapshot still updated");
+    return { ok: false, reason: "batch_failed" };
   }
 }
 
@@ -806,7 +836,7 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     });
   if (!statements.length) return { ok: false, reason: "no_rows" };
   try {
-    await db.batch(statements);
+    await runD1StatementBatches(db, statements);
     return { ok: true, date, rows: statements.length };
   } catch {
     return { ok: false, reason: "write_failed" };
