@@ -366,12 +366,11 @@ function validStagedNeuronRow(row) {
 // (metagraph/neurons-pending.json) using its existing R2 permission; we load only
 // authenticated, bounded, schema-valid rows through the METAGRAPH_HEALTH_DB
 // binding — which needs no API-token D1 permission — with PARAMETERIZED inserts
-// (values are always bound, never interpolated). The staged snapshot is a FULL
-// replacement: after every batch succeeds we delete any row older than the
-// snapshot's captured_at stamp, so deregistered UIDs (and entire vanished subnets)
-// never linger as phantoms — the read paths need no captured_at filter because the
-// table only ever holds the latest snapshot. Then delete the staged object so it
-// loads exactly once.
+// (values are always bound, never interpolated). After every batch succeeds we
+// delete older rows for the coverage represented by the staged payload: legacy
+// bare-array snapshots replace the full table, while coverage envelopes replace
+// only their refreshed subnets. Then delete the staged object so it loads exactly
+// once.
 export async function loadStagedNeurons(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
@@ -442,7 +441,7 @@ export async function loadStagedNeurons(env) {
         .bind(...values),
     );
   }
-  // A staged snapshot is a FULL replacement of the neurons table: every row
+  // A staged snapshot is replacement data for its declared coverage: every row
   // shares one captured_at stamp (set once by the producer). If ANY batch throws,
   // bail WITHOUT deleting prior rows or the staged object — the prior snapshot
   // stays as a fallback and the next cron retries the same staged file.
@@ -453,13 +452,12 @@ export async function loadStagedNeurons(env) {
   } catch {
     return { ok: false, reason: "load_failed" };
   }
-  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete any
-  // row older than this snapshot's stamp so the table holds exactly the current
-  // snapshot. This is what stops deregistered (netuid,uid) pairs — and entire
-  // vanished subnets — from lingering as phantoms (inflated neuron_count, ghost
-  // metagraphs) since the read paths don't filter by captured_at. Derived from
-  // the rows themselves (uniform stamp; use max defensively) so it works for both
-  // the bare-array native snapshot (#1348) and the coverage envelope alike.
+  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete
+  // rows older than this snapshot's stamp for the same replacement scope. Legacy
+  // bare-array snapshots have no coverage metadata, so they replace the whole
+  // table. Coverage envelopes can intentionally represent a partial refresh, so
+  // prune only those refreshed netuids; otherwise a subnet that failed to fetch
+  // could be erased by an unrelated newer captured_at stamp.
   let snapshotCapturedAt = 0;
   for (const row of rows) {
     if (
@@ -470,10 +468,18 @@ export async function loadStagedNeurons(env) {
   }
   let purged;
   try {
-    const result = await db
-      .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
-      .bind(snapshotCapturedAt)
-      .run();
+    const prune = stagingMeta.legacy
+      ? db
+          .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
+          .bind(snapshotCapturedAt)
+      : db
+          .prepare(
+            `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
+              .map(() => "?")
+              .join(",")}) AND captured_at < ?`,
+          )
+          .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
+    const result = await prune.run();
     purged = result?.meta?.changes ?? 0;
   } catch {
     // Rows are already loaded; a failed prune just leaves stale rows for the next
