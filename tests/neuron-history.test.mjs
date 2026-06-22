@@ -67,8 +67,11 @@ describe("parseHistoryWindow", () => {
     assert.equal(parseHistoryWindow(undefined).label, "30d");
   });
   test("rejects an unsupported window (NOT silently coerced like analyticsWindow)", () => {
-    assert.ok(parseHistoryWindow("400d").error);
-    assert.ok(parseHistoryWindow("bogus").error);
+    assert.deepEqual(parseHistoryWindow("400d").error, {
+      parameter: "window",
+      message: "window must be one of: 7d, 30d, 90d, 1y, all",
+    });
+    assert.equal(parseHistoryWindow("bogus").error.parameter, "window");
   });
   test("every window is bounded under MAX_HISTORY_POINTS", () => {
     for (const days of Object.values(HISTORY_WINDOWS)) {
@@ -177,6 +180,13 @@ describe("history endpoints (via the Worker dispatch)", () => {
       ctx,
     );
     assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(
+      body.error.message,
+      "window must be one of: 7d, 30d, 90d, 1y, all",
+    );
+    assert.equal(body.meta.parameter, "window");
   });
   test("GET /subnets/{n}/history returns per-day aggregates", async () => {
     const env = historyEnv([

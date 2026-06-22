@@ -31,7 +31,10 @@ export function parseHistoryWindow(value) {
   const v = typeof value === "string" && value ? value : DEFAULT_HISTORY_WINDOW;
   if (!Object.prototype.hasOwnProperty.call(HISTORY_WINDOWS, v)) {
     return {
-      error: `window must be one of: ${Object.keys(HISTORY_WINDOWS).join(", ")}`,
+      error: {
+        parameter: "window",
+        message: `window must be one of: ${Object.keys(HISTORY_WINDOWS).join(", ")}`,
+      },
     };
   }
   return { label: v, days: HISTORY_WINDOWS[v] };
