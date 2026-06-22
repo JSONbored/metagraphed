@@ -57,7 +57,9 @@
       },
       "provider": "chutes",
       "public_safe": true,
-      "source_urls": ["https://chutes.ai/"],
+      "source_urls": [
+        "https://chutes.ai/"
+      ],
       "url": "https://chutes.ai/"
     },
     {
@@ -75,7 +77,9 @@
       },
       "provider": "chutes",
       "public_safe": true,
-      "source_urls": ["https://chutes.ai/docs"],
+      "source_urls": [
+        "https://chutes.ai/docs"
+      ],
       "url": "https://chutes.ai/docs"
     },
     {
@@ -156,7 +160,9 @@
       },
       "provider": "chutes",
       "public_safe": true,
-      "source_urls": ["https://chutes.ai/"],
+      "source_urls": [
+        "https://chutes.ai/"
+      ],
       "url": "https://chutes.ai/app?type=llm"
     },
     {
@@ -174,7 +180,9 @@
       },
       "provider": "chutes",
       "public_safe": true,
-      "source_urls": ["https://chutes.ai/"],
+      "source_urls": [
+        "https://chutes.ai/"
+      ],
       "url": "https://chutes.ai/app?type=diffusion"
     },
     {
@@ -276,7 +284,9 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/64"],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/64"
+      ],
       "url": "https://taomarketcap.com/subnets/64"
     },
     {
@@ -288,7 +298,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/chutesai/chutes"],
+      "source_urls": [
+        "https://github.com/chutesai/chutes"
+      ],
       "probe": {
         "enabled": false,
         "method": "HEAD",
@@ -300,5 +312,6 @@
   "website_url": "https://chutes.ai/",
   "social": {
     "x": "https://x.com/chutes_ai"
-  }
+  },
+  "contact": "support@chutes.ai"
 }

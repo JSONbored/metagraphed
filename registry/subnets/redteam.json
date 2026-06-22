@@ -41,7 +41,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/RedTeamSubnet/RedTeam"],
+      "source_urls": [
+        "https://github.com/RedTeamSubnet/RedTeam"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -99,7 +101,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/RedTeamSubnet/RedTeam"],
+      "source_urls": [
+        "https://github.com/RedTeamSubnet/RedTeam"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -108,5 +112,6 @@
       },
       "notes": "Official RedTeam source repository."
     }
-  ]
+  ],
+  "contact": "oscar@theredteam.io"
 }

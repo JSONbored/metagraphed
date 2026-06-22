@@ -39,7 +39,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -57,7 +59,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -69,5 +73,6 @@
   ],
   "social": {
     "x": "https://x.com/forevermoney_ai"
-  }
+  },
+  "contact": "gm@forevermoney.ai"
 }

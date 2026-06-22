@@ -40,7 +40,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://oneoneone.io/"],
+      "source_urls": [
+        "https://oneoneone.io/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -70,5 +72,6 @@
       },
       "notes": "Official oneoneone source repository."
     }
-  ]
+  ],
+  "contact": "support@oneoneone.io"
 }

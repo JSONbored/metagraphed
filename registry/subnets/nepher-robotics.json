@@ -100,7 +100,9 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "source_urls": ["https://github.com/nepher-ai/nepher-subnet"],
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet"
+      ],
       "url": "https://github.com/nepher-ai/nepher-subnet"
     },
     {
@@ -118,7 +120,9 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "source_urls": ["https://nepher.ai"],
+      "source_urls": [
+        "https://nepher.ai"
+      ],
       "url": "https://tournament.nepher.ai"
     },
     {
@@ -216,12 +220,15 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/49"],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/49"
+      ],
       "url": "https://taomarketcap.com/subnets/49"
     }
   ],
   "website_url": "https://nepher.ai",
   "social": {
     "x": "https://x.com/nepher_robotics"
-  }
+  },
+  "contact": "contact@nepher.ai"
 }

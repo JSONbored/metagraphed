@@ -81,7 +81,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/tensorplex-labs/dojo"],
+      "source_urls": [
+        "https://github.com/tensorplex-labs/dojo"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -99,7 +101,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/tensorplex-labs/dojo-ui"],
+      "source_urls": [
+        "https://github.com/tensorplex-labs/dojo-ui"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -117,7 +121,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/tensorplex-labs/dojo-worker-api"],
+      "source_urls": [
+        "https://github.com/tensorplex-labs/dojo-worker-api"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -126,5 +132,6 @@
       },
       "notes": "Official Dojo worker API repository."
     }
-  ]
+  ],
+  "contact": "jarvis@tensorplex.ai"
 }

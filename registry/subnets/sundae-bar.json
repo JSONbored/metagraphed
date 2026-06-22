@@ -38,7 +38,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "source_urls": [
+        "https://github.com/sundae-bar/bittensor-subnet"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -56,7 +58,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "source_urls": [
+        "https://github.com/sundae-bar/bittensor-subnet"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -68,5 +72,6 @@
   ],
   "social": {
     "x": "https://x.com/sundae_bar_"
-  }
+  },
+  "contact": "hello@sundaebar.ai"
 }

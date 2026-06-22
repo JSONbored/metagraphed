@@ -56,7 +56,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://bitstarter.ai/"],
+      "source_urls": [
+        "https://bitstarter.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -95,7 +97,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://app.bitstarter.ai/"],
+      "source_urls": [
+        "https://app.bitstarter.ai/"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -149,5 +153,6 @@
   ],
   "social": {
     "x": "https://x.com/bitstarterai"
-  }
+  },
+  "contact": "hello@bitstarter.ai"
 }

@@ -40,7 +40,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "source_urls": [
+        "https://github.com/qbittensor-labs/quantum-compute"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -58,7 +60,9 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "source_urls": [
+        "https://github.com/qbittensor-labs/quantum-compute"
+      ],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -70,5 +74,6 @@
   ],
   "social": {
     "x": "https://x.com/qbittensorlabs"
-  }
+  },
+  "contact": "qbittensorlabs@gmail.com"
 }
