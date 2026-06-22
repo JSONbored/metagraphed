@@ -1,9 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CandidateChip, CurationChip, HealthPill } from "@/components/metagraphed/chips";
+import { CandidateChip, CurationChip } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import {
@@ -15,35 +15,28 @@ import {
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { ProfileHero } from "@/components/metagraphed/profile-hero";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
-import { CoverageCard } from "@/components/metagraphed/coverage-card";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
-import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
-import { GrowthSection, UptimeHistorySection } from "@/components/metagraphed/growth-uptime";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
   subnetEndpointsQuery,
-  subnetHealthQuery,
   subnetCandidatesQuery,
   fixturesIndexQuery,
   lineageQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { TableState } from "@/components/metagraphed/table-state";
 import type {
   Endpoint,
   Surface,
@@ -51,14 +44,26 @@ import type {
   SubnetProfile,
   FixtureIndexEntry,
 } from "@/lib/metagraphed/types";
+import { IncidentTimeline } from "@/components/metagraphed/incident-timeline";
+import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
+import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
+import { OperationalPanel } from "@/components/metagraphed/operational-panel";
+import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
+import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
+import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
+import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
+import { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
+import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 
 type SearchParams = {
   tab?: string;
+  sev?: string;
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
   validateSearch: (s: Record<string, unknown>): SearchParams => ({
     tab: typeof s.tab === "string" ? s.tab : undefined,
+    sev: typeof s.sev === "string" ? s.sev : undefined,
   }),
   parseParams: ({ netuid }) => {
     const n = Number(netuid);
@@ -125,14 +130,18 @@ const TABS = [
 // Which tab does each section anchor live under? Drives cross-tab deep links.
 const SECTION_TO_TAB: Record<string, string> = {
   "endpoints-glance": "overview",
-  endpoints: "endpoints",
+  "health-trends": "overview",
+  incidents: "overview",
+  economics: "overview",
+  reliability: "overview",
+  lineage: "overview",
+  evidence: "overview",
   surfaces: "surfaces",
+  endpoints: "endpoints",
   "schema-drift": "schemas",
   candidates: "candidates",
   gaps: "gaps",
-  evidence: "evidence",
   api: "api",
-  notes: "overview",
 };
 
 function SubnetDetailPage() {
@@ -159,73 +168,58 @@ function ProfileShell({ netuid }: { netuid: number }) {
     if (t.id === "surfaces") return { ...t, count: profile?.surface_count };
     if (t.id === "endpoints") return { ...t, count: profile?.endpoint_count };
     if (t.id === "candidates") return { ...t, count: profile?.candidate_count };
-    if (t.id === "gaps")
-      return {
-        ...t,
-        count: (profile?.missing_kinds?.length ?? 0) || undefined,
-      };
+    if (t.id === "gaps") return { ...t, count: (profile?.missing_kinds?.length ?? 0) || undefined };
     return { ...t };
   });
 
-  const categoryChips = (profile?.categories ?? []).slice(0, 3);
+  const evidenceCount = [
+    profile?.website ?? profile?.homepage,
+    profile?.docs,
+    profile?.repo,
+    profile?.dashboard,
+  ].filter(Boolean).length;
 
   return (
-    <>
-      <ProfileHero
-        icon={
-          <BrandIcon
-            url={profile?.website ?? profile?.homepage}
-            iconUrl={profile?.icon_url}
-            netuid={netuid}
-            subnetSlug={profile?.slug}
-            name={profile?.name}
-            fallback={netuid}
-            size={48}
-          />
-        }
-        eyebrow={
-          <span className="inline-flex items-center gap-2">
-            <span>Netuid {String(netuid).padStart(3, "0")}</span>
-            {profile?.subnet_type ? <span>· {profile.subnet_type}</span> : null}
-            {categoryChips.length > 0 ? (
-              <span className="hidden sm:inline">· {categoryChips.join(" · ")}</span>
-            ) : null}
-          </span>
-        }
-        title={profile?.name ?? `Subnet ${netuid}`}
-        subtitle={profile?.symbol ? `· ${profile.symbol}` : null}
-        description={profile?.description}
-        chips={
-          <>
-            <CurationChip level={profile?.curation_level} />
-            <HealthPill state={profile?.health} />
-          </>
-        }
-        links={
-          <PrimaryLinksRail
-            website={profile?.website}
-            docs={profile?.docs}
-            repo={profile?.repo}
-            dashboard={profile?.dashboard}
-          />
-        }
-        stats={[
-          { label: "Participants", value: formatNumber(profile?.participants) },
-          { label: "Tempo", value: profile?.tempo != null ? String(profile.tempo) : "" },
-          { label: "Endpoints", value: formatNumber(profile?.endpoint_count) },
-          {
-            label: "Completeness",
-            value:
-              profile?.completeness != null ? `${Math.round(profile.completeness * 100)}%` : "",
-          },
-        ]}
-        banner={stale ? <StaleBanner generatedAt={meta?.generated_at} /> : null}
-      />
+    <TimeRangeProvider>
+      <SubnetFilterProvider>
+        <SubnetMasthead
+          netuid={netuid}
+          profile={profile}
+          generatedAt={meta?.generated_at}
+          stale={stale}
+          evidenceCount={evidenceCount}
+          banner={
+            stale ? (
+              <StaleBanner
+                generatedAt={meta?.generated_at}
+                refreshQueryKeys={[
+                  ["metagraphed", "subnet-profile", netuid],
+                  ["metagraphed", "subnet-surfaces", netuid],
+                  ["metagraphed", "subnet-endpoints", netuid],
+                  ["metagraphed", "subnet-health", netuid],
+                  ["metagraphed", "subnet-candidates", netuid],
+                ]}
+                refreshLabel="Refresh health now"
+              />
+            ) : null
+          }
+        />
 
-      <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
+        <SubnetPulseStrip netuid={netuid} />
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <SubnetCompareDrawer netuid={netuid} />
+        </div>
+
+        <div className="mt-4">
+          <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
+        </div>
+
+        <div className="mt-2">
+          <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
+        </div>
+
+        <div className="mt-6 min-w-0 space-y-8">
           {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
@@ -244,29 +238,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
-
-        <aside className="space-y-4 lg:sticky lg:top-32 self-start">
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-              <LiveHealthCard netuid={netuid} />
-            </Suspense>
-          </QueryErrorBoundary>
-          <CoverageCard
-            curationLevel={profile?.curation_level}
-            coverageLevel={profile?.coverage_level}
-            reviewState={profile?.review_state}
-            reviewedAt={profile?.reviewed_at}
-            confidence={profile?.confidence}
-            completeness={profile?.completeness}
-            missingKinds={profile?.missing_kinds}
-            gapNotes={profile?.gap_notes}
-          />
-          {profile?.primary_app_surface ? (
-            <PrimaryAppSurfaceCard surface={profile.primary_app_surface} />
-          ) : null}
-        </aside>
-      </div>
-    </>
+      </SubnetFilterProvider>
+    </TimeRangeProvider>
   );
 }
 
@@ -282,18 +255,44 @@ function DetailSkeleton() {
 
 /* ----------------------------- overview ----------------------------- */
 
+// Single-column slab overview (Lovable redesign), with the UI's wired
+// KEEP-OURS panels re-homed into the new layout:
+//   1 — Readiness scorecard (#369, dropped by Lovable, restored here)
+//   2 — Operational status (timeline + ribbon + incidents)
+//   3 — Public resources (segmented endpoints/surfaces/schemas)
+//   4 — Subnet profile (lineage + economics + ownership + curation)
+//   5 — Economics (live chain economics — UI's wired EconomicsPanel)
+//   6 — Reliability (per-surface SLA + latency percentiles — kept)
+//   7 — Cross-network lineage (UI's section, reads lineage.links — kept)
+//   8 — Sources & evidence (UI's EvidencePanel, NOT evidence-clusters)
+//   9 — Open incidents (deep-linkable timeline)
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
   return (
-    <>
-      {/* #369: readiness scorecard — the "can I build on this, where do I start?"
-          answer, up top before the endpoint/surface detail. */}
+    <div className="space-y-6">
+      {/* 1 — Readiness scorecard: the "can I build on this, where do I start?"
+          answer, up top before the operational/resource detail. */}
       <ReadinessScorecard profile={profile} />
 
-      {/* #1113: cross-network lineage — renders only when this subnet is paired
-          with a testnet/mainnet counterpart. */}
-      <SubnetLineageSection netuid={netuid} />
+      {/* 2 — Operational status (timeline + ribbon + incidents) */}
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <OperationalPanel netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
 
-      {/* #1112: on-chain economics (emission, stake, validators, volume). */}
+      {/* 3 — Public resources (segmented endpoints/surfaces/schemas) */}
+      <QueryErrorBoundary>
+        <ResourceExplorer netuid={netuid} />
+      </QueryErrorBoundary>
+
+      {/* 4 — Subnet profile (lineage + economics + ownership + curation) */}
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+          <SubnetProfilePanel netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+
+      {/* 5 — Live chain economics (#1112) — UI's wired EconomicsPanel. */}
       <SectionAnchor
         id="economics"
         title="Economics"
@@ -303,46 +302,7 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <EconomicsPanel netuid={netuid} />
       </SectionAnchor>
 
-      <SectionAnchor
-        id="endpoints-glance"
-        title="Endpoints at a glance"
-        subtitle="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
-        info="Compact operational summary. Click 'Show all endpoints' to reveal the full table inline."
-      >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <EndpointsGlanceLoader netuid={netuid} />
-          </Suspense>
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="surfaces"
-        title="Surfaces"
-        subtitle="Curated public interfaces, grouped by kind."
-        info="APIs, docs, dashboards, repos, SSE streams, data artifacts, SDKs, and examples that have been verified."
-      >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <SurfacesList netuid={netuid} compact />
-          </Suspense>
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="schema-drift"
-        title="Schema drift"
-        subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas."
-        info="Compares the latest schema hash against the previous snapshot to flag breaking changes."
-      >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-20 w-full" />}>
-            <SchemaDriftSummary netuid={netuid} compact />
-          </Suspense>
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      {/* #1114: per-surface reliability — uptime SLA + latency percentiles, live from D1. */}
+      {/* 6 — Per-surface reliability (#1114): uptime SLA + latency percentiles. */}
       <SectionAnchor
         id="reliability"
         title="Reliability"
@@ -352,39 +312,39 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <ReliabilityPanel netuid={netuid} />
       </SectionAnchor>
 
-      {/* #1115: structural growth over time. */}
+      {/* 7 — Cross-network lineage (#1113): renders only when paired. */}
+      <SubnetLineageSection netuid={netuid} />
+
+      {/* 8 — Sources & evidence — UI's wired EvidencePanel (NOT evidence-clusters). */}
       <SectionAnchor
-        id="growth"
-        title="Growth"
-        subtitle="Completeness, surfaces, and endpoints across recent weekly snapshots."
-        info="Weekly structural snapshots from D1 — how the subnet's integration coverage is evolving over time."
+        id="evidence"
+        title="Sources & evidence"
+        subtitle="Primary links and recorded evidence backing this profile."
+        info="GET /api/v1/evidence"
+        tone="muted"
       >
-        <GrowthSection netuid={netuid} />
+        <EvidencePanel netuid={netuid} />
       </SectionAnchor>
 
-      {/* #1115: long-range daily uptime + reliability grade. */}
-      <SectionAnchor
-        id="uptime"
-        title="Uptime history"
-        subtitle="Daily uptime per surface and an overall reliability grade, over 90d/1y."
-        info="Long-range daily uptime from the health prober's D1 history, with an A–F reliability grade per surface and for the subnet overall."
-      >
-        <UptimeHistorySection netuid={netuid} />
-      </SectionAnchor>
+      {/* 9 — Open incidents (deep-linkable, lower-density context) */}
+      <QueryErrorBoundary>
+        <IncidentTimeline netuid={netuid} />
+      </QueryErrorBoundary>
 
       {(profile?.missing_kinds?.length ?? 0) > 0 || (profile?.gap_notes?.length ?? 0) > 0 ? (
         <GapsPanel profile={profile} compact />
       ) : null}
-    </>
+    </div>
   );
 }
 
 // #1113: cross-network lineage. Non-blocking (useQuery, shared cache across all
 // subnet pages); renders nothing unless this netuid is paired with a counterpart.
+// Reads lineageRes.data.links (NOT a top-level array).
 function SubnetLineageSection({ netuid }: { netuid: number }) {
   const { data: lineageRes } = useQuery(lineageQuery());
   const lineage = lineageRes?.data;
-  const link = lineage?.links.find(
+  const link = (lineage?.links ?? []).find(
     (l) => l.mainnet_netuid === netuid || l.testnet_netuid === netuid,
   );
   if (!lineage || !link) return null;
@@ -418,106 +378,6 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
         ) : null}
       </section>
     </SectionAnchor>
-  );
-}
-
-function EndpointsGlanceLoader({ netuid }: { netuid: number }) {
-  const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
-  const meta = data.meta;
-  const rows = (data.data ?? []) as Endpoint[];
-  return (
-    <EndpointsGlance
-      endpoints={rows}
-      lastChecked={meta?.generated_at}
-      fullList={() => <EndpointList rows={rows} showProvider />}
-    />
-  );
-}
-
-/* ----------------------------- right rail ----------------------------- */
-
-function LiveHealthCard({ netuid }: { netuid: number }) {
-  const { data, meta } = useSuspenseQuery(subnetHealthQuery(netuid)).data;
-  const h = data;
-  const total = (h?.ok ?? 0) + (h?.warn ?? 0) + (h?.down ?? 0) + (h?.unknown ?? 0);
-  return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-3">
-        Live health
-      </h3>
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <HCell color="bg-health-ok" label="OK" value={formatNumber(h?.ok)} />
-        <HCell color="bg-health-warn" label="Warn" value={formatNumber(h?.warn)} pulse />
-        <HCell color="bg-health-down" label="Down" value={formatNumber(h?.down)} pulse />
-        <HCell color="bg-health-unknown" label="Unknown" value={formatNumber(h?.unknown)} />
-      </div>
-      <div className="flex items-baseline justify-between border-t border-border pt-2">
-        <span className="mg-label">Uptime 24h</span>
-        <span className="font-display text-sm font-semibold text-ink-strong tabular-nums">
-          {h?.uptime_24h != null ? `${(h.uptime_24h * 100).toFixed(2)}%` : "—"}
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <FreshnessIndicator at={meta?.generated_at ?? h?.generated_at} />
-        <span className="font-mono text-ink-muted">{total} tracked</span>
-      </div>
-    </section>
-  );
-}
-
-function HCell({
-  label,
-  value,
-  color,
-  pulse,
-}: {
-  label: string;
-  value: string;
-  color: string;
-  pulse?: boolean;
-}) {
-  return (
-    <div className="rounded border border-border bg-surface/30 p-2">
-      <div className="flex items-center gap-1.5">
-        <span className={classNames("size-1.5 rounded-full", color, pulse && "mg-pulse")} />
-        <span className="mg-label">{label}</span>
-      </div>
-      <div className="mt-0.5 font-display text-sm font-semibold text-ink-strong tabular-nums">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function PrimaryAppSurfaceCard({
-  surface,
-}: {
-  surface: NonNullable<SubnetProfile["primary_app_surface"]>;
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        Primary app surface
-      </h3>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="mg-label">{surface.kind ?? "surface"}</span>
-      </div>
-      <div className="font-medium text-ink-strong text-sm">{surface.name ?? surface.url}</div>
-      {surface.provider ? (
-        <Link
-          to="/providers/$slug"
-          params={{ slug: surface.provider }}
-          className="mt-0.5 inline-block text-xs text-ink-muted hover:text-ink-strong"
-        >
-          via {surface.provider}
-        </Link>
-      ) : null}
-      {surface.url ? (
-        <div className="mt-2">
-          <CopyableCode label="url" value={surface.url} truncate={false} className="w-full" />
-        </div>
-      ) : null}
-    </section>
   );
 }
 
@@ -563,11 +423,12 @@ function EndpointsTableLoader({ netuid }: { netuid: number }) {
   const rows = (data.data ?? []) as Endpoint[];
   if (rows.length === 0) {
     return (
-      <EmptyState
+      <TableState
+        variant="empty"
         title="No endpoints recorded"
-        description="This subnet has no tracked endpoints yet."
-        lastChecked={meta?.generated_at}
-        action={RECOVERY.endpoints}
+        description="This subnet has no tracked endpoints yet — public RPC, WSS, SSE, and data streams will appear here once registered."
+        generatedAt={meta?.generated_at}
+        cta={{ label: "Browse all endpoints", href: "/endpoints" }}
       />
     );
   }
@@ -755,17 +616,13 @@ function SchemasPanel({ netuid }: { netuid: number }) {
   );
 }
 
-/* ----------------------------- surfaces list ----------------------------- */
+/* ----------------------------- surfaces list (tab view) ----------------------------- */
 
-function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }) {
+function SurfacesList({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetSurfacesQuery(netuid));
   // #748: join surfaces with the fixtures index so a card can show a real
-  // captured request/response sample. The index fetch is skipped in the compact
-  // overview preview (fixtures render only in the full Surfaces tab).
-  const { data: fixturesRes } = useQuery({
-    ...fixturesIndexQuery(),
-    enabled: !compact,
-  });
+  // captured request/response sample.
+  const { data: fixturesRes } = useQuery(fixturesIndexQuery());
   const fixtureMap = new Map<string, FixtureIndexEntry>(
     (fixturesRes?.data ?? []).map((f) => [f.surface_id, f]),
   );
@@ -789,18 +646,17 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
     groups.set(kk, arr);
   }
   const ordered = Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
-  const visible = compact ? ordered.slice(0, 3) : ordered;
 
   return (
     <div className="space-y-4">
-      {visible.map(([kind, items]) => (
+      {ordered.map(([kind, items]) => (
         <div key={kind}>
           <div className="mb-1.5 flex items-center gap-2">
             <span className="mg-label">{kind}</span>
             <span className="font-mono text-[10px] text-ink-muted">{items.length}</span>
           </div>
           <ul className="space-y-2">
-            {(compact ? items.slice(0, 3) : items).map((s) => (
+            {items.map((s) => (
               <li key={s.id} className="rounded-lg border border-border bg-card p-3 mg-row-hover">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -832,12 +688,10 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
                     <TimeAgo at={s.updated_at} />
                   </span>
                 </div>
-                {!compact ? (
-                  <div className="mt-2 border-t border-border pt-2">
-                    <VerifySurfaceButton surfaceId={s.id} />
-                  </div>
-                ) : null}
-                {!compact && fixtureMap.has(s.id) ? (
+                <div className="mt-2 border-t border-border pt-2">
+                  <VerifySurfaceButton surfaceId={s.id} />
+                </div>
+                {fixtureMap.has(s.id) ? (
                   <SurfaceFixture surfaceId={s.id} entry={fixtureMap.get(s.id)!} />
                 ) : null}
               </li>
@@ -845,12 +699,6 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
           </ul>
         </div>
       ))}
-      {compact && ordered.length > visible.length ? (
-        <div className="text-[11px] text-ink-muted">
-          + {ordered.length - visible.length} more group
-          {ordered.length - visible.length === 1 ? "" : "s"} — open the Surfaces tab.
-        </div>
-      ) : null}
     </div>
   );
 }
