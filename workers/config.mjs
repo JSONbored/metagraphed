@@ -18,6 +18,11 @@ export const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // ~5 min WITHOUT running the (heavier) health probe. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const EVENTS_LOAD_CRON = "*/3 * * * *";
+// Daily neuron-history rollup (#1345 Tier-1): snapshots the current `neurons`
+// table into the dated neuron_daily table once a day, on its own minute (distinct
+// from the probe/prune/embed/fast crons) so the ~33k-row INSERT...SELECT runs
+// exactly once/day, not on every tick. Must match a wrangler.jsonc cron entry.
+export const NEURON_HISTORY_ROLLUP_CRON = "47 5 * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
@@ -40,6 +45,12 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345): time
+// series read from the neuron_daily rollup tier.
+export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/;
+export const SUBNET_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
 // D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
 export const ACCOUNT_PATH_PATTERN =

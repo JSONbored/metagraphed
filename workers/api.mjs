@@ -99,6 +99,14 @@ import {
   buildNeuronDetail,
 } from "../src/metagraph-neurons.mjs";
 import {
+  rollupNeuronDaily,
+  buildNeuronHistory,
+  buildSubnetHistory,
+  parseHistoryWindow,
+  NEURON_DAILY_READ_COLUMNS,
+  MAX_HISTORY_POINTS,
+} from "../src/neuron-history.mjs";
+import {
   ACCOUNT_EVENT_COLUMNS,
   buildAccountEvents,
   buildAccountSubnets,
@@ -147,12 +155,15 @@ import {
   MAX_RPC_BODY_BYTES,
   MAX_UPTIME_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
+  NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
+  SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
+  SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -687,6 +698,12 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
   }
+  if (cron === NEURON_HISTORY_ROLLUP_CRON) {
+    // Once/day: snapshot the current `neurons` tier into the dated neuron_daily
+    // history table (block-explorer Tier-1, #1345). Its own minute so the
+    // ~33k-row INSERT...SELECT never piles onto the probe/prune/fast crons.
+    return rollupNeuronDaily(env);
+  }
   return runHealthProber(env, ctx);
 }
 
@@ -940,6 +957,29 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (neuronHistoryMatch) {
+      return handleNeuronHistory(
+        request,
+        env,
+        Number(neuronHistoryMatch[1]),
+        Number(neuronHistoryMatch[2]),
+        resolved.url,
+      );
+    }
+    const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetHistoryMatch) {
+      return handleSubnetHistory(
+        request,
+        env,
+        Number(subnetHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2441,6 +2481,88 @@ async function handleSubnetValidators(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// ---- Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345) --
+// Served from the dated neuron_daily rollup tier (D1). Cold/absent store → 200
+// with empty points (never 404), consistent with the live metagraph tiers.
+
+// GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
+// Per-UID time series (one point per snapshot_date, newest first, bounded).
+async function handleNeuronHistory(request, env, netuid, uid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid, uid];
+  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
+  if (days != null) {
+    // Cutoff computed in JS and bound as a plain YYYY-MM-DD (idx_neuron_daily_uid_date covers it).
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildNeuronHistory(rows, netuid, uid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
+        data.points[0]?.captured_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/history?window=7d|30d|90d|1y|all
+// Per-subnet daily aggregates over time (count + totals) for a history sparkline,
+// without shipping every UID's row.
+async function handleSubnetHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid];
+  let sql =
+    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
+    "SUM(validator_permit) AS validator_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE netuid = ?";
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildSubnetHistory(rows, netuid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/history.json`,
+        null,
       ),
     },
     "short",
