@@ -100,6 +100,8 @@ import {
 } from "../src/metagraph-neurons.mjs";
 import {
   rollupNeuronDaily,
+  archiveNeuronDaily,
+  pruneNeuronDaily,
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
@@ -699,10 +701,22 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     return runEmbeddingSync(env, { readArtifact });
   }
   if (cron === NEURON_HISTORY_ROLLUP_CRON) {
-    // Once/day: snapshot the current `neurons` tier into the dated neuron_daily
-    // history table (block-explorer Tier-1, #1345). Its own minute so the
-    // ~33k-row INSERT...SELECT never piles onto the probe/prune/fast crons.
-    return rollupNeuronDaily(env);
+    // Once/day (#1345): snapshot the current `neurons` tier into the dated
+    // neuron_daily table, archive that day to the R2 cold tier, then prune D1 to
+    // the 90-day hot window. Archive runs BEFORE prune and the prune is GATED on
+    // a confirmed archive, so a day is never dropped from D1 before it exists in
+    // R2. Its own cron minute so the ~33k-row work never piles onto the
+    // probe/prune/fast crons; each step is .catch-isolated.
+    const rolled = await rollupNeuronDaily(env).catch(() => ({
+      rolled: false,
+    }));
+    const archived = await archiveNeuronDaily(env).catch(() => ({
+      archived: false,
+    }));
+    const pruned = archived.archived
+      ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+      : { pruned: false, reason: "archive-not-confirmed" };
+    return { rolled, archived, pruned };
   }
   return runHealthProber(env, ctx);
 }

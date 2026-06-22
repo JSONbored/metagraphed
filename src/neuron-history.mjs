@@ -76,6 +76,98 @@ export async function rollupNeuronDaily(env, { now = Date.now() } = {}) {
   return { rolled: true, rows: res?.meta?.changes ?? null };
 }
 
+// D1 keeps a bounded hot window; older days live only in the R2 cold archive
+// (written BEFORE any prune). 90 days serves every 7d/30d/90d query from D1 with
+// zero R2 fallthrough while keeping the table ~0.7GB — far under D1's 10GB cap.
+export const NEURON_DAILY_RETENTION_DAYS = 90;
+
+// R2 cold-archive key: one immutable gzip-NDJSON object per subnet per UTC day.
+export function coldArchiveKey(netuid, day) {
+  return `metagraph/history/cold/netuid=${netuid}/${day}.ndjson.gz`;
+}
+
+// gzip a string via the Workers-native CompressionStream (no deps; also present
+// in the Node test runtime).
+async function gzipString(text) {
+  const stream = new Blob([text])
+    .stream()
+    .pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function latestRolledDay(db) {
+  const res = await db
+    .prepare("SELECT MAX(snapshot_date) AS day FROM neuron_daily")
+    .bind()
+    .all();
+  return res?.results?.[0]?.day ?? null;
+}
+
+/**
+ * Archive a day's neuron_daily snapshot to the R2 cold tier — one immutable
+ * gzip-NDJSON object per subnet (coldArchiveKey), so a per-subnet as-of read
+ * beyond the D1 hot window is a single small GET. Defaults to the latest rolled
+ * day (the one the rollup just wrote). Returns {archived, day, subnets, rows}.
+ * Caller .catch-isolates it; the prune is gated on its success.
+ */
+export async function archiveNeuronDaily(env, { day, db, bucket } = {}) {
+  const database = db || env?.METAGRAPH_HEALTH_DB;
+  const r2 = bucket || env?.METAGRAPH_ARCHIVE;
+  if (!database?.prepare || !r2?.put) {
+    return { archived: false, reason: "no-binding" };
+  }
+  const targetDay = day || (await latestRolledDay(database));
+  if (!targetDay) return { archived: false, reason: "no-data" };
+  const res = await database
+    .prepare(
+      `SELECT ${ROLLUP_COLUMNS.join(", ")}, snapshot_date FROM neuron_daily ` +
+        "WHERE snapshot_date = ? ORDER BY netuid, uid",
+    )
+    .bind(targetDay)
+    .all();
+  const rows = res?.results ?? [];
+  if (rows.length === 0) {
+    return { archived: false, reason: "no-rows", day: targetDay };
+  }
+  const byNetuid = new Map();
+  for (const row of rows) {
+    let group = byNetuid.get(row.netuid);
+    if (!group) byNetuid.set(row.netuid, (group = []));
+    group.push(row);
+  }
+  let subnets = 0;
+  for (const [netuid, subnetRows] of byNetuid) {
+    const ndjson = subnetRows.map((r) => JSON.stringify(r)).join("\n") + "\n";
+    await r2.put(coldArchiveKey(netuid, targetDay), await gzipString(ndjson), {
+      httpMetadata: {
+        contentType: "application/x-ndjson",
+        contentEncoding: "gzip",
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+    });
+    subnets += 1;
+  }
+  return { archived: true, day: targetDay, subnets, rows: rows.length };
+}
+
+/**
+ * Prune neuron_daily rows older than the retention window from D1. The caller
+ * gates this on a successful archive so a day is never deleted before it exists
+ * in the R2 cold tier. Returns {pruned, cutoff, rows}.
+ */
+export async function pruneNeuronDaily(env, { now = Date.now() } = {}) {
+  const db = env?.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return { pruned: false, reason: "no-db" };
+  const cutoff = new Date(now - NEURON_DAILY_RETENTION_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const res = await db
+    .prepare("DELETE FROM neuron_daily WHERE snapshot_date < ?")
+    .bind(cutoff)
+    .run();
+  return { pruned: true, cutoff, rows: res?.meta?.changes ?? null };
+}
+
 // SELECT list for reading a neuron_daily row back as a live-shaped neuron
 // (formatNeuron consumes NEURON_COLUMNS) plus the history-specific snapshot_date.
 export const NEURON_DAILY_READ_COLUMNS = `snapshot_date, ${NEURON_COLUMNS}`;
