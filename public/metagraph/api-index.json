@@ -373,6 +373,27 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-summary",
+      "path": "/metagraph/accounts/{ss58}.json",
+      "schema_ref": "#/components/schemas/AccountSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-events",
+      "path": "/metagraph/accounts/{ss58}/events.json",
+      "schema_ref": "#/components/schemas/AccountEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-subnets",
+      "path": "/metagraph/accounts/{ss58}/subnets.json",
+      "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
@@ -3778,7 +3799,7 @@
     {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",
       "cache": "short",
-      "description": "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+      "description": "Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).",
       "id": "subnet-health-trends",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/health/trends",
@@ -3886,6 +3907,64 @@
       "id": "subnet-validators",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/validators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}.json",
+      "cache": "short",
+      "description": "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.",
+      "id": "account-summary",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/events.json",
+      "cache": "short",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "id": "account-events",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/subnets.json",
+      "cache": "short",
+      "description": "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
+      "id": "account-subnets",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/subnets",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

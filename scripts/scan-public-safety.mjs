@@ -56,11 +56,14 @@ const patterns = [
     regex: /\bcoldkey\b/i,
     // Bare "coldkey" as a public API field name (JSON property / required entry /
     // TS type member) is legitimate metagraph vocabulary (#1304) — an ss58 coldkey
-    // is public on-chain data, not a secret. Strip those field-name spans so only
-    // suspicious prose ("your coldkey seed phrase") still trips. Same rationale as
-    // the isMirroredExternalSpec exemption, but scoped to the field-name form so the
-    // guard stays active everywhere else.
-    allow: /"coldkey"\s*:?|\bcoldkey\s*\??\s*:/gi,
+    // is public on-chain data, not a secret. Also allow the "hotkey or coldkey"
+    // field-pair phrase (account routes #1347 doc text) and the `coldkey =` SQL
+    // column comparison. Strip those legitimate spans so only suspicious prose
+    // ("your coldkey seed phrase" — still caught by the wallet/key-wording rule)
+    // trips. Same rationale as the isMirroredExternalSpec exemption, scoped to the
+    // safe forms so the guard stays active everywhere else.
+    allow:
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey\s+or\s+coldkey\b|\bcoldkey\s*=/gi,
     soft: true,
   },
   {

@@ -2393,12 +2393,14 @@ export function computeMinerReadiness(economics, openSlots, emissionShare) {
   if (economics.registration_allowed) score += 40; // can register at all
   if (typeof openSlots === "number" && openSlots > 0) score += 30; // room
   const cost = economics.registration_cost_tao;
-  if (typeof cost === "number") {
+  if (Number.isFinite(cost)) {
     if (cost <= 1) score += 20;
     else if (cost <= 10) score += 10;
     else if (cost <= 100) score += 5;
   } else {
-    score += 10; // unknown cost — don't over-penalize
+    // unknown cost (missing, or a NaN/Infinity that slipped through a typeof
+    // check) — don't over-penalize.
+    score += 10;
   }
   const active =
     (typeof emissionShare === "number" && emissionShare > 0) ||

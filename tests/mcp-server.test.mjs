@@ -1199,6 +1199,84 @@ describe("MCP tools (injected deps)", () => {
   });
 });
 
+// keyword-search.test.mjs covers the scoring matrix; here we only prove both
+// tools are wired to it — substring noise is gone and the precise target wins.
+describe("MCP keyword discovery relevance", () => {
+  const deps = makeDeps({
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 1,
+          slug: "targon",
+          title: "Targon",
+          subtitle: "AI inference network",
+          tokens: ["ai", "inference", "llm"],
+        },
+        {
+          // "Brain" / "domain" only contain "ai" as a mid-word substring — the
+          // old includes() ranking surfaced these for a query of "ai".
+          type: "subnet",
+          netuid: 2,
+          slug: "braintrust",
+          title: "BrainTrust",
+          subtitle: "domain registrar",
+          tokens: ["brain", "domain", "captain"],
+        },
+      ],
+    },
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        {
+          netuid: 1,
+          slug: "targon",
+          name: "Targon",
+          categories: ["ai", "inference"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+        {
+          netuid: 2,
+          slug: "braintrust",
+          name: "BrainTrust",
+          categories: ["brain", "domain"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+      ],
+    },
+  });
+
+  test('search_subnets: "ai" matches the real AI subnet, not "brain"/"domain"', async () => {
+    const res = await callTool("search_subnets", { query: "ai" }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("search_subnets: an exact name match wins outright", async () => {
+    const res = await callTool("search_subnets", { query: "targon" }, { deps });
+    assert.equal(res.body.result.structuredContent.results[0].netuid, 1);
+  });
+
+  test('find_subnets_by_capability: "ai" excludes the substring-only subnet', async () => {
+    const res = await callTool(
+      "find_subnets_by_capability",
+      { capability: "ai" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
+});
+
 describe("MCP edge cases", () => {
   test("a request method behaves as a notification when sent without an id", async () => {
     // Covers the isNotification short-circuit on otherwise-valid methods.
@@ -1237,7 +1315,7 @@ describe("MCP edge cases", () => {
     assert.equal(res.body.result.isError, true);
   });
 
-  test("a readArtifact rejection surfaces as a JSON-RPC internal error", async () => {
+  test("a readArtifact rejection is a sanitized isError result (no internal leak)", async () => {
     const throwingDeps = {
       readArtifact() {
         return Promise.reject(new Error("kv exploded"));
@@ -1247,8 +1325,40 @@ describe("MCP edge cases", () => {
       },
     };
     const res = await callTool("registry_summary", {}, { deps: throwingDeps });
+    // A non-toolError stays inside the tool-result contract (isError, not a
+    // -32603 transport error) and must not echo the raw internal message.
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "internal_error",
+    );
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
+  });
+
+  test("a non-toolError from a protocol method is a sanitized -32603 (no leak)", async () => {
+    // resources/read -> readResource -> loadArtifactData; a raw readArtifact
+    // rejection is a non-toolError that reaches dispatchMessage's internal-error
+    // path, which must withhold the raw message (not just tool calls).
+    const throwingDeps = {
+      readArtifact() {
+        return Promise.reject(new Error("kv exploded"));
+      },
+      readHealthKv() {
+        return Promise.resolve(null);
+      },
+    };
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://subnet/7" },
+      },
+      { deps: throwingDeps },
+    );
     assert.equal(res.body.error.code, -32603);
-    assert.ok(res.body.error.message.includes("kv exploded"));
+    assert.equal(res.body.error.message, "Internal error.");
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
   });
 
   test("artifact failure without code/message uses default messaging", async () => {
@@ -1538,6 +1648,63 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.equal(out.results[0].integration_readiness, 70);
     // subnet 8 is not in the catalog (not callable) so it is excluded.
     assert.ok(out.results.every((r) => r.netuid !== 8));
+  });
+
+  test("find_subnet_for_task surfaces a callable subnet ranked beyond the non-callable pool", async () => {
+    // Regression: callability must be filtered BEFORE the rank pool is
+    // truncated. Here 51 non-callable subnets tie with (and, by the ascending
+    // netuid tiebreak, out-rank) the single callable subnet 999, pushing it to
+    // pool position 52 — past the hard-coded poolSize of 50. Filtering after the
+    // slice would drop it and falsely report "no callable subnet matched".
+    const documents = [];
+    for (let netuid = 1; netuid <= 51; netuid += 1) {
+      documents.push({
+        id: `subnet:${netuid}`,
+        type: "subnet",
+        netuid,
+        slug: `sn-${netuid}`,
+        title: "Data tool",
+        tokens: ["data"],
+        categories: ["data"],
+      });
+    }
+    documents.push({
+      id: "subnet:999",
+      type: "subnet",
+      netuid: 999,
+      slug: "sn-999",
+      title: "Data tool",
+      tokens: ["data"],
+      categories: ["data"],
+    });
+    const fixture = {
+      "/metagraph/search.json": { documents },
+      "/metagraph/agent-catalog.json": {
+        subnets: [
+          {
+            netuid: 999,
+            name: "Callable data API",
+            slug: "sn-999",
+            categories: ["data"],
+            integration_readiness: 60,
+            callable_count: 3,
+            service_kinds: ["subnet-api"],
+            base_url: "https://api.example.io",
+            health: "operational",
+          },
+        ],
+      },
+    };
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "data", limit: 5 },
+      { deps: makeDeps(fixture) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(out.count, 1);
+    assert.equal(out.results[0].netuid, 999);
+    assert.equal(out.note, undefined);
   });
 
   test("find_subnet_for_task notes when nothing callable matches", async () => {
@@ -1991,10 +2158,18 @@ describe("MCP goal-shaped tools — branch coverage", () => {
 
   test("find_subnet_for_task tolerates a catalog with no subnets field", async () => {
     const env = aiEnvWithMatches([1, 2]);
+    // Semantic hits that aren't callable (empty catalog) now fall through to
+    // keyword discovery, so search.json must be present (empty here) — still 0.
     const res = await callTool(
       "find_subnet_for_task",
       { task: "anything" },
-      { deps: makeDeps({ "/metagraph/agent-catalog.json": {} }), env },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog.json": {},
+          "/metagraph/search.json": { documents: [] },
+        }),
+        env,
+      },
     );
     assert.equal(res.body.result.structuredContent.count, 0);
   });

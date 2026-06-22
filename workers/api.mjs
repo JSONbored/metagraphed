@@ -6,7 +6,12 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import { applyQueryFilters } from "./list-query.mjs";
-import { apiHeaders, errorResponse, weakEtag } from "./http.mjs";
+import {
+  apiHeaders,
+  errorResponse,
+  ifNoneMatchSatisfied,
+  weakEtag,
+} from "./http.mjs";
 import {
   d1TimeoutMs,
   latestPointer,
@@ -52,6 +57,11 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "../src/health-sql.mjs";
 import { findSurface, verifySurface } from "../src/surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
 import {
@@ -82,14 +92,26 @@ import {
 } from "../src/health-serving.mjs";
 import {
   NEURON_COLUMNS,
+  NEURON_INSERT_COLUMNS,
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildNeuronDetail,
 } from "../src/metagraph-neurons.mjs";
+import {
+  ACCOUNT_EVENT_COLUMNS,
+  buildAccountEvents,
+  buildAccountSubnets,
+  buildAccountSummary,
+  eventInsertStatements,
+  rollupAccountEventsDaily,
+  pruneAccountEvents,
+  validEventRows,
+} from "../src/account-events.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
+import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -98,18 +120,25 @@ import {
   withinRateLimit,
 } from "../src/ai-search.mjs";
 import {
+  ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_PATH_PATTERN,
+  ACCOUNT_SUBNETS_PATH_PATTERN,
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   BULK_TRENDS_PATH_PATTERN,
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
+  EVENTS_INGEST_TOKEN_HEADER,
+  EVENTS_LOAD_CRON,
   HEALTH_PRUNE_CRON,
   HEALTH_TREND_WINDOWS,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
   MAX_BULK_TREND_ROWS,
+  MAX_EVENTS_INGEST_BODY_BYTES,
+  MAX_EVENTS_INGEST_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -211,18 +240,289 @@ export default {
   },
 };
 
+// Sanity bounds for an authenticated, HMAC-signed staged neuron batch (the data
+// is already trusted; these are defense-in-depth caps so a malformed signed file
+// can't blow up the D1 load). netuid and uid are both u16 on-chain, so each is
+// capped at the u16 max (65535) — matching the existing netuid guard in
+// src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
+const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
+const MAX_STAGED_NEURONS_BYTES = 2_000_000;
+const MAX_STAGED_NEURON_ROWS = 50_000;
+const MAX_STAGED_NEURON_STRING_BYTES = 512;
+const MAX_STAGED_NETUID = 65_535;
+const MAX_STAGED_UID = 65_535;
+
+function utf8Bytes(value) {
+  return new TextEncoder().encode(value);
+}
+
+function timingSafeStringEqual(a, b) {
+  const left = utf8Bytes(String(a || ""));
+  const right = utf8Bytes(String(b || ""));
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i += 1) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
+
+async function hmacHex(key, value) {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    utf8Bytes(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, utf8Bytes(value));
+  return [...new Uint8Array(sig)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function validStagedNeuronRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > MAX_STAGED_NETUID
+  )
+    return false;
+  if (!Number.isInteger(row.uid) || row.uid < 0 || row.uid > MAX_STAGED_UID)
+    return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
+    if (
+      typeof value === "string" &&
+      utf8Bytes(value).length > MAX_STAGED_NEURON_STRING_BYTES
+    )
+      return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+    if (
+      typeof value === "boolean" ||
+      typeof value === "bigint" ||
+      typeof value === "symbol" ||
+      typeof value === "function"
+    )
+      return false;
+  }
+  return true;
+}
+
+// Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
+// refresh-metagraph CI job fetches Taostats, wraps the neuron rows in an
+// HMAC-signed envelope, and writes it to R2 (metagraph/neurons-pending.json)
+// using its existing R2 permission; we load only authenticated, bounded,
+// schema-valid rows through the METAGRAPH_HEALTH_DB binding — which needs no
+// API-token D1 permission — with PARAMETERIZED inserts (values are always bound,
+// never interpolated), then delete the object so it loads exactly once.
+export async function loadStagedNeurons(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const object = await bucket.get(STAGED_NEURONS_KEY);
+  if (!object) return { ok: false, reason: "none" };
+  if (Number(object.size || 0) > MAX_STAGED_NEURONS_BYTES) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "too_large" };
+  }
+  let envelope;
+  try {
+    envelope = await object.json();
+  } catch {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "parse_failed" };
+  }
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (rows.length > MAX_STAGED_NEURON_ROWS) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "too_many_rows" };
+  }
+  const expected = await hmacHex(signingKey, JSON.stringify(rows));
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (!rows.length || rows.some((row) => !validStagedNeuronRow(row))) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "invalid" };
+  }
+  const cols = NEURON_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  const ROWS_PER_STMT = 5;
+  const STMTS_PER_BATCH = 50;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(`INSERT OR REPLACE INTO neurons (${colList}) VALUES ${tuples}`)
+        .bind(...values),
+    );
+  }
+  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+  }
+  await bucket.delete(STAGED_NEURONS_KEY);
+  return { ok: true, rows: rows.length };
+}
+
+// Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
+// refresh-events CI job decodes finney's System.Events first-party (no Taostats)
+// and writes account_events rows as JSON to R2 (events/account-events-pending.json)
+// with its existing R2 permission; we load them here through the binding (no
+// API-token D1 permission) with PARAMETERIZED INSERT OR IGNORE keyed
+// (block_number, event_index) — so overlapping poller windows re-insert harmlessly
+// (idempotent, no cursor needed) and a tampered file can only fail, never inject.
+// Then delete the object so each batch loads once.
+export async function loadStagedEvents(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
+  const key = "events/account-events-pending.json";
+  const object = await bucket.get(key);
+  if (!object) return { ok: false, reason: "none" };
+  let parsed;
+  try {
+    parsed = await object.json();
+  } catch {
+    await bucket.delete(key);
+    return { ok: false, reason: "parse_failed" };
+  }
+  const rows = validEventRows(parsed);
+  if (!rows.length) {
+    await bucket.delete(key);
+    return { ok: false, reason: "empty" };
+  }
+  const statements = eventInsertStatements(db, rows);
+  const STMTS_PER_BATCH = 50;
+  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+  }
+  await bucket.delete(key);
+  return { ok: true, rows: rows.length };
+}
+
+// POST /api/v1/internal/events (#1360): the realtime ingest path for the
+// finalized-head streamer (#1361). Disabled (503) until METAGRAPH_EVENTS_INGEST_SECRET
+// is configured; then authenticated by a constant-time token compare. The body is
+// an array of account_events rows (or {events:[...]}), loaded with the SAME
+// parameterized INSERT OR IGNORE as the staged-batch loader — idempotent on
+// (block_number, event_index), values always bound. NOT in the public contract.
+export async function handleEventIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "events_ingest_disabled",
+      "Realtime event ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "Event store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_EVENTS_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_EVENTS_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of event rows (or {events:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.events)
+      ? parsed.events
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of event rows (or {events:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_EVENTS_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_EVENTS_INGEST_ROWS} events per request.`,
+      413,
+    );
+  }
+  const rows = validEventRows(incoming);
+  if (rows.length) {
+    await db.batch(eventInsertStatements(db, rows));
+  }
+  return new Response(JSON.stringify({ ok: true, inserted: rows.length }), {
+    status: 200,
+    headers: { "content-type": JSON_CONTENT_TYPE },
+  });
+}
+
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
+
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
+  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+  // snapshot and load it via the D1 binding on whichever cron fires next; it then
+  // self-deletes. Isolated so a load failure never affects the prober/prune below.
+  await loadStagedNeurons(env).catch(() => {});
+  // Token-free chain-event load (#1346): pick up any R2-staged event batch from
+  // the first-party poller and load it via the binding. Isolated like the neuron
+  // load so a failure never affects the prober/prune below.
+  await loadStagedEvents(env).catch(() => {});
+  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
+  // D1 quickly (above) — return without running the heavier probe/prune so we can
+  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  if (cron === EVENTS_LOAD_CRON) {
+    return { ok: true, fast_load: true };
+  }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
-    // deleted (PR3). Then prune + snapshot.
+    // deleted (PR3). Roll the chain events the same way (#1346) before their
+    // 90-day window is pruned. Then prune + snapshot.
     await rollupDailyUptime(env);
+    await rollupAccountEventsDaily(env).catch(() => {});
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
+      pruneAccountEvents(env).catch(() => ({ pruned: false })),
       writeSubnetSnapshot(env, { readArtifact }),
     ]);
     return pruned;
@@ -281,6 +581,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // and degrades to 503 when the AI bindings/kill-switch are absent.
   if (url.pathname === "/api/v1/ask") {
     return handleAskRequest(request, env);
+  }
+
+  // Realtime chain-event ingest (#1360): secret-gated internal write path for the
+  // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
+  if (url.pathname === "/api/v1/internal/events") {
+    return handleEventIngest(request, env);
+  }
+
+  // GraphQL read-only query layer over existing artifacts (issue #751). Runs
+  // before the read-only method gate because GraphQL accepts POST requests.
+  if (url.pathname === "/api/v1/graphql") {
+    return handleGraphQLRequest(request, env);
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {
@@ -481,6 +793,29 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    // Account entity routes (#1347): computed live from the account_events +
+    // neurons D1 tiers. More-specific paths first (each pattern is anchored).
+    const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountEventsMatch) {
+      return handleAccountEvents(
+        request,
+        env,
+        accountEventsMatch[1],
+        resolved.url,
+      );
+    }
+    const accountSubnetsMatch = ACCOUNT_SUBNETS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountSubnetsMatch) {
+      return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
+    }
+    const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountMatch) {
+      return handleAccount(request, env, accountMatch[1]);
+    }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return handleGlobalIncidents(request, env, resolved.url);
     }
@@ -516,6 +851,7 @@ function isMainnetOnlyApiPath(pathname) {
   return (
     pathname === "/api/v1/events" ||
     pathname === "/api/v1/ask" ||
+    pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname.startsWith("/api/v1/webhooks/") ||
@@ -707,7 +1043,7 @@ async function handleRawArtifactRequest(
     headers.set("x-metagraph-published-at", pub);
   }
   headers.set("etag", await weakEtag(body));
-  if (request.headers.get("if-none-match") === headers.get("etag")) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -896,6 +1232,26 @@ export async function readRpcPoolArtifact(env, now = Date.now()) {
   return poolArtifact;
 }
 
+// KV_HEALTH_META is written by the health cron (~15 min cadence) and read by
+// every analytics handler (percentiles, incidents, trends, uptime, trajectory,
+// leaderboards). Each handler reads it independently; this in-isolate memo
+// collapses repeated per-request KV reads on warm isolates — same pattern as
+// latestPointer (#367) and readRpcPoolArtifact (#1309). Null results are not
+// cached so a transient cold KV does not stay sticky.
+export const HEALTH_META_KV_TTL_MS = 60_000;
+let healthMetaKvMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readHealthMetaKv(env, now = Date.now()) {
+  if (healthMetaKvMemo.env === env && now < healthMetaKvMemo.expiresAt) {
+    return healthMetaKvMemo.value;
+  }
+  const value = await readHealthKv(env, KV_HEALTH_META);
+  if (value !== null) {
+    healthMetaKvMemo = { env, value, expiresAt: now + HEALTH_META_KV_TTL_MS };
+  }
+  return value;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -1036,7 +1392,7 @@ async function handleApiRequest(
   if (overlayCache) {
     // Cheap KV read of just the snapshot time; on a hit this + the cache match
     // is the whole request (no R2 GET / overlay / re-stringify).
-    const opMeta = await readHealthKv(env, KV_HEALTH_META);
+    const opMeta = await readHealthMetaKv(env);
     const lastRunAt = opMeta?.last_run_at || null;
     if (lastRunAt) {
       overlayCacheKey = new Request(
@@ -1046,8 +1402,7 @@ async function handleApiRequest(
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
-        const etag = overlayHit.headers.get("etag");
-        if (etag && request.headers.get("if-none-match") === etag) {
+        if (ifNoneMatchSatisfied(request, overlayHit.headers.get("etag"))) {
           return new Response(null, {
             status: 304,
             headers: overlayHit.headers,
@@ -1062,8 +1417,7 @@ async function handleApiRequest(
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
-      const etag = hit.headers.get("etag");
-      if (etag && request.headers.get("if-none-match") === etag) {
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
         return new Response(null, { status: 304, headers: hit.headers });
       }
       return hit;
@@ -1291,12 +1645,7 @@ async function handleBulkHealthTrends(
             day AS date,
             SUM(samples) AS total,
             SUM(ok_count) AS ok_count,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                     SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-              ELSE NULL
-            END AS avg_latency_ms
+            ${dailyLatencyColumns()}
      FROM surface_uptime_daily
      WHERE day >= ?
      GROUP BY netuid, day
@@ -1313,7 +1662,7 @@ async function handleBulkHealthTrends(
       (row) => String(row.day || row.date) >= windowCutoff,
     );
   }
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatBulkTrends({
     observedAt: meta?.last_run_at || null,
     windows,
@@ -1355,14 +1704,14 @@ async function handleHealthTrends(request, env, netuid) {
         const result = await withTimeout(
           db
             .prepare(
-              `SELECT MAX(surface_id) AS surface_id,
-                    COALESCE(surface_key, surface_id) AS surface_key,
+              `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+             SELECT MAX(surface_id) AS surface_id,
+                    surface_key,
                     COUNT(*) AS total,
                     SUM(ok) AS ok_count,
-                    AVG(latency_ms) AS avg_latency_ms
-             FROM surface_checks
-             WHERE netuid = ? AND checked_at >= ?
-             GROUP BY COALESCE(surface_key, surface_id)`,
+                    ${latencyStatColumns({ includeMinMax: false })}
+             FROM ranked
+             GROUP BY surface_key`,
             )
             .bind(netuid, nowMs - days * DAY_MS)
             .all(),
@@ -1377,7 +1726,7 @@ async function handleHealthTrends(request, env, netuid) {
   for (const [label, rows] of windowRows) {
     windows[label] = rows;
   }
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatTrends({
     netuid,
     observedAt: meta?.last_run_at || null,
@@ -1429,7 +1778,7 @@ function analyticsWindow(url) {
     return {
       error: {
         parameter: ANALYTICS_WINDOW_PARAM,
-        message: `${ANALYTICS_WINDOW_PARAM} is not supported for this route.`,
+        message: `"${requested}" is not a valid window. Supported: ${Object.keys(ANALYTICS_WINDOWS).join(", ")}.`,
       },
     };
   }
@@ -1480,34 +1829,16 @@ async function handleHealthPercentiles(request, env, netuid, url) {
   if (error) return analyticsQueryError(error);
   const rows = await d1All(
     env,
-    `WITH ranked AS (
-       SELECT COALESCE(surface_key, surface_id) AS surface_key,
-              surface_id,
-              latency_ms,
-              ROW_NUMBER() OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-                ORDER BY latency_ms
-              ) AS rn,
-              COUNT(*) OVER (
-                PARTITION BY COALESCE(surface_key, surface_id)
-              ) AS cnt
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ? AND latency_ms IS NOT NULL
-     )
+    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
-            MAX(cnt) AS samples,
-            MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
-            MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95,
-            MAX(CASE WHEN rn = CAST(0.99 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p99,
-            AVG(latency_ms) AS avg_latency_ms,
-            MIN(latency_ms) AS min_latency_ms,
-            MAX(latency_ms) AS max_latency_ms
+            ${latencyStatColumns()}
      FROM ranked
-     GROUP BY surface_key`,
+     GROUP BY surface_key
+     HAVING MAX(lat_cnt) > 0`,
     [netuid, Date.now() - days * DAY_MS],
   );
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatPercentiles({
     netuid,
     window: label,
@@ -1583,7 +1914,7 @@ async function handleHealthIncidents(request, env, netuid, url) {
       [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
     ),
   ]);
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatIncidents({
     netuid,
     window: label,
@@ -1660,7 +1991,7 @@ async function handleGlobalIncidents(request, env, url) {
       MAX_INCIDENT_ROWS,
     ],
   );
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
     observedAt: meta?.last_run_at || null,
@@ -1800,6 +2131,127 @@ async function handleSubnetValidators(request, env, netuid, url) {
   );
 }
 
+// ---- Account entity handlers (#1347) ---------------------------------------
+function clampInt(raw, def, min, max) {
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+async function accountMeta(env, artifactPath, generatedAt) {
+  return {
+    artifact_path: artifactPath,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: generatedAt,
+    published_at: await publishedAt(env),
+    source: "chain-events",
+  };
+}
+
+// GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
+// (account_events, matched by hotkey OR coldkey) joined to current registrations
+// (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
+async function handleAccount(request, env, ss58) {
+  const where = "hotkey = ? OR coldkey = ?";
+  const [aggRows, kindRows, regRows, recentRows] = await Promise.all([
+    d1All(
+      env,
+      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
+      [ss58, ss58],
+    ),
+    d1All(
+      env,
+      `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
+      [ss58, ss58],
+    ),
+    d1All(
+      env,
+      `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+      [ss58],
+    ),
+    d1All(
+      env,
+      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+      [ss58, ss58],
+    ),
+  ]);
+  const data = buildAccountSummary(ss58, {
+    agg: aggRows[0],
+    kinds: kindRows,
+    registrations: regRows,
+    recent: recentRows,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}.json`,
+        data.last_seen_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
+// optional ?kind= filter, ?limit (<=1000) / ?offset.
+async function handleAccountEvents(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const kind = url.searchParams.get("kind");
+  const params = [ss58, ss58];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (hotkey = ? OR coldkey = ?)`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
+  params.push(limit, offset);
+  const rows = await d1All(env, sql, params);
+  const data = buildAccountEvents(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/events.json`,
+        data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
+// registered (the cross-subnet footprint), from the neurons tier.
+async function handleAccountSubnets(request, env, ss58) {
+  const rows = await d1All(
+    env,
+    `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY netuid`,
+    [ss58],
+  );
+  const data = buildAccountSubnets(rows, ss58);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/subnets.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
 // Long-term daily uptime history for one subnet's operational surfaces, served
 // live from the surface_uptime_daily rollup (PR3). 90d/1y window. Returns a
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
@@ -1831,14 +2283,10 @@ async function handleUptime(request, env, netuid, url) {
               WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
               ELSE NULL
             END AS uptime_ratio,
-            CASE
-              WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                THEN CAST(ROUND(
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                ) AS INTEGER)
-              ELSE NULL
-            END AS avg_latency_ms,
+            ${dailyLatencyColumns({ roundedAvg: true })},
+            MAX(p50_latency_ms) AS p50,
+            MAX(p95_latency_ms) AS p95,
+            MAX(p99_latency_ms) AS p99,
             CASE
               WHEN SUM(samples) = 0 THEN 'unknown'
               WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
@@ -1991,7 +2439,7 @@ async function handleLeaderboards(request, env, url) {
         : null,
   }));
 
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
     board: requestedBoard || null,
     limit,
@@ -2131,7 +2579,7 @@ async function handleRpcUsage(request, env, url) {
         ],
       ),
     ]);
-  const meta = await readHealthKv(env, KV_HEALTH_META);
+  const meta = await readHealthMetaKv(env);
   const data = formatRpcUsage({
     window: label,
     observedAt: meta?.last_run_at || null,
@@ -2570,7 +3018,7 @@ const RPC_EJECT_COOLDOWN_MS = 30_000;
 export function recordRpcFailure(map, id, now) {
   const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
   entry.fails += 1;
-  if (entry.fails >= RPC_EJECT_THRESHOLD) {
+  if (entry.fails >= RPC_EJECT_THRESHOLD && entry.ejectedUntil <= now) {
     entry.ejectedUntil = now + RPC_EJECT_COOLDOWN_MS;
   }
   map.set(id, entry);
@@ -2911,7 +3359,7 @@ async function handleHealthRequest(request, env) {
   // Read the publish pointer + the operational-health meta concurrently (one
   // round-trip instead of two) — both are independent KV gets.
   const [pointer, meta] = bindings.kv
-    ? await Promise.all([latestPointer(env), readHealthKv(env, KV_HEALTH_META)])
+    ? await Promise.all([latestPointer(env), readHealthMetaKv(env)])
     : [null, null];
   const publishedAtIso =
     pointer && typeof pointer.published_at === "string"
@@ -3199,13 +3647,18 @@ async function handleEventsRequest(request, env) {
   ]);
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
   const event = buildChangeEvent({ changelog, pointer });
-  const frame =
-    [
-      "retry: 300000",
-      `id: ${event.published_at || event.generated_at || "0"}`,
-      "event: snapshot",
-      `data: ${JSON.stringify(event)}`,
-    ].join("\n") + "\n\n";
+  const eventId = event.published_at || event.generated_at || "0";
+  // Reconnect replays the last id; if the snapshot hasn't moved, answer with a
+  // bare keepalive instead of re-sending it (a 304 analogue for SSE).
+  const unchanged = request.headers.get("last-event-id") === eventId;
+  const frame = unchanged
+    ? `retry: 300000\n: no new snapshot since ${eventId}\n\n`
+    : [
+        "retry: 300000",
+        `id: ${eventId}`,
+        "event: snapshot",
+        `data: ${JSON.stringify(event)}`,
+      ].join("\n") + "\n\n";
 
   const headers = new Headers();
   headers.set("content-type", "text/event-stream; charset=utf-8");
@@ -3213,6 +3666,7 @@ async function handleEventsRequest(request, env) {
   headers.set("access-control-allow-origin", "*");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
+  headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");
   return new Response(frame, { status: 200, headers });
 }
 
@@ -3455,7 +3909,7 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "freshness": {
-      const meta = await readHealthKv(env, KV_HEALTH_META);
+      const meta = await readHealthMetaKv(env);
       data = mergeFreshness(staticData, meta);
       break;
     }
@@ -3517,7 +3971,11 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
-  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+  } else if (
+    url.pathname === "/mcp" ||
+    url.pathname === "/api/v1/ask" ||
+    url.pathname === "/api/v1/graphql"
+  ) {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);

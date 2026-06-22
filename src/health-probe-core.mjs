@@ -324,6 +324,13 @@ export function rollupSubnetStatus({
   return "failed";
 }
 
+// Latency is a success-only signal: keep a probe's latency only when it resolved
+// `ok`. Every failure (timeout, 5xx, unsafe, thrown) collapses to null, so it
+// counts toward uptime but never toward the latency mean or percentiles.
+export function okLatencyMs(status, latencyMs) {
+  return status === "ok" && Number.isFinite(latencyMs) ? latencyMs : null;
+}
+
 export function statusForClassification(classification, surface = null) {
   if (["live", "redirected"].includes(classification)) {
     return "ok";

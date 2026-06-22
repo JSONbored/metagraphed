@@ -4,6 +4,257 @@
   "additionalProperties": false,
   "components": {
     "schemas": {
+      "AccountEvent": {
+        "additionalProperties": false,
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "properties": {
+          "amount_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number",
+          "event_kind"
+        ],
+        "type": "object"
+      },
+      "AccountEventKindCount": {
+        "additionalProperties": false,
+        "description": "Per-kind event tally for an account (#1347).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "count"
+        ],
+        "type": "object"
+      },
+      "AccountEventsArtifact": {
+        "additionalProperties": true,
+        "description": "Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file).",
+        "properties": {
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "AccountRegistration": {
+        "additionalProperties": false,
+        "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "validator_permit": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "netuid"
+        ],
+        "type": "object"
+      },
+      "AccountSubnetsArtifact": {
+        "additionalProperties": true,
+        "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",
+        "properties": {
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/AccountRegistration"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "subnet_count",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "AccountSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+        "properties": {
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEventKindCount"
+            },
+            "type": "array"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "registrations": {
+            "items": {
+              "$ref": "#/components/schemas/AccountRegistration"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "event_count",
+          "registrations"
+        ],
+        "type": "object"
+      },
       "AdapterArtifact": {
         "allOf": [
           {
@@ -1071,6 +1322,10 @@
                           "null"
                         ]
                       },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
                       "netuid": {
                         "minimum": 0,
                         "type": "integer"
@@ -1090,6 +1345,10 @@
                               "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                               "type": "string"
                             },
+                            "latency_sample_count": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
                             "samples": {
                               "minimum": 0,
                               "type": "integer"
@@ -1107,7 +1366,8 @@
                             "date",
                             "samples",
                             "uptime_ratio",
-                            "avg_latency_ms"
+                            "avg_latency_ms",
+                            "latency_sample_count"
                           ],
                           "type": "object"
                         },
@@ -1131,6 +1391,7 @@
                       "samples",
                       "uptime_ratio",
                       "avg_latency_ms",
+                      "latency_sample_count",
                       "points"
                     ],
                     "type": "object"
@@ -4170,6 +4431,10 @@
               "null"
             ]
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -4442,6 +4707,10 @@
             "additionalProperties": {
               "additionalProperties": true,
               "properties": {
+                "latency_sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "samples": {
                   "minimum": 0,
                   "type": "integer"
@@ -4455,6 +4724,34 @@
                           "integer",
                           "null"
                         ]
+                      },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       "samples": {
                         "minimum": 0,
@@ -4474,7 +4771,9 @@
                       "surface_id",
                       "samples",
                       "uptime_ratio",
-                      "avg_latency_ms"
+                      "avg_latency_ms",
+                      "latency_sample_count",
+                      "latency_ms"
                     ],
                     "type": "object"
                   },
@@ -4490,6 +4789,7 @@
               "required": [
                 "samples",
                 "uptime_ratio",
+                "latency_sample_count",
                 "surfaces"
               ],
               "type": "object"
@@ -5553,6 +5853,10 @@
             ],
             "type": "string"
           },
+          "latency_sample_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "sample_count": {
             "minimum": 0,
             "type": "integer"
@@ -5583,7 +5887,8 @@
           "score",
           "grade",
           "uptime_ratio",
-          "sample_count"
+          "sample_count",
+          "latency_sample_count"
         ],
         "type": "object"
       },
@@ -10992,6 +11297,34 @@
                       },
                       "day": {
                         "type": "string"
+                      },
+                      "latency_ms": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "p50": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p95": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "p99": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "latency_sample_count": {
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       "samples": {
                         "minimum": 0,

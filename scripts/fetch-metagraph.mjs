@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Fetch the per-UID metagraph for every active subnet from Taostats and emit a
-// D1 load script (#1303, epic #1302) — the chain-level depth metagraphed lacked.
+// Fetch the per-UID metagraph for every active subnet from Taostats (#1303, epic
+// #1302) — the chain-level depth metagraphed lacked.
 //
 // Reads TAOSTATS_API_KEY from the env; the netuid list from the committed native
-// snapshot (registry/native/finney-subnets.json). Output: a .sql file of
-// `INSERT OR REPLACE` statements that the refresh-metagraph workflow loads into
-// the metagraphed-health D1 via `wrangler d1 execute`. PK (netuid, uid) means a
-// re-run overwrites in place (slots are reused on the chain), so the table stays
-// bounded (~33k rows).
+// snapshot (registry/native/finney-subnets.json). Output: a JSON array of neuron
+// rows that the refresh-metagraph workflow stages to R2; the Worker's scheduled
+// handler then loads them into the metagraphed-health D1 `neurons` table with
+// parameterized inserts (loadStagedNeurons), keyed (netuid, uid) so a re-run
+// overwrites in place (slots are reused on-chain) and the table stays bounded.
 //
 // Units verified against /api/v1/economics ground truth (2026-06-21):
 //   stake_tao    = total_alpha_stake / 1e9   (Σ matches economics total_stake_tao)
@@ -21,7 +21,7 @@ const TAOSTATS_BASE = "https://api.taostats.io/api/metagraph/latest/v1";
 const RAO = 1e9;
 const PAGE_LIMIT = 256; // max UIDs per subnet → single page per subnet
 const OUT_PATH =
-  process.env.METAGRAPH_NEURONS_SQL || "dist/metagraph-neurons.sql";
+  process.env.METAGRAPH_NEURONS_JSON || "dist/metagraph-neurons.json";
 
 const num = (v) => {
   const n = Number(v);
@@ -64,53 +64,6 @@ export function normalizeNeuron(raw, capturedAt) {
     block_number: num(raw?.block_number),
     captured_at: capturedAt,
   };
-}
-
-const COLS = [
-  "netuid",
-  "uid",
-  "hotkey",
-  "coldkey",
-  "active",
-  "validator_permit",
-  "rank",
-  "trust",
-  "validator_trust",
-  "consensus",
-  "incentive",
-  "dividends",
-  "emission_tao",
-  "stake_tao",
-  "registered_at_block",
-  "is_immunity_period",
-  "axon",
-  "block_number",
-  "captured_at",
-];
-
-function sqlVal(v) {
-  if (v === null || v === undefined) return "NULL";
-  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NULL";
-  return "'" + String(v).replace(/'/g, "''") + "'";
-}
-
-// Batched INSERT OR REPLACE statements (default 50 rows/statement keeps each
-// statement well under D1's query-size limit). Exported for tests.
-export function buildNeuronSql(rows, batchSize = 50) {
-  const valid = rows.filter(
-    (r) => Number.isInteger(r.netuid) && Number.isInteger(r.uid),
-  );
-  const statements = [];
-  for (let i = 0; i < valid.length; i += batchSize) {
-    const values = valid
-      .slice(i, i + batchSize)
-      .map((r) => "(" + COLS.map((c) => sqlVal(r[c])).join(",") + ")")
-      .join(",");
-    statements.push(
-      `INSERT OR REPLACE INTO neurons (${COLS.join(",")}) VALUES ${values};`,
-    );
-  }
-  return statements;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -206,11 +159,13 @@ async function main() {
     );
     process.exit(1);
   }
-  const statements = buildNeuronSql(rows);
+  const valid = rows.filter(
+    (r) => Number.isInteger(r.netuid) && Number.isInteger(r.uid),
+  );
   mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-  writeFileSync(OUT_PATH, statements.join("\n") + "\n");
+  writeFileSync(OUT_PATH, JSON.stringify(valid));
   console.log(
-    `wrote ${rows.length} neurons across ${netuids.length - failures}/${netuids.length} subnets -> ${OUT_PATH} (${statements.length} statements)`,
+    `wrote ${valid.length} neurons across ${netuids.length - failures}/${netuids.length} subnets -> ${OUT_PATH}`,
   );
 }
 

@@ -326,10 +326,14 @@ export async function signPayload(secret, bodyText) {
 export function timingSafeEqual(a, b) {
   const left = String(a);
   const right = String(b);
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  // Constant-time compare WITHOUT an early length-mismatch return (which would
+  // leak the secret's length via timing). Fold the length difference into the
+  // accumulator and iterate the longer string; out-of-range positions compare
+  // against 0 (charCodeAt → NaN → 0). Equal length + equal content ⇒ diff 0.
+  let diff = left.length ^ right.length;
+  const max = Math.max(left.length, right.length);
+  for (let index = 0; index < max; index += 1) {
+    diff |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
   }
   return diff === 0;
 }

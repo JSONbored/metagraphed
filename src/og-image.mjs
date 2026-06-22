@@ -7,9 +7,10 @@
 // workers-og is DYNAMIC-imported inside the handler so its wasm only evaluates
 // when this low-traffic route is actually hit — the agent/API hot path (every
 // other request) never pays the parse/instantiate cost. The whole render is
-// fail-soft: any failure (artifact miss, font fetch, wasm, satori) returns a
-// tiny valid PNG instead of a 500, keeping the public endpoint cheap and the
-// crawler happy. workers-og + fonts + caches are injectable for unit tests.
+// fail-soft: any failure (artifact miss, font fetch, wasm, satori) serves the
+// branded full-size static card on a short cache, so an unfurl always shows
+// something on brand and a transient failure isn't pinned for the hour.
+// workers-og + fonts + caches + fallback asset are injectable for unit tests.
 
 // Brand palette (brand kit BRAND.md): Mint accent on an Ink surface; Ink-text
 // reads AAA on mint. The landing page currently ships the static mint OG banner,
@@ -22,6 +23,12 @@ const OG_PATHS = new Set(["/og.png", "/og"]);
 // Stats refresh on the data publish; an hour of edge cache + a long
 // stale-while-revalidate keeps render cost near-zero without serving stale art.
 const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
+// Render failures are transient, so the fallback gets a short cache (not the
+// long success window, no stale-while-revalidate) and is never pinned for long.
+const FALLBACK_CACHE_CONTROL = "public, max-age=60";
+// Branded 1200x630 card under public/ (ASSETS binding), shown when a render
+// fails. Regenerate from banner-og-social-mint.png on brand changes.
+const FALLBACK_ASSET_PATH = "/brand/og-fallback.png";
 // Bump on any visual change to the card. It's part of the edge-cache key, so a
 // new version renders fresh on the next deploy instead of serving the previous
 // design from cache for up to an hour.
@@ -40,26 +47,40 @@ const FALLBACK_STAT = "Live health, schemas, and discovery for every subnet";
 const LOGO_DATA_URI =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSI+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgxLjkyMCwxNTEuNzM4KSBzY2FsZSgwLjQ2NTQ1KSIgZD0iTSAzMTUuNSwxLjE5OTk5OTk5OTk5OTk4ODYgQyAzMTMuNDAwMDAwMDAwMDAwMDMsMS42OTk5OTk5OTk5OTk5ODg2IDI4MS43LDMyLjc5OTk5OTk5OTk5OTk1NSAyMDYuNSwxMDcuODk5OTk5OTk5OTk5OTggQyAxNDYuNSwxNjcuODk5OTk5OTk5OTk5OTggOTkuMzAwMDAwMDAwMDAwMDEsMjE0LjM5OTk5OTk5OTk5OTk4IDk3LjcsMjE1LjAgQyA5NS45LDIxNS42IDc5LjQsMjE2LjAgNTIuMzAwMDAwMDAwMDAwMDA0LDIxNi4wIEMgMTEuNCwyMTYuMCA5LjYwMDAwMDAwMDAwMDAwMSwyMTYuMSA2LjUsMjE4LjAgQyAtMC40LDIyMi4yOTk5OTk5OTk5OTk5OCAwLjAsMjE1Ljc5OTk5OTk5OTk5OTk4IDAuMCwzMjguNyBDIDAuMCw0MjguNSAwLjAsNDMwLjYgMi4wLDQzMy44IEMgNi4wLDQ0MC4zIDEyLjksNDQyLjUgMTkuNSw0MzkuNCBDIDIxLjMsNDM4LjYgNzAuOSwzODkuNCAxMzAuNiwzMjkuMyBDIDIyMy45LDIzNS41IDIzOS4yMDAwMDAwMDAwMDAwMiwyMjAuMzk5OTk5OTk5OTk5OTggMjQzLjgsMjE4LjM5OTk5OTk5OTk5OTk4IEMgMjQ5LjAsMjE2LjAgMjQ5LjUsMjE2LjAgMjgxLjgsMjE2LjAgQyAzMTIuNDAwMDAwMDAwMDAwMDMsMjE2LjAgMzE0LjcwMDAwMDAwMDAwMDA1LDIxNi4xIDMxNy43MDAwMDAwMDAwMDAwNSwyMTguMCBDIDMxOS40MDAwMDAwMDAwMDAwMywyMTkuMCAzMjEuNSwyMjAuODk5OTk5OTk5OTk5OTggMzIyLjIwMDAwMDAwMDAwMDA1LDIyMi4yIEMgMzIzLjIwMDAwMDAwMDAwMDA1LDIyNC4wIDMyMy42LDI0NS4xIDMyNC4wLDMyOC4wIEwgMzI0LjUsNDMxLjUgTCAzMjYuOCw0MzQuOCBDIDMzMS4wLDQ0MC42IDMzOC4xLDQ0Mi42IDM0My44LDQzOS42IEMgMzQ1LjMsNDM4LjggMzk1LjgsMzg4LjggNDU2LjAsMzI4LjUgQyA1MTYuMiwyNjguMiA1NjYuNywyMTguMiA1NjguMiwyMTcuMzk5OTk5OTk5OTk5OTggQyA1NzAuNCwyMTYuMjk5OTk5OTk5OTk5OTggNTc3LjMwMDAwMDAwMDAwMDEsMjE2LjAgNjA1LjIsMjE2LjAgQyA2MzcuNDAwMDAwMDAwMDAwMSwyMTYuMCA2MzkuNywyMTYuMSA2NDIuNywyMTguMCBDIDY0NC40MDAwMDAwMDAwMDAxLDIxOS4wIDY0Ni41LDIyMC44OTk5OTk5OTk5OTk5OCA2NDcuMiwyMjIuMiBDIDY0OC4yLDIyNC4wIDY0OC42LDI0NS43IDY0OS4wLDMzMS43IEMgNjQ5LjUsNDM4LjEgNjQ5LjUsNDM4LjkgNjUxLjYsNDQxLjcgQyA2NTQuODAwMDAwMDAwMDAwMSw0NDYuMSA2NTkuNyw0NDguMiA2NjUuMCw0NDcuNSBDIDY2OS40MDAwMDAwMDAwMDAxLDQ0Ny4wIDY3MC42LDQ0NS45IDcwNy4zMDAwMDAwMDAwMDAxLDQwOS4yIEMgNzI4LjEsMzg4LjUgNzQ1LjgwMDAwMDAwMDAwMDEsMzcwLjMgNzQ2LjYsMzY4LjggQyA3NDcuODAwMDAwMDAwMDAwMSwzNjYuNSA3NDguMCwzNTQuOSA3NDguMCwyOTUuNzk5OTk5OTk5OTk5OTUgQyA3NDguMCwyMjguMCA3NDcuOTAwMDAwMDAwMDAwMSwyMjUuMzk5OTk5OTk5OTk5OTggNzQ2LjAsMjIyLjI5OTk5OTk5OTk5OTk4IEMgNzQyLjUsMjE2LjUgNzQyLjYsMjE2LjUgNzAzLjMwMDAwMDAwMDAwMDEsMjE2LjAgQyA2NjguNywyMTUuNSA2NjcuMCwyMTUuMzk5OTk5OTk5OTk5OTggNjY0LjMwMDAwMDAwMDAwMDEsMjEzLjM5OTk5OTk5OTk5OTk4IEMgNjYyLjgwMDAwMDAwMDAwMDEsMjEyLjI5OTk5OTk5OTk5OTk4IDY2MC43LDIwOS43OTk5OTk5OTk5OTk5OCA2NTkuODAwMDAwMDAwMDAwMSwyMDcuODk5OTk5OTk5OTk5OTggQyA2NTguMSwyMDQuNyA2NTguMCwxOTcuODk5OTk5OTk5OTk5OTggNjU4LjAsMTA3Ljc5OTk5OTk5OTk5OTk1IEMgNjU4LjAsLTAuNzAwMDAwMDAwMDAwMDQ1NSA2NTguNDAwMDAwMDAwMDAwMSw1Ljc5OTk5OTk5OTk5OTk1NDUgNjUwLjgwMDAwMDAwMDAwMDEsMS44OTk5OTk5OTk5OTk5NzczIEMgNjQ2LjYsLTAuMjAwMDAwMDAwMDAwMDQ1NDcgNjQzLjQwMDAwMDAwMDAwMDEsLTAuNSA2MzkuMzAwMDAwMDAwMDAwMSwxLjA5OTk5OTk5OTk5OTk2NiBDIDYzNy43LDEuNjk5OTk5OTk5OTk5OTg4NiA1OTAuMiw0OC41OTk5OTk5OTk5OTk5NjYgNTI5LjksMTA5LjA5OTk5OTk5OTk5OTk3IEwgNDIzLjMsMjE2LjEgTCAzODIuNzAwMDAwMDAwMDAwMDUsMjE1Ljc5OTk5OTk5OTk5OTk4IEMgMzQzLjUsMjE1LjUgMzQyLjEsMjE1LjM5OTk5OTk5OTk5OTk4IDMzOS4zLDIxMy4zOTk5OTk5OTk5OTk5OCBDIDMzNy44LDIxMi4yOTk5OTk5OTk5OTk5OCAzMzUuNzAwMDAwMDAwMDAwMDUsMjA5Ljc5OTk5OTk5OTk5OTk4IDMzNC44LDIwNy44OTk5OTk5OTk5OTk5OCBDIDMzMy4xLDIwNC43IDMzMy4wLDE5Ny44OTk5OTk5OTk5OTk5OCAzMzMuMCwxMDcuNjk5OTk5OTk5OTk5OTkgQyAzMzMuMCw0LjA5OTk5OTk5OTk5OTk2NiAzMzMuMjAwMDAwMDAwMDAwMDUsOC4xOTk5OTk5OTk5OTk5ODkgMzI4LjEsMy41OTk5OTk5OTk5OTk5NjYgQyAzMjUuNiwxLjI5OTk5OTk5OTk5OTk1NDUgMzE5LjUsMC4wOTk5OTk5OTk5OTk5NjU5IDMxNS41LDEuMTk5OTk5OTk5OTk5OTg4NiIgZmlsbD0iIzA4MTEwRSIvPgo8L3N2Zz4K";
 
-// A tiny valid 1x1 PNG returned when any render dependency fails.
-const FALLBACK_PNG = new Uint8Array([
-  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
-  0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120,
-  156, 99, 248, 255, 255, 255, 127, 0, 9, 251, 3, 253, 5, 67, 69, 202, 0, 0, 0,
-  0, 73, 69, 78, 68, 174, 66, 96, 130,
-]);
-
-function fallbackResponse(status = 200) {
-  return new Response(FALLBACK_PNG, {
-    status,
-    headers: { "cache-control": CACHE_CONTROL, "content-type": "image/png" },
-  });
-}
-
-function imageHeaders(extra) {
+function imageHeaders(extra, cacheControl = CACHE_CONTROL) {
   const headers = new Headers(extra);
-  headers.set("cache-control", CACHE_CONTROL);
+  headers.set("cache-control", cacheControl);
   headers.set("content-type", "image/png");
   return headers;
+}
+
+// Serve the branded card from ASSETS (a separate subsystem, so it survives
+// workers-og/font/satori failures) at 200 with a short cache; the caller never
+// edge-caches it. If the asset is gone too, 503 no-store so crawlers fall back
+// to the page meta tags instead of caching a blank.
+async function fallbackResponse(assets, url) {
+  if (assets?.fetch) {
+    try {
+      const asset = await assets.fetch(
+        new Request(new URL(FALLBACK_ASSET_PATH, url).toString()),
+      );
+      if (asset.ok) {
+        return new Response(asset.body, {
+          headers: imageHeaders(undefined, FALLBACK_CACHE_CONTROL),
+        });
+      }
+      await asset.body?.cancel?.();
+    } catch (error) {
+      console.error("og: fallback asset unavailable", error);
+    }
+  }
+  return new Response("og image temporarily unavailable\n", {
+    status: 503,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+    },
+  });
 }
 
 function formatCount(value) {
@@ -127,8 +148,9 @@ export function renderMarkup(statParts) {
 }
 
 // Returns a Response for the OG route, or null when the path doesn't match (so
-// the caller can fall through). deps: { readArtifact, og, cache } — og defaults
-// to a dynamic import of workers-og; cache to the edge cache.
+// the caller can fall through). deps: { readArtifact, og, cache, assets } — og
+// defaults to a dynamic import of workers-og; cache to the edge cache; assets to
+// env.ASSETS (the binding that serves the branded fallback card on failure).
 export async function handleOgImage(request, env, url, deps = {}) {
   if (!OG_PATHS.has(url.pathname)) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -143,6 +165,8 @@ export async function handleOgImage(request, env, url, deps = {}) {
     deps.cache !== undefined
       ? deps.cache
       : (globalThis.caches?.default ?? null);
+  const assets =
+    deps.assets !== undefined ? deps.assets : (env?.ASSETS ?? null);
   const cacheKey = new Request(
     new URL(`/og.png?v=${CARD_VERSION}`, url).toString(),
     { method: "GET" },
@@ -165,7 +189,7 @@ export async function handleOgImage(request, env, url, deps = {}) {
       deps.og || (await import("workers-og")));
   } catch (error) {
     console.error("og: workers-og unavailable", error);
-    return fallbackResponse();
+    return fallbackResponse(assets, url);
   }
 
   // Subset both weights to only the glyphs we render (faster, smaller fetch).
@@ -183,7 +207,7 @@ export async function handleOgImage(request, env, url, deps = {}) {
     ]);
   } catch (error) {
     console.error("og: font load failed", error);
-    return fallbackResponse();
+    return fallbackResponse(assets, url);
   }
 
   try {
@@ -203,6 +227,6 @@ export async function handleOgImage(request, env, url, deps = {}) {
     return response;
   } catch (error) {
     console.error("og: render failed", error);
-    return fallbackResponse();
+    return fallbackResponse(assets, url);
   }
 }

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { handleOgImage } from "../src/og-image.mjs";
 
@@ -34,6 +36,26 @@ function fakeCache(hit = null) {
   return {
     puts,
     cache: { match: async () => hit, put: async (key) => void puts.push(key) },
+  };
+}
+
+// Fake ASSETS binding: serves the branded card or 404s, and records requested
+// paths so tests can assert the canonical fallback asset was used.
+function fakeAssets({ found = true } = {}) {
+  const requested = [];
+  return {
+    requested,
+    assets: {
+      fetch: async (request) => {
+        requested.push(new URL(request.url).pathname);
+        return found
+          ? new Response("BRANDED-FALLBACK-CARD-1200x630", {
+              status: 200,
+              headers: { "content-type": "image/png" },
+            })
+          : new Response("not found", { status: 404 });
+      },
+    },
   };
 }
 
@@ -112,30 +134,87 @@ describe("handleOgImage", () => {
     assert.match(og.calls.markup, /Live health, schemas, and discovery/);
   });
 
-  test("returns the fallback PNG (not a 500) when font loading fails", async () => {
+  test("serves the branded full-size fallback card (not a 1x1, not a 500) when font loading fails", async () => {
     const og = fakeOg({ failFont: true });
+    const { assets, requested } = fakeAssets();
     const { cache, puts } = fakeCache();
     const res = await handleOgImage(req("GET"), {}, urlFor(), {
       readArtifact: readSummaryOk,
       og: og.og,
       cache,
+      assets,
     });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "image/png");
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    assert.ok(bytes.length > 0 && bytes.length < 200); // tiny fallback PNG
-    assert.equal(puts.length, 0); // a failed render is never cached
+    // the full branded card, not the old valid-but-empty 1x1 pixel
+    assert.equal(await res.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(requested, ["/brand/og-fallback.png"]);
+    // short cache, not the long success window, and never edge-cached
+    const cc = res.headers.get("cache-control");
+    assert.doesNotMatch(cc, /max-age=3600/);
+    assert.doesNotMatch(cc, /stale-while-revalidate/);
+    assert.match(cc, /max-age=60/);
+    assert.equal(puts.length, 0);
   });
 
-  test("returns the fallback PNG when satori rendering throws", async () => {
+  test("serves the branded fallback card when satori rendering throws", async () => {
+    const og = fakeOg({ failRender: true });
+    const { assets } = fakeAssets();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: og.og,
+      cache: null,
+      assets,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "image/png");
+    assert.equal(await res.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.match(res.headers.get("cache-control"), /max-age=60/);
+  });
+
+  test("returns a 503 with no-store (never a cached blank) when even the fallback asset is unreachable", async () => {
+    const og = fakeOg({ failRender: true });
+    const { assets } = fakeAssets({ found: false });
+    const { cache, puts } = fakeCache();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: og.og,
+      cache,
+      assets,
+    });
+    // total failure: 5xx + no-store so crawlers use the page meta tags
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.equal(puts.length, 0);
+  });
+
+  test("returns a 503 (not a 1x1 at 200) when no ASSETS binding is configured", async () => {
     const og = fakeOg({ failRender: true });
     const res = await handleOgImage(req("GET"), {}, urlFor(), {
       readArtifact: readSummaryOk,
       og: og.og,
       cache: null,
+      assets: null,
     });
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("content-type"), "image/png");
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+  });
+
+  test("the committed fallback asset is a real full-size 1200x630 PNG", () => {
+    const path = fileURLToPath(
+      new URL("../public/brand/og-fallback.png", import.meta.url),
+    );
+    const buf = readFileSync(path);
+    // PNG signature
+    assert.deepEqual(
+      [...buf.subarray(0, 8)],
+      [137, 80, 78, 71, 13, 10, 26, 10],
+    );
+    // IHDR width/height are big-endian uint32 at byte offsets 16 and 20
+    assert.equal(buf.readUInt32BE(16), 1200);
+    assert.equal(buf.readUInt32BE(20), 630);
+    // a real branded card, not the old 1x1 pixel (~70 bytes)
+    assert.ok(buf.length > 1000);
   });
 
   test("serves a cached render on hit without re-rendering", async () => {

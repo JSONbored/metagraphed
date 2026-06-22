@@ -9,6 +9,7 @@
 
 import { computeReliability, scoreFromStats } from "./reliability.mjs";
 import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
@@ -121,6 +122,7 @@ export function summarizeRows(rows) {
     avg_latency_ms: latencies.length
       ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
       : null,
+    latency_sample_count: latencies.length,
   };
 }
 
@@ -292,32 +294,41 @@ export function mergeFreshness(staticFreshness, liveMeta) {
 
 // Format D1 GROUP BY aggregates into a trends payload. `windows` maps a label to
 // an array of per-surface aggregate rows {surface_id, surface_key?, total,
-// ok_count, avg_latency_ms}. SQL groups by stable surface_key and keeps surface_id
-// as the current display alias.
+// ok_count, avg_latency_ms, latency_samples, p50, p95, p99}. SQL groups by stable
+// surface_key and keeps surface_id as the current display alias. Latency is
+// success-only: avg_latency_ms / the p50/p95/p99 tail describe healthy probes,
+// and latency_sample_count says how many backed them (0 ⇒ no healthy reading).
 export function formatTrends({ netuid, observedAt, windows }) {
   const formatWindow = (rows) => {
     let total = 0;
     let okCount = 0;
+    let latencySampleTotal = 0;
     const perSurface = [];
     for (const row of rows) {
       const rowTotal = Number(row.total) || 0;
       const rowOk = Number(row.ok_count) || 0;
+      const latencySamples = Number(row.latency_samples) || 0;
       total += rowTotal;
       okCount += rowOk;
+      latencySampleTotal += latencySamples;
       perSurface.push({
         surface_id: row.surface_id,
         samples: rowTotal,
         uptime_ratio: rowTotal ? Number((rowOk / rowTotal).toFixed(4)) : null,
-        avg_latency_ms:
-          row.avg_latency_ms == null
-            ? null
-            : Math.round(Number(row.avg_latency_ms)),
+        avg_latency_ms: roundInt(row.avg_latency_ms),
+        latency_sample_count: latencySamples,
+        latency_ms: {
+          p50: roundInt(row.p50),
+          p95: roundInt(row.p95),
+          p99: roundInt(row.p99),
+        },
       });
     }
     perSurface.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
     return {
       samples: total,
       uptime_ratio: total ? Number((okCount / total).toFixed(4)) : null,
+      latency_sample_count: latencySampleTotal,
       surfaces: perSurface,
     };
   };
@@ -357,6 +368,13 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
       const avgLatency = Number.isFinite(latencyRaw)
         ? Math.round(latencyRaw)
         : null;
+      // Healthy readings behind this day's mean — weight by these, not total
+      // samples. Legacy rows lack the count, so fall back to total samples.
+      const latencyCount = !Number.isFinite(latencyRaw)
+        ? 0
+        : row.latency_samples == null
+          ? samples
+          : Math.max(0, Number(row.latency_samples) || 0);
 
       let entry = bySubnet.get(netuid);
       if (!entry) {
@@ -373,15 +391,16 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
 
       entry.samples += samples;
       entry.okCount += okCount;
-      if (Number.isFinite(latencyRaw) && samples > 0) {
-        entry.latencyTotal += latencyRaw * samples;
-        entry.latencySamples += samples;
+      if (Number.isFinite(latencyRaw) && latencyCount > 0) {
+        entry.latencyTotal += latencyRaw * latencyCount;
+        entry.latencySamples += latencyCount;
       }
       entry.points.push({
         date,
         samples,
         uptime_ratio: samples ? round4(okCount / samples) : null,
         avg_latency_ms: avgLatency,
+        latency_sample_count: latencyCount,
       });
     }
 
@@ -395,6 +414,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
         avg_latency_ms: entry.latencySamples
           ? Math.round(entry.latencyTotal / entry.latencySamples)
           : null,
+        latency_sample_count: entry.latencySamples,
         points: entry.points.sort((a, b) => a.date.localeCompare(b.date)),
       }))
       .sort((a, b) => a.netuid - b.netuid);
@@ -450,7 +470,9 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
   const surfaces = (rows || [])
     .map((row) => ({
       surface_id: row.surface_id,
-      samples: Number(row.samples) || 0,
+      // `latency_samples` (shared latency-stat column); legacy callers still pass
+      // `samples`. This is the count of healthy readings behind the percentiles.
+      samples: Number(row.latency_samples ?? row.samples) || 0,
       latency_ms: {
         p50: roundInt(row.p50),
         p95: roundInt(row.p95),
@@ -894,10 +916,13 @@ export function formatUptime({ netuid, window, rows, now = null }) {
       samples: Number(row.samples) || 0,
       ok_count: Number(row.ok_count) || 0,
       uptime_ratio: row.uptime_ratio == null ? null : Number(row.uptime_ratio),
-      avg_latency_ms:
-        row.avg_latency_ms == null
-          ? null
-          : Math.round(Number(row.avg_latency_ms)),
+      avg_latency_ms: roundInt(row.avg_latency_ms),
+      latency_sample_count: Number(row.latency_samples) || 0,
+      latency_ms: {
+        p50: roundInt(row.p50),
+        p95: roundInt(row.p95),
+        p99: roundInt(row.p99),
+      },
       status: row.status || "unknown",
     });
     bySurface.set(key, entry);
@@ -920,6 +945,8 @@ export function formatUptime({ netuid, window, rows, now = null }) {
           samples: d.samples,
           uptime_ratio: d.uptime_ratio,
           avg_latency_ms: d.avg_latency_ms,
+          latency_sample_count: d.latency_sample_count,
+          latency_ms: d.latency_ms,
           status: d.status,
         })),
       };
@@ -961,14 +988,7 @@ export async function loadSubnetReliability({
                 day,
                 SUM(samples) AS samples,
                 SUM(ok_count) AS ok_count,
-                CASE
-                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                    THEN CAST(ROUND(
-                      SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                      SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                    ) AS INTEGER)
-                  ELSE NULL
-                END AS avg_latency_ms
+                ${dailyLatencyColumns({ roundedAvg: true })}
          FROM surface_uptime_daily
          WHERE netuid = ? AND day >= ?
          GROUP BY COALESCE(surface_key, surface_id), day
@@ -1013,12 +1033,7 @@ export async function loadReliabilityAggregate({
       .prepare(
         `SELECT SUM(samples) AS samples,
                 SUM(ok_count) AS ok_count,
-                CASE
-                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                    THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                         SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                  ELSE NULL
-                END AS avg_latency_ms
+                ${dailyLatencyColumns({ roundedAvg: true })}
          FROM surface_uptime_daily
          WHERE netuid IN (${placeholders}) AND day >= ?`,
       )
@@ -1029,6 +1044,7 @@ export async function loadReliabilityAggregate({
       okCount: Number(row?.ok_count) || 0,
       avgLatencyMs:
         row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+      latencySamples: Number(row?.latency_samples) || 0,
     });
   } catch {
     return null;

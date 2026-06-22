@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers. */
+        get: operations["accountSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset. */
+        get: operations["accountEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/subnets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier. */
+        get: operations["accountSubnets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/adapters/{slug}": {
         parameters: {
             query?: never;
@@ -929,7 +980,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1). */
+        /** Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1). */
         get: operations["subnetHealthTrends"];
         put?: never;
         post?: never;
@@ -1096,6 +1147,70 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time. */
+        AccountEvent: {
+            amount_tao?: number | null;
+            block_number: number | null;
+            coldkey?: string | null;
+            event_index?: number | null;
+            event_kind: string | null;
+            hotkey?: string | null;
+            netuid?: number | null;
+            /** Format: date-time */
+            observed_at?: string | null;
+            uid?: number | null;
+        };
+        /** @description Per-kind event tally for an account (#1347). */
+        AccountEventKindCount: {
+            count: number;
+            kind: string;
+        };
+        /** @description Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file). */
+        AccountEventsArtifact: {
+            event_count: number;
+            events: components["schemas"]["AccountEvent"][];
+            limit?: number;
+            offset?: number;
+            schema_version: number;
+            ss58: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier. */
+        AccountRegistration: {
+            active?: boolean;
+            netuid: number;
+            stake_tao?: number | null;
+            uid?: number | null;
+            validator_permit?: boolean;
+        };
+        /** @description Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file). */
+        AccountSubnetsArtifact: {
+            schema_version: number;
+            ss58: string;
+            subnet_count: number;
+            subnets: components["schemas"]["AccountRegistration"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). */
+        AccountSummaryArtifact: {
+            event_count: number;
+            event_kinds?: components["schemas"]["AccountEventKindCount"][];
+            first_block?: number | null;
+            /** Format: date-time */
+            first_seen_at?: string | null;
+            last_block?: number | null;
+            /** Format: date-time */
+            last_seen_at?: string | null;
+            recent_events?: components["schemas"]["AccountEvent"][];
+            registrations: components["schemas"]["AccountRegistration"][];
+            schema_version: number;
+            ss58: string;
+            subnet_count?: number;
+        } & {
+            [key: string]: unknown;
+        };
         AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
             /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
             extensions: {
@@ -1391,10 +1506,12 @@ export interface components {
                     subnet_count: number;
                     subnets: {
                         avg_latency_ms: number | null;
+                        latency_sample_count: number;
                         netuid: number;
                         points: {
                             avg_latency_ms: number | null;
                             date: string;
+                            latency_sample_count: number;
                             samples: number;
                             uptime_ratio: number | null;
                         }[];
@@ -2153,6 +2270,7 @@ export interface components {
             failed_count: number;
             last_checked?: string | null;
             last_ok?: string | null;
+            latency_sample_count?: number;
             name?: string;
             netuid?: number;
             ok_count: number;
@@ -2222,9 +2340,18 @@ export interface components {
             source: string;
             windows: {
                 [key: string]: {
+                    latency_sample_count: number;
                     samples: number;
                     surfaces: ({
                         avg_latency_ms: number | null;
+                        latency_ms: {
+                            p50?: number | null;
+                            p95?: number | null;
+                            p99?: number | null;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        latency_sample_count: number;
                         samples: number;
                         surface_id: string;
                         uptime_ratio: number | null;
@@ -2536,6 +2663,7 @@ export interface components {
             day_count?: number;
             /** @enum {string} */
             grade: "A" | "B" | "C" | "D" | "F";
+            latency_sample_count: number;
             sample_count: number;
             score: number;
             surface_count?: number;
@@ -3838,6 +3966,14 @@ export interface components {
                 days: ({
                     avg_latency_ms?: number | null;
                     day: string;
+                    latency_ms?: {
+                        p50?: number | null;
+                        p95?: number | null;
+                        p99?: number | null;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                    latency_sample_count?: number;
                     samples: number;
                     status: string;
                     uptime_ratio: number | null;
@@ -4020,6 +4156,354 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ApiIndexArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "event_count": 1,
+                     *         "event_kinds": [
+                     *           {
+                     *             "count": 1,
+                     *             "kind": "example"
+                     *           }
+                     *         ],
+                     *         "first_block": 5000000,
+                     *         "first_seen_at": "2026-06-01T00:00:00.000Z",
+                     *         "last_block": 5000000,
+                     *         "last_seen_at": "2026-06-01T00:00:00.000Z",
+                     *         "recent_events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_kind": "example"
+                     *           }
+                     *         ],
+                     *         "registrations": [
+                     *           {
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "example",
+                     *         "subnet_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountSummaryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountEvents: {
+        parameters: {
+            query?: {
+                kind?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "event_count": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_kind": "example"
+                     *           }
+                     *         ],
+                     *         "limit": 1,
+                     *         "offset": 1,
+                     *         "schema_version": 1,
+                     *         "ss58": "example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountEventsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountSubnets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "schema_version": 1,
+                     *         "ss58": "example",
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountSubnetsArtifact"];
                     };
                 };
             };
@@ -6966,11 +7450,13 @@ export interface operations {
                      *             "subnets": [
                      *               {
                      *                 "avg_latency_ms": 120,
+                     *                 "latency_sample_count": 120,
                      *                 "netuid": 7,
                      *                 "points": [
                      *                   {
                      *                     "avg_latency_ms": 120,
                      *                     "date": "2026-06-01",
+                     *                     "latency_sample_count": 120,
                      *                     "samples": 1,
                      *                     "uptime_ratio": 0.9966
                      *                   }
@@ -11364,6 +11850,7 @@ export interface operations {
                      *           "failed_count": 1,
                      *           "last_checked": "2026-06-01T00:00:00.000Z",
                      *           "last_ok": "2026-06-01T00:00:00.000Z",
+                     *           "latency_sample_count": 120,
                      *           "name": "Example Subnet",
                      *           "netuid": 7,
                      *           "ok_count": 1,
@@ -11725,10 +12212,13 @@ export interface operations {
                      *         "source": "live-cron-prober",
                      *         "windows": {
                      *           "example": {
+                     *             "latency_sample_count": 120,
                      *             "samples": 1,
                      *             "surfaces": [
                      *               {
                      *                 "avg_latency_ms": 120,
+                     *                 "latency_ms": {},
+                     *                 "latency_sample_count": 120,
                      *                 "samples": 1,
                      *                 "surface_id": "example",
                      *                 "uptime_ratio": 0.9966
@@ -12984,6 +13474,7 @@ export interface operations {
                      *           "computed_at": "2026-06-01T00:00:00.000Z",
                      *           "day_count": 1,
                      *           "grade": "A",
+                     *           "latency_sample_count": 120,
                      *           "sample_count": 1,
                      *           "score": 100,
                      *           "surface_count": 1,

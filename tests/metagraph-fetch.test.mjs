@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   normalizeNeuron,
-  buildNeuronSql,
   parseNetuidSubset,
 } from "../scripts/fetch-metagraph.mjs";
 
@@ -61,20 +60,6 @@ test("normalizeNeuron is defensive about missing/odd fields", () => {
   assert.equal(n.validator_permit, 0);
 });
 
-test("buildNeuronSql batches INSERT OR REPLACE + escapes + NULLs", () => {
-  const rows = [
-    normalizeNeuron(raw, 1000),
-    normalizeNeuron({ ...raw, uid: 253, axon: null }, 1000),
-    normalizeNeuron({ ...raw, uid: 254 }, 1000),
-  ];
-  const stmts = buildNeuronSql(rows, 2);
-  assert.equal(stmts.length, 2); // 3 rows, batch 2 → 2 statements
-  assert.ok(stmts[0].startsWith("INSERT OR REPLACE INTO neurons ("));
-  assert.ok(stmts[0].includes("VALUES ("));
-  assert.ok(stmts.some((s) => s.includes("NULL"))); // uid 253 axon is NULL
-  assert.ok(stmts.every((s) => s.endsWith(";")));
-});
-
 test("parseNetuidSubset avoids the Number('') === 0 trap (empty → full network)", () => {
   // Critical: an empty/unset env must yield [] so the cron fetches the whole
   // network, not [0] (which would silently fetch only subnet 0).
@@ -84,14 +69,4 @@ test("parseNetuidSubset avoids the Number('') === 0 trap (empty → full network
   assert.deepEqual(parseNetuidSubset("1,7,64"), [1, 7, 64]);
   assert.deepEqual(parseNetuidSubset("1, ,7"), [1, 7]);
   assert.deepEqual(parseNetuidSubset("0"), [0]);
-});
-
-test("buildNeuronSql escapes single quotes + drops rows missing keys", () => {
-  const rows = [
-    normalizeNeuron({ netuid: 9, uid: 1, coldkey: { ss58: "a'b" } }, 1),
-    normalizeNeuron({ uid: 2 }, 1), // no netuid → dropped
-  ];
-  const stmts = buildNeuronSql(rows, 50);
-  assert.equal(stmts.length, 1);
-  assert.ok(stmts[0].includes("'a''b'")); // doubled single quote
 });

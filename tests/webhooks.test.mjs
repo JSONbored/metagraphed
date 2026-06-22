@@ -221,6 +221,10 @@ describe("signing + identity helpers", () => {
     assert.equal(timingSafeEqual("abc", "abc"), true);
     assert.equal(timingSafeEqual("abc", "abd"), false);
     assert.equal(timingSafeEqual("abc", "abcd"), false);
+    // Length mismatch in either direction (no early return — see #1374); empty.
+    assert.equal(timingSafeEqual("abcd", "abc"), false);
+    assert.equal(timingSafeEqual("", ""), true);
+    assert.equal(timingSafeEqual("a", ""), false);
   });
 
   test("ids/secrets/keys are well formed", () => {
