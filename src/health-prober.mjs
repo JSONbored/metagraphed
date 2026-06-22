@@ -434,14 +434,18 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     const stableLookupKey = surface.surface_key || surface.surface_id;
     const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
-    // Only a hard `failed` run feeds the sustained-down breaker. The counter is
-    // "consecutive FAILED prober runs" (see overlayRpcPoolEligibility), so a
-    // `degraded` run (rate-limited / auth-required / transient / timeout) is a
-    // soft signal — not an outage — and must reset the streak like `ok` rather
-    // than accrue toward pool eviction. Hard outages still hit the threshold,
-    // and the per-request circuit breaker + wrong-chain hard-fail cover the rest.
-    const consecutiveFailures =
-      base.status === "failed" ? (prior?.consecutive_failures ?? 0) + 1 : 0;
+    // The sustained-down breaker protects the public RPC pool from repeatedly
+    // routing to unusable endpoints. For RPC surfaces, any non-ok prober run
+    // counts toward that eviction threshold because `degraded` includes
+    // auth-required, rate-limited, transient, and timeout outcomes that are not
+    // necessarily usable by the proxy. Non-RPC degraded runs remain soft signals
+    // and reset the hard-failure streak.
+    const countsTowardBreaker =
+      base.status === "failed" ||
+      (surface.kind === "subtensor-rpc" && base.status !== "ok");
+    const consecutiveFailures = countsTowardBreaker
+      ? (prior?.consecutive_failures ?? 0) + 1
+      : 0;
     return {
       surface_id: surface.surface_id,
       // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.

@@ -446,7 +446,7 @@ describe("runHealthProber", () => {
     assert.equal(apiUpsert.binds[12], 3);
   });
 
-  test("a degraded run resets the breaker (only FAILED runs accrue)", async () => {
+  test("a degraded non-RPC run resets the breaker", async () => {
     const db = makeDb({
       priorStatus: [
         {
@@ -491,6 +491,51 @@ describe("runHealthProber", () => {
     // resets to 0 so a persistently-degraded (still-usable) endpoint is not
     // evicted from the RPC pool by the sustained-down breaker.
     assert.equal(apiUpsert.binds[12], 0);
+  });
+
+  test("a degraded RPC run accrues toward pool eviction", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "opentensor-finney-rpc",
+          surface_key: "srf-rootrpckey00000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    const degradedRpcProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "degraded",
+            classification: "auth-required",
+            latency_ms: null,
+            status_code: 401,
+          }
+        : {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          };
+
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedRpcProbe,
+        probeOptions: {},
+      },
+    );
+
+    const rpcUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "opentensor-finney-rpc");
+    assert.equal(rpcUpsert.binds[12], 3);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {
