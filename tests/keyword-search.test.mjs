@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { keywordScore, queryTerms } from "../src/keyword-search.mjs";
+import {
+  keywordScore,
+  MAX_QUERY_TERMS,
+  queryTerms,
+} from "../src/keyword-search.mjs";
 
 // Convenience: score a doc against a raw query string the way the tools do.
 const score = (doc, query) => keywordScore(doc, queryTerms(query));
@@ -29,6 +33,19 @@ describe("queryTerms", () => {
     for (const v of [undefined, null, "", "   ", "---", "!@#"]) {
       assert.deepEqual(queryTerms(v), [], `input=${JSON.stringify(v)}`);
     }
+  });
+
+  test("deduplicates and caps terms to bound scoring work", () => {
+    assert.deepEqual(queryTerms("GPU gpu inference GPU"), ["gpu", "inference"]);
+
+    const query = Array.from(
+      { length: MAX_QUERY_TERMS + 5 },
+      (_, i) => `t${i}`,
+    ).join(" ");
+    assert.deepEqual(
+      queryTerms(query),
+      Array.from({ length: MAX_QUERY_TERMS }, (_, i) => `t${i}`),
+    );
   });
 });
 

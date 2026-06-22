@@ -19,14 +19,25 @@ const MIN_PREFIX_LENGTH = 2;
 // strong intent signal.
 const EXACT_NAME_BOOST = 5;
 const FULL_COVERAGE_BOOST = 2;
+// Bound attacker-controlled query work on the public MCP search tools. Terms
+// stay ordered for scoring/exact-match semantics, but duplicates are removed
+// and only the first bounded set is considered.
+export const MAX_QUERY_TERMS = 32;
 
 // Lowercase alphanumeric terms. Used for both the query and the document side so
 // they tokenize identically.
 export function queryTerms(query) {
-  return String(query ?? "")
+  const terms = [];
+  const seen = new Set();
+  for (const term of String(query ?? "")
     .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((term) => term.length > 0);
+    .split(/[^a-z0-9]+/)) {
+    if (term.length === 0 || seen.has(term)) continue;
+    seen.add(term);
+    terms.push(term);
+    if (terms.length >= MAX_QUERY_TERMS) break;
+  }
+  return terms;
 }
 
 // Distinct words across a list of field values (each a string or nullish).
