@@ -116,7 +116,11 @@ function GapsPage() {
           </Suspense>
         </QueryErrorBoundary>
 
-        <GapsMethodology />
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-16 w-full" />}>
+            <GapsMethodology />
+          </Suspense>
+        </QueryErrorBoundary>
 
         <section>
           <SectionHeading title="Integrability scoreboard" />
