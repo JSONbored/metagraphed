@@ -309,7 +309,10 @@ export async function loadStagedEvents(env) {
   rows = Array.isArray(rows)
     ? rows.filter(
         (r) =>
-          Number.isInteger(r?.block_number) && Number.isInteger(r?.event_index),
+          Number.isInteger(r?.block_number) &&
+          Number.isInteger(r?.event_index) &&
+          typeof r?.event_kind === "string" &&
+          Number.isInteger(r?.observed_at),
       )
     : [];
   if (!rows.length) {

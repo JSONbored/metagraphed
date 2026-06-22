@@ -113,15 +113,17 @@ def main():
     head_bn = s.get_block_header(block_hash=head)["header"]["number"]
     try:
         head_ts = int(s.query("Timestamp", "Now", block_hash=head).value)
-    except Exception:
-        head_ts = None
+    except Exception as e:
+        raise RuntimeError(
+            "finalized head timestamp is required for account_events"
+        ) from e
     start = max(0, head_bn - WINDOW + 1)
 
     rows = []
     scanned = 0
     skipped = 0
     for bn in range(start, head_bn + 1):
-        observed_at = head_ts - (head_bn - bn) * BLOCK_MS if head_ts else None
+        observed_at = head_ts - (head_bn - bn) * BLOCK_MS
         try:
             bh = s.get_block_hash(bn)
             events = s.query("System", "Events", block_hash=bh)

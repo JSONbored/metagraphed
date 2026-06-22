@@ -102,6 +102,22 @@ test("loadStagedEvents drops rows lacking the (block, index) key", async () => {
   assert.deepEqual(m.deleted, ["events/account-events-pending.json"]);
 });
 
+test("loadStagedEvents drops rows missing required insert fields", async () => {
+  const valid = eventRow(1000, 0);
+  const m = mockEnv({
+    rows: [
+      { ...valid, observed_at: null },
+      { ...valid, event_index: 1, event_kind: null },
+      { ...valid, event_index: 2 },
+    ],
+  });
+  const r = await loadStagedEvents(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, 1);
+  assert.deepEqual(m.batches, [1]);
+  assert.deepEqual(m.deleted, ["events/account-events-pending.json"]);
+});
+
 test("loadStagedEvents is a safe no-op without bindings", async () => {
   const r = await loadStagedEvents({});
   assert.equal(r.ok, false);
