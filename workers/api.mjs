@@ -57,6 +57,7 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import {
   dailyLatencyColumns,
   latencyStatColumns,
@@ -1381,6 +1382,37 @@ export async function readHealthMetaKv(env, now = Date.now()) {
   return value;
 }
 
+// economics:current is a large blob (one row per subnet) that resolveLiveEconomics
+// reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
+// request (the per-subnet economics overlay, #1308). Neither route is edge-cached
+// for the live overlay, so a warm isolate re-fetches + re-parses the same blob per
+// request. Memoize the read in-isolate — same pattern as readHealthMetaKv (#1375),
+// readRpcPoolArtifact (#1309), latestPointer (#367). Safe: resolveLiveEconomics
+// re-validates the blob's captured_at freshness against the live clock on every
+// call, so the 60 s memo (≪ the 8 h freshness window) never extends how long a
+// stale blob can serve. Null results are not cached so a transient cold KV does
+// not stay sticky; keyed on env so tests / multi-binding callers never cross-read.
+export const ECONOMICS_CURRENT_KV_TTL_MS = 60_000;
+let economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readEconomicsCurrentKv(env, now = Date.now()) {
+  if (
+    economicsCurrentKvMemo.env === env &&
+    now < economicsCurrentKvMemo.expiresAt
+  ) {
+    return economicsCurrentKvMemo.value;
+  }
+  const value = await readHealthKv(env, KV_ECONOMICS_CURRENT);
+  if (value !== null) {
+    economicsCurrentKvMemo = {
+      env,
+      value,
+      expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
+    };
+  }
+  return value;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -1596,7 +1628,7 @@ async function handleApiRequest(
     // fallback, so it can never 404.
     artifact = await readArtifact(env, artifactPath);
     live = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
@@ -1627,7 +1659,7 @@ async function handleApiRequest(
     typeof baseData === "object"
   ) {
     const liveEconomics = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });

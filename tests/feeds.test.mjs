@@ -150,6 +150,20 @@ describe("feeds — item builders", () => {
     assert.deepEqual(registryItems({}), []);
   });
 
+  test("registryItems clamp does not split a surrogate pair in a title", () => {
+    // Emoji placed so its surrogate pair straddles the 80-char title clamp.
+    const path = "a".repeat(78) + "😀" + "z".repeat(20);
+    const items = registryItems({ artifacts: { modified: [{ path }] } });
+    assert.equal(items.length, 1);
+    const loneSurrogate =
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    assert.ok(
+      !loneSurrogate.test(items[0].title),
+      "feed title must not contain a lone surrogate",
+    );
+    assert.ok(!loneSurrogate.test(items[0].summary));
+  });
+
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {
     const all = incidentItems(INCIDENTS);
     assert.equal(all.length, 2); // the no-incidents surface contributes none
