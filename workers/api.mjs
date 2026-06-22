@@ -631,18 +631,24 @@ export async function handleEventIngest(request, env) {
 
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
-  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
-  // snapshot and load it via the D1 binding on whichever cron fires next; it then
-  // self-deletes. Isolated so a load failure never affects the prober/prune below.
-  await loadStagedNeurons(env).catch(() => {});
-  // Token-free chain-event load (#1346): pick up any R2-staged event batch from
-  // the first-party poller and load it via the binding. Isolated like the neuron
-  // load so a failure never affects the prober/prune below.
-  await loadStagedEvents(env).catch(() => {});
-  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
-  // D1 quickly (above) — return without running the heavier probe/prune so we can
-  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
+  // batches into D1 quickly, then return without running the heavier probe/prune so
+  // it can tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  //
+  // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
+  // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
+  // each staged load is an unlocked R2 read-modify-write (read → load → delete /
+  // rewrite). Running the loaders on every tick let a concurrent invocation clobber a
+  // freshly-staged file via the delete path; owning the drain on a single cron removes
+  // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
+  // load failure never affects the early-return below.
   if (cron === EVENTS_LOAD_CRON) {
+    // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+    // snapshot and load it via the D1 binding; it then self-deletes.
+    await loadStagedNeurons(env).catch(() => {});
+    // Token-free chain-event load (#1346): pick up any R2-staged event batch from
+    // the first-party poller and load it via the binding.
+    await loadStagedEvents(env).catch(() => {});
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {
