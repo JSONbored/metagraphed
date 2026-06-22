@@ -10,10 +10,53 @@ import {
   buildAccountSummary,
   buildAccountEvents,
   buildAccountSubnets,
+  eventInsertStatements,
   utcDayBounds,
   rollupAccountEventsDaily,
   pruneAccountEvents,
+  validEventRows,
 } from "../src/account-events.mjs";
+
+test("validEventRows enforces the strict row shape (#1371)", () => {
+  assert.deepEqual(validEventRows("not-an-array"), []);
+  assert.deepEqual(validEventRows(null), []);
+  const good = {
+    block_number: 1,
+    event_index: 0,
+    event_kind: "StakeAdded",
+    observed_at: 5,
+  };
+  assert.equal(validEventRows([good]).length, 1);
+  assert.equal(validEventRows([{ block_number: 1, event_index: 0 }]).length, 0); // no kind/observed_at
+  assert.equal(
+    validEventRows([{ ...good, event_kind: 7 }]).length,
+    0, // event_kind must be a string
+  );
+  assert.equal(
+    validEventRows([{ ...good, observed_at: "x" }]).length,
+    0, // observed_at must be an integer
+  );
+});
+
+test("eventInsertStatements builds chunked parameterized INSERT OR IGNORE", () => {
+  const prepared = [];
+  const db = {
+    prepare(sql) {
+      prepared.push(sql);
+      return { bind: (...v) => ({ sql, v }) };
+    },
+  };
+  const rows = Array.from({ length: 12 }, (_, i) => ({
+    block_number: i,
+    event_index: 0,
+    event_kind: "X",
+    observed_at: 1,
+  }));
+  const stmts = eventInsertStatements(db, rows);
+  assert.equal(stmts.length, 2); // 12 rows / 10 per statement
+  assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO account_events ("));
+  assert.ok(prepared[0].includes("VALUES (?"));
+});
 
 test("EVENT_INSERT_COLUMNS is the stable load contract (#1346)", () => {
   assert.deepEqual(EVENT_INSERT_COLUMNS, [

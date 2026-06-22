@@ -130,6 +130,48 @@ export async function pruneAccountEvents(env, overrides = {}) {
   }
 }
 
+// Keep only well-formed account_events rows (a valid (block_number, event_index)
+// primary key). Shared by the staged-batch loader (#1346) and the realtime ingest
+// endpoint (#1360) so both reject garbage identically.
+export function validEventRows(rows) {
+  return Array.isArray(rows)
+    ? rows.filter(
+        (r) =>
+          Number.isInteger(r?.block_number) &&
+          Number.isInteger(r?.event_index) &&
+          typeof r?.event_kind === "string" &&
+          Number.isInteger(r?.observed_at),
+      )
+    : [];
+}
+
+// Build parameterized INSERT OR IGNORE statements for account_events rows, chunked
+// under D1's 100-bound-param limit (9 cols x 10 = 90). Idempotent on (block_number,
+// event_index). Values are ALWAYS bound, never interpolated — a tampered payload
+// can only fail, never inject. Shared by loadStagedEvents (#1346) + the ingest
+// endpoint (#1360).
+export function eventInsertStatements(db, rows) {
+  const cols = EVENT_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  const ROWS_PER_STMT = 10;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO account_events (${colList}) VALUES ${tuples}`,
+        )
+        .bind(...values),
+    );
+  }
+  return statements;
+}
+
 // ---- Entity API builders (#1347) -------------------------------------------
 // The columns the account handlers SELECT for an event row.
 export const ACCOUNT_EVENT_COLUMNS =

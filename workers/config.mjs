@@ -97,6 +97,11 @@ export const MAX_WEBHOOK_BODY_BYTES = 8192;
 export const MAX_ASK_BODY_BYTES = 4096;
 export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
   "x-metagraph-webhook-subscription-token";
+// Realtime chain-event ingest (#1360): the header carrying the shared secret the
+// finalized-head streamer (#1361) presents to POST /api/v1/internal/events.
+export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
+export const MAX_EVENTS_INGEST_BODY_BYTES = 262144; // 256 KB
+export const MAX_EVENTS_INGEST_ROWS = 500;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;
