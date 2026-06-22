@@ -24,6 +24,10 @@ import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pul
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
+import { HeroTicker } from "@/components/metagraphed/hero-ticker";
+import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
+import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
+import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
 
 import {
   coverageQuery,
@@ -58,6 +62,19 @@ function OverviewPage() {
   return (
     <AppShell>
       <HomeHero />
+
+      {/* #1124: hero discovery rail — live ticker, trending subnet chips, and a
+          "continue exploring" rail (recent searches + visits). Each renders null
+          until it has data, so they never clutter a cold first paint. */}
+      <Suspense fallback={null}>
+        <HeroTicker />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <HeroSubnetChips />
+      </Suspense>
+
+      <ContinueExploring />
 
       <section className="mt-section-gap">
         <SectionHeader
@@ -110,6 +127,8 @@ function OverviewPage() {
       </ScrollReveal>
 
       <LeaderboardsModule />
+
+      <QuickActionsRow />
 
       <section className="mt-section-gap">
         <SectionHeader
