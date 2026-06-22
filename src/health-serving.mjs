@@ -1033,12 +1033,7 @@ export async function loadReliabilityAggregate({
       .prepare(
         `SELECT SUM(samples) AS samples,
                 SUM(ok_count) AS ok_count,
-                CASE
-                  WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END) > 0
-                    THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * samples ELSE 0 END) /
-                         SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN samples ELSE 0 END)
-                  ELSE NULL
-                END AS avg_latency_ms
+                ${dailyLatencyColumns({ roundedAvg: true })}
          FROM surface_uptime_daily
          WHERE netuid IN (${placeholders}) AND day >= ?`,
       )
@@ -1049,6 +1044,7 @@ export async function loadReliabilityAggregate({
       okCount: Number(row?.ok_count) || 0,
       avgLatencyMs:
         row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+      latencySamples: Number(row?.latency_samples) || 0,
     });
   } catch {
     return null;
