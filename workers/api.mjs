@@ -149,6 +149,7 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  resolveClientIp,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
   SUBNET_METAGRAPH_PATH_PATTERN,
@@ -741,7 +742,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
+  // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
+  // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    const limited = await graphqlRateLimited(request, env);
+    if (limited) return limited;
     return handleGraphQLRequest(request, env);
   }
 
@@ -2887,10 +2892,7 @@ async function verifyMeta(env) {
 // confirm "callable right now" before wiring.
 async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -2999,10 +3001,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // (local dev / not yet provisioned) so tests and local runs are unaffected;
   // enforced on Cloudflare where the binding is bound.
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -3427,6 +3426,34 @@ function setRpcRateLimitHeaders(headers) {
   );
 }
 
+// Per-client abuse control for the GraphQL endpoint. GraphQL is POST-only and
+// runs before the read-only method gate, so — unlike the GET REST routes that
+// the edge can cache — every call hits the worker and fans out into one or more
+// artifact reads + query execution. That makes it at least as expensive as the
+// RPC proxy, so it shares the SAME strict limiter binding, bucket strategy
+// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. Skipped
+// only when the binding is absent (local dev / CI), matching the RPC/MCP paths.
+// Returns a 429 Response when the caller is over the limit, else null.
+async function graphqlRateLimited(request, env) {
+  if (!env.RPC_RATE_LIMITER?.limit) return null;
+  const { success } = await env.RPC_RATE_LIMITER.limit({
+    key: resolveClientIp(request),
+  });
+  if (success) return null;
+  return errorResponse(
+    "graphql_rate_limited",
+    "Too many GraphQL requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
 // Try each ordered endpoint in turn; return the first success / non-transient
 // response, and a clean 502 only when every attempt is a transient failure.
 // Transient HTTP statuses are classified before reading bodies, and JSON-RPC
@@ -3743,6 +3770,17 @@ async function handleWebhookRequest(request, env, url) {
 }
 
 async function createWebhookSubscription(request, env) {
+  // Authenticate BEFORE touching the request body. An unauthenticated or
+  // wrong-token caller must be rejected (503 when disabled, else 401) before we
+  // read, JSON-parse, or validate any attacker-controlled payload — this avoids
+  // doing parsing/validation work for unauthenticated callers and avoids leaking
+  // body-validation behavior (which error fires for which input) to them. The
+  // token compare itself is constant-time (see validateWebhookSubscriptionToken).
+  const authorized = validateWebhookSubscriptionToken(request, env);
+  if (!authorized.ok) {
+    return authorized.response;
+  }
+
   if (
     Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
   ) {
@@ -3774,11 +3812,6 @@ async function createWebhookSubscription(request, env) {
   const validated = validateSubscriptionInput(body);
   if (!validated.ok) {
     return errorResponse("invalid_subscription", validated.error, 400);
-  }
-
-  const authorized = validateWebhookSubscriptionToken(request, env);
-  if (!authorized.ok) {
-    return authorized.response;
   }
 
   const id = generateSubscriptionId();
@@ -3984,11 +4017,7 @@ function aiRateLimitedResponse() {
 }
 
 function aiClientKey(request, scope) {
-  const ip =
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for") ||
-    "anon";
-  return `${scope}:${ip}`;
+  return `${scope}:${resolveClientIp(request)}`;
 }
 
 async function readBoundedRequestText(request, maxBytes) {

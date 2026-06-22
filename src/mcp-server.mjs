@@ -10,6 +10,7 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
+import { resolveClientIp } from "../workers/config.mjs";
 import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
@@ -2203,11 +2204,7 @@ function jsonResponse(payload, status = 200, headers = {}) {
 }
 
 function mcpClientKey(request) {
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for") ||
-    "anonymous"
-  );
+  return resolveClientIp(request);
 }
 
 async function enforceMcpRateLimit(request, env) {

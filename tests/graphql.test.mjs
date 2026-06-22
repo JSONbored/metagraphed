@@ -11,6 +11,7 @@ import {
   maxDepthRule,
 } from "../src/graphql.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { resolveClientIp } from "../workers/config.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
@@ -529,5 +530,108 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.netuids, [1, 7]);
+  });
+});
+
+// Security hardening (#1: GraphQL must run through the rate limiter). GraphQL is
+// POST-only and fans out into artifact reads, so it shares the strict RPC
+// limiter binding. A counting limiter that allows the first N keyed hits and
+// denies the rest models the Cloudflare binding closely enough to prove the
+// gate fires on /api/v1/graphql.
+function countingRateLimiterEnv(limit, extra = {}) {
+  const counts = new Map();
+  return {
+    ...extra,
+    RPC_RATE_LIMITER: {
+      limit({ key }) {
+        const next = (counts.get(key) || 0) + 1;
+        counts.set(key, next);
+        return Promise.resolve({ success: next <= limit });
+      },
+    },
+  };
+}
+
+const gqlPost = (env, headers = {}) =>
+  handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    }),
+    env,
+    {},
+  );
+
+describe("handleRequest — GraphQL rate limiting (#security)", () => {
+  test("N requests within the window pass, the N+1 returns 429", async () => {
+    const N = 3;
+    const env = countingRateLimiterEnv(N);
+    // The first N requests are under the limit and reach the handler (200).
+    for (let i = 0; i < N; i += 1) {
+      const res = await gqlPost(env);
+      assert.equal(res.status, 200, `request ${i + 1} should pass`);
+    }
+    // The N+1th request is over the limit -> 429 from the GraphQL gate.
+    const limited = await gqlPost(env);
+    assert.equal(limited.status, 429);
+    const body = await limited.json();
+    assert.equal(body.error.code, "graphql_rate_limited");
+    assert.equal(limited.headers.get("retry-after"), "60");
+    assert.equal(limited.headers.get("x-ratelimit-remaining"), "0");
+  });
+
+  test("no limiter binding (local/CI) lets GraphQL through", async () => {
+    // emptyEnv has no RPC_RATE_LIMITER; the gate must no-op, not 429.
+    const res = await gqlPost(emptyEnv);
+    assert.equal(res.status, 200);
+  });
+});
+
+describe("client IP resolution — x-forwarded-for is not trusted (#security)", () => {
+  test("resolveClientIp ignores x-forwarded-for, uses cf-connecting-ip only", () => {
+    const sameCf = (xff) =>
+      resolveClientIp(
+        new Request("https://api.metagraph.sh/api/v1/graphql", {
+          method: "POST",
+          headers: {
+            "cf-connecting-ip": "203.0.113.7",
+            "x-forwarded-for": xff,
+          },
+        }),
+      );
+    // Two forged XFF values, same trusted cf-connecting-ip -> identical key.
+    assert.equal(sameCf("1.1.1.1"), sameCf("9.9.9.9"));
+    assert.equal(sameCf("1.1.1.1"), "203.0.113.7");
+  });
+
+  test("absent cf-connecting-ip falls back to a fixed bucket, not the XFF header", () => {
+    const key = resolveClientIp(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "x-forwarded-for": "attacker-controlled" },
+      }),
+    );
+    assert.equal(key, "anonymous");
+    assert.notEqual(key, "attacker-controlled");
+  });
+
+  test("two forged x-forwarded-for share ONE rate-limit bucket (2nd is limited)", async () => {
+    // limit=1: the first request from cf-connecting-ip 203.0.113.7 passes; a
+    // second request with the SAME cf-connecting-ip but a DIFFERENT forged
+    // x-forwarded-for must be counted in the same bucket -> 429. If the forged
+    // header were honored it would mint a fresh bucket and wrongly pass.
+    const env = countingRateLimiterEnv(1);
+    const first = await gqlPost(env, {
+      "cf-connecting-ip": "203.0.113.7",
+      "x-forwarded-for": "10.0.0.1",
+    });
+    assert.equal(first.status, 200);
+    const second = await gqlPost(env, {
+      "cf-connecting-ip": "203.0.113.7",
+      "x-forwarded-for": "10.0.0.2",
+    });
+    assert.equal(second.status, 429);
+    assert.equal((await second.json()).error.code, "graphql_rate_limited");
   });
 });
