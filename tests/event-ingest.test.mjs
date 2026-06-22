@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleEventIngest } from "../workers/api.mjs";
+import { handleEventIngest, handleRequest } from "../workers/api.mjs";
 
 const SECRET = "test-secret-token-1234567890";
 
@@ -107,6 +107,69 @@ test("ingest accepts the {events:[...]} envelope + no-ops on empty", async () =>
   );
   assert.equal(res.status, 200);
   assert.equal((await res.json()).inserted, 0);
+});
+
+test("handleRequest routes POST /api/v1/internal/events to the ingest handler", async () => {
+  // No secret configured → 503 (proves the dispatch reached handleEventIngest).
+  const res = await handleRequest(post([], { secret: "x" }), {}, {});
+  assert.equal(res.status, 503);
+});
+
+test("handleRequest ingest writes rows end-to-end with a valid token", async () => {
+  const captured = [];
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture(captured),
+  };
+  const res = await handleRequest(
+    post(
+      [
+        {
+          block_number: 5,
+          event_index: 0,
+          event_kind: "WeightsSet",
+          observed_at: 1,
+        },
+      ],
+      {
+        secret: SECRET,
+      },
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).inserted, 1);
+});
+
+test("ingest returns 503 when the event store is unavailable", async () => {
+  const env = { METAGRAPH_EVENTS_INGEST_SECRET: SECRET }; // authed but no DB
+  const res = await handleEventIngest(post([], { secret: SECRET }), env);
+  assert.equal(res.status, 503);
+});
+
+test("ingest rejects an oversized body (413)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture([]),
+  };
+  const res = await handleEventIngest(
+    post("x".repeat(300000), { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
+test("ingest rejects a non-array body (400)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture([]),
+  };
+  const res = await handleEventIngest(
+    post({ foo: 1 }, { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 400);
 });
 
 test("ingest rejects too many rows (413)", async () => {
