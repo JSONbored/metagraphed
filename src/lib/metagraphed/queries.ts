@@ -20,6 +20,9 @@ import type {
   GlobalIncidentSurface,
   HealthState,
   HealthSummary,
+  LeaderboardBoardKey,
+  LeaderboardRow,
+  Leaderboards,
   Lineage,
   LineageLink,
   PrimaryAppSurface,
@@ -428,6 +431,63 @@ export const economicsQuery = () =>
         signal,
       });
       return { data: normalizeEconomicsSubnets(res.data?.subnets), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+const LEADERBOARD_BOARD_KEYS: LeaderboardBoardKey[] = [
+  "healthiest",
+  "fastest-rpc",
+  "most-complete",
+  "most-enriched",
+  "fastest-growing",
+];
+
+function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.netuid !== "number") return null;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  return {
+    netuid: r.netuid,
+    slug: str(r.slug),
+    name: str(r.name),
+    uptime_ratio: num(r.uptime_ratio),
+    surfaces_ok: num(r.surfaces_ok),
+    surfaces_total: num(r.surfaces_total),
+    avg_latency_ms: num(r.avg_latency_ms),
+    latency_ms: num(r.latency_ms),
+    completeness_score: num(r.completeness_score),
+    surface_count: num(r.surface_count),
+    operational_interface_count: num(r.operational_interface_count),
+    completeness_delta: num(r.completeness_delta),
+  };
+}
+
+function normalizeLeaderboards(raw: unknown): Leaderboards {
+  const boards = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const out = {} as Leaderboards;
+  for (const key of LEADERBOARD_BOARD_KEYS) {
+    const rows = Array.isArray(boards[key]) ? (boards[key] as unknown[]) : [];
+    out[key] = rows
+      .map(normalizeLeaderboardRow)
+      .filter((row): row is LeaderboardRow => row !== null);
+  }
+  return out;
+}
+
+// #1111: registry leaderboards — five live, D1-computed boards (healthiest,
+// fastest-rpc, most-complete, most-enriched, fastest-growing). One artifact carries
+// all boards; the homepage discovery module renders the top rows of each.
+export const leaderboardsQuery = () =>
+  queryOptions({
+    queryKey: k("registry-leaderboards"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ boards?: unknown }>("/api/v1/registry/leaderboards", {
+        signal,
+      });
+      return { data: normalizeLeaderboards(res.data?.boards), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

@@ -16,6 +16,7 @@ import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
+import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 
 import {
   coverageQuery,
@@ -59,6 +60,8 @@ function OverviewPage() {
       </section>
 
       <LivePerformance />
+
+      <LeaderboardsModule />
 
       <section className="mt-section-gap">
         <SectionHeader

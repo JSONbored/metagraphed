@@ -456,6 +456,36 @@ export interface Lineage {
   links: LineageLink[];
 }
 
+/** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
+export type LeaderboardBoardKey =
+  | "healthiest"
+  | "fastest-rpc"
+  | "most-complete"
+  | "most-enriched"
+  | "fastest-growing";
+
+/**
+ * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only
+ * the metric field relevant to its board is populated (e.g. `uptime_ratio` for
+ * `healthiest`, `latency_ms` for `fastest-rpc`).
+ */
+export interface LeaderboardRow {
+  netuid: number;
+  slug?: string;
+  name?: string;
+  uptime_ratio?: number; // healthiest (0–1)
+  surfaces_ok?: number; // healthiest
+  surfaces_total?: number; // healthiest
+  avg_latency_ms?: number; // healthiest
+  latency_ms?: number; // fastest-rpc
+  completeness_score?: number; // most-complete (0–100)
+  surface_count?: number; // most-enriched
+  operational_interface_count?: number; // most-enriched
+  completeness_delta?: number; // fastest-growing (points)
+}
+
+export type Leaderboards = Record<LeaderboardBoardKey, LeaderboardRow[]>;
+
 /** Result of an on-demand re-probe via /api/v1/surfaces/{id}/verify. */
 export interface VerifyResult {
   status?: HealthState | string;
