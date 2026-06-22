@@ -19,6 +19,18 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.18.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.17.0...platform-v0.18.0) (2026-06-22)
+
+
+### Features
+
+* **explorer:** chain-direct event poller + account_events D1 tier ([#1346](https://github.com/JSONbored/metagraphed/issues/1346)) ([#1353](https://github.com/JSONbored/metagraphed/issues/1353)) ([e09947a](https://github.com/JSONbored/metagraphed/commit/e09947a85fcc737224707b538e0ee7f20a4c9eca))
+
+
+### Bug Fixes
+
+* **prober:** backfill NULL economics in daily snapshots (COALESCE DO UPDATE) ([#1351](https://github.com/JSONbored/metagraphed/issues/1351)) ([f477c09](https://github.com/JSONbored/metagraphed/commit/f477c0927de7a434948b12437575df8f30e70924))
+
 ## [0.17.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.2...platform-v0.17.0) (2026-06-21)
 
 
