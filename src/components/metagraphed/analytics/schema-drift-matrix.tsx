@@ -13,6 +13,7 @@ import { schemasQuery, evidenceQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import type { SchemaInfo, EvidenceItem } from "@/lib/metagraphed/types";
 
 type DriftKind = "breaking" | "additive" | "unchanged" | "unknown";
@@ -256,6 +257,8 @@ function DriftTile({
         : kind === "unchanged"
           ? Check
           : HelpCircle;
+  const evidenceHref = safeExternalUrl(evidence?.url);
+
   return (
     <span className="group/tile relative inline-flex items-stretch">
       <button
@@ -288,9 +291,9 @@ function DriftTile({
           </span>
         ) : null}
       </button>
-      {evidence?.url ? (
+      {evidenceHref ? (
         <a
-          href={evidence.url}
+          href={evidenceHref}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
@@ -298,7 +301,7 @@ function DriftTile({
             "inline-flex items-center gap-1 rounded-r border-y border-r px-1.5 -ml-px font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent transition-colors",
             tone.fill,
           )}
-          title={`Source evidence${evidence.source ? ` · ${evidence.source}` : ""}${evidence.recorded_at ? ` · recorded ${new Date(evidence.recorded_at).toISOString().slice(0, 10)}` : ""}`}
+          title={`Source evidence${evidence?.source ? ` · ${evidence.source}` : ""}${evidence?.recorded_at ? ` · recorded ${new Date(evidence.recorded_at).toISOString().slice(0, 10)}` : ""}`}
         >
           ev <ExtIcon className="size-2.5" aria-hidden />
         </a>
