@@ -1660,63 +1660,19 @@ export const providersQuery = () =>
     staleTime: STALE_MED,
   });
 
+/**
+ * Per-provider tally of surfaces / endpoints / subnets, keyed by provider slug.
+ * These counts ride along on each /api/v1/providers list row
+ * (endpoint_count / surface_count / subnet_count, normalized to the *_count
+ * fields by `normalizeProviderListItem`), so consumers derive this map from the
+ * providers query itself rather than re-fetching the surfaces + endpoints
+ * collections.
+ */
 export type ProviderCounts = {
   surfaces: number;
   endpoints: number;
   subnets: number;
 };
-
-/**
- * Aggregated counts of surfaces/endpoints/subnets per provider slug.
- * The /api/v1/providers list endpoint does not include these counts —
- * we derive them from the surfaces and endpoints collections, both of
- * which carry a canonical `provider_slug` and may also carry a `provider` fallback per row.
- */
-export const providerCountsQuery = () =>
-  queryOptions({
-    queryKey: k("provider-counts"),
-    queryFn: async ({ signal }) => {
-      const fetchAll = async (path: string, key: string) => {
-        const rows: Record<string, unknown>[] = [];
-        let cursor: string | undefined = undefined;
-        // Hard cap: 10 pages × 1000 = 10k rows, plenty for aggregation.
-        for (let i = 0; i < 10; i++) {
-          const params: QueryParams = { limit: 1000 };
-          if (cursor) params.cursor = cursor;
-          const res = await fetchList<Record<string, unknown>>(path, key, params, signal);
-          rows.push(...res.data);
-          const v = validateNextCursor(res.meta, cursor);
-          if (!v.cursor) break;
-          cursor = v.cursor;
-        }
-        return rows;
-      };
-      const [surfaces, endpoints] = await Promise.all([
-        fetchAll("/api/v1/surfaces", "surfaces"),
-        fetchAll("/api/v1/endpoints", "endpoints"),
-      ]);
-      const map = new Map<string, { surfaces: number; endpoints: number; subnets: Set<number> }>();
-      const surfaceProviderSlug = (row: Record<string, unknown>) =>
-        pickStr(row.provider_slug, row.provider);
-      const endpointProviderSlug = (row: Record<string, unknown>) =>
-        pickStr(row.provider_slug, row.provider, row.operator);
-      const bump = (slug: unknown, kind: "surfaces" | "endpoints", netuid: unknown) => {
-        if (typeof slug !== "string" || !slug) return;
-        const entry = map.get(slug) ?? { surfaces: 0, endpoints: 0, subnets: new Set<number>() };
-        entry[kind] += 1;
-        if (typeof netuid === "number") entry.subnets.add(netuid);
-        map.set(slug, entry);
-      };
-      for (const s of surfaces) bump(surfaceProviderSlug(s), "surfaces", s.netuid);
-      for (const e of endpoints) bump(endpointProviderSlug(e), "endpoints", e.netuid);
-      const out: Record<string, ProviderCounts> = {};
-      for (const [slug, v] of map) {
-        out[slug] = { surfaces: v.surfaces, endpoints: v.endpoints, subnets: v.subnets.size };
-      }
-      return out;
-    },
-    staleTime: STALE_MED,
-  });
 
 function normalizeProvider(raw: unknown, slug: string): Provider {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<

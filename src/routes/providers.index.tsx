@@ -11,7 +11,7 @@ import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
-import { providersQuery, providerCountsQuery, endpointsQuery } from "@/lib/metagraphed/queries";
+import { providersQuery, endpointsQuery, type ProviderCounts } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
@@ -127,8 +127,24 @@ type SortKey = "name" | "surfaces" | "endpoints" | "subnets";
 
 function ProvidersGrid({ view }: { view: "grid" | "table" }) {
   const { data: providersRes } = useSuspenseQuery(providersQuery());
-  const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = useMemo(() => (providersRes.data ?? []) as Provider[], [providersRes]);
+  // The /api/v1/providers list already carries per-provider tallies
+  // (endpoint_count / surface_count / subnet_count, normalized to the *_count
+  // fields). Derive the counts map from those rows instead of re-fetching the
+  // full surfaces + endpoints collections — the server computes these the same
+  // way, so the rendered numbers are identical.
+  const counts = useMemo<Record<string, ProviderCounts>>(() => {
+    const out: Record<string, ProviderCounts> = {};
+    for (const p of rows) {
+      if (!p.slug) continue;
+      out[p.slug] = {
+        surfaces: p.surfaces_count ?? 0,
+        endpoints: p.endpoints_count ?? 0,
+        subnets: (p.subnet_count as number | undefined) ?? 0,
+      };
+    }
+    return out;
+  }, [rows]);
   const generatedAt = providersRes.meta?.generated_at;
   const stale = isStaleFreshness(generatedAt);
 
@@ -210,7 +226,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
       {stale ? (
         <StaleBanner
           generatedAt={generatedAt}
-          refreshQueryKeys={[providersQuery().queryKey, providerCountsQuery().queryKey]}
+          refreshQueryKeys={[providersQuery().queryKey, endpointsQuery({ limit: 1000 }).queryKey]}
         />
       ) : null}
 
