@@ -12,6 +12,7 @@ import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { HealthDot, CurationChip } from "@/components/metagraphed/chips";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { useCopy } from "@/hooks/use-copy";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -374,6 +375,7 @@ function EndpointsView({
 
 function EndpointRow({ e }: { e: Endpoint }) {
   const { copied, copy } = useCopy({ label: "endpoint url" });
+  const safeUrl = safeExternalUrl(e.url);
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-2 mg-row-hover">
       <HealthDot state={e.health} />
@@ -440,18 +442,27 @@ function EndpointRow({ e }: { e: Endpoint }) {
             </Tooltip>
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
-                <a
-                  href={e.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Open endpoint"
-                  className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ExternalLinkIcon className="size-3" />
-                </a>
+                {safeUrl ? (
+                  <a
+                    href={safeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open endpoint"
+                    className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ExternalLinkIcon className="size-3" />
+                  </a>
+                ) : (
+                  <span
+                    aria-label="Blocked unsafe endpoint URL"
+                    className="cursor-not-allowed rounded p-1 text-ink-muted/50"
+                  >
+                    <ExternalLinkIcon className="size-3" />
+                  </span>
+                )}
               </TooltipTrigger>
               <TooltipContent side="top" className="text-[11px]">
-                Open in new tab
+                {safeUrl ? "Open in new tab" : "Blocked unsafe URL"}
               </TooltipContent>
             </Tooltip>
           </>
@@ -554,45 +565,7 @@ function SurfacesView({
             </div>
             <ul>
               {items.slice(0, 4).map((s) => (
-                <li
-                  key={s.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 mg-row-hover"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="truncate text-[12px] font-medium text-ink-strong">
-                        {s.name ?? s.url}
-                      </span>
-                      <CurationChip level={s.curation_level} />
-                    </div>
-                    {s.url ? (
-                      <Tooltip delayDuration={200}>
-                        <TooltipTrigger asChild>
-                          <a
-                            href={s.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-0.5 block truncate font-mono text-[11px] text-ink-muted hover:text-ink-strong"
-                          >
-                            {host(s.url)}
-                            {pathOf(s.url) ? (
-                              <span className="opacity-70">{pathOf(s.url)}</span>
-                            ) : null}
-                          </a>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          className="max-w-md break-all font-mono text-[11px]"
-                        >
-                          {s.url}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                  </div>
-                  <span className="font-mono text-[10px] text-ink-muted">
-                    <TimeAgo at={s.updated_at} />
-                  </span>
-                </li>
+                <SurfaceRow key={s.id} s={s} />
               ))}
               {items.length > 4 ? (
                 <li className="px-4 py-1.5 font-mono text-[10px] text-ink-muted">
@@ -604,5 +577,50 @@ function SurfacesView({
         ))}
       </ul>
     </div>
+  );
+}
+
+function SurfaceRow({ s }: { s: Surface }) {
+  const safeUrl = safeExternalUrl(s.url);
+
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 mg-row-hover">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="truncate text-[12px] font-medium text-ink-strong">
+            {s.name ?? s.url}
+          </span>
+          <CurationChip level={s.curation_level} />
+        </div>
+        {s.url ? (
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              {safeUrl ? (
+                <a
+                  href={safeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 block truncate font-mono text-[11px] text-ink-muted hover:text-ink-strong"
+                >
+                  {host(s.url)}
+                  {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
+                </a>
+              ) : (
+                <span className="mt-0.5 block cursor-not-allowed truncate font-mono text-[11px] text-ink-muted/50">
+                  {host(s.url)}
+                  {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
+                </span>
+              )}
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-md break-all font-mono text-[11px]">
+              {safeUrl ? s.url : "Blocked unsafe URL"}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
+      <span className="font-mono text-[10px] text-ink-muted">
+        <TimeAgo at={s.updated_at} />
+      </span>
+    </li>
   );
 }
