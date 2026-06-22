@@ -251,6 +251,7 @@ export default {
 // capped at the u16 max (65535) — matching the existing netuid guard in
 // src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
 const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
+const STAGED_EVENTS_KEY = "events/account-events-pending.json";
 const MAX_STAGED_NEURONS_BYTES = 32_000_000;
 const MAX_STAGED_NEURON_ROWS = 50_000;
 const MAX_STAGED_NEURON_STRING_BYTES = 512;
@@ -302,6 +303,18 @@ function parseNeuronStagingMeta(envelope, rows) {
     }
   }
   return { legacy: false, refreshed_netuids, captured_at };
+}
+
+function eventStagingSignPayload(rows) {
+  return JSON.stringify(rows);
+}
+
+async function signedEventEnvelope(signingKey, rows) {
+  return {
+    schema_version: 1,
+    hmac_sha256: await hmacHex(signingKey, eventStagingSignPayload(rows)),
+    rows,
+  };
 }
 
 async function purgeStaleNeuronRows(db, refreshed_netuids, captured_at) {
@@ -471,18 +484,20 @@ export async function loadStagedNeurons(env) {
 }
 
 // Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
-// refresh-events CI job decodes finney's System.Events first-party (no Taostats)
-// and writes account_events rows as JSON to R2 (events/account-events-pending.json)
-// with its existing R2 permission; we load them here through the binding (no
-// API-token D1 permission) with PARAMETERIZED INSERT OR IGNORE keyed
-// (block_number, event_index) — so overlapping poller windows re-insert harmlessly
-// (idempotent, no cursor needed) and a tampered file can only fail, never inject.
-// Then delete the object so each batch loads once.
+// refresh-events CI job decodes finney's System.Events first-party (no Taostats),
+// signs rows with METAGRAPH_STAGING_SIGNING_KEY, and writes the envelope to R2;
+// we load only authenticated rows through the binding (no API-token D1 permission)
+// with PARAMETERIZED INSERT OR IGNORE keyed (block_number, event_index) — so
+// overlapping poller windows re-insert harmlessly (idempotent, no cursor needed).
+// Then delete the object (or rewrite a signed remainder) so each batch loads once.
 export async function loadStagedEvents(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
-  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
-  const key = "events/account-events-pending.json";
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const key = STAGED_EVENTS_KEY;
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
   // Byte cap: never materialize a pathological body. `size` is object metadata,
@@ -496,30 +511,44 @@ export async function loadStagedEvents(env) {
     );
     return { ok: false, reason: "too_large", size: Number(object.size || 0) };
   }
-  let parsed;
+  let envelope;
   try {
-    parsed = await object.json();
+    envelope = await object.json();
   } catch {
     await bucket.delete(key);
     return { ok: false, reason: "parse_failed" };
   }
-  const rows = validEventRows(parsed);
-  if (!rows.length) {
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(key);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const expected = await hmacHex(signingKey, eventStagingSignPayload(rows));
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(key);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const validRows = validEventRows(rows);
+  if (!validRows.length) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
   // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
-  // now; if rows remain, rewrite the object with ONLY the remainder so the next tick
-  // continues — never delete while rows are un-persisted. Order matters: write to D1
-  // FIRST, then shrink R2. A crash between them re-reads the full file next tick and
-  // re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so nothing is dropped.
+  // now; if rows remain, rewrite the object with ONLY the signed remainder so the
+  // next tick continues — never delete while rows are un-persisted. Order matters:
+  // write to D1 FIRST, then shrink R2. A crash between them re-reads the full file
+  // next tick and re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so
+  // nothing is dropped.
   const batch =
-    rows.length > MAX_STAGED_EVENT_ROWS
-      ? rows.slice(0, MAX_STAGED_EVENT_ROWS)
-      : rows;
+    validRows.length > MAX_STAGED_EVENT_ROWS
+      ? validRows.slice(0, MAX_STAGED_EVENT_ROWS)
+      : validRows;
   const remainder =
-    rows.length > MAX_STAGED_EVENT_ROWS
-      ? rows.slice(MAX_STAGED_EVENT_ROWS)
+    validRows.length > MAX_STAGED_EVENT_ROWS
+      ? validRows.slice(MAX_STAGED_EVENT_ROWS)
       : [];
   const statements = eventInsertStatements(db, batch);
   const STMTS_PER_BATCH = 50;
@@ -527,7 +556,10 @@ export async function loadStagedEvents(env) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
   if (remainder.length) {
-    await bucket.put(key, JSON.stringify(remainder));
+    await bucket.put(
+      key,
+      JSON.stringify(await signedEventEnvelope(signingKey, remainder)),
+    );
     return { ok: true, rows: batch.length, remaining: remainder.length };
   }
   await bucket.delete(key);
