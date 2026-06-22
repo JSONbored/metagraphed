@@ -187,6 +187,20 @@ test("rollupAccountEventsDaily returns rolled:false when D1 throws", async () =>
   );
 });
 
+test("rollupAccountEventsDaily returns rolled:false when prepare throws", async () => {
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        throw new Error("prepare exploded");
+      },
+    },
+  };
+  assert.equal(
+    (await rollupAccountEventsDaily(env, { now: () => 0 })).rolled,
+    false,
+  );
+});
+
 test("ACCOUNT_EVENT_COLUMNS lists the served event columns", () => {
   for (const c of [
     "block_number",
