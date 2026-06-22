@@ -17,6 +17,7 @@ import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
+import { useRegistryEvents } from "@/hooks/use-registry-events";
 
 import {
   coverageQuery,
@@ -46,6 +47,8 @@ export const Route = createFileRoute("/")({
 });
 
 function OverviewPage() {
+  // #1117: live registry pulse — refresh the homepage's live data on each publish.
+  useRegistryEvents();
   return (
     <AppShell>
       <HomeHero />

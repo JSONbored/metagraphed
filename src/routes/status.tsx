@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -43,6 +44,8 @@ export const Route = createFileRoute("/status")({
 });
 
 function StatusPage() {
+  // #1117: refresh on registry publish in addition to the poll interval.
+  useRegistryEvents();
   return (
     <AppShell>
       <PageHeading

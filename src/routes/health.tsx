@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -73,6 +74,8 @@ function HealthPage() {
   const [intervalMs, setIntervalMs] = useState(30_000);
   const visible = usePageVisible();
   const effectiveInterval = enabled && visible ? intervalMs : false;
+  // #1117: push a refresh on each registry publish, on top of the poll interval.
+  useRegistryEvents();
 
   return (
     <AppShell>
