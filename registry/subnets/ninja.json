@@ -53,9 +53,7 @@
       },
       "provider": "unarbos",
       "public_safe": true,
-      "source_urls": [
-        "https://ninja.arbos.life/"
-      ],
+      "source_urls": ["https://ninja.arbos.life/"],
       "url": "https://ninja.arbos.life/"
     },
     {
@@ -136,9 +134,7 @@
       },
       "provider": "unarbos",
       "public_safe": true,
-      "source_urls": [
-        "https://ninja.arbos.life/health"
-      ],
+      "source_urls": ["https://ninja.arbos.life/health"],
       "url": "https://ninja.arbos.life/health"
     },
     {
@@ -157,9 +153,7 @@
       "provider": "unarbos",
       "public_safe": true,
       "schema_status": "ui-only",
-      "source_urls": [
-        "https://ninja.arbos.life/swagger"
-      ],
+      "source_urls": ["https://ninja.arbos.life/swagger"],
       "url": "https://ninja.arbos.life/swagger"
     },
     {
@@ -217,9 +211,7 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66"
-      ],
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/66"],
       "url": "https://taomarketcap.com/subnets/66"
     }
   ],

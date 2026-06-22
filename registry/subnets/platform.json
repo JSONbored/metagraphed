@@ -93,9 +93,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/PlatformNetwork/platform"
-      ],
+      "source_urls": ["https://github.com/PlatformNetwork/platform"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

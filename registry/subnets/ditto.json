@@ -51,9 +51,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://heyditto.ai/"
-      ],
+      "source_urls": ["https://heyditto.ai/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -71,10 +69,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://heyditto.ai/docs/",
-        "https://heyditto.ai/"
-      ],
+      "source_urls": ["https://heyditto.ai/docs/", "https://heyditto.ai/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -155,10 +150,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://assistant.heyditto.ai/",
-        "https://heyditto.ai/"
-      ],
+      "source_urls": ["https://assistant.heyditto.ai/", "https://heyditto.ai/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

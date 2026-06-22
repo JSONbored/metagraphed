@@ -41,9 +41,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://hippius.com/"
-      ],
+      "source_urls": ["https://hippius.com/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -61,9 +59,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.hippius.com/"
-      ],
+      "source_urls": ["https://docs.hippius.com/"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -81,9 +77,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.hippius.com/blockchain/api"
-      ],
+      "source_urls": ["https://docs.hippius.com/blockchain/api"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -101,9 +95,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/thenervelab/hippius-validator"
-      ],
+      "source_urls": ["https://github.com/thenervelab/hippius-validator"],
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -121,9 +113,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/thenervelab/hippius-storage-miner"
-      ],
+      "source_urls": ["https://github.com/thenervelab/hippius-storage-miner"],
       "probe": {
         "enabled": true,
         "method": "HEAD",

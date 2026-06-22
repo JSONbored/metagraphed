@@ -53,9 +53,7 @@
       },
       "provider": "verathos",
       "public_safe": true,
-      "source_urls": [
-        "https://verathos.ai/"
-      ],
+      "source_urls": ["https://verathos.ai/"],
       "url": "https://verathos.ai/"
     },
     {
@@ -73,9 +71,7 @@
       },
       "provider": "verathos",
       "public_safe": true,
-      "source_urls": [
-        "https://verathos.ai/docs"
-      ],
+      "source_urls": ["https://verathos.ai/docs"],
       "url": "https://verathos.ai/docs"
     },
     {
@@ -159,9 +155,7 @@
       },
       "provider": "verathos",
       "public_safe": true,
-      "source_urls": [
-        "https://verathos.ai/"
-      ],
+      "source_urls": ["https://verathos.ai/"],
       "url": "https://verathos.ai/chat"
     },
     {
@@ -219,9 +213,7 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/96"
-      ],
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/96"],
       "url": "https://taomarketcap.com/subnets/96"
     },
     {
@@ -233,9 +225,7 @@
       "auth_required": false,
       "authority": "official",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/verathos-ai/verathos"
-      ],
+      "source_urls": ["https://github.com/verathos-ai/verathos"],
       "probe": {
         "enabled": false,
         "method": "HEAD",
