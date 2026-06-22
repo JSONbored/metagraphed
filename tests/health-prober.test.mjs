@@ -8,6 +8,8 @@ import {
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
   rollupDailyUptime,
+  runD1StatementBatches,
+  D1_STATEMENTS_PER_BATCH,
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
@@ -442,6 +444,53 @@ describe("runHealthProber", () => {
     assert.match(apiUpsert.sql, /ON CONFLICT\(surface_id\) DO UPDATE SET/);
     assert.equal(apiUpsert.binds[1], "srf-sn7apikey000000");
     assert.equal(apiUpsert.binds[12], 3);
+  });
+
+  test("a degraded run resets the breaker (only FAILED runs accrue)", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "sn7-api",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    // The subnet-api surface probes `degraded` (e.g. rate-limited), not failed.
+    const degradedProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          }
+        : {
+            status: "degraded",
+            classification: "rate-limited",
+            latency_ms: null,
+            status_code: 429,
+          };
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedProbe,
+        probeOptions: {},
+      },
+    );
+    const apiUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "sn7-api");
+    // binds[12] = consecutive_failures: a degraded run must NOT bump 2 -> 3; it
+    // resets to 0 so a persistently-degraded (still-usable) endpoint is not
+    // evicted from the RPC pool by the sustained-down breaker.
+    assert.equal(apiUpsert.binds[12], 0);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {
@@ -1048,9 +1097,50 @@ describe("persistToD1 via runHealthProber", () => {
       },
     );
     assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, false);
     // KV write happened despite the D1 batch throwing.
     assert.ok(kv.json(KV_HEALTH_CURRENT));
   });
+
+  test("chunks large D1 persists into bounded batches", async () => {
+    const db = makeDb();
+    const surfaces = Array.from({ length: 30 }, (_, i) => ({
+      ...SURFACES[0],
+      surface_id: `sn-api-${i}`,
+      surface_key: `srf-key-${String(i).padStart(14, "0")}`,
+    }));
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 1,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => surfaces,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, true);
+    assert.equal(db.calls.batches.length, 2);
+    assert.equal(db.calls.batches[0].length, D1_STATEMENTS_PER_BATCH);
+    assert.equal(db.calls.batches[1].length, 10);
+  });
+});
+
+test("runD1StatementBatches splits statements at the D1 cap", async () => {
+  const batches = [];
+  const db = {
+    batch: async (statements) => {
+      batches.push(statements.length);
+    },
+  };
+  const statements = Array.from({ length: 55 }, (_, i) => i);
+  const result = await runD1StatementBatches(db, statements);
+  assert.equal(result.ok, true);
+  assert.equal(result.batches, 2);
+  assert.deepEqual(batches, [50, 5]);
 });
 
 describe("persistToKv via runHealthProber", () => {

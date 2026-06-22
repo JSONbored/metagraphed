@@ -554,6 +554,35 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.date, "2026-06-10");
     assert.equal(db.calls.batched[0].length, 2);
   });
+  test("chunks large subnet snapshot writes into bounded D1 batches", async () => {
+    const db = fakeBatchDb();
+    const manyProfiles = {
+      ok: true,
+      data: {
+        profiles: Array.from({ length: 55 }, (_, netuid) => ({
+          netuid,
+          completeness_score: 90,
+          surface_count: 1,
+          endpoint_count: 1,
+          monitored_endpoint_count: 1,
+          candidate_count: 0,
+        })),
+      },
+    };
+    const r = await writeSubnetSnapshot(
+      {},
+      {
+        db,
+        readArtifact: reader(manyProfiles),
+        now: () => Date.UTC(2026, 5, 10),
+      },
+    );
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 55);
+    assert.equal(db.calls.batched.length, 2);
+    assert.equal(db.calls.batched[0].length, 50);
+    assert.equal(db.calls.batched[1].length, 5);
+  });
   test("still writes structural rows when optional economics read throws", async () => {
     const db = fakeBatchDb();
     const r = await writeSubnetSnapshot(
@@ -756,6 +785,7 @@ describe("analytics routes (cold local D1)", () => {
       ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
       ["/api/v1/subnets/7/health/incidents?window=7d&window=7d", "window"],
       ["/api/v1/subnets/7/trajectory?x=random", "x"],
+      ["/api/v1/subnets/7/health/trends?bogus=x", "bogus"],
       ["/api/v1/registry/leaderboards?limit=10&x=random", "x"],
       ["/api/v1/registry/leaderboards?limit=10&limit=10", "limit"],
     ];

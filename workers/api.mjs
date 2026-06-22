@@ -57,6 +57,7 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import {
   dailyLatencyColumns,
   latencyStatColumns,
@@ -303,18 +304,6 @@ function parseNeuronStagingMeta(envelope, rows) {
   return { legacy: false, refreshed_netuids, captured_at };
 }
 
-async function purgeStaleNeuronRows(db, refreshed_netuids, captured_at) {
-  let purged = 0;
-  for (const netuid of refreshed_netuids) {
-    const result = await db
-      .prepare(`DELETE FROM neurons WHERE netuid = ? AND captured_at < ?`)
-      .bind(netuid, captured_at)
-      .run();
-    purged += result?.meta?.changes ?? 0;
-  }
-  return purged;
-}
-
 function utf8Bytes(value) {
   return new TextEncoder().encode(value);
 }
@@ -372,14 +361,17 @@ function validStagedNeuronRow(row) {
 }
 
 // Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
-// refresh-metagraph CI job fetches Taostats, wraps the neuron rows in an
-// HMAC-signed envelope, and writes it to R2 (metagraph/neurons-pending.json)
-// using its existing R2 permission; we load only authenticated, bounded,
-// schema-valid rows through the METAGRAPH_HEALTH_DB binding — which needs no
-// API-token D1 permission — with PARAMETERIZED inserts (values are always bound,
-// never interpolated), then delete prior-capture rows within refreshed subnets
-// so deregistered UIDs do not linger after a partial refresh. Then delete the
-// staged object so it loads exactly once.
+// refresh-metagraph CI job fetches the metagraph first-party (#1348), wraps the
+// neuron rows in an HMAC-signed envelope, and writes it to R2
+// (metagraph/neurons-pending.json) using its existing R2 permission; we load only
+// authenticated, bounded, schema-valid rows through the METAGRAPH_HEALTH_DB
+// binding — which needs no API-token D1 permission — with PARAMETERIZED inserts
+// (values are always bound, never interpolated). The staged snapshot is a FULL
+// replacement: after every batch succeeds we delete any row older than the
+// snapshot's captured_at stamp, so deregistered UIDs (and entire vanished subnets)
+// never linger as phantoms — the read paths need no captured_at filter because the
+// table only ever holds the latest snapshot. Then delete the staged object so it
+// loads exactly once.
 export async function loadStagedNeurons(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
@@ -450,20 +442,43 @@ export async function loadStagedNeurons(env) {
         .bind(...values),
     );
   }
-  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-  }
-  let purged = 0;
-  if (!stagingMeta.legacy) {
-    try {
-      purged = await purgeStaleNeuronRows(
-        db,
-        stagingMeta.refreshed_netuids,
-        stagingMeta.captured_at,
-      );
-    } catch {
-      return { ok: false, reason: "purge_failed" };
+  // A staged snapshot is a FULL replacement of the neurons table: every row
+  // shares one captured_at stamp (set once by the producer). If ANY batch throws,
+  // bail WITHOUT deleting prior rows or the staged object — the prior snapshot
+  // stays as a fallback and the next cron retries the same staged file.
+  try {
+    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
     }
+  } catch {
+    return { ok: false, reason: "load_failed" };
+  }
+  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete any
+  // row older than this snapshot's stamp so the table holds exactly the current
+  // snapshot. This is what stops deregistered (netuid,uid) pairs — and entire
+  // vanished subnets — from lingering as phantoms (inflated neuron_count, ghost
+  // metagraphs) since the read paths don't filter by captured_at. Derived from
+  // the rows themselves (uniform stamp; use max defensively) so it works for both
+  // the bare-array native snapshot (#1348) and the coverage envelope alike.
+  let snapshotCapturedAt = 0;
+  for (const row of rows) {
+    if (
+      Number.isInteger(row.captured_at) &&
+      row.captured_at > snapshotCapturedAt
+    )
+      snapshotCapturedAt = row.captured_at;
+  }
+  let purged;
+  try {
+    const result = await db
+      .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
+      .bind(snapshotCapturedAt)
+      .run();
+    purged = result?.meta?.changes ?? 0;
+  } catch {
+    // Rows are already loaded; a failed prune just leaves stale rows for the next
+    // run to clear. Do NOT delete the staged object — let the next cron re-prune.
+    return { ok: false, reason: "purge_failed" };
   }
   await bucket.delete(STAGED_NEURONS_KEY);
   return { ok: true, rows: rows.length, purged };
@@ -855,7 +870,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
-      return handleHealthTrends(request, env, Number(trendsMatch[1]));
+      return handleHealthTrends(
+        request,
+        env,
+        Number(trendsMatch[1]),
+        resolved.url,
+      );
     }
     const percentilesMatch = PERCENTILES_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1381,6 +1401,37 @@ export async function readHealthMetaKv(env, now = Date.now()) {
   return value;
 }
 
+// economics:current is a large blob (one row per subnet) that resolveLiveEconomics
+// reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
+// request (the per-subnet economics overlay, #1308). Neither route is edge-cached
+// for the live overlay, so a warm isolate re-fetches + re-parses the same blob per
+// request. Memoize the read in-isolate — same pattern as readHealthMetaKv (#1375),
+// readRpcPoolArtifact (#1309), latestPointer (#367). Safe: resolveLiveEconomics
+// re-validates the blob's captured_at freshness against the live clock on every
+// call, so the 60 s memo (≪ the 8 h freshness window) never extends how long a
+// stale blob can serve. Null results are not cached so a transient cold KV does
+// not stay sticky; keyed on env so tests / multi-binding callers never cross-read.
+export const ECONOMICS_CURRENT_KV_TTL_MS = 60_000;
+let economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readEconomicsCurrentKv(env, now = Date.now()) {
+  if (
+    economicsCurrentKvMemo.env === env &&
+    now < economicsCurrentKvMemo.expiresAt
+  ) {
+    return economicsCurrentKvMemo.value;
+  }
+  const value = await readHealthKv(env, KV_ECONOMICS_CURRENT);
+  if (value !== null) {
+    economicsCurrentKvMemo = {
+      env,
+      value,
+      expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
+    };
+  }
+  return value;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -1596,7 +1647,7 @@ async function handleApiRequest(
     // fallback, so it can never 404.
     artifact = await readArtifact(env, artifactPath);
     live = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
@@ -1627,7 +1678,7 @@ async function handleApiRequest(
     typeof baseData === "object"
   ) {
     const liveEconomics = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
@@ -1817,7 +1868,12 @@ async function handleBulkHealthTrends(
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
-async function handleHealthTrends(request, env, netuid) {
+async function handleHealthTrends(request, env, netuid, url) {
+  // Reject unsupported query params (400) like every sibling analytics route
+  // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
+  // route takes no params and returns all configured windows.
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
   const db = env.METAGRAPH_HEALTH_DB;
   const nowMs = Date.now();
   const windows = {};

@@ -50,7 +50,11 @@ function escapeXml(value) {
 
 function clamp(value, max = 500) {
   const s = stripControl(value).trim();
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+  if (s.length <= max) return s;
+  // Truncate by code points, not UTF-16 code units: a plain slice() can sever a
+  // non-BMP character (e.g. an emoji) straddling the boundary into a lone
+  // surrogate, which is invalid in XML and breaks the RSS/Atom feed.
+  return `${[...s].slice(0, max - 1).join("")}…`;
 }
 
 // Accept an ISO string or epoch-ms; return a normalized ISO string or null.
@@ -122,14 +126,28 @@ function registryItems(changelog, netuid) {
     const candidateDelta = cov?.candidate_count?.delta || 0;
     if (surfaceDelta || candidateDelta) {
       const sign = (n) => (n >= 0 ? `+${n}` : `${n}`);
+      // Only describe the side(s) actually present — a partial coverage_delta
+      // (e.g. candidate_count only) must not emit "+0 surfaces" or interpolate
+      // "Surfaces undefined→undefined" for the absent side.
+      const titleParts = [];
+      const summaryParts = [];
+      if (cov?.surface_count) {
+        titleParts.push(`${sign(surfaceDelta)} surfaces`);
+        summaryParts.push(
+          `Surfaces ${cov.surface_count.before}→${cov.surface_count.after}`,
+        );
+      }
+      if (cov?.candidate_count) {
+        titleParts.push(`${sign(candidateDelta)} candidates`);
+        summaryParts.push(
+          `candidates ${cov.candidate_count.before}→${cov.candidate_count.after}`,
+        );
+      }
       items.push({
         id: `registry:coverage:${at}`,
         url: `${SITE_URL}/gaps`,
-        title: `Coverage updated: ${sign(surfaceDelta)} surfaces, ${sign(candidateDelta)} candidates`,
-        summary: clamp(
-          `Surfaces ${cov.surface_count?.before}→${cov.surface_count?.after}; ` +
-            `candidates ${cov.candidate_count?.before}→${cov.candidate_count?.after}.`,
-        ),
+        title: `Coverage updated: ${titleParts.join(", ")}`,
+        summary: clamp(`${summaryParts.join("; ")}.`),
         timestamp: at,
         tags: ["registry", "coverage"],
       });
