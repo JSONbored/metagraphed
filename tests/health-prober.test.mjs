@@ -15,6 +15,11 @@ import {
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
 import { handleScheduled } from "../workers/api.mjs";
+import {
+  EMBEDDING_SYNC_CRON,
+  EVENTS_LOAD_CRON,
+  HEALTH_PRUNE_CRON,
+} from "../workers/config.mjs";
 
 describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
   // DoH JSON mock: maps host → { A: [...], AAAA: [...] }.
@@ -446,7 +451,7 @@ describe("runHealthProber", () => {
     assert.equal(apiUpsert.binds[12], 3);
   });
 
-  test("a degraded run resets the breaker (only FAILED runs accrue)", async () => {
+  test("a degraded non-RPC run resets the breaker", async () => {
     const db = makeDb({
       priorStatus: [
         {
@@ -491,6 +496,51 @@ describe("runHealthProber", () => {
     // resets to 0 so a persistently-degraded (still-usable) endpoint is not
     // evicted from the RPC pool by the sustained-down breaker.
     assert.equal(apiUpsert.binds[12], 0);
+  });
+
+  test("a degraded RPC run accrues toward pool eviction", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "opentensor-finney-rpc",
+          surface_key: "srf-rootrpckey00000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    const degradedRpcProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "degraded",
+            classification: "auth-required",
+            latency_ms: null,
+            status_code: 401,
+          }
+        : {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          };
+
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedRpcProbe,
+        probeOptions: {},
+      },
+    );
+
+    const rpcUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "opentensor-finney-rpc");
+    assert.equal(rpcUpsert.binds[12], 3);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {
@@ -565,6 +615,75 @@ describe("handleScheduled dispatch", () => {
     const probeResult = await handleScheduled({ cron: "*/2 * * * *" }, {});
     assert.equal(probeResult.ok, false);
     assert.equal(probeResult.reason, "no-operational-surfaces");
+  });
+
+  test("non-fast-load crons never drain the staged R2 files (audit #9)", async () => {
+    // INVARIANT: only the EVENTS_LOAD_CRON tick owns the unlocked staged
+    // read-modify-write drain. Every other cron (prune/embedding/prober) must NOT
+    // call loadStagedNeurons / loadStagedEvents — running them on concurrent ticks
+    // let one invocation clobber a freshly-staged file via the delete path. We prove
+    // it by tracking R2 .get keys and asserting the two staged keys are never read.
+    const STAGED_KEYS = [
+      "metagraph/neurons-pending.json",
+      "events/account-events-pending.json",
+    ];
+    for (const cron of [
+      HEALTH_PRUNE_CRON,
+      EMBEDDING_SYNC_CRON,
+      "*/15 * * * *", // the prober tick (any cron that is not EVENTS_LOAD_CRON)
+    ]) {
+      const getKeys = [];
+      const env = {
+        METAGRAPH_HEALTH_DB: makeDb(),
+        // A tracking bucket: any staged-key read would push it here. Incidental,
+        // non-staged reads (e.g. the prober's surface fallback) are allowed and
+        // return null so the path stays a clean no-op.
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            getKeys.push(key);
+            return null;
+          },
+        },
+        // A signing key is REQUIRED for loadStagedNeurons to even reach its
+        // bucket.get — present here so the guard can't mask a regression where the
+        // loader is wrongly invoked on this tick.
+        METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
+      };
+      await handleScheduled({ cron }, env, {});
+      for (const stagedKey of STAGED_KEYS) {
+        assert.ok(
+          !getKeys.includes(stagedKey),
+          `cron ${cron} must not read staged key ${stagedKey}`,
+        );
+      }
+    }
+  });
+
+  test("fast-load cron drains BOTH staged files then returns the marker (audit #9)", async () => {
+    // REGRESSION: the EVENTS_LOAD_CRON tick must still run both loaders (one R2 .get
+    // per staged key) AND early-return the fast-load marker without falling through
+    // to the prober/prune.
+    const getKeys = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          getKeys.push(key);
+          return null; // nothing staged → each loader no-ops after its read
+        },
+      },
+      METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
+    };
+    const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
+    assert.deepEqual(result, { ok: true, fast_load: true });
+    assert.ok(
+      getKeys.includes("metagraph/neurons-pending.json"),
+      "loadStagedNeurons read its staged key on the fast-load tick",
+    );
+    assert.ok(
+      getKeys.includes("events/account-events-pending.json"),
+      "loadStagedEvents read its staged key on the fast-load tick",
+    );
   });
 });
 

@@ -149,6 +149,7 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  resolveClientIp,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
   SUBNET_METAGRAPH_PATH_PATTERN,
@@ -663,18 +664,24 @@ export async function handleEventIngest(request, env) {
 
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
-  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
-  // snapshot and load it via the D1 binding on whichever cron fires next; it then
-  // self-deletes. Isolated so a load failure never affects the prober/prune below.
-  await loadStagedNeurons(env).catch(() => {});
-  // Token-free chain-event load (#1346): pick up any R2-staged event batch from
-  // the first-party poller and load it via the binding. Isolated like the neuron
-  // load so a failure never affects the prober/prune below.
-  await loadStagedEvents(env).catch(() => {});
-  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
-  // D1 quickly (above) — return without running the heavier probe/prune so we can
-  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
+  // batches into D1 quickly, then return without running the heavier probe/prune so
+  // it can tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  //
+  // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
+  // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
+  // each staged load is an unlocked R2 read-modify-write (read → load → delete /
+  // rewrite). Running the loaders on every tick let a concurrent invocation clobber a
+  // freshly-staged file via the delete path; owning the drain on a single cron removes
+  // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
+  // load failure never affects the early-return below.
   if (cron === EVENTS_LOAD_CRON) {
+    // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+    // snapshot and load it via the D1 binding; it then self-deletes.
+    await loadStagedNeurons(env).catch(() => {});
+    // Token-free chain-event load (#1346): pick up any R2-staged event batch from
+    // the first-party poller and load it via the binding.
+    await loadStagedEvents(env).catch(() => {});
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {
@@ -767,7 +774,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
+  // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
+  // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    const limited = await graphqlRateLimited(request, env);
+    if (limited) return limited;
     return handleGraphQLRequest(request, env);
   }
 
@@ -898,7 +909,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (bulkTrendsMatch) {
-      return handleBulkHealthTrends(request, env, resolved.url);
+      return handleBulkHealthTrends(request, env, resolved.url, ctx);
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
@@ -907,6 +918,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(trendsMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const percentilesMatch = PERCENTILES_PATH_PATTERN.exec(
@@ -918,6 +930,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(percentilesMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const incidentsMatch = INCIDENTS_PATH_PATTERN.exec(resolved.url.pathname);
@@ -927,6 +940,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(incidentsMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1836,6 +1850,7 @@ async function handleBulkHealthTrends(
   request,
   env,
   url = new URL(request.url),
+  ctx = {},
 ) {
   for (const key of url.searchParams.keys()) {
     return errorResponse(
@@ -1846,14 +1861,15 @@ async function handleBulkHealthTrends(
     );
   }
 
-  const nowMs = Date.now();
-  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-  const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const rows = await d1All(
-    env,
-    `SELECT netuid,
+  return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
+    const nowMs = Date.now();
+    const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
+    const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    const rows = await d1All(
+      env,
+      `SELECT netuid,
             day AS date,
             SUM(samples) AS total,
             SUM(ok_count) AS ok_count,
@@ -1863,65 +1879,67 @@ async function handleBulkHealthTrends(
      GROUP BY netuid, day
      ORDER BY netuid, day
      LIMIT ?`,
-    [cutoffDay, MAX_BULK_TREND_ROWS],
-  );
-  const windows = {};
-  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-    const windowCutoff = new Date(nowMs - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    windows[label] = rows.filter(
-      (row) => String(row.day || row.date) >= windowCutoff,
+      [cutoffDay, MAX_BULK_TREND_ROWS],
     );
-  }
-  const meta = await readHealthMetaKv(env);
-  const data = formatBulkTrends({
-    observedAt: meta?.last_run_at || null,
-    windows,
-    windowDays: HEALTH_TREND_WINDOWS,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: {
-        artifact_path: "/metagraph/health/trends.json",
-        cache: "short",
-        contract_version: contractVersion(env),
-        generated_at: data.observed_at,
-        published_at: await publishedAt(env),
-        source: "live-cron-prober",
+    const windows = {};
+    for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+      const windowCutoff = new Date(nowMs - days * DAY_MS)
+        .toISOString()
+        .slice(0, 10);
+      windows[label] = rows.filter(
+        (row) => String(row.day || row.date) >= windowCutoff,
+      );
+    }
+    const meta = await readHealthMetaKv(env);
+    const data = formatBulkTrends({
+      observedAt: meta?.last_run_at || null,
+      windows,
+      windowDays: HEALTH_TREND_WINDOWS,
+    });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: {
+          artifact_path: "/metagraph/health/trends.json",
+          cache: "short",
+          contract_version: contractVersion(env),
+          generated_at: data.observed_at,
+          published_at: await publishedAt(env),
+          source: "live-cron-prober",
+        },
       },
-    },
-    "short",
-  );
+      "short",
+    );
+  });
 }
 
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
-async function handleHealthTrends(request, env, netuid, url) {
+async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   // Reject unsupported query params (400) like every sibling analytics route
   // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
   // route takes no params and returns all configured windows.
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const db = env.METAGRAPH_HEALTH_DB;
-  const nowMs = Date.now();
-  const windows = {};
-  // The per-window aggregations are independent — run them in parallel (one D1
-  // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
-  // serializing the two with an await-in-loop.
-  const windowRows = await Promise.all(
-    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-      if (!db?.prepare) {
-        return [label, []];
-      }
-      try {
-        const result = await withTimeout(
-          db
-            .prepare(
-              `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+  return withEdgeCache(request, ctx, env, "trends", async () => {
+    const db = env.METAGRAPH_HEALTH_DB;
+    const nowMs = Date.now();
+    const windows = {};
+    // The per-window aggregations are independent — run them in parallel (one D1
+    // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
+    // serializing the two with an await-in-loop.
+    const windowRows = await Promise.all(
+      Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+        if (!db?.prepare) {
+          return [label, []];
+        }
+        try {
+          const result = await withTimeout(
+            db
+              .prepare(
+                `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
              SELECT MAX(surface_id) AS surface_id,
                     surface_key,
                     COUNT(*) AS total,
@@ -1929,41 +1947,42 @@ async function handleHealthTrends(request, env, netuid, url) {
                     ${latencyStatColumns({ includeMinMax: false })}
              FROM ranked
              GROUP BY surface_key`,
-            )
-            .bind(netuid, nowMs - days * DAY_MS)
-            .all(),
-          d1TimeoutMs(env),
-        );
-        return [label, result?.results || []];
-      } catch {
-        return [label, []];
-      }
-    }),
-  );
-  for (const [label, rows] of windowRows) {
-    windows[label] = rows;
-  }
-  const meta = await readHealthMetaKv(env);
-  const data = formatTrends({
-    netuid,
-    observedAt: meta?.last_run_at || null,
-    windows,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: {
-        artifact_path: `/metagraph/health/trends/${netuid}.json`,
-        cache: "short",
-        contract_version: contractVersion(env),
-        generated_at: data.observed_at,
-        published_at: await publishedAt(env),
-        source: "live-cron-prober",
+              )
+              .bind(netuid, nowMs - days * DAY_MS)
+              .all(),
+            d1TimeoutMs(env),
+          );
+          return [label, result?.results || []];
+        } catch {
+          return [label, []];
+        }
+      }),
+    );
+    for (const [label, rows] of windowRows) {
+      windows[label] = rows;
+    }
+    const meta = await readHealthMetaKv(env);
+    const data = formatTrends({
+      netuid,
+      observedAt: meta?.last_run_at || null,
+      windows,
+    });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: {
+          artifact_path: `/metagraph/health/trends/${netuid}.json`,
+          cache: "short",
+          contract_version: contractVersion(env),
+          generated_at: data.observed_at,
+          published_at: await publishedAt(env),
+          source: "live-cron-prober",
+        },
       },
-    },
-    "short",
-  );
+      "short",
+    );
+  });
 }
 
 function validateQueryParams(url, allowedParams) {
@@ -2040,65 +2059,116 @@ async function analyticsMeta(env, artifactPath, observedAt) {
   };
 }
 
+// Edge-cache wrapper for the D1-backed analytics routes (audit #6). Each of these
+// re-runs a full-window D1 aggregation on EVERY request, yet the result only
+// changes when the health cron writes a new snapshot — so a cross-colo / agent-
+// polling burst re-executes the same 7d/30d aggregation needlessly. Mirrors the
+// live-overlay collection cache exactly (the CACHEABLE_OVERLAY_ROUTE_IDS path):
+// same Cache API, same `edge-cache.metagraph.sh` key host, same last_run_at
+// keying, same conditional-GET 304 short-circuit, same ctx.waitUntil put.
+//
+// The key varies on everything that changes the body: contract_version (a deploy
+// can never serve a cross-version payload) + the cron snapshot stamp
+// (`last_run_at`) + the request path (carries netuid) + the canonical search
+// (carries `window`). `keyParts` is the extra namespace segment per route. When
+// the snapshot stamp is cold (null), caching is skipped entirely so a cold-KV
+// empty payload can never seed a stale entry — identical to the overlay cache's
+// `if (lastRunAt)` guard. The cache is transparent: body/shape/headers are
+// whatever buildResponse() produced; only 200s are cached, never errors.
+async function withEdgeCache(request, ctx, env, keyParts, buildResponse) {
+  const cache = request.method === "GET" ? globalThis.caches?.default : null;
+  // Cheap, per-isolate-memoized read of just the snapshot time. On a hit this +
+  // the cache match is the whole request (no D1 aggregation at all).
+  const lastRunAt = cache ? (await readHealthMetaKv(env))?.last_run_at : null;
+  let cacheKey = null;
+  if (cache && lastRunAt) {
+    const url = new URL(request.url);
+    cacheKey = new Request(
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        contractVersion(env),
+      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${url.pathname}${url.search}`,
+    );
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      // Honour conditional requests against the cached body's weak ETag so
+      // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
+        return new Response(null, { status: 304, headers: hit.headers });
+      }
+      return hit;
+    }
+  }
+  const response = await buildResponse();
+  // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
+  // a 400 bad-window or 5xx must not be persisted).
+  if (cacheKey && response.status === 200) {
+    ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
+  }
+  return response;
+}
+
 // p50/p95/p99 latency percentiles per surface, computed in D1.
-async function handleHealthPercentiles(request, env, netuid, url) {
+async function handleHealthPercentiles(request, env, netuid, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  const rows = await d1All(
-    env,
-    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+  return withEdgeCache(request, ctx, env, "percentiles", async () => {
+    const rows = await d1All(
+      env,
+      `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
             ${latencyStatColumns()}
      FROM ranked
      GROUP BY surface_key
      HAVING MAX(lat_cnt) > 0`,
-    [netuid, Date.now() - days * DAY_MS],
-  );
-  const meta = await readHealthMetaKv(env);
-  const data = formatPercentiles({
-    netuid,
-    window: label,
-    observedAt: meta?.last_run_at || null,
-    rows,
+      [netuid, Date.now() - days * DAY_MS],
+    );
+    const meta = await readHealthMetaKv(env);
+    const data = formatPercentiles({
+      netuid,
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      rows,
+    });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          `/metagraph/health/percentiles/${netuid}.json`,
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
   });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(
-        env,
-        `/metagraph/health/percentiles/${netuid}.json`,
-        data.observed_at,
-      ),
-    },
-    "short",
-  );
 }
 
 // SLA + reconstructed downtime incidents per surface.
-async function handleHealthIncidents(request, env, netuid, url) {
+async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  const since = Date.now() - days * DAY_MS;
-  const [slaRows, incidentRows] = await Promise.all([
-    d1All(
-      env,
-      `SELECT MAX(surface_id) AS surface_id,
+  return withEdgeCache(request, ctx, env, "incidents", async () => {
+    const since = Date.now() - days * DAY_MS;
+    const [slaRows, incidentRows] = await Promise.all([
+      d1All(
+        env,
+        `SELECT MAX(surface_id) AS surface_id,
               COALESCE(surface_key, surface_id) AS surface_key,
               COUNT(*) AS total,
               SUM(ok) AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
        GROUP BY COALESCE(surface_key, surface_id)`,
-      [netuid, since],
-    ),
-    // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-    // incident threshold) into one incident row, then cap the public payload so
-    // flapping endpoints cannot force unbounded result sets/responses.
-    d1All(
-      env,
-      `WITH checks AS (
+        [netuid, since],
+      ),
+      // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+      // incident threshold) into one incident row, then cap the public payload so
+      // flapping endpoints cannot force unbounded result sets/responses.
+      d1All(
+        env,
+        `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
                 surface_id,
                 checked_at,
@@ -2128,30 +2198,37 @@ async function handleHealthIncidents(request, env, netuid, url) {
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
        LIMIT ?`,
-      [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
-    ),
-  ]);
-  const meta = await readHealthMetaKv(env);
-  const data = formatIncidents({
-    netuid,
-    window: label,
-    observedAt: meta?.last_run_at || null,
-    slaRows,
-    incidentRows,
-    maxIncidents: MAX_INCIDENT_ROWS,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(
-        env,
-        `/metagraph/health/incidents/${netuid}.json`,
-        data.observed_at,
+        [
+          netuid,
+          since,
+          INCIDENT_GAP_MS,
+          MIN_INCIDENT_SAMPLES,
+          MAX_INCIDENT_ROWS,
+        ],
       ),
-    },
-    "short",
-  );
+    ]);
+    const meta = await readHealthMetaKv(env);
+    const data = formatIncidents({
+      netuid,
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      slaRows,
+      incidentRows,
+      maxIncidents: MAX_INCIDENT_ROWS,
+    });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          `/metagraph/health/incidents/${netuid}.json`,
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+  });
 }
 
 // Global, cross-subnet incident ledger — the same gap-island grouping as the
@@ -2847,10 +2924,7 @@ async function verifyMeta(env) {
 // confirm "callable right now" before wiring.
 async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -2959,10 +3033,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // (local dev / not yet provisioned) so tests and local runs are unaffected;
   // enforced on Cloudflare where the binding is bound.
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -3387,6 +3458,34 @@ function setRpcRateLimitHeaders(headers) {
   );
 }
 
+// Per-client abuse control for the GraphQL endpoint. GraphQL is POST-only and
+// runs before the read-only method gate, so — unlike the GET REST routes that
+// the edge can cache — every call hits the worker and fans out into one or more
+// artifact reads + query execution. That makes it at least as expensive as the
+// RPC proxy, so it shares the SAME strict limiter binding, bucket strategy
+// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. Skipped
+// only when the binding is absent (local dev / CI), matching the RPC/MCP paths.
+// Returns a 429 Response when the caller is over the limit, else null.
+async function graphqlRateLimited(request, env) {
+  if (!env.RPC_RATE_LIMITER?.limit) return null;
+  const { success } = await env.RPC_RATE_LIMITER.limit({
+    key: resolveClientIp(request),
+  });
+  if (success) return null;
+  return errorResponse(
+    "graphql_rate_limited",
+    "Too many GraphQL requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
 // Try each ordered endpoint in turn; return the first success / non-transient
 // response, and a clean 502 only when every attempt is a transient failure.
 // Transient HTTP statuses are classified before reading bodies, and JSON-RPC
@@ -3703,6 +3802,17 @@ async function handleWebhookRequest(request, env, url) {
 }
 
 async function createWebhookSubscription(request, env) {
+  // Authenticate BEFORE touching the request body. An unauthenticated or
+  // wrong-token caller must be rejected (503 when disabled, else 401) before we
+  // read, JSON-parse, or validate any attacker-controlled payload — this avoids
+  // doing parsing/validation work for unauthenticated callers and avoids leaking
+  // body-validation behavior (which error fires for which input) to them. The
+  // token compare itself is constant-time (see validateWebhookSubscriptionToken).
+  const authorized = validateWebhookSubscriptionToken(request, env);
+  if (!authorized.ok) {
+    return authorized.response;
+  }
+
   if (
     Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
   ) {
@@ -3734,11 +3844,6 @@ async function createWebhookSubscription(request, env) {
   const validated = validateSubscriptionInput(body);
   if (!validated.ok) {
     return errorResponse("invalid_subscription", validated.error, 400);
-  }
-
-  const authorized = validateWebhookSubscriptionToken(request, env);
-  if (!authorized.ok) {
-    return authorized.response;
   }
 
   const id = generateSubscriptionId();
@@ -3944,11 +4049,7 @@ function aiRateLimitedResponse() {
 }
 
 function aiClientKey(request, scope) {
-  const ip =
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for") ||
-    "anon";
-  return `${scope}:${ip}`;
+  return `${scope}:${resolveClientIp(request)}`;
 }
 
 async function readBoundedRequestText(request, maxBytes) {
