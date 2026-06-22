@@ -844,7 +844,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
   if (url.pathname === "/api/v1/registry/leaderboards") {
-    return handleLeaderboards(request, env, url);
+    // Deterministic per-cron-tick D1 leaderboard; edge-cache keyed on the health
+    // snapshot's last_run_at (auto-busts on the next probe) like the sibling
+    // analytics routes, so a polling/cross-colo burst doesn't re-run the SQL.
+    return withEdgeCache(request, ctx, env, "leaderboards", () =>
+      handleLeaderboards(request, env, url),
+    );
   }
 
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
@@ -919,16 +924,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(
-        request,
-        env,
-        Number(trajectoryMatch[1]),
-        resolved.url,
+      return withEdgeCache(request, ctx, env, "trajectory", () =>
+        handleTrajectory(
+          request,
+          env,
+          Number(trajectoryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
-      return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+      return withEdgeCache(request, ctx, env, "uptime", () =>
+        handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
@@ -986,7 +995,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleAccount(request, env, accountMatch[1]);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
-      return handleGlobalIncidents(request, env, resolved.url);
+      return withEdgeCache(request, ctx, env, "global-incidents", () =>
+        handleGlobalIncidents(request, env, resolved.url),
+      );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }

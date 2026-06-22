@@ -395,4 +395,60 @@ describe("analytics edge cache", () => {
 
     assert.equal(cachedBody, uncachedBody);
   });
+
+  test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
+    // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
+    // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation
+    // on every request. Now wrapped in withEdgeCache at the call site, keyed on
+    // the same contract_version + last_run_at + pathname + search.
+    const routes = [
+      {
+        keyParts: "leaderboards",
+        path: "/api/v1/registry/leaderboards",
+        search: "",
+      },
+      {
+        keyParts: "global-incidents",
+        path: "/api/v1/incidents",
+        search: "?window=7d",
+      },
+      {
+        keyParts: "trajectory",
+        path: "/api/v1/subnets/7/trajectory",
+        search: "",
+      },
+      {
+        keyParts: "uptime",
+        path: "/api/v1/subnets/7/uptime",
+        search: "?window=90d",
+      },
+    ];
+    originalCaches = globalThis.caches;
+    for (const r of routes) {
+      const cache = mockCaches();
+      cache.install();
+      const queries = [];
+      const env = analyticsEnv(queries);
+      const url = `https://api.metagraph.sh${r.path}${r.search}`;
+
+      // MISS: runs D1 and caches under the route's key.
+      const miss = await handleRequest(new Request(url), env, ctx);
+      await Promise.resolve();
+      assert.equal(miss.status, 200, `${r.keyParts}: MISS is 200`);
+      assert.ok(
+        cache.putKeys.includes(expectedKey(r.keyParts, r.path, r.search)),
+        `${r.keyParts}: cached under its expected key`,
+      );
+      const queriesAfterMiss = queries.length;
+
+      // HIT: served from cache, no additional D1.
+      const hit = await handleRequest(new Request(url), env, ctx);
+      assert.equal(hit.status, 200, `${r.keyParts}: HIT is 200`);
+      assert.equal(
+        queries.length,
+        queriesAfterMiss,
+        `${r.keyParts}: a HIT issues no further D1 query`,
+      );
+    }
+  });
 });
