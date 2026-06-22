@@ -285,6 +285,45 @@ describe("/health readiness", () => {
     assert.ok(body.chain_events.latest_event_at.startsWith("20"));
   });
 
+  test("chain_events is schema-stable nulls when the event tier is cold (#1361)", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] }; // empty account_events tier
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.chain_events.latest_indexed_block, null);
+    assert.equal(body.chain_events.latest_event_at, null);
+    assert.equal(body.chain_events.age_seconds, null);
+  });
+
+  test("chain_events is null when no health DB is bound (#1361)", async () => {
+    const env = {
+      ASSETS: {
+        async fetch() {
+          return new Response("{}", { status: 404 });
+        },
+      },
+    };
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal((await res.json()).chain_events, null);
+  });
+
   test("HEAD /health returns no body", async () => {
     const res = await handleRequest(
       req("/health", { method: "HEAD" }),
