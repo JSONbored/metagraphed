@@ -520,6 +520,7 @@ describe("analytics routes (cold local D1)", () => {
       ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
       ["/api/v1/subnets/7/health/incidents?window=7d&window=7d", "window"],
       ["/api/v1/subnets/7/trajectory?x=random", "x"],
+      ["/api/v1/subnets/7/health/trends?bogus=x", "bogus"],
       ["/api/v1/registry/leaderboards?limit=10&x=random", "x"],
       ["/api/v1/registry/leaderboards?limit=10&limit=10", "limit"],
     ];

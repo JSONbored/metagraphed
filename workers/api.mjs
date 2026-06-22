@@ -856,7 +856,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
-      return handleHealthTrends(request, env, Number(trendsMatch[1]));
+      return handleHealthTrends(
+        request,
+        env,
+        Number(trendsMatch[1]),
+        resolved.url,
+      );
     }
     const percentilesMatch = PERCENTILES_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1849,7 +1854,12 @@ async function handleBulkHealthTrends(
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
-async function handleHealthTrends(request, env, netuid) {
+async function handleHealthTrends(request, env, netuid, url) {
+  // Reject unsupported query params (400) like every sibling analytics route
+  // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
+  // route takes no params and returns all configured windows.
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
   const db = env.METAGRAPH_HEALTH_DB;
   const nowMs = Date.now();
   const windows = {};
