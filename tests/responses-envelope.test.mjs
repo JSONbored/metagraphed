@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { dataResponse, envelopeResponse } from "../workers/responses.mjs";
-import { ifNoneMatchSatisfied } from "../workers/http.mjs";
+import { errorResponse, ifNoneMatchSatisfied } from "../workers/http.mjs";
 
 const reqWith = (ifNoneMatch) =>
   new Request("https://metagraph.sh/api/v1/anything", {
@@ -29,6 +29,18 @@ test("dataResponse emits the SuccessEnvelope shape with no error key", async () 
   assert.equal(body.schema_version, 1);
   assert.deepEqual(body.data, { hello: "world" });
   assert.equal(body.meta.source, "test");
+});
+
+// Error envelopes must not be cached by shared/edge caches — a transient 5xx or
+// a not-yet-published 404 would otherwise be served stale from the CDN.
+test("errorResponse is cache-control: no-store across 4xx and 5xx", async () => {
+  for (const status of [400, 404, 500, 503]) {
+    const res = errorResponse("some_error", "boom", status);
+    assert.equal(res.status, status);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "no-store");
+    assert.equal(res.headers.get("x-metagraph-error-code"), "some_error");
+  }
 });
 
 // ifNoneMatchSatisfied implements the RFC 7232 §3.2 precondition that backs every

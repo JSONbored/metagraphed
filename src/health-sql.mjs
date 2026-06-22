@@ -64,11 +64,14 @@ export function latencyStatColumns({
 // healthy-reading count and the latency mean weighted by it. Legacy rows predate
 // the latency_samples column, so weighting falls back to total samples.
 // `roundedAvg` casts to INTEGER for stored/long-term views; the bulk matrix keeps
-// the raw quotient and rounds in the formatter.
+// the raw quotient and rounds in the formatter. The weighted-sum numerator is
+// cast to REAL so the division is floating-point — both `avg_latency_ms` and the
+// sample counts are INTEGER columns, so a plain `SUM(int)/SUM(int)` would be
+// SQLite integer division and truncate the mean before it is rounded.
 export function dailyLatencyColumns({ roundedAvg = false } = {}) {
   const weight = `CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END`;
   const denom = `SUM(${weight})`;
-  const mean = `SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * COALESCE(latency_samples, samples) ELSE 0 END) / ${denom}`;
+  const mean = `CAST(SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * COALESCE(latency_samples, samples) ELSE 0 END) AS REAL) / ${denom}`;
   return `${denom} AS latency_samples,
             CASE WHEN ${denom} > 0
               THEN ${roundedAvg ? `CAST(ROUND(${mean}) AS INTEGER)` : mean}

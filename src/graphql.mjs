@@ -10,6 +10,8 @@ import { readArtifact } from "../workers/storage.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
+export const GRAPHQL_MAX_BODY_BYTES = 64 * 1024;
+export const GRAPHQL_MAX_QUERY_BYTES = 16 * 1024;
 
 const SDL = `
   type Query {
@@ -68,11 +70,38 @@ const schema = buildSchema(SDL);
 
 // --- Validation rules ---
 
-function selectionDepth(selectionSet, depth = 0) {
+function buildFragmentMap(documentNode) {
+  const fragments = new Map();
+  for (const def of documentNode.definitions) {
+    if (def.kind === "FragmentDefinition") {
+      fragments.set(def.name.value, def);
+    }
+  }
+  return fragments;
+}
+
+// Depth/complexity must follow named fragment spreads. Otherwise a client moves
+// the whole (expensive) selection into a fragment and the operation's own
+// selection set is just a single transparent spread — counting as depth 0 /
+// complexity 1 and fully bypassing both limits. `visited` guards against
+// fragment cycles: validate() reports those, but our rules run in the same pass
+// and would otherwise recurse forever.
+function selectionDepth(selectionSet, fragments, visited, depth = 0) {
   let max = depth;
   for (const sel of selectionSet.selections) {
-    if (sel.selectionSet) {
-      const d = selectionDepth(sel.selectionSet, depth + 1);
+    if (sel.kind === "FragmentSpread") {
+      const frag = fragments.get(sel.name.value);
+      if (frag && !visited.has(sel.name.value)) {
+        const d = selectionDepth(
+          frag.selectionSet,
+          fragments,
+          new Set(visited).add(sel.name.value),
+          depth,
+        );
+        if (d > max) max = d;
+      }
+    } else if (sel.selectionSet) {
+      const d = selectionDepth(sel.selectionSet, fragments, visited, depth + 1);
       if (d > max) max = d;
     }
   }
@@ -83,9 +112,14 @@ export function maxDepthRule(max) {
   return (context) => ({
     Document: {
       leave(node) {
+        const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
           if (def.kind === "OperationDefinition") {
-            const depth = selectionDepth(def.selectionSet);
+            const depth = selectionDepth(
+              def.selectionSet,
+              fragments,
+              new Set(),
+            );
             if (depth > max) {
               context.reportError(
                 new GraphQLError(
@@ -101,12 +135,23 @@ export function maxDepthRule(max) {
   });
 }
 
-function selectionComplexity(selectionSet) {
+function selectionComplexity(selectionSet, fragments, visited) {
   let count = 0;
   for (const sel of selectionSet.selections) {
+    if (sel.kind === "FragmentSpread") {
+      const frag = fragments.get(sel.name.value);
+      if (frag && !visited.has(sel.name.value)) {
+        count += selectionComplexity(
+          frag.selectionSet,
+          fragments,
+          new Set(visited).add(sel.name.value),
+        );
+      }
+      continue;
+    }
     count += 1;
     if (sel.selectionSet) {
-      count += selectionComplexity(sel.selectionSet);
+      count += selectionComplexity(sel.selectionSet, fragments, visited);
     }
   }
   return count;
@@ -116,9 +161,14 @@ export function maxComplexityRule(max) {
   return (context) => ({
     Document: {
       leave(node) {
+        const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
           if (def.kind === "OperationDefinition") {
-            const complexity = selectionComplexity(def.selectionSet);
+            const complexity = selectionComplexity(
+              def.selectionSet,
+              fragments,
+              new Set(),
+            );
             if (complexity > max) {
               context.reportError(
                 new GraphQLError(
@@ -221,6 +271,12 @@ const rootValue = {
 
 const GRAPHQL_CONTENT_TYPE = "application/graphql-response+json";
 
+const graphqlError = (message, status = 400, extraHeaders = {}) =>
+  new Response(JSON.stringify({ errors: [{ message }] }), {
+    status,
+    headers: graphqlHeaders(extraHeaders),
+  });
+
 const graphqlHeaders = (extra = {}) => ({
   "content-type": GRAPHQL_CONTENT_TYPE,
   "access-control-allow-origin": "*",
@@ -229,6 +285,67 @@ const graphqlHeaders = (extra = {}) => ({
 });
 
 // --- Handler ---
+
+async function readLimitedJson(request) {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const length = Number(declaredLength);
+    if (!Number.isFinite(length) || length < 0) {
+      return {
+        error: graphqlError("Invalid Content-Length header."),
+      };
+    }
+    if (length > GRAPHQL_MAX_BODY_BYTES) {
+      return {
+        error: graphqlError("GraphQL request body is too large.", 413),
+      };
+    }
+  }
+
+  if (!request.body) {
+    return { value: null };
+  }
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > GRAPHQL_MAX_BODY_BYTES) {
+        await reader.cancel();
+        return {
+          error: graphqlError("GraphQL request body is too large.", 413),
+        };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return {
+      error: graphqlError("Request body must be valid JSON."),
+    };
+  }
+}
+
+function utf8ByteLength(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
 
 export async function handleGraphQLRequest(request, env) {
   if (request.method !== "POST") {
@@ -243,17 +360,8 @@ export async function handleGraphQLRequest(request, env) {
     );
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(
-      JSON.stringify({
-        errors: [{ message: "Request body must be valid JSON." }],
-      }),
-      { status: 400, headers: graphqlHeaders() },
-    );
-  }
+  const { value: body, error: bodyError } = await readLimitedJson(request);
+  if (bodyError) return bodyError;
 
   const { query, variables, operationName } = body || {};
   if (typeof query !== "string" || !query.trim()) {
@@ -263,6 +371,10 @@ export async function handleGraphQLRequest(request, env) {
       }),
       { status: 400, headers: graphqlHeaders() },
     );
+  }
+
+  if (utf8ByteLength(query) > GRAPHQL_MAX_QUERY_BYTES) {
+    return graphqlError("GraphQL query is too large.", 413);
   }
 
   let document;

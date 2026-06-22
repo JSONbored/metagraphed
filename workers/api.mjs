@@ -139,6 +139,8 @@ import {
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
+  MAX_STAGED_EVENTS_BYTES,
+  MAX_STAGED_EVENT_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -242,15 +244,76 @@ export default {
 
 // Sanity bounds for an authenticated, HMAC-signed staged neuron batch (the data
 // is already trusted; these are defense-in-depth caps so a malformed signed file
-// can't blow up the D1 load). netuid and uid are both u16 on-chain, so each is
+// can't blow up the D1 load). The byte cap intentionally allows the
+// expected all-subnet signed JSON envelope (~33k rows) while still bounding
+// memory use before parsing. netuid and uid are both u16 on-chain, so each is
 // capped at the u16 max (65535) — matching the existing netuid guard in
 // src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
 const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
-const MAX_STAGED_NEURONS_BYTES = 2_000_000;
+const MAX_STAGED_NEURONS_BYTES = 32_000_000;
 const MAX_STAGED_NEURON_ROWS = 50_000;
 const MAX_STAGED_NEURON_STRING_BYTES = 512;
 const MAX_STAGED_NETUID = 65_535;
 const MAX_STAGED_UID = 65_535;
+const MAX_STAGED_REFRESHED_NETUIDS = 256;
+
+function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
+  if (refreshed_netuids == null && captured_at == null) {
+    return JSON.stringify(rows);
+  }
+  return JSON.stringify({ rows, refreshed_netuids, captured_at });
+}
+
+function parseNeuronStagingMeta(envelope, rows) {
+  const hasRefreshed = envelope?.refreshed_netuids !== undefined;
+  const hasCaptured = envelope?.captured_at !== undefined;
+  if (!hasRefreshed && !hasCaptured) {
+    return { legacy: true };
+  }
+  if (!hasRefreshed || !hasCaptured) {
+    return { invalid: true };
+  }
+  const refreshed_netuids = envelope.refreshed_netuids;
+  const captured_at = envelope.captured_at;
+  if (
+    !Array.isArray(refreshed_netuids) ||
+    refreshed_netuids.length > MAX_STAGED_REFRESHED_NETUIDS ||
+    !Number.isInteger(captured_at) ||
+    captured_at < 0
+  ) {
+    return { invalid: true };
+  }
+  const refreshedSet = new Set();
+  for (const netuid of refreshed_netuids) {
+    if (
+      !Number.isInteger(netuid) ||
+      netuid < 0 ||
+      netuid > MAX_STAGED_NETUID ||
+      refreshedSet.has(netuid)
+    ) {
+      return { invalid: true };
+    }
+    refreshedSet.add(netuid);
+  }
+  for (const row of rows) {
+    if (row.captured_at !== captured_at || !refreshedSet.has(row.netuid)) {
+      return { invalid: true };
+    }
+  }
+  return { legacy: false, refreshed_netuids, captured_at };
+}
+
+async function purgeStaleNeuronRows(db, refreshed_netuids, captured_at) {
+  let purged = 0;
+  for (const netuid of refreshed_netuids) {
+    const result = await db
+      .prepare(`DELETE FROM neurons WHERE netuid = ? AND captured_at < ?`)
+      .bind(netuid, captured_at)
+      .run();
+    purged += result?.meta?.changes ?? 0;
+  }
+  return purged;
+}
 
 function utf8Bytes(value) {
   return new TextEncoder().encode(value);
@@ -314,7 +377,9 @@ function validStagedNeuronRow(row) {
 // using its existing R2 permission; we load only authenticated, bounded,
 // schema-valid rows through the METAGRAPH_HEALTH_DB binding — which needs no
 // API-token D1 permission — with PARAMETERIZED inserts (values are always bound,
-// never interpolated), then delete the object so it loads exactly once.
+// never interpolated), then delete prior-capture rows within refreshed subnets
+// so deregistered UIDs do not linger after a partial refresh. Then delete the
+// staged object so it loads exactly once.
 export async function loadStagedNeurons(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
@@ -347,14 +412,26 @@ export async function loadStagedNeurons(env) {
     await bucket.delete(STAGED_NEURONS_KEY);
     return { ok: false, reason: "too_many_rows" };
   }
-  const expected = await hmacHex(signingKey, JSON.stringify(rows));
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "unauthenticated" };
-  }
   if (!rows.length || rows.some((row) => !validStagedNeuronRow(row))) {
     await bucket.delete(STAGED_NEURONS_KEY);
     return { ok: false, reason: "invalid" };
+  }
+  const stagingMeta = parseNeuronStagingMeta(envelope, rows);
+  if (stagingMeta.invalid) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "invalid" };
+  }
+  const expected = await hmacHex(
+    signingKey,
+    neuronStagingSignPayload(
+      rows,
+      stagingMeta.legacy ? null : stagingMeta.refreshed_netuids,
+      stagingMeta.legacy ? null : stagingMeta.captured_at,
+    ),
+  );
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
   }
   const cols = NEURON_INSERT_COLUMNS;
   const colList = cols.join(",");
@@ -376,8 +453,20 @@ export async function loadStagedNeurons(env) {
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
+  let purged = 0;
+  if (!stagingMeta.legacy) {
+    try {
+      purged = await purgeStaleNeuronRows(
+        db,
+        stagingMeta.refreshed_netuids,
+        stagingMeta.captured_at,
+      );
+    } catch {
+      return { ok: false, reason: "purge_failed" };
+    }
+  }
   await bucket.delete(STAGED_NEURONS_KEY);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: rows.length, purged };
 }
 
 // Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
@@ -395,6 +484,17 @@ export async function loadStagedEvents(env) {
   const key = "events/account-events-pending.json";
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
+  // Byte cap: never materialize a pathological body. `size` is object metadata,
+  // available before the body is streamed. Do NOT delete — that would drop rows the
+  // producer staged; leave it (loud) and let the overlapping poller's next window
+  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
+  // producer, not parsed here.
+  if (Number(object.size || 0) > MAX_STAGED_EVENTS_BYTES) {
+    console.warn(
+      `loadStagedEvents: staged file ${object.size} bytes exceeds ${MAX_STAGED_EVENTS_BYTES}; skipping (poller overlap self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
+  }
   let parsed;
   try {
     parsed = await object.json();
@@ -407,13 +507,30 @@ export async function loadStagedEvents(env) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
-  const statements = eventInsertStatements(db, rows);
+  // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
+  // now; if rows remain, rewrite the object with ONLY the remainder so the next tick
+  // continues — never delete while rows are un-persisted. Order matters: write to D1
+  // FIRST, then shrink R2. A crash between them re-reads the full file next tick and
+  // re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so nothing is dropped.
+  const batch =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(0, MAX_STAGED_EVENT_ROWS)
+      : rows;
+  const remainder =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(MAX_STAGED_EVENT_ROWS)
+      : [];
+  const statements = eventInsertStatements(db, batch);
   const STMTS_PER_BATCH = 50;
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
+  if (remainder.length) {
+    await bucket.put(key, JSON.stringify(remainder));
+    return { ok: true, rows: batch.length, remaining: remainder.length };
+  }
   await bucket.delete(key);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: batch.length };
 }
 
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
@@ -517,13 +634,25 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
     // deleted (PR3). Roll the chain events the same way (#1346) before their
-    // 90-day window is pruned. Then prune + snapshot.
-    await rollupDailyUptime(env);
-    await rollupAccountEventsDaily(env).catch(() => {});
+    // 90-day window is pruned. Skip prune when either rollup fails so raw rows
+    // are never deleted without being aggregated first.
+    const uptimeRollup = await rollupDailyUptime(env);
+    const eventsRollup = await rollupAccountEventsDaily(env);
+    const snapshotPromise = writeSubnetSnapshot(env, { readArtifact });
+    if (!uptimeRollup.rolled || !eventsRollup.rolled) {
+      const snapshot = await snapshotPromise;
+      return {
+        pruned: false,
+        rollup_skipped_prune: true,
+        uptime_rolled: uptimeRollup.rolled,
+        events_rolled: eventsRollup.rolled,
+        snapshot,
+      };
+    }
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      writeSubnetSnapshot(env, { readArtifact }),
+      snapshotPromise,
     ]);
     return pruned;
   }
@@ -3391,15 +3520,17 @@ async function handleHealthRequest(request, env) {
     : null;
 
   // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
-  // MAX(observed_at) is the chain timestamp of the latest indexed event; age_seconds
-  // is ~12-30s while the streamer is live, growing toward the ~5-min poller backstop
-  // if it's down. Reported for observability (does NOT gate the HTTP status, like
-  // operational_health); best-effort + null on a cold/unbound store.
+  // The newest observed_at row is an index-friendly heartbeat for the latest
+  // indexed chain event; age_seconds is ~12-30s while the streamer is live,
+  // growing toward the ~5-min poller backstop if it's down. Reported for
+  // observability (does NOT gate the HTTP status, like operational_health);
+  // best-effort + null on a cold/unbound store.
   let chainEvents = null;
   if (bindings.health_db) {
     const rows = await d1All(
       env,
-      "SELECT MAX(block_number) AS block, MAX(observed_at) AS at FROM account_events",
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
       [],
     );
     const row = rows[0] || {};
