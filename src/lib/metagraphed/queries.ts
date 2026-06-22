@@ -1066,10 +1066,9 @@ export const subnetHealthTrendsQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-health-trends", netuid),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<{ windows?: unknown }>(
-        `/api/v1/subnets/${netuid}/health/trends`,
-        { signal },
-      );
+      const res = await apiFetch<{ windows?: unknown }>(`/api/v1/subnets/${netuid}/health/trends`, {
+        signal,
+      });
       return { data: normalizeHealthTrends(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
