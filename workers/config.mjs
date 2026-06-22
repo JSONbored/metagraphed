@@ -102,6 +102,17 @@ export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
 export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
 export const MAX_EVENTS_INGEST_BODY_BYTES = 262144; // 256 KB
 export const MAX_EVENTS_INGEST_ROWS = 500;
+// Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
+// single bounded HTTP body above, a staged file is produced by the CI poller and
+// can grow large on a backfill or a stuck window. The byte cap guards against
+// materializing a pathological body; the row cap bounds the D1 writes + subrequests
+// PER */3 tick (10 000 rows -> ~1 000 INSERT statements -> ~20 db.batch() calls,
+// far under the 1 000-subrequest limit). On overflow the drain loads up to the row
+// cap and LEAVES the remainder in R2 for the next tick — it never deletes
+// un-persisted rows; INSERT OR IGNORE on (block_number, event_index) makes any
+// re-drain idempotent.
+export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
+export const MAX_STAGED_EVENT_ROWS = 10_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;

@@ -139,6 +139,8 @@ import {
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
+  MAX_STAGED_EVENTS_BYTES,
+  MAX_STAGED_EVENT_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -395,6 +397,17 @@ export async function loadStagedEvents(env) {
   const key = "events/account-events-pending.json";
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
+  // Byte cap: never materialize a pathological body. `size` is object metadata,
+  // available before the body is streamed. Do NOT delete — that would drop rows the
+  // producer staged; leave it (loud) and let the overlapping poller's next window
+  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
+  // producer, not parsed here.
+  if (Number(object.size || 0) > MAX_STAGED_EVENTS_BYTES) {
+    console.warn(
+      `loadStagedEvents: staged file ${object.size} bytes exceeds ${MAX_STAGED_EVENTS_BYTES}; skipping (poller overlap self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
+  }
   let parsed;
   try {
     parsed = await object.json();
@@ -407,13 +420,30 @@ export async function loadStagedEvents(env) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
-  const statements = eventInsertStatements(db, rows);
+  // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
+  // now; if rows remain, rewrite the object with ONLY the remainder so the next tick
+  // continues — never delete while rows are un-persisted. Order matters: write to D1
+  // FIRST, then shrink R2. A crash between them re-reads the full file next tick and
+  // re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so nothing is dropped.
+  const batch =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(0, MAX_STAGED_EVENT_ROWS)
+      : rows;
+  const remainder =
+    rows.length > MAX_STAGED_EVENT_ROWS
+      ? rows.slice(MAX_STAGED_EVENT_ROWS)
+      : [];
+  const statements = eventInsertStatements(db, batch);
   const STMTS_PER_BATCH = 50;
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
+  if (remainder.length) {
+    await bucket.put(key, JSON.stringify(remainder));
+    return { ok: true, rows: batch.length, remaining: remainder.length };
+  }
   await bucket.delete(key);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: batch.length };
 }
 
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
