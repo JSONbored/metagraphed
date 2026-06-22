@@ -602,10 +602,17 @@ export async function handleEventIngest(request, env) {
     );
   }
   const rows = validEventRows(incoming);
+  // Report rows ACTUALLY inserted, not rows validated. The statements use
+  // INSERT OR IGNORE on (block_number, event_index), and the streamer/poller
+  // ingest windows overlap by design, so duplicates are the normal case and are
+  // silently dropped — `rows.length` over-reports. Sum the per-statement
+  // D1 `meta.changes` instead.
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(eventInsertStatements(db, rows));
+    const results = await db.batch(eventInsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
-  return new Response(JSON.stringify({ ok: true, inserted: rows.length }), {
+  return new Response(JSON.stringify({ ok: true, inserted }), {
     status: 200,
     headers: { "content-type": JSON_CONTENT_TYPE },
   });
