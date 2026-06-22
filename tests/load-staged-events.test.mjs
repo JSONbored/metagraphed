@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleScheduled, loadStagedEvents } from "../workers/api.mjs";
-import { EVENTS_LOAD_CRON } from "../workers/config.mjs";
+import {
+  EVENTS_LOAD_CRON,
+  MAX_STAGED_EVENTS_BYTES,
+  MAX_STAGED_EVENT_ROWS,
+} from "../workers/config.mjs";
 
 function eventRow(block_number, event_index) {
   return {
@@ -162,5 +166,172 @@ test("handleScheduled fast-load cron drains staged batches + skips the probe (#1
   assert.ok(
     drained.includes("events/account-events-pending.json"),
     "the staged event batch was loaded + deleted",
+  );
+});
+
+// ---- input caps on the staged drain (parity with the HTTP ingest caps) -------
+
+test("loadStagedEvents caps rows/tick + leaves the remainder in R2 (not deleted)", async () => {
+  const N = MAX_STAGED_EVENT_ROWS + 5;
+  const rows = Array.from({ length: N }, (_, i) => eventRow(1000 + i, i));
+  const puts = [];
+  const deleted = [];
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return {
+          size: 1024,
+          async json() {
+            return rows;
+          },
+        };
+      },
+      async put(key, body) {
+        puts.push({ key, body });
+      },
+      async delete(key) {
+        deleted.push(key);
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {},
+    },
+  };
+  const r = await loadStagedEvents(env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, MAX_STAGED_EVENT_ROWS);
+  assert.equal(r.remaining, 5);
+  assert.deepEqual(deleted, [], "must NOT delete while rows are un-persisted");
+  assert.equal(puts.length, 1, "remainder rewritten for the next tick");
+  assert.equal(
+    JSON.parse(puts[0].body).length,
+    5,
+    "exactly the un-loaded rows are kept",
+  );
+});
+
+test("loadStagedEvents drains a >cap file across ticks without dropping rows", async () => {
+  const N = MAX_STAGED_EVENT_ROWS + 5;
+  const all = Array.from({ length: N }, (_, i) => eventRow(1000 + i, i));
+  let stored = JSON.stringify(all); // a stateful in-memory R2 object
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return stored == null
+          ? null
+          : {
+              size: stored.length,
+              async json() {
+                return JSON.parse(stored);
+              },
+            };
+      },
+      async put(_key, body) {
+        stored = body;
+      },
+      async delete() {
+        stored = null;
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {},
+    },
+  };
+  const t1 = await loadStagedEvents(env);
+  assert.equal(t1.rows, MAX_STAGED_EVENT_ROWS);
+  assert.equal(t1.remaining, 5);
+  assert.notEqual(stored, null, "remainder stays in R2 after tick 1");
+  const t2 = await loadStagedEvents(env);
+  assert.equal(t2.rows, 5);
+  assert.equal(t2.remaining, undefined);
+  assert.equal(stored, null, "object deleted only after the last row drained");
+  assert.equal(
+    t1.rows + t2.rows,
+    N,
+    "every row loaded across ticks — none dropped",
+  );
+});
+
+test("loadStagedEvents skips an over-byte-cap file without parsing or deleting it", async () => {
+  let jsonCalled = false;
+  const deleted = [];
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return {
+          size: MAX_STAGED_EVENTS_BYTES + 1,
+          async json() {
+            jsonCalled = true;
+            return [];
+          },
+        };
+      },
+      async put() {},
+      async delete(key) {
+        deleted.push(key);
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {},
+    },
+  };
+  const r = await loadStagedEvents(env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "too_large");
+  assert.equal(jsonCalled, false, "never materialized the oversized body");
+  assert.deepEqual(
+    deleted,
+    [],
+    "must NOT delete — that would drop staged rows",
+  );
+});
+
+test("loadStagedEvents leaves the file intact if a D1 batch throws (no drop on crash)", async () => {
+  const rows = Array.from({ length: 12 }, (_, i) => eventRow(1000 + i, i));
+  const puts = [];
+  const deleted = [];
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return {
+          size: 256,
+          async json() {
+            return rows;
+          },
+        };
+      },
+      async put(key, body) {
+        puts.push({ key, body });
+      },
+      async delete(key) {
+        deleted.push(key);
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {
+        throw new Error("d1 down");
+      },
+    },
+  };
+  // D1 writes happen BEFORE the R2 shrink, so a write failure must leave the full
+  // file in place to re-drain next tick — never a partial put/delete.
+  await assert.rejects(loadStagedEvents(env));
+  assert.deepEqual(puts, [], "no remainder written on failure");
+  assert.deepEqual(
+    deleted,
+    [],
+    "object NOT deleted — full file re-drains next tick",
   );
 });

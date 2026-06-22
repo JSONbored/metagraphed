@@ -893,7 +893,13 @@ function shiftDate(isoDate, days) {
 // {surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status}.
 // Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio
 // from the summed ok_count/samples (exact, not an average of ratios).
-export function formatUptime({ netuid, window, rows, now = null }) {
+export function formatUptime({
+  netuid,
+  window,
+  observedAt = null,
+  rows,
+  now = null,
+}) {
   const reliabilityRows = (rows || []).map((row) => ({
     ...row,
     surface_id: surfaceLookupKey(row),
@@ -956,6 +962,7 @@ export function formatUptime({ netuid, window, rows, now = null }) {
     schema_version: 1,
     netuid,
     window: window || null,
+    observed_at: observedAt || null,
     source: "live-cron-prober",
     reliability: reliability.subnet,
     surfaces,

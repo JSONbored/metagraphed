@@ -1961,6 +1961,7 @@ describe("formatUptime (daily uptime history)", () => {
     });
     assert.equal(out.netuid, 7);
     assert.equal(out.window, "90d");
+    assert.equal(out.observed_at, null);
     assert.equal(out.source, "live-cron-prober");
     // sorted by surface_id (a before b)
     assert.equal(out.surfaces[0].surface_id, "a");
@@ -2020,6 +2021,17 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.reliability, null);
   });
 
+  test("propagates observedAt into observed_at", () => {
+    const ts = "2026-06-22T00:00:00.000Z";
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      observedAt: ts,
+      rows: [],
+    });
+    assert.equal(out.observed_at, ts);
+  });
+
   test("handles null ratios/latency, missing status, zero samples, and no window", () => {
     const out = formatUptime({
       netuid: 7,
@@ -2044,6 +2056,7 @@ describe("formatUptime (daily uptime history)", () => {
 
 describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
   test("serves the live daily uptime rollup from D1", async () => {
+    const UPTIME_RUN = "2026-06-22T01:00:00.000Z";
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
@@ -2056,6 +2069,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
           status: "ok",
         },
       ]),
+      METAGRAPH_CONTROL: kvWith({ "health:meta": { last_run_at: UPTIME_RUN } }),
     });
     const res = await handleRequest(
       req("/api/v1/subnets/7/uptime?window=1y"),
@@ -2066,9 +2080,11 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     const body = await res.json();
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "1y");
+    assert.equal(body.data.observed_at, UPTIME_RUN);
     assert.equal(body.data.surfaces[0].surface_id, "7:subnet-api:x");
     assert.equal(body.data.surfaces[0].uptime_ratio, 1);
     assert.equal(body.meta.source, "live-cron-prober");
+    assert.equal(body.meta.generated_at, UPTIME_RUN);
   });
 
   test("defaults to 90d and returns an empty series when D1 is cold", async () => {
