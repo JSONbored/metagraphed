@@ -4172,11 +4172,19 @@ async function handleAskRequest(request, env) {
     );
   }
   try {
+    // Resolve live probe health once and inject it so /ask context reflects the
+    // current operational status of each subnet's surfaces, not the build-time
+    // "unknown" stub baked into the agent-catalog artifact.
+    const liveHealth = await resolveLiveHealth({
+      readHealthKv,
+      env,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
     const data = await askQuestion(
       env,
       body?.question,
       { topK: body?.topK },
-      { readArtifact },
+      { readArtifact, liveHealth, overlayCatalogIndex },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
