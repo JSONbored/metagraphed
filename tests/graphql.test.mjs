@@ -7,6 +7,7 @@ import {
   maxComplexityRule,
   maxDepthRule,
 } from "../src/graphql.mjs";
+import { handleRequest } from "../workers/api.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
@@ -29,6 +30,35 @@ describe("handleGraphQLRequest — method guard", () => {
     const body = await res.json();
     assert.ok(body.errors[0].message.includes("POST"));
     assert.equal(res.headers.get("allow"), "POST");
+  });
+});
+
+describe("handleRequest — GraphQL routing", () => {
+  test("POST /api/v1/graphql reaches the GraphQL handler", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    });
+    const res = await handleRequest(req, emptyEnv, {});
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("allow"), null);
+    assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
+  });
+
+  test("OPTIONS /api/v1/graphql advertises POST for CORS preflight", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "OPTIONS",
+      }),
+      emptyEnv,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
   });
 });
 

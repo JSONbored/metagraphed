@@ -589,6 +589,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleEventIngest(request, env);
   }
 
+  // GraphQL read-only query layer over existing artifacts (issue #751). Runs
+  // before the read-only method gate because GraphQL accepts POST requests.
+  if (url.pathname === "/api/v1/graphql") {
+    return handleGraphQLRequest(request, env);
+  }
+
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -673,11 +679,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // artifact-backed) like /api/v1/events; degrades to 503 when AI is off.
   if (url.pathname === "/api/v1/search/semantic") {
     return handleSemanticSearchRequest(request, env, url);
-  }
-
-  // GraphQL read-only query layer over existing artifacts (issue #751).
-  if (url.pathname === "/api/v1/graphql") {
-    return handleGraphQLRequest(request, env);
   }
 
   // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
@@ -3995,7 +3996,11 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
-  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+  } else if (
+    url.pathname === "/mcp" ||
+    url.pathname === "/api/v1/ask" ||
+    url.pathname === "/api/v1/graphql"
+  ) {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
