@@ -554,6 +554,28 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.date, "2026-06-10");
     assert.equal(db.calls.batched[0].length, 2);
   });
+  test("still writes structural rows when optional economics read throws", async () => {
+    const db = fakeBatchDb();
+    const r = await writeSubnetSnapshot(
+      {},
+      {
+        db,
+        readArtifact: (_env, path) => {
+          if (path === "/metagraph/economics.json") {
+            throw new Error("malformed economics artifact");
+          }
+          return Promise.resolve(profiles);
+        },
+        now: () => Date.UTC(2026, 5, 10),
+      },
+    );
+
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 2);
+    assert.equal(db.calls.batched[0].length, 2);
+    assert.equal(db.calls.batched[0][0].__params[7], null);
+    assert.equal(db.calls.batched[0][0].__params[11], null);
+  });
   test("returns write_failed when the batch throws", async () => {
     const db = {
       prepare: () => ({ bind: () => ({}) }),
@@ -564,6 +586,46 @@ describe("writeSubnetSnapshot", () => {
       { db, readArtifact: reader(profiles) },
     );
     assert.equal(r.reason, "write_failed");
+  });
+  test("backfills NULL economics via COALESCE DO UPDATE, not DO NOTHING", async () => {
+    let captured = "";
+    const db = {
+      prepare(sql) {
+        captured = sql;
+        return { bind: () => ({}) };
+      },
+      batch: (s) => Promise.resolve(s.map(() => ({}))),
+    };
+    await writeSubnetSnapshot(
+      {},
+      { db, readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
+    );
+    // A later same-day fire backfills economics rather than freezing the row.
+    assert.match(
+      captured,
+      /ON CONFLICT \(netuid, snapshot_date\) DO UPDATE SET/,
+    );
+    assert.doesNotMatch(captured, /DO NOTHING/);
+    // Each economics column is COALESCE(existing, excluded): fills a NULL, but a
+    // later NULL can never wipe an earlier fire's good value.
+    for (const col of [
+      "validator_count",
+      "miner_count",
+      "total_stake_tao",
+      "alpha_price_tao",
+      "emission_share",
+    ]) {
+      assert.match(
+        captured,
+        new RegExp(
+          `${col} = COALESCE\\(subnet_snapshots\\.${col}, excluded\\.${col}\\)`,
+        ),
+      );
+    }
+    // Structural columns + captured_at stay owned by the first fire (not in SET).
+    for (const col of ["completeness_score", "surface_count", "captured_at"]) {
+      assert.doesNotMatch(captured, new RegExp(`${col}\\s*=`));
+    }
   });
 });
 
@@ -707,6 +769,16 @@ describe("analytics routes (cold local D1)", () => {
       assert.equal(body.meta.parameter, parameter);
     }
   });
+  test("invalid window value names the bad value and valid options in the error", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
+      env,
+    );
+    assert.ok(body.error.message.includes("90d"), body.error.message);
+    assert.ok(body.error.message.includes("7d"), body.error.message);
+    assert.ok(body.error.message.includes("30d"), body.error.message);
+  });
+
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",

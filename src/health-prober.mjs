@@ -748,7 +748,12 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
-  const economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  let economicsResult;
+  try {
+    economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  } catch {
+    economicsResult = null;
+  }
   const economicsByNetuid = new Map(
     (Array.isArray(economicsResult?.data?.subnets)
       ? economicsResult.data.subnets
@@ -758,6 +763,13 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
 
   const date = new Date(now()).toISOString().slice(0, 10);
   const capturedAt = now();
+  // The structural columns + captured_at are owned by the first same-day fire.
+  // The economics columns can arrive late (economics.json is pure chain state
+  // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
+  // would freeze a NULL-economics first fire and the 23 later hourly fires could
+  // never backfill it — a permanent gap in the trajectory series. Backfill them
+  // with COALESCE(existing, excluded): a later fire fills a NULL, but a later
+  // NULL can never wipe an earlier fire's good value.
   const stmt = db.prepare(
     `INSERT INTO subnet_snapshots
        (netuid, snapshot_date, completeness_score, surface_count,
@@ -765,7 +777,12 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
         validator_count, miner_count, total_stake_tao, alpha_price_tao,
         emission_share, captured_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (netuid, snapshot_date) DO NOTHING`,
+     ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
+       validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
+       miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
+       total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
+       alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
+       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`,
   );
   const statements = profiles
     .filter((profile) => Number.isInteger(profile.netuid))

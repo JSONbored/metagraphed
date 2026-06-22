@@ -2356,6 +2356,22 @@ describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () 
     assert.deepEqual(sink.params, [7, 12, "2026-05-14"]);
   });
 
+  test("weights the latency mean by healthy readings, not total probes", async () => {
+    // Regression for the badge under-scoring failure-heavy days: avg_latency_ms
+    // is a success-only mean, so re-aggregating it must weight by latency_samples
+    // (healthy readings), not samples (total probes incl. failures). Mirrors the
+    // canonical dailyLatencyColumns() helper. The mocked .first() can't run SQL,
+    // so assert the weighting lives in the emitted query.
+    const sink = {};
+    await loadReliabilityAggregate({
+      db: aggregateDb({ samples: 10, ok_count: 8 }, sink),
+      netuids: [7],
+    });
+    assert.match(sink.sql, /COALESCE\(latency_samples, samples\)/);
+    // The bare `avg_latency_ms * samples` total-probe weighting must be gone.
+    assert.doesNotMatch(sink.sql, /avg_latency_ms \* samples\b/);
+  });
+
   test("dedupes netuids and ignores non-integers", async () => {
     const sink = {};
     await loadReliabilityAggregate({

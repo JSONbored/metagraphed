@@ -913,6 +913,24 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "account-summary",
+    "/metagraph/accounts/{ss58}.json",
+    "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+    "AccountSummaryArtifact",
+  ),
+  artifact(
+    "account-events",
+    "/metagraph/accounts/{ss58}/events.json",
+    "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events (no static file).",
+    "AccountEventsArtifact",
+  ),
+  artifact(
+    "account-subnets",
+    "/metagraph/accounts/{ss58}/subnets.json",
+    "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
+    "AccountSubnetsArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -1531,6 +1549,43 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "account-summary",
+    "GET",
+    "/api/v1/accounts/{ss58}",
+    "/metagraph/accounts/{ss58}.json",
+    "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.",
+    "short",
+    ["accounts", "analytics"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-events",
+    "GET",
+    "/api/v1/accounts/{ss58}/events",
+    "/metagraph/accounts/{ss58}/events.json",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-subnets",
+    "GET",
+    "/api/v1/accounts/{ss58}/subnets",
+    "/metagraph/accounts/{ss58}/subnets.json",
+    "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
+    "short",
+    ["accounts", "subnets"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "subnet-uptime",
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
@@ -1980,6 +2035,7 @@ export function compileRoutePattern(pathTemplate) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{uid\}/g, "__METAGRAPH_UID__")
+    .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
@@ -1987,6 +2043,7 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
     .replace(/__METAGRAPH_UID__/g, "(?<uid>\\d+)")
+    .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
     .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");

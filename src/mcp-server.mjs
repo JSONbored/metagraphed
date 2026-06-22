@@ -41,6 +41,7 @@ import {
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.mjs";
+import { keywordScore, queryTerms } from "./keyword-search.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -262,15 +263,28 @@ async function resolveNetuid(ctx, args) {
 // Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
 // the AI layer is available, else keyword overlap over the enriched search index
 // (categories + service_kinds). Returns the discovery mode + ordered candidates.
-async function rankSubnetsForTask(ctx, task, poolSize) {
+async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
+  // Only subnets exposing callable services can perform a task, so apply the
+  // callability filter BEFORE truncating to the pool. Otherwise a callable
+  // subnet ranked behind `poolSize` non-callable matches is cut from the pool
+  // and the tool falsely reports "no callable subnet matched". (Mirrors the
+  // filter-before-slice order in find_subnets_by_capability.)
+  const isCallable = (netuid) => callableByNetuid.has(netuid);
   if (aiEnabled(ctx.env)) {
     try {
       const out = await semanticSearch(ctx.env, task, {
         limit: Math.min(poolSize, 20),
       });
       const ranked = (out.results || [])
-        .filter((r) => r.type === "subnet" && Number.isInteger(r.netuid))
+        .filter(
+          (r) =>
+            r.type === "subnet" &&
+            Number.isInteger(r.netuid) &&
+            isCallable(r.netuid),
+        )
         .map((r) => ({ netuid: r.netuid, relevance: r.score }));
+      // Only commit to semantic mode when it yields callable hits; a pool of
+      // purely non-callable matches falls through to keyword discovery.
       if (ranked.length > 0) return { mode: "semantic", ranked };
     } catch {
       // AI hiccup → fall back to keyword discovery below.
@@ -285,7 +299,7 @@ async function rankSubnetsForTask(ctx, task, poolSize) {
       netuid: doc.netuid,
       relevance: scoreDocument(doc, terms),
     }))
-    .filter((entry) => entry.relevance > 0)
+    .filter((entry) => entry.relevance > 0 && isCallable(entry.netuid))
     .sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid)
     .slice(0, poolSize);
   return { mode: "keyword", ranked };
@@ -318,30 +332,17 @@ function clampLimit(value, fallback, max) {
   return Math.max(1, Math.min(max, Math.floor(value)));
 }
 
-// Score a search document against the query terms: how many distinct terms
-// appear as substrings of the document's title/subtitle/tokens haystack.
+// A search.json document → keywordScore shape: title/slug are identity; subtitle
+// and tokens (which already fold in categories/service kinds) are recall-only.
 function scoreDocument(doc, terms) {
-  const haystack = [
-    doc.title,
-    doc.subtitle,
-    doc.slug,
-    ...(Array.isArray(doc.tokens) ? doc.tokens : []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  let score = 0;
-  for (const term of terms) {
-    if (haystack.includes(term)) score += 1;
-  }
-  return score;
-}
-
-function queryTerms(query) {
-  return query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((term) => term.length > 0);
+  return keywordScore(
+    {
+      name: doc.title,
+      slug: doc.slug,
+      text: [doc.subtitle, ...(Array.isArray(doc.tokens) ? doc.tokens : [])],
+    },
+    terms,
+  );
 }
 
 const COVERAGE_DEPTH_TIERS = [
@@ -641,22 +642,22 @@ export const MCP_TOOLS = [
       const terms = queryTerms(capability);
       const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
       const ranked = subnets
-        .map((subnet) => {
-          const haystack = [
-            subnet.name,
-            subnet.slug,
-            ...(Array.isArray(subnet.categories) ? subnet.categories : []),
-            ...(Array.isArray(subnet.service_kinds)
-              ? subnet.service_kinds
-              : []),
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          let score = 0;
-          for (const term of terms) if (haystack.includes(term)) score += 1;
-          return { subnet, score };
-        })
+        .map((subnet) => ({
+          subnet,
+          score: keywordScore(
+            {
+              name: subnet.name,
+              slug: subnet.slug,
+              text: [
+                ...(Array.isArray(subnet.categories) ? subnet.categories : []),
+                ...(Array.isArray(subnet.service_kinds)
+                  ? subnet.service_kinds
+                  : []),
+              ],
+            },
+            terms,
+          ),
+        }))
         .filter((entry) => entry.score > 0 && entry.subnet.callable_count > 0)
         .sort(
           (a, b) =>
@@ -1222,13 +1223,18 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
-      const { mode, ranked } = await rankSubnetsForTask(ctx, task, 50);
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
       );
       const byNetuid = new Map(
         (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
+      );
+      const { mode, ranked } = await rankSubnetsForTask(
+        ctx,
+        task,
+        50,
+        byNetuid,
       );
       const results = [];
       for (const { netuid, relevance } of ranked) {
