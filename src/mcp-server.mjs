@@ -261,14 +261,22 @@ async function resolveNetuid(ctx, args) {
 // Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
 // the AI layer is available, else keyword overlap over the enriched search index
 // (categories + service_kinds). Returns the discovery mode + ordered candidates.
-async function rankSubnetsForTask(ctx, task, poolSize) {
+// byNetuid is the callable catalog map; both branches filter to callable-only
+// entries before truncating to poolSize so the slice never drops callable subnets
+// behind non-callable ones (see issue #1377).
+async function rankSubnetsForTask(ctx, task, poolSize, byNetuid) {
   if (aiEnabled(ctx.env)) {
     try {
       const out = await semanticSearch(ctx.env, task, {
         limit: Math.min(poolSize, 20),
       });
       const ranked = (out.results || [])
-        .filter((r) => r.type === "subnet" && Number.isInteger(r.netuid))
+        .filter(
+          (r) =>
+            r.type === "subnet" &&
+            Number.isInteger(r.netuid) &&
+            byNetuid.has(r.netuid),
+        )
         .map((r) => ({ netuid: r.netuid, relevance: r.score }));
       if (ranked.length > 0) return { mode: "semantic", ranked };
     } catch {
@@ -279,7 +287,7 @@ async function rankSubnetsForTask(ctx, task, poolSize) {
   const terms = queryTerms(task);
   const docs = Array.isArray(index.documents) ? index.documents : [];
   const ranked = docs
-    .filter((doc) => doc.type === "subnet")
+    .filter((doc) => doc.type === "subnet" && byNetuid.has(doc.netuid))
     .map((doc) => ({
       netuid: doc.netuid,
       relevance: scoreDocument(doc, terms),
@@ -1146,7 +1154,8 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
-      const { mode, ranked } = await rankSubnetsForTask(ctx, task, 50);
+      // Load the callable catalog first so rankSubnetsForTask can apply the
+      // callability filter before truncating to the pool size (issue #1377).
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
@@ -1154,10 +1163,16 @@ export const MCP_TOOLS = [
       const byNetuid = new Map(
         (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
       );
+      const { mode, ranked } = await rankSubnetsForTask(
+        ctx,
+        task,
+        50,
+        byNetuid,
+      );
       const results = [];
       for (const { netuid, relevance } of ranked) {
         const entry = byNetuid.get(netuid);
-        if (!entry) continue; // Only subnets with callable services can do a task.
+        if (!entry) continue; // Safety net — all ranked entries are callable.
         results.push({
           netuid,
           name: entry.name,

@@ -2082,12 +2082,84 @@ describe("MCP goal-shaped tools — branch coverage", () => {
 
   test("find_subnet_for_task tolerates a catalog with no subnets field", async () => {
     const env = aiEnvWithMatches([1, 2]);
+    // After #1377 the callable catalog is loaded before ranking, so semantic
+    // results are filtered against the (empty) byNetuid map and fall through to
+    // keyword. Include an empty search.json so keyword can load without throwing.
     const res = await callTool(
       "find_subnet_for_task",
       { task: "anything" },
-      { deps: makeDeps({ "/metagraph/agent-catalog.json": {} }), env },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog.json": {},
+          "/metagraph/search.json": { documents: [] },
+        }),
+        env,
+      },
     );
     assert.equal(res.body.result.structuredContent.count, 0);
+  });
+
+  test("find_subnet_for_task returns the callable subnet even when 50+ non-callable subnets rank higher (regression #1377)", async () => {
+    // 51 non-callable subnets (not in catalog) that strongly match the task term
+    // would fill and exhaust the 50-entry pool before the fix, silently dropping
+    // the one callable subnet. After the fix the callability filter is applied
+    // before the slice so the callable subnet always surfaces.
+    const nonCallableCount = 51;
+    const nonCallableDocs = Array.from(
+      { length: nonCallableCount },
+      (_, i) => ({
+        id: `subnet:${i + 1}`,
+        type: "subnet",
+        netuid: i + 1,
+        slug: `sn-${i + 1}`,
+        title: `Non-callable ${i + 1}`,
+        subtitle: "data api scraping",
+        tokens: ["data", "api", "scraping"],
+      }),
+    );
+    // Callable subnet scores lower (fewer matching tokens).
+    const callableDoc = {
+      id: "subnet:99",
+      type: "subnet",
+      netuid: 99,
+      slug: "sn-99",
+      title: "Callable Data",
+      subtitle: "data",
+      tokens: ["data"],
+    };
+    const deps = makeDeps({
+      "/metagraph/search.json": {
+        documents: [...nonCallableDocs, callableDoc],
+      },
+      "/metagraph/agent-catalog.json": {
+        subnets: [
+          {
+            netuid: 99,
+            name: "Callable Data",
+            slug: "sn-99",
+            categories: ["data"],
+            integration_readiness: 60,
+            callable_count: 1,
+            service_kinds: ["subnet-api"],
+            base_url: "https://callable.io",
+            health: "operational",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "data api scraping", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(
+      out.count,
+      1,
+      "callable subnet must be returned even when non-callable subnets fill the unfiltered top-50",
+    );
+    assert.equal(out.results[0].netuid, 99);
   });
 
   describe("live health overlay (warm KV overrides stale static)", () => {
