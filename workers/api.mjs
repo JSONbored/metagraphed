@@ -99,12 +99,13 @@ import {
 } from "../src/metagraph-neurons.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
-  EVENT_INSERT_COLUMNS,
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
+  eventInsertStatements,
   rollupAccountEventsDaily,
   pruneAccountEvents,
+  validEventRows,
 } from "../src/account-events.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
@@ -128,6 +129,7 @@ import {
   DAY_MS,
   DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
+  EVENTS_INGEST_TOKEN_HEADER,
   EVENTS_LOAD_CRON,
   HEALTH_PRUNE_CRON,
   HEALTH_TREND_WINDOWS,
@@ -135,6 +137,8 @@ import {
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
   MAX_BULK_TREND_ROWS,
+  MAX_EVENTS_INGEST_BODY_BYTES,
+  MAX_EVENTS_INGEST_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
@@ -307,50 +311,102 @@ export async function loadStagedEvents(env) {
   const key = "events/account-events-pending.json";
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
-  let rows;
+  let parsed;
   try {
-    rows = await object.json();
+    parsed = await object.json();
   } catch {
     await bucket.delete(key);
     return { ok: false, reason: "parse_failed" };
   }
-  rows = Array.isArray(rows)
-    ? rows.filter(
-        (r) =>
-          Number.isInteger(r?.block_number) &&
-          Number.isInteger(r?.event_index) &&
-          typeof r?.event_kind === "string" &&
-          Number.isInteger(r?.observed_at),
-      )
-    : [];
+  const rows = validEventRows(parsed);
   if (!rows.length) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
-  const cols = EVENT_INSERT_COLUMNS;
-  const colList = cols.join(",");
-  const ROWS_PER_STMT = 10; // 9 cols x 10 = 90 bound params (< D1's 100 limit)
+  const statements = eventInsertStatements(db, rows);
   const STMTS_PER_BATCH = 50;
-  const statements = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
-    const chunk = rows.slice(i, i + ROWS_PER_STMT);
-    const tuples = chunk
-      .map(() => `(${cols.map(() => "?").join(",")})`)
-      .join(",");
-    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
-    statements.push(
-      db
-        .prepare(
-          `INSERT OR IGNORE INTO account_events (${colList}) VALUES ${tuples}`,
-        )
-        .bind(...values),
-    );
-  }
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
   await bucket.delete(key);
   return { ok: true, rows: rows.length };
+}
+
+// POST /api/v1/internal/events (#1360): the realtime ingest path for the
+// finalized-head streamer (#1361). Disabled (503) until METAGRAPH_EVENTS_INGEST_SECRET
+// is configured; then authenticated by a constant-time token compare. The body is
+// an array of account_events rows (or {events:[...]}), loaded with the SAME
+// parameterized INSERT OR IGNORE as the staged-batch loader — idempotent on
+// (block_number, event_index), values always bound. NOT in the public contract.
+export async function handleEventIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "events_ingest_disabled",
+      "Realtime event ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "Event store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_EVENTS_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_EVENTS_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of event rows (or {events:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.events)
+      ? parsed.events
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of event rows (or {events:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_EVENTS_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_EVENTS_INGEST_ROWS} events per request.`,
+      413,
+    );
+  }
+  const rows = validEventRows(incoming);
+  if (rows.length) {
+    await db.batch(eventInsertStatements(db, rows));
+  }
+  return new Response(JSON.stringify({ ok: true, inserted: rows.length }), {
+    status: 200,
+    headers: { "content-type": JSON_CONTENT_TYPE },
+  });
 }
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
@@ -441,6 +497,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // and degrades to 503 when the AI bindings/kill-switch are absent.
   if (url.pathname === "/api/v1/ask") {
     return handleAskRequest(request, env);
+  }
+
+  // Realtime chain-event ingest (#1360): secret-gated internal write path for the
+  // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
+  if (url.pathname === "/api/v1/internal/events") {
+    return handleEventIngest(request, env);
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {
