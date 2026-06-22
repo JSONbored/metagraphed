@@ -254,12 +254,14 @@ describe("/health readiness", () => {
 
   test("reports chain-event index freshness (#1361)", async () => {
     const atMs = Date.now() - 18_000; // latest indexed event ~18s ago
+    const preparedSql = [];
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
       METAGRAPH_HEALTH_DB: {
-        prepare() {
+        prepare(sql) {
+          preparedSql.push(sql);
           return {
             bind() {
               return {
@@ -283,6 +285,10 @@ describe("/health readiness", () => {
       `age_seconds out of range: ${body.chain_events.age_seconds}`,
     );
     assert.ok(body.chain_events.latest_event_at.startsWith("20"));
+    assert.deepEqual(preparedSql, [
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
+    ]);
   });
 
   test("chain_events is schema-stable nulls when the event tier is cold (#1361)", async () => {

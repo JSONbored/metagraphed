@@ -3403,15 +3403,17 @@ async function handleHealthRequest(request, env) {
     : null;
 
   // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
-  // MAX(observed_at) is the chain timestamp of the latest indexed event; age_seconds
-  // is ~12-30s while the streamer is live, growing toward the ~5-min poller backstop
-  // if it's down. Reported for observability (does NOT gate the HTTP status, like
-  // operational_health); best-effort + null on a cold/unbound store.
+  // The newest observed_at row is an index-friendly heartbeat for the latest
+  // indexed chain event; age_seconds is ~12-30s while the streamer is live,
+  // growing toward the ~5-min poller backstop if it's down. Reported for
+  // observability (does NOT gate the HTTP status, like operational_health);
+  // best-effort + null on a cold/unbound store.
   let chainEvents = null;
   if (bindings.health_db) {
     const rows = await d1All(
       env,
-      "SELECT MAX(block_number) AS block, MAX(observed_at) AS at FROM account_events",
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
       [],
     );
     const row = rows[0] || {};
