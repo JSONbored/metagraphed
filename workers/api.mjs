@@ -1859,7 +1859,7 @@ async function handleBulkHealthTrends(
       windows,
       windowDays: HEALTH_TREND_WINDOWS,
     });
-    return envelopeResponse(
+    const response = envelopeResponse(
       request,
       {
         data,
@@ -1874,6 +1874,9 @@ async function handleBulkHealthTrends(
       },
       "short",
     );
+    return hasD1FallbackRows(rows)
+      ? markD1FallbackResponse(response)
+      : response;
   });
 }
 
@@ -1917,7 +1920,7 @@ async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
           );
           return [label, result?.results || []];
         } catch {
-          return [label, []];
+          return [label, markD1FallbackRows([])];
         }
       }),
     );
@@ -1930,7 +1933,7 @@ async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
       observedAt: meta?.last_run_at || null,
       windows,
     });
-    return envelopeResponse(
+    const response = envelopeResponse(
       request,
       {
         data,
@@ -1945,6 +1948,9 @@ async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
       },
       "short",
     );
+    return hasD1FallbackRows(...Object.values(windows))
+      ? markD1FallbackResponse(response)
+      : response;
   });
 }
 
@@ -1992,6 +1998,25 @@ function analyticsQueryError(error) {
   });
 }
 
+let d1FallbackGeneration = 0;
+const D1_FALLBACK_ROWS = new WeakSet();
+const D1_FALLBACK_RESPONSES = new WeakSet();
+
+function markD1FallbackRows(rows = []) {
+  d1FallbackGeneration += 1;
+  D1_FALLBACK_ROWS.add(rows);
+  return rows;
+}
+
+function hasD1FallbackRows(...rowSets) {
+  return rowSets.some((rows) => D1_FALLBACK_ROWS.has(rows));
+}
+
+function markD1FallbackResponse(response) {
+  D1_FALLBACK_RESPONSES.add(response);
+  return response;
+}
+
 async function d1All(env, sql, params) {
   const db = env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return [];
@@ -2005,7 +2030,7 @@ async function d1All(env, sql, params) {
     );
     return result?.results || [];
   } catch {
-    return [];
+    return markD1FallbackRows([]);
   }
 }
 
@@ -2061,10 +2086,16 @@ async function withEdgeCache(request, ctx, env, keyParts, buildResponse) {
       return hit;
     }
   }
+  const fallbackGeneration = d1FallbackGeneration;
   const response = await buildResponse();
   // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
   // a 400 bad-window or 5xx must not be persisted).
-  if (cacheKey && response.status === 200) {
+  if (
+    cacheKey &&
+    response.status === 200 &&
+    !D1_FALLBACK_RESPONSES.has(response) &&
+    d1FallbackGeneration === fallbackGeneration
+  ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
   return response;
@@ -2093,7 +2124,7 @@ async function handleHealthPercentiles(request, env, netuid, url, ctx = {}) {
       observedAt: meta?.last_run_at || null,
       rows,
     });
-    return envelopeResponse(
+    const response = envelopeResponse(
       request,
       {
         data,
@@ -2105,6 +2136,9 @@ async function handleHealthPercentiles(request, env, netuid, url, ctx = {}) {
       },
       "short",
     );
+    return hasD1FallbackRows(rows)
+      ? markD1FallbackResponse(response)
+      : response;
   });
 }
 
@@ -2179,7 +2213,7 @@ async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
       incidentRows,
       maxIncidents: MAX_INCIDENT_ROWS,
     });
-    return envelopeResponse(
+    const response = envelopeResponse(
       request,
       {
         data,
@@ -2191,6 +2225,9 @@ async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
       },
       "short",
     );
+    return hasD1FallbackRows(slaRows, incidentRows)
+      ? markD1FallbackResponse(response)
+      : response;
   });
 }
 
