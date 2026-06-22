@@ -129,3 +129,73 @@ export async function pruneAccountEvents(env, overrides = {}) {
     return { pruned: false };
   }
 }
+
+// ---- Entity API builders (#1347) -------------------------------------------
+// The columns the account handlers SELECT for an event row.
+export const ACCOUNT_EVENT_COLUMNS =
+  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at";
+
+// One neurons-table row (subset) → an AccountRegistration: where this hotkey is
+// currently registered + staked (the live cross-subnet footprint).
+export function formatRegistration(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    netuid: row.netuid ?? null,
+    uid: row.uid ?? null,
+    stake_tao: row.stake_tao ?? null,
+    validator_permit: Boolean(row.validator_permit),
+    active: Boolean(row.active),
+  };
+}
+
+// Cross-subnet account summary: event-history aggregates (from account_events,
+// matched by hotkey OR coldkey) joined to current registrations (from neurons,
+// by hotkey). `agg` is the single aggregate row; kinds/registrations/recent are
+// row arrays. Null-safe on a cold/absent store (returns a schema-stable zero).
+export function buildAccountSummary(
+  ss58,
+  { agg, kinds, registrations, recent } = {},
+) {
+  const a = agg || {};
+  return {
+    schema_version: 1,
+    ss58,
+    event_count: a.c ?? 0,
+    subnet_count: a.sc ?? 0,
+    first_block: a.fb ?? null,
+    last_block: a.lb ?? null,
+    first_seen_at: toIso(a.fo),
+    last_seen_at: toIso(a.lo),
+    event_kinds: (kinds || [])
+      .filter((k) => k && k.kind)
+      .map((k) => ({ kind: k.kind, count: k.count ?? 0 })),
+    registrations: (registrations || [])
+      .map(formatRegistration)
+      .filter(Boolean),
+    recent_events: (recent || []).map(formatAccountEvent).filter(Boolean),
+  };
+}
+
+// Paginated event history for one account (newest first).
+export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
+  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    event_count: events.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    events,
+  };
+}
+
+// The subnets where this account's hotkey is currently registered.
+export function buildAccountSubnets(rows, ss58) {
+  const subnets = (rows || []).map(formatRegistration).filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    subnet_count: subnets.length,
+    subnets,
+  };
+}

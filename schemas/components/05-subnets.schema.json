@@ -1359,6 +1359,106 @@
           }
         }
       },
+      "AccountEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "required": ["block_number", "event_kind"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "event_index": { "type": ["integer", "null"] },
+          "event_kind": { "type": ["string", "null"] },
+          "hotkey": { "type": ["string", "null"] },
+          "coldkey": { "type": ["string", "null"] },
+          "netuid": { "type": ["integer", "null"] },
+          "uid": { "type": ["integer", "null"] },
+          "amount_tao": { "type": ["number", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "AccountRegistration": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
+        "required": ["netuid"],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": ["integer", "null"] },
+          "stake_tao": { "type": ["number", "null"] },
+          "validator_permit": { "type": "boolean" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AccountEventKindCount": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Per-kind event tally for an account (#1347).",
+        "required": ["kind", "count"],
+        "properties": {
+          "kind": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "AccountSummaryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+        "required": ["schema_version", "ss58", "event_count", "registrations"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "first_block": { "type": ["integer", "null"] },
+          "last_block": { "type": ["integer", "null"] },
+          "first_seen_at": { "type": ["string", "null"], "format": "date-time" },
+          "last_seen_at": { "type": ["string", "null"], "format": "date-time" },
+          "event_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEventKindCount" }
+          },
+          "registrations": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountRegistration" }
+          },
+          "recent_events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file).",
+        "required": ["schema_version", "ss58", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountSubnetsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",
+        "required": ["schema_version", "ss58", "subnet_count", "subnets"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountRegistration" }
+          }
+        }
+      },
       "CoverageArtifact": {
         "allOf": [
           {
