@@ -40,6 +40,14 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Account entity routes (#1347): computed live from the account_events + neurons
+// D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
+export const ACCOUNT_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
+export const ACCOUNT_EVENTS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/events$/;
+export const ACCOUNT_SUBNETS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
