@@ -50,7 +50,11 @@ function escapeXml(value) {
 
 function clamp(value, max = 500) {
   const s = stripControl(value).trim();
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+  if (s.length <= max) return s;
+  // Truncate by code points, not UTF-16 code units: a plain slice() can sever a
+  // non-BMP character (e.g. an emoji) straddling the boundary into a lone
+  // surrogate, which is invalid in XML and breaks the RSS/Atom feed.
+  return `${[...s].slice(0, max - 1).join("")}…`;
 }
 
 // Accept an ISO string or epoch-ms; return a normalized ISO string or null.
