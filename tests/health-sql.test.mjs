@@ -55,5 +55,9 @@ describe("health-sql latency builders", () => {
     assert.ok(
       dailyLatencyColumns({ roundedAvg: true }).includes("CAST(ROUND("),
     );
+    // The weighted mean must use REAL division — avg_latency_ms and the sample
+    // counts are INTEGER columns, so a plain SUM(int)/SUM(int) would truncate.
+    assert.ok(cols.includes("CAST(SUM("));
+    assert.ok(cols.includes("AS REAL) /"));
   });
 });
