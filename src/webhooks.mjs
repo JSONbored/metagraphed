@@ -90,7 +90,7 @@ export function isPublicWebhookAddress(value) {
     if (
       host === "::1" ||
       host === "::" ||
-      host.startsWith("fe80") || // link-local
+      host.startsWith("fe") || // fe00::/8 reserved: link-local fe80::/10 + deprecated site-local fec0::/10
       host.startsWith("fc") || // unique-local fc00::/7
       host.startsWith("fd") ||
       host.startsWith("::ffff:") // IPv4-mapped
