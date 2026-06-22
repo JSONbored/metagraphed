@@ -97,6 +97,11 @@ import {
   buildSubnetValidators,
   buildNeuronDetail,
 } from "../src/metagraph-neurons.mjs";
+import {
+  EVENT_INSERT_COLUMNS,
+  rollupAccountEventsDaily,
+  pruneAccountEvents,
+} from "../src/account-events.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -278,6 +283,64 @@ export async function loadStagedNeurons(env) {
   return { ok: true, rows: rows.length };
 }
 
+// Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
+// refresh-events CI job decodes finney's System.Events first-party (no Taostats)
+// and writes account_events rows as JSON to R2 (events/account-events-pending.json)
+// with its existing R2 permission; we load them here through the binding (no
+// API-token D1 permission) with PARAMETERIZED INSERT OR IGNORE keyed
+// (block_number, event_index) — so overlapping poller windows re-insert harmlessly
+// (idempotent, no cursor needed) and a tampered file can only fail, never inject.
+// Then delete the object so each batch loads once.
+export async function loadStagedEvents(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
+  const key = "events/account-events-pending.json";
+  const object = await bucket.get(key);
+  if (!object) return { ok: false, reason: "none" };
+  let rows;
+  try {
+    rows = await object.json();
+  } catch {
+    await bucket.delete(key);
+    return { ok: false, reason: "parse_failed" };
+  }
+  rows = Array.isArray(rows)
+    ? rows.filter(
+        (r) =>
+          Number.isInteger(r?.block_number) && Number.isInteger(r?.event_index),
+      )
+    : [];
+  if (!rows.length) {
+    await bucket.delete(key);
+    return { ok: false, reason: "empty" };
+  }
+  const cols = EVENT_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  const ROWS_PER_STMT = 10; // 9 cols x 10 = 90 bound params (< D1's 100 limit)
+  const STMTS_PER_BATCH = 50;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO account_events (${colList}) VALUES ${tuples}`,
+        )
+        .bind(...values),
+    );
+  }
+  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+  }
+  await bucket.delete(key);
+  return { ok: true, rows: rows.length };
+}
+
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
@@ -288,13 +351,20 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   // snapshot and load it via the D1 binding on whichever cron fires next; it then
   // self-deletes. Isolated so a load failure never affects the prober/prune below.
   await loadStagedNeurons(env).catch(() => {});
+  // Token-free chain-event load (#1346): pick up any R2-staged event batch from
+  // the first-party poller and load it via the binding. Isolated like the neuron
+  // load so a failure never affects the prober/prune below.
+  await loadStagedEvents(env).catch(() => {});
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
-    // deleted (PR3). Then prune + snapshot.
+    // deleted (PR3). Roll the chain events the same way (#1346) before their
+    // 90-day window is pruned. Then prune + snapshot.
     await rollupDailyUptime(env);
+    await rollupAccountEventsDaily(env).catch(() => {});
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
+      pruneAccountEvents(env).catch(() => ({ pruned: false })),
       writeSubnetSnapshot(env, { readArtifact }),
     ]);
     return pruned;
