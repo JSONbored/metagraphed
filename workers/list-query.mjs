@@ -160,7 +160,10 @@ function paginateRows(rows, params) {
     cursor,
     limit,
     nextCursor: next < rows.length ? next : null,
-    order: params.get("order") === "desc" ? "desc" : "asc",
+    // sortRows only orders when a `sort` key is present, so without one the rows
+    // are in source order — reporting "desc" here would misdescribe them.
+    order:
+      params.get("sort") && params.get("order") === "desc" ? "desc" : "asc",
     rows: shouldPage ? rows.slice(cursor, next) : rows,
     sort: params.get("sort") || null,
   };

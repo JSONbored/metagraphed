@@ -76,3 +76,39 @@ describe("list-query field projection", () => {
     );
   });
 });
+
+describe("list-query pagination order", () => {
+  const data = {
+    subnets: [{ netuid: 3 }, { netuid: 1 }, { netuid: 2 }],
+  };
+
+  test("order=desc without a sort key reports asc (rows are unsorted)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?order=desc"),
+      "subnets",
+    );
+    // sortRows did not run (no sort key) → rows stay in source order …
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [3, 1, 2],
+    );
+    // … so meta must not claim a descending order that wasn't applied.
+    assert.equal(result.meta.pagination.sort, null);
+    assert.equal(result.meta.pagination.order, "asc");
+  });
+
+  test("order=desc with a sort key reports desc and sorts", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=netuid&order=desc"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [3, 2, 1],
+    );
+    assert.equal(result.meta.pagination.sort, "netuid");
+    assert.equal(result.meta.pagination.order, "desc");
+  });
+});
