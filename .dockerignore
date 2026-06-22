@@ -3,4 +3,6 @@
 # build artifacts, or any env/secret files into the build context.
 *
 !scripts/
+!scripts/**
 !deploy/
+!deploy/**
