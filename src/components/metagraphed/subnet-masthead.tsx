@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -316,22 +317,46 @@ export function SubnetMasthead({
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {links.map((l) => {
                 const Icon = l.icon;
+                const safeHref = safeExternalUrl(l.href);
+                const className =
+                  "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors " +
+                  (safeHref
+                    ? "hover:border-accent/50 hover:text-accent"
+                    : "cursor-default opacity-70");
+                const content = (
+                  <>
+                    <Icon
+                      className={
+                        "size-3 text-ink-muted " + (safeHref ? "group-hover:text-accent" : "")
+                      }
+                    />
+                    <span>{l.label}</span>
+                    {safeHref ? (
+                      <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
+                    ) : null}
+                  </>
+                );
+
                 return (
                   <Tooltip key={l.label} delayDuration={150}>
                     <TooltipTrigger asChild>
-                      <a
-                        href={l.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
-                      >
-                        <Icon className="size-3 text-ink-muted group-hover:text-accent" />
-                        <span>{l.label}</span>
-                        <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
-                      </a>
+                      {safeHref ? (
+                        <a
+                          href={safeHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={className}
+                        >
+                          {content}
+                        </a>
+                      ) : (
+                        <span className={className} title="Blocked unsafe external URL">
+                          {content}
+                        </span>
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="font-mono text-[11px]">
-                      {host(l.href)}
+                      {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
                     </TooltipContent>
                   </Tooltip>
                 );
