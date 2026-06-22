@@ -2320,12 +2320,13 @@ function hasNetuidAffinity(value, netuid) {
     return true;
   }
 
+  // Bound the trailing edge so a short netuid isn't matched as the prefix of a
+  // longer number (netuid 1 must not match "sn123" / "subnets1000"). The leading
+  // edge can't be enforced on the compacted value — compaction strips the
+  // separators that would delimit it (e.g. "example.com/sn1" -> "examplecomsn1")
+  // — so only guard the digit boundary immediately after the netuid.
   const compactValue = compactReadmeValue(value);
-  return (
-    compactValue.includes(`sn${netuid}`) ||
-    compactValue.includes(`subnet${netuid}`) ||
-    compactValue.includes(`subnets${netuid}`)
-  );
+  return new RegExp(`(sn|subnets?)${escaped}(?![0-9])`).test(compactValue);
 }
 
 function repoTokens(repo = {}) {
