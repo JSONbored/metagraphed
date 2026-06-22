@@ -511,6 +511,16 @@ describe("analytics routes (cold local D1)", () => {
       assert.equal(body.meta.parameter, parameter);
     }
   });
+  test("invalid window value names the bad value and valid options in the error", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
+      env,
+    );
+    assert.ok(body.error.message.includes("90d"), body.error.message);
+    assert.ok(body.error.message.includes("7d"), body.error.message);
+    assert.ok(body.error.message.includes("30d"), body.error.message);
+  });
+
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",

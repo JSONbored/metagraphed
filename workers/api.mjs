@@ -1564,7 +1564,7 @@ function analyticsWindow(url) {
     return {
       error: {
         parameter: ANALYTICS_WINDOW_PARAM,
-        message: `${ANALYTICS_WINDOW_PARAM} is not supported for this route.`,
+        message: `"${requested}" is not a valid window. Supported: ${Object.keys(ANALYTICS_WINDOWS).join(", ")}.`,
       },
     };
   }
