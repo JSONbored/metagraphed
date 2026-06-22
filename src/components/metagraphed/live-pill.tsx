@@ -5,8 +5,10 @@ import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "./time-ago";
 
 /**
- * Tiny status pill that reflects the live SSE snapshot stream. Pulses on
- * each incoming snapshot, dims when the connection is closed/errored.
+ * Tiny status pill that reflects the live SSE snapshot stream. It surfaces ONLY
+ * the positive "live" state — when the stream is connecting, idle, or errored
+ * (auto-retrying) the pill renders nothing, so the navbar never shows an alarming
+ * "retry" badge for a transient/best-effort stream. Pulses on each snapshot.
  */
 export function LivePill() {
   const { status, lastEventAt } = useLiveSse();
@@ -19,23 +21,9 @@ export function LivePill() {
     return () => window.clearTimeout(t);
   }, [lastEventAt]);
 
-  const tone =
-    status === "open"
-      ? "text-health-ok border-health-ok/30 bg-health-ok/5"
-      : status === "connecting"
-        ? "text-ink-muted border-border bg-surface/50"
-        : status === "error"
-          ? "text-health-warn border-health-warn/30 bg-health-warn/5"
-          : "text-ink-muted border-border bg-surface/50";
-
-  const label =
-    status === "open"
-      ? "live"
-      : status === "connecting"
-        ? "linking"
-        : status === "error"
-          ? "retry"
-          : "idle";
+  // Only show the badge when the stream is genuinely live. Connecting / idle /
+  // error (auto-retrying) states are intentionally silent in the navbar.
+  if (status !== "open") return null;
 
   return (
     <Tooltip>
@@ -45,46 +33,31 @@ export function LivePill() {
           aria-live="polite"
           className={classNames(
             "hidden md:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
-            tone,
+            "text-health-ok border-health-ok/30 bg-health-ok/5",
           )}
         >
           <span
             aria-hidden
             className={classNames(
-              "relative size-1.5 rounded-full",
-              status === "open"
-                ? "bg-health-ok"
-                : status === "error"
-                  ? "bg-health-warn"
-                  : "bg-ink-muted",
-              status === "open" || flash ? "mg-pulse" : "",
+              "relative size-1.5 rounded-full bg-health-ok",
+              flash ? "mg-pulse" : "",
             )}
           >
-            {status === "open" ? (
-              <span
-                aria-hidden
-                className="absolute inset-0 -m-1 rounded-full ring-1 ring-health-ok/40 motion-safe:animate-ping"
-              />
-            ) : null}
+            <span
+              aria-hidden
+              className="absolute inset-0 -m-1 rounded-full ring-1 ring-health-ok/40 motion-safe:animate-ping"
+            />
           </span>
-          <span>{label}</span>
+          <span>live</span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="text-[11px]">
-        {status === "open" ? (
-          lastEventAt ? (
-            <>
-              Live registry stream · last snapshot <TimeAgo at={lastEventAt} />
-            </>
-          ) : (
-            <>Connected to live registry stream</>
-          )
-        ) : status === "connecting" ? (
-          <>Opening live snapshot stream…</>
-        ) : status === "error" ? (
-          <>Stream disconnected — auto-retrying</>
+        {lastEventAt ? (
+          <>
+            Live registry stream · last snapshot <TimeAgo at={lastEventAt} />
+          </>
         ) : (
-          <>Live snapshot stream</>
+          <>Connected to live registry stream</>
         )}
       </TooltipContent>
     </Tooltip>

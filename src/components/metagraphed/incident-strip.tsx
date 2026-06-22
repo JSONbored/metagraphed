@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, X } from "lucide-react";
 import { endpointIncidentsQuery } from "@/lib/metagraphed/queries";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
@@ -36,6 +36,10 @@ function isActive(i: EndpointIncident): boolean {
 }
 
 export function IncidentStrip() {
+  // The degraded/incident bar is only contextually relevant on the operational
+  // surfaces (endpoints + subnets); on home/about/schemas/etc. it's noise, so we
+  // gate it to those routes rather than showing it site-wide.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data, error } = useQuery({ ...endpointIncidentsQuery(), retry: 0 });
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   // Hydrate after mount to avoid SSR mismatch.
@@ -46,7 +50,8 @@ export function IncidentStrip() {
     return (data.data as EndpointIncident[]).filter(isActive).filter((i) => !dismissed.has(i.id));
   }, [data, error, dismissed]);
 
-  if (active.length === 0) return null;
+  const onOperationalRoute = pathname.startsWith("/endpoints") || pathname.startsWith("/subnets");
+  if (!onOperationalRoute || active.length === 0) return null;
 
   const top = active[0]!;
   const more = active.length - 1;
