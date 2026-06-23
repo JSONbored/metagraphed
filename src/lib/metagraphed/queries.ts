@@ -216,6 +216,7 @@ function normalizeTrajectoryPoint(raw: unknown): TrajectoryPoint | undefined {
     completeness_score: coerceFiniteNumber(raw.completeness_score),
     surface_count: coerceFiniteNumber(raw.surface_count),
     endpoint_count: coerceFiniteNumber(raw.endpoint_count),
+    alpha_price_tao: coerceFiniteNumber(raw.alpha_price_tao),
   };
 }
 

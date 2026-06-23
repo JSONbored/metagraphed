@@ -567,6 +567,7 @@ export interface TrajectoryPoint {
   completeness_score?: number;
   surface_count?: number;
   endpoint_count?: number;
+  alpha_price_tao?: number;
 }
 
 export interface TrajectoryDelta {

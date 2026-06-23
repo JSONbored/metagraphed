@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Coins } from "lucide-react";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import { economicsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import { economicsQuery, subnetsQuery, subnetTrajectoryQuery } from "@/lib/metagraphed/queries";
 import type { Subnet } from "@/lib/metagraphed/types";
+
+const UP = "var(--health-ok, #4ade80)";
+const DOWN = "var(--health-down, #ef4444)";
+const FLAT = "var(--ink-muted, #8a8f98)";
 
 function priceStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -14,15 +18,13 @@ function priceStr(v?: number) {
 }
 
 /**
- * Additive alpha-price marquee for the home hero (#1302). Coexists with the
- * HeroTicker — does not replace it. Shows the top subnets by alpha price as a
- * BrandIcon + name + current price + a tiny sparkline.
+ * Stock-ticker-style alpha-price marquee for the home hero (#1302). Each item is a
+ * BrandIcon + name + current price + a gain/loss % and a sparkline coloured GREEN on a
+ * rising trend / RED on a falling one (neutral until ≥2 price points exist).
  *
- * NB the /economics artifact carries a single live alpha_price_tao per subnet,
- * not a price time-series, and /trajectory's normalized points don't include
- * alpha_price either — so the sparkline renders a flat baseline (current price
- * only). It upgrades to a real trend the day /history (or trajectory) carries a
- * per-day alpha_price field; nothing else here changes.
+ * Price history comes from each subnet's /trajectory series (alpha_price_tao), fetched
+ * non-blocking via useQueries so the marquee paints immediately on the current price
+ * and the trends fill in as they load (and as the price backfill deepens the history).
  */
 export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
   const { data: ecoRes } = useSuspenseQuery(economicsQuery());
@@ -49,10 +51,34 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
       .slice(0, limit);
   }, [ecoRes.data, subnetsRes.data, limit]);
 
+  // Per-subnet price history (non-blocking; deduped/cached by React Query).
+  const trajectories = useQueries({
+    queries: items.map((it) => subnetTrajectoryQuery(it.netuid)),
+  });
+
+  const trend = useMemo(() => {
+    return items.map((it, i) => {
+      const points = trajectories[i]?.data?.data?.points ?? [];
+      const series = points
+        .map((p) => p.alpha_price_tao)
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+      // Always anchor the line at the current price so a single live point still draws.
+      const values = series.length ? series : [it.price];
+      const first = values[0]!;
+      const last = values[values.length - 1]!;
+      const hasTrend = values.length >= 2 && first > 0;
+      const changePct = hasTrend ? ((last - first) / first) * 100 : null;
+      const dir = changePct == null ? 0 : changePct > 0 ? 1 : changePct < 0 ? -1 : 0;
+      const color = dir > 0 ? UP : dir < 0 ? DOWN : FLAT;
+      return { values, changePct, dir, color };
+    });
+  }, [items, trajectories]);
+
   if (items.length === 0) return null;
 
-  // Duplicate so the CSS loop is seamless (matches HeroTicker).
-  const loop = [...items, ...items];
+  // Duplicate so the CSS loop is seamless (matches the prior ticker).
+  const loop = items.map((it, i) => ({ it, t: trend[i]! }));
+  const rendered = [...loop, ...loop];
 
   return (
     <div
@@ -65,44 +91,57 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
         className="mg-ticker-track flex items-center gap-6 py-2 whitespace-nowrap"
         style={{ animationPlayState: paused ? "paused" : "running" }}
       >
-        {loop.map((it, i) => (
-          <Link
-            key={`${it.netuid}-${i}`}
-            to="/subnets/$netuid"
-            params={{ netuid: it.netuid }}
-            className="inline-flex items-center gap-2 text-[11px] hover:text-ink-strong transition-colors"
-            title={`${it.name} · SN${it.netuid} · ${priceStr(it.price)}`}
-          >
-            <BrandIcon
-              size={16}
-              name={it.name}
-              fallback={it.netuid}
-              url={it.website}
-              subnetSlug={it.slug}
-              netuid={it.netuid}
-            />
-            <span className="font-medium text-ink-strong truncate max-w-[16ch]">{it.name}</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
-              SN{it.netuid}
-            </span>
-            <span className="font-display font-semibold tabular-nums text-ink-strong">
-              {priceStr(it.price)}
-            </span>
-            <span className="inline-block w-[44px] align-middle">
-              <Sparkline
-                values={[it.price]}
-                width={44}
-                height={14}
-                interactive={false}
-                fill={false}
-                color="var(--accent, #7aa2ff)"
+        {rendered.map(({ it, t }, i) => {
+          const arrow = t.dir > 0 ? "▲" : t.dir < 0 ? "▼" : "";
+          return (
+            <Link
+              key={`${it.netuid}-${i}`}
+              to="/subnets/$netuid"
+              params={{ netuid: it.netuid }}
+              className="inline-flex items-center gap-2 text-[11px] hover:text-ink-strong transition-colors"
+              title={`${it.name} · SN${it.netuid} · ${priceStr(it.price)}${
+                t.changePct != null
+                  ? ` · ${t.changePct >= 0 ? "+" : ""}${t.changePct.toFixed(1)}%`
+                  : ""
+              }`}
+            >
+              <BrandIcon
+                size={16}
+                name={it.name}
+                fallback={it.netuid}
+                url={it.website}
+                subnetSlug={it.slug}
+                netuid={it.netuid}
               />
-            </span>
-            <span aria-hidden className="text-ink-subtle">
-              ·
-            </span>
-          </Link>
-        ))}
+              <span className="font-medium text-ink-strong truncate max-w-[16ch]">{it.name}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+                SN{it.netuid}
+              </span>
+              <span className="font-display font-semibold tabular-nums text-ink-strong">
+                {priceStr(it.price)}
+              </span>
+              <span className="inline-block w-[44px] align-middle">
+                <Sparkline
+                  values={t.values}
+                  width={44}
+                  height={14}
+                  interactive={false}
+                  fill={false}
+                  color={t.color}
+                />
+              </span>
+              {t.changePct != null ? (
+                <span className="font-mono tabular-nums text-[10px]" style={{ color: t.color }}>
+                  {arrow} {t.changePct >= 0 ? "+" : ""}
+                  {t.changePct.toFixed(1)}%
+                </span>
+              ) : null}
+              <span aria-hidden className="text-ink-subtle">
+                ·
+              </span>
+            </Link>
+          );
+        })}
       </div>
       <span
         aria-hidden
