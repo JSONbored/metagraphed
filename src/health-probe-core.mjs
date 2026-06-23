@@ -62,7 +62,9 @@ const UNSAFE_HOST_PATTERNS = [
   /^0\./,
   /^::1$/,
   /^::$/,
-  /^fe80:/i,
+  // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879) — the whole
+  // fe80::–feff: reserved range, mirroring the webhook guard (issue #1538).
+  /^fe[89a-f][0-9a-f]:/i,
   /^fc00:/i,
   /^fd/i,
 ];

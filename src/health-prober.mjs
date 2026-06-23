@@ -150,7 +150,9 @@ function isUnsafeIpAddress(value) {
     host.startsWith("64:ff9b:1:") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879): the whole
+    // fe80::–feff: reserved range, matching the webhook guard (issue #1538).
+    /^fe[89a-f][0-9a-f]:/i.test(host) ||
     host.startsWith("ff")
   );
 }
