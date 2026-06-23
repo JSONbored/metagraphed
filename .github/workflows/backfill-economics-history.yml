@@ -47,12 +47,21 @@ jobs:
       # refresh-metagraph). The ingest upsert is idempotent so a rerun is harmless.
       - name: Backfill economics
         run: |
-          DAYS="${{ github.event.inputs.days }}"
-          END_OFFSET="${{ github.event.inputs.end_offset }}"
+          if ! [[ "$DAYS" =~ ^[0-9]+$ ]]; then
+            echo "Invalid days input: must be a non-negative integer" >&2
+            exit 1
+          fi
+          if ! [[ "$END_OFFSET" =~ ^[0-9]+$ ]]; then
+            echo "Invalid end_offset input: must be a non-negative integer" >&2
+            exit 1
+          fi
+
           echo "backfill: --days $DAYS --end-offset $END_OFFSET"
           uvx --from bittensor==10.4.0 --with xxhash python scripts/backfill-economics-history.py \
             --days "$DAYS" --end-offset "$END_OFFSET"
         env:
+          DAYS: ${{ github.event.inputs.days }}
+          END_OFFSET: ${{ github.event.inputs.end_offset }}
           METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
           METAGRAPH_API_BASE: https://api.metagraph.sh
 
