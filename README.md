@@ -71,16 +71,16 @@ curl -X POST https://api.metagraph.sh/api/v1/graphql \
 
 ## For agents
 
-| Resource              | URL                                                                                                                                                                                                 |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Copyable agent prompt | [`/agent.md`](https://api.metagraph.sh/agent.md)                                                                                                                                                    |
-| Agent workflows       | [`/agent-workflows.md`](https://api.metagraph.sh/agent-workflows.md)                                                                                                                                |
-| Machine index         | [`/llms.txt`](https://api.metagraph.sh/llms.txt)                                                                                                                                                    |
+| Resource              | URL                                                                                                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Copyable agent prompt | [`/agent.md`](https://api.metagraph.sh/agent.md)                                                                                                                                                     |
+| Agent workflows       | [`/agent-workflows.md`](https://api.metagraph.sh/agent-workflows.md)                                                                                                                                 |
+| Machine index         | [`/llms.txt`](https://api.metagraph.sh/llms.txt)                                                                                                                                                     |
 | GraphQL               | [`/api/v1/graphql`](https://api.metagraph.sh/api/v1/graphql) — POST a shaped query (subnet + health + surfaces + endpoints + economics, provider + subnets, opportunity boards); GET returns the SDL |
-| Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)                                                                                                                  |
-| Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json)                                                                                                        |
-| Content feeds         | [`/api/v1/feeds/registry`](https://api.metagraph.sh/api/v1/feeds/registry) — registry changes + incidents, as RSS / Atom / JSON Feed (per-subnet at `/api/v1/feeds/subnets/{netuid}`)               |
-| Embeddable badge      | `![metagraphed](https://api.metagraph.sh/api/v1/subnets/{netuid}/badge.svg)` — SVG (also `/providers/{slug}/badge.svg`); `?metric=uptime` for reliability, plus `?style=flat-square` and `?label=…` |
+| Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)                                                                                                                   |
+| Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json)                                                                                                         |
+| Content feeds         | [`/api/v1/feeds/registry`](https://api.metagraph.sh/api/v1/feeds/registry) — registry changes + incidents, as RSS / Atom / JSON Feed (per-subnet at `/api/v1/feeds/subnets/{netuid}`)                |
+| Embeddable badge      | `![metagraphed](https://api.metagraph.sh/api/v1/subnets/{netuid}/badge.svg)` — SVG (also `/providers/{slug}/badge.svg`); `?metric=uptime` for reliability, plus `?style=flat-square` and `?label=…`  |
 
 ## This repo
 

@@ -553,7 +553,9 @@ function loadEconomics(context) {
 function subnetNode(identity, prefetch = {}) {
   const netuid = identity?.netuid;
   const bundledOr = (rows, load) =>
-    rows !== undefined ? () => rows ?? [] : (_args, context) => load(context, netuid);
+    rows !== undefined
+      ? () => rows ?? []
+      : (_args, context) => load(context, netuid);
   return {
     ...identity,
     health: (_args, context) => loadSubnetHealth(context, netuid),

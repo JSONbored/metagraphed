@@ -43,9 +43,13 @@ function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
         if (reads) reads.set(key, (reads.get(key) || 0) + 1);
         const path = "/metagraph/" + key.replace(/^latest\//, "");
         const data = fixtures[path];
-        return data === undefined ? null : { async json() {
-          return data;
-        } };
+        return data === undefined
+          ? null
+          : {
+              async json() {
+                return data;
+              },
+            };
       },
     },
   };
@@ -65,10 +69,7 @@ describe("handleGraphQLRequest — method guard", () => {
     const req = new Request("https://api.metagraph.sh/api/v1/graphql");
     const res = await handleGraphQLRequest(req, emptyEnv);
     assert.equal(res.status, 200);
-    assert.match(
-      res.headers.get("content-type") || "",
-      /application\/graphql/,
-    );
+    assert.match(res.headers.get("content-type") || "", /application\/graphql/);
     assert.equal(res.headers.get("allow"), "GET, POST");
     const sdl = await res.text();
     // The published shape advertises the broadened graph + its relationships.
@@ -125,10 +126,7 @@ describe("handleRequest — GraphQL routing", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(
-      res.headers.get("content-type") || "",
-      /application\/graphql/,
-    );
+    assert.match(res.headers.get("content-type") || "", /application\/graphql/);
     assert.ok((await res.text()).includes("type Query"));
   });
 });
@@ -786,7 +784,9 @@ describe("graphql — broadened Subnet + nested relationships", () => {
 
   test("subnet.health resolves from the live health snapshot by netuid", async () => {
     const env = fixtureEnv(
-      { "/metagraph/subnets/7.json": { subnet: { netuid: 7, name: "Allways" } } },
+      {
+        "/metagraph/subnets/7.json": { subnet: { netuid: 7, name: "Allways" } },
+      },
       {
         kv: {
           [KV_HEALTH_CURRENT]: {
@@ -1011,7 +1011,11 @@ describe("graphql — economics pagination", () => {
   test("prefers the fresh KV economics tier over the committed artifact", async () => {
     const env = fixtureEnv(
       // Stale committed copy — must NOT be served while the KV tier is fresh.
-      { "/metagraph/economics.json": { subnets: [{ netuid: 9, emission_share: 1 }] } },
+      {
+        "/metagraph/economics.json": {
+          subnets: [{ netuid: 9, emission_share: 1 }],
+        },
+      },
       {
         kv: {
           [KV_ECONOMICS_CURRENT]: {
