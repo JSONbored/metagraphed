@@ -927,6 +927,22 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.count, 0);
   });
 
+  test("search_subnets limit:0 falls back to the default, not a single result", async () => {
+    // tools/call does not enforce inputSchema `minimum:1`, so limit:0 reaches
+    // clampLimit. It must fall back to the default (10), not clamp up to 1 — a
+    // query matching two subnets returns both, not one.
+    const res = await callTool(
+      "search_subnets",
+      { query: "data compute", limit: 0 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(
+      out.results.length >= 2,
+      `expected >=2 results (fallback), got ${out.results.length}`,
+    );
+  });
+
   test("search_subnets requires a non-empty query", async () => {
     const res = await callTool("search_subnets", { query: "   " }, { deps });
     assert.equal(res.body.result.isError, true);

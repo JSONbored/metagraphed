@@ -327,8 +327,14 @@ function requireString(args, key) {
 }
 
 function clampLimit(value, fallback, max) {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.min(max, Math.floor(value)));
+  // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
+  // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
+  // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
+  // reads to an agent as "this registry knows one subnet" (see the same fix in
+  // src/ai-search.mjs).
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(max, Math.floor(n));
 }
 
 // A search.json document → keywordScore shape: title/slug are identity; subtitle
