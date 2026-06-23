@@ -412,6 +412,27 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.equal(body.data.subnets.total, 3);
   });
 
+  test("subnets limit:0 falls back to the default page (not clamped up to 1)", async () => {
+    const env = fakeArtifactEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a" },
+          { netuid: 2, name: "B", slug: "b" },
+          { netuid: 3, name: "C", slug: "c" },
+        ],
+      },
+    });
+    for (const limit of [0, -5]) {
+      const { status, body } = await gql(
+        `{ subnets(limit: ${limit}) { items { netuid } total } }`,
+        env,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.data.subnets.items.length, 3, `limit:${limit}`);
+      assert.equal(body.data.subnets.total, 3);
+    }
+  });
+
   test("subnet resolves a single subnet by netuid", async () => {
     const env = fakeArtifactEnv({
       "/metagraph/subnets/7.json": {
