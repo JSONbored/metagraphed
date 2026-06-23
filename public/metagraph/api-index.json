@@ -373,6 +373,20 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-neuron-history",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-history",
+      "path": "/metagraph/subnets/{netuid}/history.json",
+      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "schema_ref": "#/components/schemas/AccountSummaryArtifact",
@@ -3911,6 +3925,58 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "cache": "short",
+      "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-neuron-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/history.json",
+      "cache": "short",
+      "description": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/accounts/{ss58}.json",

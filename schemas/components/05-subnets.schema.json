@@ -1359,6 +1359,69 @@
           }
         }
       },
+      "NeuronHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-UID daily metagraph history (block-explorer Tier-1, #1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Each point is a Neuron's state on one snapshot_date.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "uid",
+          "point_count",
+          "points"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "A Neuron's metagraph state on one snapshot_date (the Neuron fields plus snapshot_date/captured_at/block_number).",
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "captured_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "block_number": { "type": ["integer", "null"] }
+              }
+            }
+          }
+        }
+      },
+      "SubnetHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-subnet daily aggregate history (count + totals) for sparklines (#1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+        "required": ["schema_version", "netuid", "point_count", "points"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "neuron_count": { "type": ["integer", "null"] },
+                "validator_count": { "type": ["integer", "null"] },
+                "total_stake_tao": { "type": ["number", "null"] },
+                "total_emission_tao": { "type": ["number", "null"] }
+              }
+            }
+          }
+        }
+      },
       "AccountEvent": {
         "type": "object",
         "additionalProperties": false,

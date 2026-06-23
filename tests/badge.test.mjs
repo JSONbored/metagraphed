@@ -79,6 +79,19 @@ describe("badge — rendering", () => {
     assert.match(svg, /a&amp;b/);
   });
 
+  test("renderBadge label cap does not split a surrogate pair", () => {
+    // 39 ASCII + a 2-code-unit emoji makes the emoji straddle the 40-unit cap.
+    const label = "x".repeat(39) + "😀" + "yyyy";
+    const svg = renderBadge("ok", "#2ea44f", { label });
+    // No lone surrogate (high not followed by low, or low not preceded by high).
+    const loneSurrogate =
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    assert.ok(
+      !loneSurrogate.test(svg),
+      "SVG label must not contain a lone surrogate",
+    );
+  });
+
   test("renderBadge style=flat-square drops the gradient + rounding", () => {
     const flat = renderBadge("92/100", "#2ea44f");
     assert.match(flat, /linearGradient/);

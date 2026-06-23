@@ -212,6 +212,8 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - `GET /api/v1/subnets/{netuid}/metagraph` — Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.
 - `GET /api/v1/subnets/{netuid}/neurons/{uid}` — Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.
 - `GET /api/v1/subnets/{netuid}/validators` — Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.
+- `GET /api/v1/subnets/{netuid}/neurons/{uid}/history` — Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.
+- `GET /api/v1/subnets/{netuid}/history` — Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.
 - `GET /api/v1/accounts/{ss58}` — Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.
 - `GET /api/v1/accounts/{ss58}/events` — Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.
 - `GET /api/v1/accounts/{ss58}/subnets` — Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.
