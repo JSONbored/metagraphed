@@ -685,3 +685,43 @@ export interface SubnetEconomics {
   registration_allowed?: boolean;
   [key: string]: unknown;
 }
+
+/** One daily on-chain snapshot from /subnets/{n}/history. */
+export interface SubnetHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  validator_count?: number;
+  total_stake_tao?: number;
+  total_emission_tao?: number;
+  [key: string]: unknown;
+}
+
+/** Per-subnet on-chain history from /api/v1/subnets/{netuid}/history. */
+export interface SubnetHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: SubnetHistoryPoint[];
+}
+
+/** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
+export interface SubnetNeuronHistoryPoint {
+  snapshot_date: string;
+  emission_tao?: number;
+  incentive?: number;
+  consensus?: number;
+  dividends?: number;
+  stake_tao?: number;
+  rank?: number;
+  validator_permit?: boolean;
+  [key: string]: unknown;
+}
+
+/** Per-UID on-chain history from /api/v1/subnets/{netuid}/neurons/{uid}/history. */
+export interface SubnetNeuronHistory {
+  netuid: number;
+  uid: number;
+  window?: string;
+  point_count?: number;
+  points: SubnetNeuronHistoryPoint[];
+}

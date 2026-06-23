@@ -11,6 +11,7 @@ import { SettingsPopover } from "./settings-popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { classNames } from "@/lib/metagraphed/format";
 import { safeExternalUrl } from "./external-link";
+import { Wordmark } from "./wordmark";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
 import { RegistryTicker } from "./registry-ticker";
@@ -40,17 +41,11 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       to="/"
       onClick={onNavigate}
       aria-label="Metagraphed — home"
-      className="flex items-center gap-2 shrink-0 group"
+      className="flex items-center shrink-0 group text-ink-strong"
     >
-      <span
-        aria-hidden
-        className="relative size-6 rounded-md bg-ink-strong inline-flex items-center justify-center"
-      >
-        <span className="absolute size-1.5 rounded-full bg-accent translate-x-[5px] translate-y-[-5px]" />
-      </span>
-      <span className="font-display text-base font-semibold tracking-tight text-ink-strong">
-        Metagraphed
-      </span>
+      {/* Adaptive wordmark: mint M + currentColor text → follows text-ink-strong
+          across light/dark. h-6 ≈ the prior 24px logo footprint. */}
+      <Wordmark className="h-6 w-auto" />
     </Link>
   );
 }

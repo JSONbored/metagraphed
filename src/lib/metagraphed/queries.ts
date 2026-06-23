@@ -38,6 +38,10 @@ import type {
   SchemaInfo,
   Subnet,
   SubnetEconomics,
+  SubnetHistory,
+  SubnetHistoryPoint,
+  SubnetNeuronHistory,
+  SubnetNeuronHistoryPoint,
   SubnetOverview,
   SubnetProfile,
   Surface,
@@ -57,6 +61,9 @@ const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
 
 const MAX_TRAJECTORY_POINTS = 104;
+// /history + /neurons/{uid}/history are daily snapshots; an "all"/"1y" window can
+// run ~365 points — cap a touch above a year so the sparklines stay bounded.
+const MAX_HISTORY_POINTS = 400;
 const MAX_UPTIME_SURFACES = 500;
 const MAX_UPTIME_DAYS = 366;
 const MAX_HEALTH_TREND_SURFACES = 500;
@@ -233,6 +240,74 @@ function normalizeTrajectory(raw: Partial<Trajectory> | undefined): Trajectory {
     point_count: coerceFiniteNumber(d.point_count) ?? points.length,
     points,
     deltas,
+  };
+}
+
+function normalizeSubnetHistoryPoint(raw: unknown): SubnetHistoryPoint | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    neuron_count: coerceFiniteNumber(raw.neuron_count),
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao),
+    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao),
+  };
+}
+
+function normalizeSubnetHistory(netuid: number, raw: unknown): SubnetHistory {
+  const d = isPlainRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeSubnetHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+function normalizeSubnetNeuronHistoryPoint(raw: unknown): SubnetNeuronHistoryPoint | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    emission_tao: coerceFiniteNumber(raw.emission_tao),
+    incentive: coerceFiniteNumber(raw.incentive),
+    consensus: coerceFiniteNumber(raw.consensus),
+    dividends: coerceFiniteNumber(raw.dividends),
+    stake_tao: coerceFiniteNumber(raw.stake_tao),
+    rank: coerceFiniteNumber(raw.rank),
+    validator_permit: booleanValue(raw.validator_permit),
+  };
+}
+
+function normalizeSubnetNeuronHistory(
+  netuid: number,
+  uid: number,
+  raw: unknown,
+): SubnetNeuronHistory {
+  const d = isPlainRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeSubnetNeuronHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    uid: coerceFiniteNumber(d.uid) ?? uid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
   };
 }
 
@@ -1041,6 +1116,40 @@ export const subnetUptimeQuery = (netuid: number, window = "90d") =>
         signal,
       });
       return { data: normalizeUptime(res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1302: per-subnet on-chain history — daily neuron/validator counts, total
+// stake and emission over a 7d/30d/90d/1y/all window, from the D1 snapshot store.
+export const subnetHistoryQuery = (netuid: number, window = "90d") =>
+  queryOptions({
+    queryKey: k("subnet-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetHistory>>(`/api/v1/subnets/${netuid}/history`, {
+        params: { window },
+        signal,
+      });
+      return { data: normalizeSubnetHistory(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1302: per-UID on-chain history — daily emission/incentive/consensus/dividends/
+// stake/rank for a single neuron over a window, from the D1 snapshot store.
+export const subnetNeuronHistoryQuery = (netuid: number, uid: number, window = "90d") =>
+  queryOptions({
+    queryKey: k("subnet-neuron-history", netuid, uid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetNeuronHistory>>(
+        `/api/v1/subnets/${netuid}/neurons/${uid}/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetNeuronHistory(netuid, uid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_MED,
   });

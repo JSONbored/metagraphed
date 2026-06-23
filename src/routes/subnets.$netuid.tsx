@@ -25,6 +25,7 @@ import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
+import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -301,6 +302,20 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
       >
         <EconomicsPanel netuid={netuid} />
+      </SectionAnchor>
+
+      {/* 5b — On-chain network history (#1302): daily neuron/validator counts,
+          total stake + emission over a selectable window. Optional detail —
+          renders an empty-state until chain history accumulates. */}
+      <SectionAnchor
+        id="history"
+        title="Network history"
+        subtitle="Daily on-chain neuron/validator counts, total stake, and emission over time."
+        info="GET /api/v1/subnets/{netuid}/history"
+      >
+        <QueryErrorBoundary>
+          <SubnetHistoryChart netuid={netuid} />
+        </QueryErrorBoundary>
       </SectionAnchor>
 
       {/* 6 — Per-surface reliability (#1114): uptime SLA + latency percentiles. */}

@@ -25,6 +25,7 @@ import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { HeroTicker } from "@/components/metagraphed/hero-ticker";
+import { SubnetPriceTicker } from "@/components/metagraphed/subnet-price-ticker";
 import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
@@ -69,6 +70,13 @@ function OverviewPage() {
       <QueryErrorBoundary fallback={() => null}>
         <Suspense fallback={null}>
           <HeroTicker />
+        </Suspense>
+      </QueryErrorBoundary>
+
+      {/* #1302: additive alpha-price marquee — coexists with HeroTicker. */}
+      <QueryErrorBoundary fallback={() => null}>
+        <Suspense fallback={null}>
+          <SubnetPriceTicker />
         </Suspense>
       </QueryErrorBoundary>
 
