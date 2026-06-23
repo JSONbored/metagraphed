@@ -115,6 +115,13 @@ function resolveRef(ref, components) {
 export function sampleFromSchema(schema, components, name = "", depth = 0) {
   if (!schema || typeof schema !== "object") return null;
   if (schema.$ref) {
+    // Bound self-referential schemas. The object and array branches grow
+    // `depth` as they descend, but only the array branch had a MAX_DEPTH guard,
+    // so a required self-referential property (a linked list / tree node)
+    // recursed through $ref until the stack overflowed. A self-reference always
+    // routes back through here, so guard at this chokepoint — without changing
+    // `depth`, so non-cyclic schemas still sample exactly as before.
+    if (depth >= MAX_DEPTH) return null;
     return sampleFromSchema(
       resolveRef(schema.$ref, components),
       components,

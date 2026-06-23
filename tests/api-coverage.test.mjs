@@ -435,6 +435,46 @@ describe("badge SVG handler", () => {
     assert.equal(res.status, 304);
   });
 
+  test("304 for a badge when if-none-match sends the strong (W/-less) validator", async () => {
+    // weakEtag emits W/"…", but If-None-Match uses weak comparison (RFC 7232),
+    // so the strong form "…" must also match. The previous strict === check
+    // only matched the exact W/"…" echo and returned 200 here.
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/metagraph/health/badges/7.svg"),
+      env,
+      {},
+    );
+    const strong = first.headers.get("etag").replace(/^W\//, "");
+    const res = await handleRequest(
+      req("/metagraph/health/badges/7.svg", {
+        headers: { "if-none-match": strong },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 304);
+  });
+
+  test("304 for the MCP server card / agent-tools with the strong validator", async () => {
+    // The same weak-comparison fix applies to the other two discovery handlers.
+    const env = createLocalArtifactEnv();
+    for (const path of [
+      "/.well-known/mcp/server-card.json",
+      "/.well-known/agent-tools/openai.json",
+    ]) {
+      const first = await handleRequest(req(path), env, {});
+      assert.equal(first.status, 200, `${path} first GET`);
+      const strong = first.headers.get("etag").replace(/^W\//, "");
+      const res = await handleRequest(
+        req(path, { headers: { "if-none-match": strong } }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 304, `${path} strong-form revalidation`);
+    }
+  });
+
   test("prefers the live KV overlay status when present", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({

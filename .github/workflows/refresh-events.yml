@@ -33,22 +33,47 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       # No `cache: npm` here on purpose: this workflow holds Cloudflare secrets, so
       # we don't consume a shared npm cache another workflow could poison.
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.23.0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Install
         run: npm ci
+
+      # Read the durable high-water cursor (highest block previously staged) from
+      # R2 before polling. The window alone is a FIXED look-back: if the scheduler
+      # coalesces/drops runs for longer than the window, blocks older than
+      # head-window are never fetched and silently lost. The cursor closes that gap
+      # — the scan resumes from cursor+1 (capped by the window floor). A cold start
+      # (no object yet) is fine: `get` fails, we leave EVENTS_CURSOR blank, and the
+      # poller falls back to the window floor. `|| true` so a missing object (or a
+      # transient R2 blip) never fails the run; the window floor still makes the
+      # poll correct, just without long-gap recovery for this one tick.
+      - name: Read event cursor from R2
+        id: cursor
+        run: |
+          rm -f cursor.json
+          npx wrangler r2 object get metagraphed-artifacts/events/cursor.json --file=cursor.json --remote || true
+          block="$(python3 -c 'import json,sys
+          try:
+              print(int(json.load(open("cursor.json"))["block_number"]))
+          except Exception:
+              print("")' )"
+          echo "block=${block}" >> "$GITHUB_OUTPUT"
+          echo "event cursor block: ${block:-<cold start>}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # substrate-interface is PINNED to an exact, verified version: this step runs
       # with Cloudflare secrets in scope, so we never auto-pull a future (possibly
@@ -56,14 +81,30 @@ jobs:
       - name: Poll finney events (first-party, public RPC, no key)
         run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
-          # 120 blocks ≈ 24 min of chain — generous idempotent overlap at a 5-min
-          # cadence (survives delayed/missed runs) while keeping the poll ~1 min.
-          EVENTS_WINDOW: "120"
+          # Bounded overlap: ~250 blocks ≈ 50 min of chain is re-scanned every
+          # run so staged-but-not-yet-loaded event batches can be regenerated if
+          # the single pending R2 object is overwritten before the Worker drains it.
+          EVENTS_WINDOW: "250"
+          # Highest block already staged; used for lag/health accounting only.
+          EVENTS_CURSOR: ${{ steps.cursor.outputs.block }}
+          # Emit a ::warning:: (and webhook alert, if configured) when the cursor
+          # falls within a window of the public-RPC prune horizon.
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
 
       # Stage to R2 (the token's existing R2 permission); the Worker loads it into
       # D1 through its binding (loadStagedEvents) — no API-token D1 permission.
       - name: Stage events to R2 for the Worker to load into D1
         run: npx wrangler r2 object put metagraphed-artifacts/events/account-events-pending.json --file=dist/account-events.json --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Advance the cursor ONLY after a successful stage above. fetch-events wrote
+      # the next cursor (the max block it scanned) to dist/events-cursor.json; promote
+      # it to R2 for lag/health accounting. The poller still re-scans the bounded
+      # overlap window because R2 staging is not proof of asynchronous D1 import.
+      - name: Advance event cursor in R2
+        run: npx wrangler r2 object put metagraphed-artifacts/events/cursor.json --file=dist/events-cursor.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

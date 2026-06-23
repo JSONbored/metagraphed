@@ -2214,6 +2214,49 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       assert.equal(out.health_source, "live-cron-prober");
     });
 
+    test("find_subnet_for_task overlays live health onto ranked results", async () => {
+      const deps = makeDeps(
+        {
+          "/metagraph/search.json": {
+            documents: [
+              {
+                type: "subnet",
+                netuid: 7,
+                slug: "x",
+                title: "X",
+                tokens: ["bitcoin", "data"],
+              },
+            ],
+          },
+          "/metagraph/agent-catalog.json": {
+            subnets: [
+              {
+                netuid: 7,
+                slug: "x",
+                name: "X",
+                categories: ["bitcoin"],
+                service_kinds: ["subnet-api"],
+                callable_count: 3,
+                integration_readiness: 80,
+              },
+            ],
+          },
+        },
+        { "health:current": liveKv },
+      );
+      const res = await callTool(
+        "find_subnet_for_task",
+        { task: "bitcoin" },
+        { deps },
+      );
+      const match = res.body.result.structuredContent.results.find(
+        (r) => r.netuid === 7,
+      );
+      assert.ok(match, "subnet 7 should rank for the task");
+      // health reflects the LIVE probe ("failed"), not the build-time stub.
+      assert.equal(match.health, "failed");
+    });
+
     test("cold KV → static current-health is NOT served (live-only); reports unknown", async () => {
       const deps = makeDeps({
         "/metagraph/health/subnets/7.json": staticHealth,

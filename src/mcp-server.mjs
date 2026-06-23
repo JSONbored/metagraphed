@@ -10,6 +10,7 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
+import { resolveClientIp } from "../workers/config.mjs";
 import { PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
@@ -1159,12 +1160,17 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
+      const live = await mcpLiveHealth(ctx);
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
       );
+      // Overlay live probe health onto the catalog index before ranking so each
+      // result's `health` reflects the current cron-probed status, not the
+      // build-time "unknown" stub baked into the artifact.
+      const overlaidCatalog = overlayCatalogIndex(catalog, live) || catalog;
       const byNetuid = new Map(
-        (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
+        (overlaidCatalog.subnets || []).map((entry) => [entry.netuid, entry]),
       );
       const { mode, ranked } = await rankSubnetsForTask(
         ctx,
@@ -2203,11 +2209,7 @@ function jsonResponse(payload, status = 200, headers = {}) {
 }
 
 function mcpClientKey(request) {
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for") ||
-    "anonymous"
-  );
+  return resolveClientIp(request);
 }
 
 async function enforceMcpRateLimit(request, env) {

@@ -299,8 +299,15 @@ async function loadAskEnrichment(env, deps) {
       env,
       "/metagraph/agent-catalog.json",
     );
-    const subnets = catalog?.ok ? catalog.data?.subnets : catalog?.subnets;
+    let subnets = catalog?.ok ? catalog.data?.subnets : catalog?.subnets;
     if (!Array.isArray(subnets)) return new Map();
+    // Overlay live probe health (injected, so this module stays binding-free and
+    // stub-testable) so /ask context reflects the current cron-probed status —
+    // not the build-time "unknown" stub baked into the catalog artifact.
+    if (deps.liveHealth && typeof deps.overlayCatalogIndex === "function") {
+      const overlaid = deps.overlayCatalogIndex({ subnets }, deps.liveHealth);
+      if (Array.isArray(overlaid?.subnets)) subnets = overlaid.subnets;
+    }
     return new Map(
       subnets
         .filter((entry) => Number.isInteger(entry?.netuid))

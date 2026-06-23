@@ -150,6 +150,37 @@ describe("feeds — item builders", () => {
     assert.deepEqual(registryItems({}), []);
   });
 
+  test("registryItems clamp does not split a surrogate pair in a title", () => {
+    // Emoji placed so its surrogate pair straddles the 80-char title clamp.
+    const path = "a".repeat(78) + "😀" + "z".repeat(20);
+    const items = registryItems({ artifacts: { modified: [{ path }] } });
+    assert.equal(items.length, 1);
+    const loneSurrogate =
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    assert.ok(
+      !loneSurrogate.test(items[0].title),
+      "feed title must not contain a lone surrogate",
+    );
+    assert.ok(!loneSurrogate.test(items[0].summary));
+  });
+
+  test("registryItems coverage delta describes only the present side", () => {
+    // Partial coverage_delta (candidate_count only) must not emit "+0 surfaces"
+    // or "Surfaces undefined→undefined" for the absent surface side.
+    const items = registryItems({
+      summary: {
+        coverage_delta: {
+          candidate_count: { before: 50, after: 49, delta: -1 },
+        },
+      },
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, "Coverage updated: -1 candidates");
+    assert.equal(items[0].summary, "candidates 50→49.");
+    assert.ok(!items[0].summary.includes("undefined"));
+    assert.ok(!items[0].title.includes("surfaces"));
+  });
+
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {
     const all = incidentItems(INCIDENTS);
     assert.equal(all.length, 2); // the no-incidents surface contributes none
