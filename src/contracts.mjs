@@ -913,6 +913,18 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-neuron-history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+    "NeuronHistoryArtifact",
+  ),
+  artifact(
+    "subnet-history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+    "SubnetHistoryArtifact",
+  ),
+  artifact(
     "account-summary",
     "/metagraph/accounts/{ss58}.json",
     "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
@@ -1546,6 +1558,41 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-neuron-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "uid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
+    "subnet-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

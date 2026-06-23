@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Blob } from "node:buffer";
+import { buildSchema, parse, validate } from "graphql";
 import { describe, test } from "vitest";
 import {
   GRAPHQL_MAX_BODY_BYTES,
@@ -223,6 +224,55 @@ describe("handleGraphQLRequest — validation rules", () => {
       ext,
       `expected COMPLEXITY_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
     );
+  });
+
+  test("inline fragments are transparent for complexity (no over-count)", async () => {
+    // Exactly at the limit, wrapped in a type-conditional inline fragment. The
+    // inline fragment is not a field, so this must pass — counting it would
+    // over-measure (51) and wrongly reject a query identical to its inlined form.
+    const fields = Array.from(
+      { length: GRAPHQL_MAX_COMPLEXITY },
+      (_, i) => `t${i}: __typename`,
+    ).join(" ");
+    const inlineFrag = await gql(`query { ... on Query { ${fields} } }`);
+    assert.equal(
+      inlineFrag.status,
+      200,
+      `inline-fragment query should match its inlined form: ${JSON.stringify(inlineFrag.body.errors)}`,
+    );
+    // Same fields without the inline fragment also pass — equal measurement.
+    const plain = await gql(`query { ${fields} }`);
+    assert.equal(plain.status, 200);
+    // One field over the limit is still rejected through the inline fragment.
+    const over = await gql(
+      `query { ... on Query { ${fields} t_extra: __typename } }`,
+    );
+    assert.equal(over.status, 400);
+    assert.ok(
+      over.body.errors.find(
+        (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      ),
+    );
+  });
+
+  test("maxDepthRule treats inline fragments transparently", () => {
+    // `{ a { b { c } } }` is depth 2 (a->1, b->2; c is a scalar leaf). Wrapping
+    // the selection in an inline fragment must NOT add a level — otherwise the
+    // inline form measures depth 3 and is wrongly rejected at limit 2.
+    const depthSchema = buildSchema(
+      `type Query { a: A } type A { b: B } type B { c: Int }`,
+    );
+    const plain = parse("{ a { b { c } } }");
+    const inline = parse("{ ... on Query { a { b { c } } } }");
+    assert.equal(validate(depthSchema, plain, [maxDepthRule(2)]).length, 0);
+    assert.equal(
+      validate(depthSchema, inline, [maxDepthRule(2)]).length,
+      0,
+      "inline-wrapped query must measure the same depth as its inlined form",
+    );
+    // Transparency is not a free pass: limit 1 still rejects both equally.
+    assert.equal(validate(depthSchema, plain, [maxDepthRule(1)]).length, 1);
+    assert.equal(validate(depthSchema, inline, [maxDepthRule(1)]).length, 1);
   });
 
   test("complexity exceeded returns COMPLEXITY_LIMIT_EXCEEDED extension", async () => {

@@ -38,4 +38,77 @@ describe("list-query field projection", () => {
       { netuid: 7, slug: "allways" },
     ]);
   });
+
+  test("accepts a field that only appears on a later, heterogeneous row (union semantics)", () => {
+    // `description` is absent from row 0 but present on row 1 — the lazy
+    // known-field scan must still consider it valid (a field is known if it
+    // appears on ANY row), not just the first.
+    const result = applyQueryFilters(
+      {
+        subnets: [
+          { netuid: 7, name: "Allways" },
+          { netuid: 8, name: "Beta", description: "second-row-only" },
+        ],
+      },
+      query("/api/v1/subnets?fields=netuid,description"),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.meta.projection.fields, ["netuid", "description"]);
+    assert.deepEqual(result.data.subnets, [
+      { netuid: 7 },
+      { netuid: 8, description: "second-row-only" },
+    ]);
+  });
+
+  test("reports every unsupported field, in requested order", () => {
+    const result = applyQueryFilters(
+      { subnets: [{ netuid: 7, name: "Allways" }] },
+      query("/api/v1/subnets?fields=zeta,netuid,alpha"),
+      "subnets",
+    );
+
+    assert.equal(result.error.parameter, "fields");
+    assert.match(
+      result.error.message,
+      /unsupported fields for subnets: zeta, alpha\./,
+    );
+  });
+});
+
+describe("list-query pagination order", () => {
+  const data = {
+    subnets: [{ netuid: 3 }, { netuid: 1 }, { netuid: 2 }],
+  };
+
+  test("order=desc without a sort key reports asc (rows are unsorted)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?order=desc"),
+      "subnets",
+    );
+    // sortRows did not run (no sort key) → rows stay in source order …
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [3, 1, 2],
+    );
+    // … so meta must not claim a descending order that wasn't applied.
+    assert.equal(result.meta.pagination.sort, null);
+    assert.equal(result.meta.pagination.order, "asc");
+  });
+
+  test("order=desc with a sort key reports desc and sorts", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=netuid&order=desc"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [3, 2, 1],
+    );
+    assert.equal(result.meta.pagination.sort, "netuid");
+    assert.equal(result.meta.pagination.order, "desc");
+  });
 });

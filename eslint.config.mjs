@@ -26,7 +26,9 @@ export default [
       globals: {
         AbortController: "readonly",
         AbortSignal: "readonly",
+        Blob: "readonly",
         Buffer: "readonly",
+        CompressionStream: "readonly",
         Headers: "readonly",
         Request: "readonly",
         Response: "readonly",

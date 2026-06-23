@@ -160,7 +160,10 @@ function paginateRows(rows, params) {
     cursor,
     limit,
     nextCursor: next < rows.length ? next : null,
-    order: params.get("order") === "desc" ? "desc" : "asc",
+    // sortRows only orders when a `sort` key is present, so without one the rows
+    // are in source order — reporting "desc" here would misdescribe them.
+    order:
+      params.get("sort") && params.get("order") === "desc" ? "desc" : "asc",
     rows: shouldPage ? rows.slice(cursor, next) : rows,
     sort: params.get("sort") || null,
   };
@@ -257,16 +260,24 @@ function parseProjection(params, rows, dataKey) {
     };
   }
 
-  const knownFields = new Set(
-    rows.flatMap((row) =>
-      row && typeof row === "object" && !Array.isArray(row)
-        ? Object.keys(row)
-        : [],
-    ),
-  );
+  // A field is "known" if it appears on at least one row, so correctness needs
+  // the union of all rows' keys (collections can be heterogeneous). But the
+  // common case — every requested field present on the first row — only needs
+  // one row. Scan lazily: drop each requested field as a row reveals it and stop
+  // the moment all are resolved. On the largest collection (~1160 endpoints) a
+  // valid ?fields= request now touches ~1 row instead of materializing every
+  // row's keys; an unsupported field still scans to the end to confirm it truly
+  // appears on no row. Behaviour is identical to the prior full-union check.
   const fields = [...new Set(requested)];
-  const unknown = fields.filter((field) => !knownFields.has(field));
-  if (unknown.length > 0) {
+  const unresolved = new Set(fields);
+  for (const row of rows) {
+    if (unresolved.size === 0) break;
+    if (row && typeof row === "object" && !Array.isArray(row)) {
+      for (const key of Object.keys(row)) unresolved.delete(key);
+    }
+  }
+  if (unresolved.size > 0) {
+    const unknown = [...unresolved];
     return {
       error: {
         parameter: "fields",
