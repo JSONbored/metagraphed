@@ -79,6 +79,23 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/neurons/0/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.uid, 0);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/metagraph",
     (body) => {
       assert.equal(body.data.netuid, 7);

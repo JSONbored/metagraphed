@@ -3,6 +3,12 @@ import { describe, test } from "vitest";
 import {
   parseHistoryWindow,
   rollupNeuronDaily,
+  archiveNeuronDaily,
+  pruneNeuronDaily,
+  coldArchiveKey,
+  NEURON_DAILY_RETENTION_DAYS,
+  neuronDailyUpsertStatements,
+  validNeuronDailyRows,
   buildNeuronHistory,
   buildSubnetHistory,
   HISTORY_WINDOWS,
@@ -211,5 +217,144 @@ describe("history endpoints (via the Worker dispatch)", () => {
     );
     assert.doesNotMatch(captured.sql, /snapshot_date >= \?/);
     assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
+  });
+});
+
+describe("R2 cold archive + prune (PR-A2)", () => {
+  test("archiveNeuronDaily writes one immutable gzip object per subnet under the cold key", async () => {
+    const day = "2026-06-20";
+    const rows = [
+      { netuid: 7, uid: 0, snapshot_date: day, stake_tao: 1 },
+      { netuid: 7, uid: 1, snapshot_date: day, stake_tao: 2 },
+      { netuid: 12, uid: 0, snapshot_date: day, stake_tao: 3 },
+    ];
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () =>
+                Promise.resolve({
+                  results: sql.includes("MAX(snapshot_date)")
+                    ? [{ day }]
+                    : rows,
+                }),
+            };
+          },
+        };
+      },
+    };
+    const puts = [];
+    const bucket = {
+      put: (key, body, opts) => {
+        puts.push({ key, opts, size: body.byteLength });
+        return Promise.resolve();
+      },
+    };
+    const res = await archiveNeuronDaily({}, { db, bucket });
+    assert.equal(res.archived, true);
+    assert.equal(res.day, day);
+    assert.equal(res.subnets, 2); // netuid 7 + 12 → one object each
+    assert.equal(res.rows, 3);
+    assert.deepEqual(
+      puts.map((p) => p.key).sort(),
+      [coldArchiveKey(7, day), coldArchiveKey(12, day)].sort(),
+    );
+    assert.equal(puts[0].opts.httpMetadata.contentEncoding, "gzip");
+    assert.match(puts[0].opts.httpMetadata.cacheControl, /immutable/);
+    assert.ok(puts[0].size > 0, "gzip body is non-empty");
+  });
+
+  test("archiveNeuronDaily no-ops without bindings", async () => {
+    assert.equal((await archiveNeuronDaily({})).archived, false);
+  });
+
+  test("pruneNeuronDaily deletes below the 90-day retention cutoff", async () => {
+    const cap = {};
+    const db = {
+      prepare(sql) {
+        cap.sql = sql;
+        return {
+          bind(...p) {
+            cap.params = p;
+            return { run: () => Promise.resolve({ meta: { changes: 5 } }) };
+          },
+        };
+      },
+    };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+    const res = await pruneNeuronDaily({ METAGRAPH_HEALTH_DB: db }, { now });
+    assert.equal(res.pruned, true);
+    assert.equal(res.rows, 5);
+    assert.match(cap.sql, /DELETE FROM neuron_daily WHERE snapshot_date < \?/);
+    const expectedCutoff = new Date(
+      now - NEURON_DAILY_RETENTION_DAYS * 86_400_000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    assert.deepEqual(cap.params, [expectedCutoff]);
+  });
+
+  test("retention window covers a rolling 1-year history (>= 365 days)", () => {
+    assert.ok(
+      NEURON_DAILY_RETENTION_DAYS >= 365,
+      "1y window must stay D1-served",
+    );
+  });
+});
+
+describe("backfill ingest helpers (#1345 Phase 1)", () => {
+  test("validNeuronDailyRows keeps well-formed rows, drops the rest", () => {
+    const good = {
+      netuid: 7,
+      uid: 1,
+      snapshot_date: "2025-12-01",
+      hotkey: "5Hk",
+    };
+    const rows = validNeuronDailyRows([
+      good,
+      { netuid: 7, uid: 2, snapshot_date: "2025-12-01" }, // no hotkey
+      { netuid: 7, uid: 3, snapshot_date: "bad", hotkey: "5Hk" }, // bad date
+      { netuid: 7, uid: "x", snapshot_date: "2025-12-01", hotkey: "5Hk" }, // uid not int
+      { uid: 4, snapshot_date: "2025-12-01", hotkey: "5Hk" }, // no netuid
+      { netuid: 7, uid: 5, snapshot_date: "2025-12-01", hotkey: "" }, // empty hotkey
+    ]);
+    assert.deepEqual(rows, [good]);
+    assert.deepEqual(validNeuronDailyRows("nope"), []);
+  });
+
+  test("neuronDailyUpsertStatements upserts with the rollup column set + ON CONFLICT", () => {
+    const cap = [];
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...v) {
+            cap.push({ sql, v });
+            return { sql, v };
+          },
+        };
+      },
+    };
+    const now = 1700000000000;
+    const stmts = neuronDailyUpsertStatements(
+      db,
+      [{ netuid: 7, uid: 1, snapshot_date: "2025-12-01", hotkey: "5Hk" }],
+      { now },
+    );
+    assert.equal(stmts.length, 1);
+    const { sql, v } = cap[0];
+    assert.match(sql, /INSERT INTO neuron_daily/);
+    assert.match(sql, /snapshot_date/);
+    assert.match(
+      sql,
+      /ON CONFLICT\(netuid, uid, snapshot_date\) DO UPDATE SET/,
+    );
+    assert.doesNotMatch(sql, /netuid = excluded/); // PK columns never in SET
+    assert.doesNotMatch(sql, /uid = excluded/);
+    assert.match(sql, /updated_at = excluded\.updated_at/);
+    // updated_at (now) is the last bound param; missing fields bind as null.
+    assert.equal(v[v.length - 1], now);
+    assert.ok(v.includes("5Hk") && v.includes("2025-12-01"));
+    assert.ok(v.includes(null)); // unspecified columns → null, not undefined
   });
 });
