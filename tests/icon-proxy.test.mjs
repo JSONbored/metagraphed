@@ -192,7 +192,10 @@ test("builds the allowlist from artifact url/base_url/website fields (nested + a
     env,
     options: { readArtifact },
     fetchImpl: async () =>
-      new Response(PNG, { status: 200, headers: { "content-type": "image/png" } }),
+      new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
   });
   assert.equal(res.status, 200);
   assert.equal(seen.length, 3); // all three artifact paths read
@@ -202,7 +205,10 @@ test("builds the allowlist from artifact url/base_url/website fields (nested + a
     env,
     options: { readArtifact },
     fetchImpl: async () =>
-      new Response(PNG, { status: 200, headers: { "content-type": "image/png" } }),
+      new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
   });
   assert.equal(r2.status, 200);
 });
@@ -218,10 +224,21 @@ test("memoizes the artifact allowlist per env (readArtifact not re-read)", async
     return { ok: true, data: {} };
   };
   const fetchImpl = async () =>
-    new Response(PNG, { status: 200, headers: { "content-type": "image/png" } });
-  await call("?host=example.com", { env, options: { readArtifact }, fetchImpl });
+    new Response(PNG, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+  await call("?host=example.com", {
+    env,
+    options: { readArtifact },
+    fetchImpl,
+  });
   const before = reads;
-  await call("?host=example.com", { env, options: { readArtifact }, fetchImpl });
+  await call("?host=example.com", {
+    env,
+    options: { readArtifact },
+    fetchImpl,
+  });
   assert.equal(reads, before); // second call served from the WeakMap memo
 });
 
@@ -237,7 +254,10 @@ test("artifact read errors fail closed (host still allowed via configured env)",
     env,
     options: { readArtifact },
     fetchImpl: async () =>
-      new Response(PNG, { status: 200, headers: { "content-type": "image/png" } }),
+      new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
   });
   // configured host survives even though every artifact read threw
   assert.equal(res.status, 200);
@@ -301,10 +321,7 @@ test("boundedArrayBuffer rejects an oversized streamed body (no content-length)"
     headers: new Headers({ "content-type": "image/png" }),
     body: {
       getReader() {
-        const chunks = [
-          new Uint8Array(200 * 1024),
-          new Uint8Array(200 * 1024),
-        ];
+        const chunks = [new Uint8Array(200 * 1024), new Uint8Array(200 * 1024)];
         let i = 0;
         return {
           read: async () =>
