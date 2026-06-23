@@ -15,7 +15,8 @@ import {
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { NEURON_HISTORY_ROLLUP_CRON } from "../workers/config.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 // A neuron_daily read row (NEURON_DAILY_READ_COLUMNS shape: snapshot_date + the
@@ -336,6 +337,57 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     assert.equal(puts.includes(coldArchiveKey(9, latestDay)), false);
   });
 
+  test("archivePrunableNeuronDaily no-ops without bindings", async () => {
+    assert.deepEqual(await archivePrunableNeuronDaily({}), {
+      archived: false,
+      reason: "no-binding",
+    });
+  });
+
+  test("archivePrunableNeuronDaily tolerates a DISTINCT query with no results", async () => {
+    const db = {
+      prepare() {
+        return { bind: () => ({ all: () => Promise.resolve({}) }) };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const res = await archivePrunableNeuronDaily({}, { db, bucket });
+    assert.equal(res.archived, true);
+    assert.deepEqual(res.days, []);
+    assert.equal(res.rows, 0);
+    assert.equal(res.subnets, 0);
+  });
+
+  test("archivePrunableNeuronDaily stops and reports the first day that fails to archive", async () => {
+    const emptyDay = "2026-03-19";
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({ results: [{ day: emptyDay }] });
+                }
+                // The per-day archive read finds no rows → archiveNeuronDaily
+                // returns {archived:false} and the loop bails out.
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+    const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
+    assert.equal(res.archived, false);
+    assert.equal(res.reason, "archive-failed");
+    assert.equal(res.day, emptyDay);
+    assert.deepEqual(res.days, []);
+    assert.equal(res.failed.archived, false);
+  });
+
   test("pruneNeuronDaily deletes below the 90-day retention cutoff", async () => {
     const cap = {};
     const db = {
@@ -367,6 +419,177 @@ describe("R2 cold archive + prune (PR-A2)", () => {
       NEURON_DAILY_RETENTION_DAYS >= 365,
       "1y window must stay D1-served",
     );
+  });
+});
+
+describe("handleScheduled rollup cron (#1345)", () => {
+  test("gates the prune on archive-not-confirmed when bindings are missing", async () => {
+    // Empty env → rollup/archive/archivePrunable all fail-soft, so the prune is
+    // skipped with the archive-not-confirmed gate.
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      {},
+      ctx,
+    );
+    assert.equal(result.archived.archived, false);
+    assert.equal(result.archivedPrunable.archived, false);
+    assert.deepEqual(result.pruned, {
+      pruned: false,
+      reason: "archive-not-confirmed",
+    });
+  });
+
+  test("prunes once the latest-day and backlog archives both confirm", async () => {
+    const latestDay = "2026-06-21";
+    let deleted = false;
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              run: () => {
+                if (sql.startsWith("DELETE")) deleted = true;
+                return Promise.resolve({ meta: { changes: 1 } });
+              },
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  // No prunable backlog → archivePrunable confirms trivially.
+                  return Promise.resolve({ results: [] });
+                }
+                // The latest-day archive read.
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: latestDay,
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      env,
+      ctx,
+    );
+    assert.equal(result.archived.archived, true);
+    assert.equal(result.archivedPrunable.archived, true);
+    assert.equal(result.pruned.pruned, true);
+    assert.equal(deleted, true);
+  });
+
+  test("isolates a rejected backlog archive and skips the gated prune", async () => {
+    const latestDay = "2026-06-21";
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              run: () => Promise.resolve({ meta: { changes: 1 } }),
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                // archivePrunableNeuronDaily's DISTINCT-days query throws → the
+                // whole call rejects and its .catch fallback fires.
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.reject(new Error("backlog query down"));
+                }
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: latestDay,
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      env,
+      ctx,
+    );
+    assert.equal(result.archived.archived, true);
+    assert.equal(result.archivedPrunable.archived, false);
+    assert.deepEqual(result.pruned, {
+      pruned: false,
+      reason: "archive-not-confirmed",
+    });
+  });
+
+  test("isolates a rejected prune after both archives confirm", async () => {
+    const latestDay = "2026-06-21";
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              run: () => {
+                // The gated DELETE prune throws → its .catch fallback fires.
+                if (sql.startsWith("DELETE")) {
+                  return Promise.reject(new Error("prune down"));
+                }
+                return Promise.resolve({ meta: { changes: 1 } });
+              },
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({ results: [] });
+                }
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: latestDay,
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      env,
+      ctx,
+    );
+    assert.equal(result.archived.archived, true);
+    assert.equal(result.archivedPrunable.archived, true);
+    assert.deepEqual(result.pruned, { pruned: false });
   });
 });
 
