@@ -129,6 +129,14 @@ export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
 export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
 export const MAX_EVENTS_INGEST_BODY_BYTES = 262144; // 256 KB
 export const MAX_EVENTS_INGEST_ROWS = 500;
+// Internal historical backfill ingest (#1345 Phase 1): batched neuron_daily
+// upserts from the chain-direct backfill script (scripts/backfill-neuron-history.py).
+// Auth via the dedicated METAGRAPH_BACKFILL_SECRET (falls back to the events-ingest
+// secret) over the shared EVENTS_INGEST_TOKEN_HEADER. Caps are wider than the event
+// ingest because a metagraph row is wider and a subnet-day is up to ~256 rows; the
+// script chunks well under these and the PK upsert makes any re-POST idempotent.
+export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
+export const MAX_BACKFILL_INGEST_ROWS = 2_000;
 // Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
 // single bounded HTTP body above, a staged file is produced by the CI poller and
 // can grow large on a backfill or a stuck window. The byte cap guards against
