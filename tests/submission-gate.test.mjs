@@ -46,6 +46,36 @@ const native = await loadNativeSnapshot();
 const providers = await loadProviders();
 const subnets = await loadSubnets();
 
+function runPythonRouteClassifier(changedFiles) {
+  const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-py-"));
+  try {
+    writeFileSync(
+      path.join(tmp, "changed-files.txt"),
+      `${changedFiles.join("\n")}\n`,
+    );
+
+    const output = execFileSync(
+      "python3",
+      [path.resolve("scripts/classify-validation-route.py")],
+      {
+        cwd: tmp,
+        encoding: "utf8",
+        stdio: "pipe",
+      },
+    );
+    const report = JSON.parse(output);
+
+    assert.deepEqual(
+      report,
+      JSON.parse(readFileSync(path.join(tmp, "validate-route.json"), "utf8")),
+    );
+
+    return report;
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 describe("Metagraphed submission gate policy", () => {
   test("routes normal backend PRs away from the UGC gate", () => {
     const report = buildPrSubmissionReport({
@@ -304,6 +334,31 @@ describe("Metagraphed submission gate policy", () => {
     } finally {
       rmSync(tmp, { force: true, recursive: true });
     }
+  });
+
+  test("python route classifier accepts an atomic provider+candidate pair", () => {
+    const report = runPythonRouteClassifier([
+      "registry/candidates/community/allways-docs-example.json",
+      "registry/providers/community/example-operator.json",
+    ]);
+
+    assert.equal(report.mode, "ugc");
+    assert.equal(report.scope, "direct-pair");
+    assert.deepEqual(report.errors, []);
+  });
+
+  test("python route classifier forces full mode for errored direct submissions", () => {
+    const report = runPythonRouteClassifier([
+      "registry/candidates/community/allways-docs-example.json",
+      "README.md",
+    ]);
+
+    assert.equal(report.mode, "full");
+    assert.equal(report.scope, "direct-candidate");
+    assert.deepEqual(
+      report.errors.map((error) => error.category),
+      ["generated-artifact-tampering"],
+    );
   });
 
   test("rejects submitted public artifacts outside the generated indexes", () => {

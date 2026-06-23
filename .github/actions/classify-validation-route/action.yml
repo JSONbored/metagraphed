@@ -1,16 +1,19 @@
 name: Classify validation route
 description: >-
   Compute this PR's changed files with a merge-base (three-dot) diff and classify
-  the validation route as "ugc" (a single community candidate/provider submission)
-  or "full" (everything else). Writes changed-files.txt + submitted-artifact-files.txt
-  to the workspace and exposes mode/scope as outputs. Shared by the parallel test +
-  checks jobs so the stale-base-safe diff and the classifier live in one place.
+  the validation route as "ugc" (a valid direct community submission, including
+  an atomic provider+candidate pair) or "full" (everything else). Writes
+  changed-files.txt + submitted-artifact-files.txt to the workspace and exposes
+  mode/scope as outputs. Shared by the parallel test + checks jobs so the
+  stale-base-safe diff and the classifier live in one place.
 outputs:
   mode:
     description: Validation route — "ugc" or "full".
     value: ${{ steps.route.outputs.mode }}
   scope:
-    description: PR scope — "normal-pr", "direct-candidate", or "direct-provider".
+    description: >-
+      PR scope — "normal-pr", "direct-candidate", "direct-provider", or
+      "direct-pair".
     value: ${{ steps.route.outputs.scope }}
 runs:
   using: composite

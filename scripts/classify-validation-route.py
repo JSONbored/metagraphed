@@ -4,9 +4,11 @@
 Reads ``changed-files.txt`` (one path per line, produced by the merge-base diff in
 the classify-validation-route composite action) and decides:
 
-  * ``mode=ugc``   — the PR is a single community candidate/provider submission
-                     (registry/{candidates,providers}/community/<slug>.json). The
-                     checks job runs the light submission preflight only.
+  * ``mode=ugc``   — the PR is a valid direct community submission: exactly one
+                     candidate file, exactly one provider file, or an atomic
+                     provider+candidate pair (one of each) under
+                     ``registry/{candidates,providers}/community/<slug>.json``.
+                     The checks job runs the light submission preflight only.
   * ``mode=full``  — everything else. The full build + contract/schema/safety
                      suite runs (and the test job runs the test suite).
 
@@ -33,23 +35,38 @@ candidate_pattern = re.compile(r"^registry/candidates/community/[a-z0-9][a-z0-9-
 provider_pattern = re.compile(r"^registry/providers/community/[a-z0-9][a-z0-9-]*\.json$")
 candidate_files = [file for file in changed_files if candidate_pattern.fullmatch(file)]
 provider_files = [file for file in changed_files if provider_pattern.fullmatch(file)]
-touched_community = [
+touched_community_candidate = [
     file
     for file in changed_files
     if file.startswith("registry/candidates/community/")
-    or file.startswith("registry/providers/community/")
+]
+touched_community_provider = [
+    file
+    for file in changed_files
+    if file.startswith("registry/providers/community/")
 ]
 errors = []
 submission_files = candidate_files + provider_files
-if not submission_files and not touched_community:
+if (
+    not submission_files
+    and not touched_community_candidate
+    and not touched_community_provider
+):
     scope = "normal-pr"
 else:
-    scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
-    if len(submission_files) != 1:
+    is_pair = len(candidate_files) == 1 and len(provider_files) == 1
+    scope = (
+        "direct-pair"
+        if is_pair
+        else "direct-provider"
+        if len(provider_files) == 1
+        else "direct-candidate"
+    )
+    if len(submission_files) != 1 and not is_pair:
         errors.append(
             {
                 "category": "unsupported-shape",
-                "message": "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file",
+                "message": "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file, or an atomic provider+candidate pair (one of each)",
             }
         )
     unrelated = [
@@ -64,7 +81,11 @@ else:
                 "message": "direct submissions cannot change other files: " + ", ".join(unrelated),
             }
         )
-mode = "ugc" if scope in {"direct-candidate", "direct-provider"} else "full"
+mode = (
+    "ugc"
+    if scope in {"direct-candidate", "direct-provider", "direct-pair"} and not errors
+    else "full"
+)
 report = {
     "schema_version": 1,
     "mode": mode,
