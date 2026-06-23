@@ -18392,7 +18392,11 @@
                 "fastest-rpc",
                 "most-complete",
                 "most-enriched",
-                "fastest-growing"
+                "fastest-growing",
+                "open-slots",
+                "cheapest-registration",
+                "highest-emission",
+                "validator-headroom"
               ],
               "type": "string"
             }
@@ -18523,10 +18527,11 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+        "summary": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
         "tags": [
           "registry",
-          "analytics"
+          "analytics",
+          "subnets"
         ]
       }
     },

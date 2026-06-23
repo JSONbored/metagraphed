@@ -3020,8 +3020,28 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
   return projection;
 }
 
+// Economic source for cross-subnet projections (e.g. the leaderboard economic
+// boards): the live KV 'economics:current' blob when fresh/on-contract/integrity-
+// checked, else the committed R2 economics.json — the same KV-primary/R2-fallback
+// the /api/v1/economics route uses. Always resolves to an array (empty when both
+// tiers are cold), so every caller stays null-safe.
+async function resolveEconomicsRows(env) {
+  const live = await resolveLiveEconomics({
+    readHealthKv,
+    env,
+    contractVersion: contractVersion(env),
+  });
+  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
+  const artifact = await readArtifact(env, "/metagraph/economics.json");
+  return artifact.ok && Array.isArray(artifact.data?.subnets)
+    ? artifact.data.subnets
+    : [];
+}
+
 // Registry leaderboards: healthiest / fastest-rpc / most-complete /
-// fastest-growing. Combines live D1 status with registry projections.
+// most-enriched / fastest-growing plus the economic opportunity boards
+// (open-slots / cheapest-registration / highest-emission / validator-headroom).
+// Combines live D1 status with registry projections and the economics tier.
 async function handleLeaderboards(request, env, url) {
   const validationError = validateQueryParams(url, ["board", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -3052,35 +3072,39 @@ async function handleLeaderboards(request, env, url) {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples] = await Promise.all([
-    d1All(
-      env,
-      `SELECT netuid,
+  const [healthRows, rpcRows, growthSamples, economicsRows] = await Promise.all(
+    [
+      d1All(
+        env,
+        `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
               AVG(latency_ms) AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
-      [],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, MIN(latency_ms) AS min_latency_ms
+        [],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
        FROM surface_status
        WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
          AND status = 'ok' AND latency_ms IS NOT NULL
        GROUP BY netuid`,
-      [],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, snapshot_date, completeness_score
+        [],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, snapshot_date, completeness_score
        FROM subnet_snapshots
        WHERE snapshot_date >= ?
        ORDER BY netuid, snapshot_date`,
-      [sevenDaysAgo],
-    ),
-  ]);
+        [sevenDaysAgo],
+      ),
+      // Economic boards: the economics tier alongside the operational D1 queries.
+      resolveEconomicsRows(env),
+    ],
+  );
 
   // Per-subnet completeness delta over the window (latest - earliest sample).
   const growthByNetuid = new Map();
@@ -3112,6 +3136,7 @@ async function handleLeaderboards(request, env, url) {
     rpcRows,
     mostComplete,
     growthRows,
+    economicsRows,
     subnetMeta,
   });
   return envelopeResponse(

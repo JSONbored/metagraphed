@@ -703,19 +703,141 @@ export function formatGlobalIncidents({
   };
 }
 
+// A finite number, or null — coerces economic metrics that may be missing or NaN.
+function finiteOrNull(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// Cross-subnet economic opportunity boards: where the open slots are, what they
+// cost, where the emission is, and where a validator permit is still attainable.
+// Each board is a spec run through the shared `economicBoard` pipeline below, so
+// adding one is a table entry, not a code path. `metric` is the sort key (null
+// drops the row); `eligible` filters the projected entry; `project` shapes it.
+const ECONOMIC_BOARD_SPECS = [
+  {
+    // Most room to register a new neuron — the miner's first question.
+    key: "open-slots",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.open_slots),
+    project: (row, openSlots) => ({
+      open_slots: openSlots,
+      max_uids: finiteOrNull(row.max_uids),
+      registration_cost_tao: finiteOrNull(row.registration_cost_tao),
+      registration_allowed: row.registration_allowed === true,
+    }),
+    eligible: (entry) => entry.open_slots > 0,
+    // Cheaper entry breaks ties (unknown cost ranks last).
+    tiebreak: (a, b) =>
+      (a.registration_cost_tao ?? Infinity) -
+      (b.registration_cost_tao ?? Infinity),
+  },
+  {
+    // Cheapest way in, among subnets whose registration is actually open.
+    key: "cheapest-registration",
+    direction: "asc",
+    metric: (row) =>
+      row.registration_allowed === true
+        ? finiteOrNull(row.registration_cost_tao)
+        : null,
+    project: (row, cost) => ({
+      registration_cost_tao: cost,
+      open_slots: finiteOrNull(row.open_slots),
+      registration_allowed: true,
+    }),
+    // Drop subnets known to be full; keep unknown-capacity ones (open_slots null).
+    eligible: (entry) => entry.open_slots == null || entry.open_slots > 0,
+    // More open slots breaks ties.
+    tiebreak: (a, b) => (b.open_slots ?? -1) - (a.open_slots ?? -1),
+  },
+  {
+    // Where the emission is concentrated — the yield signal.
+    key: "highest-emission",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.emission_share),
+    project: (row, emissionShare) => ({
+      emission_share: emissionShare,
+      total_stake_tao: finiteOrNull(row.total_stake_tao),
+      validator_count: finiteOrNull(row.validator_count),
+      miner_count: finiteOrNull(row.miner_count),
+    }),
+    eligible: (entry) => entry.emission_share > 0,
+    tiebreak: (a, b) => (b.total_stake_tao ?? -1) - (a.total_stake_tao ?? -1),
+  },
+  {
+    // Open validator permits — the validator's first question.
+    key: "validator-headroom",
+    direction: "desc",
+    metric: (row) => {
+      const max = finiteOrNull(row.max_validators);
+      const have = finiteOrNull(row.validator_count);
+      return max != null && have != null && max > 0
+        ? Math.max(0, max - have)
+        : null;
+    },
+    project: (row, headroom) => ({
+      validator_headroom: headroom,
+      validator_count: finiteOrNull(row.validator_count),
+      max_validators: finiteOrNull(row.max_validators),
+      emission_share: finiteOrNull(row.emission_share),
+    }),
+    eligible: (entry) => entry.validator_headroom > 0,
+    // More emission per open permit breaks ties.
+    tiebreak: (a, b) => (b.emission_share ?? -1) - (a.emission_share ?? -1),
+  },
+];
+
+export const ECONOMIC_LEADERBOARD_BOARDS = ECONOMIC_BOARD_SPECS.map(
+  (spec) => spec.key,
+);
+
 export const LEADERBOARD_BOARDS = [
   "healthiest",
   "fastest-rpc",
   "most-complete",
   "most-enriched",
   "fastest-growing",
+  ...ECONOMIC_LEADERBOARD_BOARDS,
 ];
+
+// Project one economic board from economics rows: map → identity-merge → metric
+// gate → eligibility → rank (board direction, then board tiebreak, then netuid
+// for total determinism) → cap. Null-safe end to end: a missing `rows` yields []
+// and a row whose metric is null never reaches the board.
+function economicBoard(rows, metaFor, cap, spec) {
+  const direction = spec.direction === "asc" ? 1 : -1;
+  return (rows || [])
+    .map((row) => {
+      const metric = spec.metric(row);
+      if (metric == null) return null;
+      const meta = metaFor(row.netuid);
+      const entry = {
+        netuid: row.netuid,
+        slug: meta.slug ?? row.slug ?? null,
+        name: meta.name ?? row.name ?? null,
+        ...spec.project(row, metric),
+      };
+      return spec.eligible(entry) ? { metric, entry } : null;
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        direction * (a.metric - b.metric) ||
+        (spec.tiebreak ? spec.tiebreak(a.entry, b.entry) : 0) ||
+        a.entry.netuid - b.entry.netuid,
+    )
+    .slice(0, cap)
+    .map((item) => item.entry);
+}
 
 // Assemble registry leaderboards from already-query-shaped inputs:
 // healthRows [{netuid, total, ok_count, avg_latency_ms}], rpcRows
 // [{netuid, min_latency_ms}], mostComplete [{netuid, slug, name,
 // completeness_score, surface_count, operational_interface_count}], growthRows
-// [{netuid, delta}]. `subnetMeta` is a Map(netuid -> {slug, name}).
+// [{netuid, delta}], economicsRows (live economics tier rows: netuid, slug,
+// name, open_slots, registration_cost_tao, emission_share, validator/miner
+// counts, max_validators, …). `subnetMeta` is a Map(netuid -> {slug, name}).
+// The economic boards are null-safe: an empty/absent economicsRows leaves each
+// economic board as [] rather than omitting it.
 export function formatLeaderboards({
   board,
   limit,
@@ -724,6 +846,7 @@ export function formatLeaderboards({
   rpcRows,
   mostComplete,
   growthRows,
+  economicsRows,
   subnetMeta,
 }) {
   const cap = Math.max(1, Math.min(100, Number(limit) || 20));
@@ -803,12 +926,18 @@ export function formatLeaderboards({
     .sort((a, b) => b.completeness_delta - a.completeness_delta)
     .slice(0, cap);
 
+  const economicBoards = {};
+  for (const spec of ECONOMIC_BOARD_SPECS) {
+    economicBoards[spec.key] = economicBoard(economicsRows, metaFor, cap, spec);
+  }
+
   const allBoards = {
     healthiest,
     "fastest-rpc": fastestRpc,
     "most-complete": completeBoard,
     "most-enriched": enrichedBoard,
     "fastest-growing": fastestGrowing,
+    ...economicBoards,
   };
   const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
 

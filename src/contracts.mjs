@@ -957,7 +957,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
@@ -1648,9 +1648,9 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
     "standard",
-    ["registry", "analytics"],
+    ["registry", "analytics", "subnets"],
     [
       {
         name: "board",
@@ -1662,6 +1662,10 @@ export const API_ROUTES = [
             "most-complete",
             "most-enriched",
             "fastest-growing",
+            "open-slots",
+            "cheapest-registration",
+            "highest-emission",
+            "validator-headroom",
           ],
         },
       },

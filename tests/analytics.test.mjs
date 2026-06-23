@@ -9,6 +9,7 @@ import {
 } from "../src/health-serving.mjs";
 import { writeSubnetSnapshot } from "../src/health-prober.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 // --- Pure format helpers ----------------------------------------------------
@@ -211,6 +212,241 @@ describe("formatLeaderboards", () => {
     assert.equal(
       out.boards.healthiest.some((e) => e.netuid === 3),
       false,
+    );
+  });
+
+  // Economic opportunity boards. Rows mirror the live economics tier.
+  const economicsRows = [
+    {
+      netuid: 10,
+      slug: "ten",
+      name: "Ten",
+      open_slots: 200,
+      max_uids: 256,
+      registration_cost_tao: 1,
+      registration_allowed: true,
+      emission_share: 0.1,
+      total_stake_tao: 5000,
+      validator_count: 10,
+      miner_count: 46,
+      max_validators: 64,
+    },
+    {
+      netuid: 11,
+      slug: "eleven",
+      name: "Eleven",
+      open_slots: 50,
+      max_uids: 128,
+      registration_cost_tao: 0.5,
+      registration_allowed: true,
+      emission_share: 0.3,
+      total_stake_tao: 9000,
+      validator_count: 60,
+      miner_count: 18,
+      max_validators: 64,
+    },
+    {
+      // Full + registration closed + zero validator headroom → excluded from
+      // open-slots, cheapest-registration, and validator-headroom (but still has
+      // emission, so it shows on highest-emission).
+      netuid: 12,
+      slug: "twelve",
+      name: "Twelve",
+      open_slots: 0,
+      max_uids: 64,
+      registration_cost_tao: 100,
+      registration_allowed: false,
+      emission_share: 0.05,
+      total_stake_tao: 1000,
+      validator_count: 64,
+      miner_count: 0,
+      max_validators: 64,
+    },
+    {
+      // No economics: every metric is null/missing → excluded from all boards.
+      netuid: 13,
+      slug: "thirteen",
+      name: "Thirteen",
+      open_slots: null,
+      registration_cost_tao: null,
+      registration_allowed: true,
+      emission_share: null,
+      total_stake_tao: null,
+      validator_count: null,
+      miner_count: null,
+      max_validators: null,
+    },
+  ];
+
+  test("ranks the four economic boards from the economics tier", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      economicsRows,
+      board: null,
+      limit: 10,
+    });
+    // open-slots: most room first; full + unknown excluded.
+    assert.deepEqual(
+      out.boards["open-slots"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.equal(out.boards["open-slots"][0].open_slots, 200);
+    assert.equal(out.boards["open-slots"][0].name, "Ten");
+    // cheapest-registration: lowest cost first; closed + unknown-cost excluded.
+    assert.deepEqual(
+      out.boards["cheapest-registration"].map((e) => e.netuid),
+      [11, 10],
+    );
+    assert.equal(
+      out.boards["cheapest-registration"][0].registration_cost_tao,
+      0.5,
+    );
+    // highest-emission: largest share first; only null-emission excluded.
+    assert.deepEqual(
+      out.boards["highest-emission"].map((e) => e.netuid),
+      [11, 10, 12],
+    );
+    // validator-headroom: max_validators - validator_count, desc; zero excluded.
+    assert.deepEqual(
+      out.boards["validator-headroom"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.equal(out.boards["validator-headroom"][0].validator_headroom, 54);
+  });
+
+  test("economic boards are null-safe when the economics tier is cold", () => {
+    const out = formatLeaderboards({ ...inputs, board: null, limit: 10 });
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.deepEqual(out.boards[key], [], `${key} must be empty, not absent`);
+    }
+    // The operational boards are unaffected by the absent economics tier.
+    assert.ok(out.boards.healthiest.length > 0);
+  });
+
+  test("a single economic board honours the limit cap", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      economicsRows,
+      board: "highest-emission",
+      limit: 1,
+    });
+    assert.deepEqual(Object.keys(out.boards), ["highest-emission"]);
+    assert.equal(out.boards["highest-emission"].length, 1);
+    assert.equal(out.boards["highest-emission"][0].netuid, 11);
+  });
+
+  test("economic boards break metric ties by tiebreak then netuid, nulls last", () => {
+    const ranked = (board, rows) =>
+      formatLeaderboards({
+        ...inputs,
+        board,
+        limit: 10,
+        economicsRows: rows,
+      }).boards[board].map((entry) => entry.netuid);
+
+    // open-slots all tie at 100: cheaper cost first, equal cost breaks on netuid,
+    // unknown cost (Infinity) ranks last. netuid 2 is in subnetMeta, so its
+    // identity resolves from the map rather than the row.
+    const openSlots = formatLeaderboards({
+      ...inputs,
+      board: "open-slots",
+      limit: 10,
+      economicsRows: [
+        {
+          netuid: 30,
+          open_slots: 100,
+          registration_cost_tao: 5,
+          registration_allowed: true,
+        },
+        {
+          netuid: 2,
+          open_slots: 100,
+          registration_cost_tao: 5,
+          registration_allowed: true,
+        },
+        {
+          netuid: 31,
+          open_slots: 100,
+          registration_cost_tao: null,
+          registration_allowed: true,
+        },
+        {
+          netuid: 32,
+          open_slots: 100,
+          registration_cost_tao: 1,
+          registration_allowed: true,
+        },
+      ],
+    }).boards["open-slots"];
+    assert.deepEqual(
+      openSlots.map((e) => e.netuid),
+      [32, 2, 30, 31],
+    );
+    assert.equal(openSlots.find((e) => e.netuid === 2).name, "Two");
+
+    // cheapest-registration tie at cost 2: more open slots first, unknown last.
+    assert.deepEqual(
+      ranked("cheapest-registration", [
+        {
+          netuid: 30,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: 10,
+        },
+        {
+          netuid: 31,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: null,
+        },
+        {
+          netuid: 32,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: 99,
+        },
+      ]),
+      [32, 30, 31],
+    );
+
+    // highest-emission tie at 0.2: higher stake first, unknown last.
+    assert.deepEqual(
+      ranked("highest-emission", [
+        { netuid: 30, emission_share: 0.2, total_stake_tao: 100 },
+        { netuid: 31, emission_share: 0.2, total_stake_tao: null },
+        { netuid: 32, emission_share: 0.2, total_stake_tao: 999 },
+      ]),
+      [32, 30, 31],
+    );
+
+    // validator-headroom tie at 10: higher emission first, unknown last.
+    assert.deepEqual(
+      ranked("validator-headroom", [
+        {
+          netuid: 30,
+          max_validators: 20,
+          validator_count: 10,
+          emission_share: 0.1,
+        },
+        {
+          netuid: 31,
+          max_validators: 30,
+          validator_count: 20,
+          emission_share: null,
+        },
+        {
+          netuid: 32,
+          max_validators: 15,
+          validator_count: 5,
+          emission_share: 0.5,
+        },
+      ]),
+      [32, 30, 31],
     );
   });
 });
@@ -635,6 +871,76 @@ describe("analytics routes (cold local D1)", () => {
     assert.equal(typeof body.data.boards, "object");
     assert.ok(body.data.boards["most-complete"].length > 0);
     assert.deepEqual(body.data.boards.healthiest, []);
+  });
+  test("leaderboards surfaces economic boards from the committed economics tier", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards",
+      env,
+    );
+    // open-slots / cheapest-registration / highest-emission / validator-headroom
+    // project from the R2 economics.json fallback in this cold-D1 env.
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.ok(Array.isArray(body.data.boards[key]), key);
+    }
+    const openSlots = body.data.boards["open-slots"];
+    assert.ok(
+      openSlots.length > 0,
+      "committed economics yields open-slot subnets",
+    );
+    // Descending by open_slots; each entry carries the miner decision fields.
+    assert.ok(openSlots[0].open_slots >= (openSlots[1]?.open_slots ?? 0));
+    assert.equal(typeof openSlots[0].netuid, "number");
+    assert.ok("registration_cost_tao" in openSlots[0]);
+  });
+  test("leaderboards filters to a single economic board", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=highest-emission&limit=5",
+      env,
+    );
+    assert.deepEqual(Object.keys(body.data.boards), ["highest-emission"]);
+    assert.ok(body.data.boards["highest-emission"].length <= 5);
+  });
+  test("leaderboards economic boards prefer the live economics KV blob", async () => {
+    // A fresh, on-contract, integrity-valid blob makes resolveLiveEconomics win,
+    // so the boards project from KV rather than the committed R2 economics.json.
+    const liveEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key !== "economics:current") return null;
+          return {
+            schema_version: 1,
+            contract_version: CONTRACT_VERSION,
+            captured_at: new Date(Date.now() - 60_000).toISOString(),
+            summary: { with_economics_count: 1 },
+            subnets: [
+              {
+                netuid: 777,
+                slug: "live",
+                name: "Live",
+                open_slots: 5,
+                registration_cost_tao: 1,
+                registration_allowed: true,
+                emission_share: 1,
+              },
+            ],
+          };
+        },
+      },
+    };
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=open-slots",
+      liveEnv,
+    );
+    assert.deepEqual(
+      body.data.boards["open-slots"].map((e) => e.netuid),
+      [777],
+    );
   });
   test("leaderboards rejects an unknown board", async () => {
     const { status, body } = await getJson(
