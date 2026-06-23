@@ -44,8 +44,16 @@ export function latencyStatColumns({
   includeMinMax = true,
 } = {}) {
   const avg = `AVG(CASE WHEN ${OK_LATENCY} THEN latency_ms END)`;
-  const pick = (q, name) =>
-    `MAX(CASE WHEN rn = CAST(${q} * lat_cnt AS INTEGER) + 1 THEN latency_ms END) AS ${name}`;
+  // Nearest-rank order statistic: the value at 1-based ordinal position
+  // ceil(q * N) among the N ok-latency rows. `CAST(x AS INTEGER)` truncates
+  // toward zero (= floor for the non-negative q*N), so add 1 only when there is
+  // a fractional part — that is ceil. The previous `floor(q*N) + 1` overshot by
+  // one whenever q*N was an integer (e.g. N=100 → p50/p95/p99 picked ranks
+  // 51/96/100 instead of 50/95/99).
+  const pick = (q, name) => {
+    const pos = `${q} * lat_cnt`;
+    return `MAX(CASE WHEN rn = CAST(${pos} AS INTEGER) + (${pos} > CAST(${pos} AS INTEGER)) THEN latency_ms END) AS ${name}`;
+  };
   const columns = [
     `MAX(lat_cnt) AS latency_samples`,
     `${roundedAvg ? `CAST(ROUND(${avg}) AS INTEGER)` : avg} AS avg_latency_ms`,

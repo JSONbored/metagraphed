@@ -256,6 +256,18 @@ await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
 
+// Economic opportunity boards project from the committed economics.json in the
+// cold local env; assert the call succeeds and returns the economic boards.
+const opportunities = await callOk("find_subnet_opportunities", { limit: 5 });
+assert.ok(
+  opportunities.boards && typeof opportunities.boards === "object",
+  "find_subnet_opportunities must return a boards object",
+);
+assert.ok(
+  Array.isArray(opportunities.boards["open-slots"]),
+  "find_subnet_opportunities must return the open-slots board",
+);
+
 // Goal-shaped tools work without the AI layer (find_subnet_for_task falls back
 // to keyword discovery; how_do_i_call reads the agent-catalog detail).
 const taskMatch = await callOk("find_subnet_for_task", {

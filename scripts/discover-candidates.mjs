@@ -304,9 +304,12 @@ async function discoverFromTaoMarketCap() {
       return;
     }
 
-    expectedCount = Number.isInteger(page.count)
-      ? page.count
-      : offset + (page.results || []).length;
+    // Only bound the loop by total when the API actually reports one. The old
+    // fallback `offset + results.length` equalled the just-advanced offset, so a
+    // response without `count` exited after page 1 even when `page.next` pointed
+    // at more pages. Leave it null and let the `if (!page.next) break` below
+    // (the API's own pagination signal) terminate the walk.
+    expectedCount = Number.isInteger(page.count) ? page.count : null;
     for (const subnet of page.results || []) {
       const netuid = Number(subnet.netuid);
       if (!nativeByNetuid.has(netuid) || subnet.is_active === false) {

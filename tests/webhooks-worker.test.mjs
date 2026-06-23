@@ -19,6 +19,12 @@ function makeKv() {
     async delete(key) {
       store.delete(key);
     },
+    async list({ prefix } = {}) {
+      const keys = [...store.keys()]
+        .filter((key) => !prefix || key.startsWith(prefix))
+        .map((name) => ({ name }));
+      return { keys, list_complete: true };
+    },
   };
 }
 
@@ -215,6 +221,90 @@ describe("webhook subscription routes", () => {
     const body = await res.json();
     assert.equal(body.data.url, "https://hooks.example.com/mg");
     assert.equal(body.data.secret, undefined);
+    // A healthy subscription with no parked deliveries reports "ok".
+    assert.deepEqual(body.data.delivery, {
+      status: "ok",
+      pending: 0,
+      dead_letter: 0,
+      last_failure: null,
+    });
+  });
+
+  test("GET surfaces parked-delivery health (retrying + dead-letter)", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    kv.store.set(
+      `webhooks:delivery:${id}:event-pending`,
+      JSON.stringify({
+        subscription_id: id,
+        event_id: "event-pending",
+        state: "pending",
+        round: 1,
+        reason: "timeout",
+        last_attempt_at: "2026-06-22T00:00:00.000Z",
+        next_attempt_at: "2026-06-22T00:05:00.000Z",
+      }),
+    );
+    kv.store.set(
+      `webhooks:delivery:${id}:event-dead`,
+      JSON.stringify({
+        subscription_id: id,
+        event_id: "event-dead",
+        state: "dead",
+        round: 8,
+        reason: "http-503",
+        status_code: 503,
+        last_attempt_at: "2026-06-22T01:00:00.000Z",
+        next_attempt_at: null,
+      }),
+    );
+
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`),
+      envWith(kv),
+      {},
+    );
+    const { delivery } = (await res.json()).data;
+    assert.equal(delivery.status, "dead_letter");
+    assert.equal(delivery.pending, 1);
+    assert.equal(delivery.dead_letter, 1);
+    assert.equal(delivery.last_failure.event_id, "event-dead"); // latest attempt
+    assert.equal(delivery.last_failure.attempts, 8);
+    assert.equal(delivery.last_failure.reason, "http-503");
+  });
+
+  test("GET delivery health degrades to ok when the store lacks list()", async () => {
+    const kv = makeKv();
+    delete kv.list; // local-dev KV mock without list support
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
+      envWith(kv),
+      {},
+    );
+    assert.equal((await res.json()).data.delivery.status, "ok");
+  });
+
+  test("GET delivery health degrades to ok when a KV list throws", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    kv.list = async () => {
+      throw new Error("kv list down");
+    };
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).data.delivery.status, "ok");
   });
 
   test("DELETE requires the matching secret", async () => {

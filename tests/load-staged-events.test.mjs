@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { test } from "vitest";
 import { handleScheduled, loadStagedEvents } from "../workers/api.mjs";
 import {
@@ -6,6 +7,8 @@ import {
   MAX_STAGED_EVENTS_BYTES,
   MAX_STAGED_EVENT_ROWS,
 } from "../workers/config.mjs";
+
+const SIGNING_KEY = "test-staged-events-secret";
 
 function eventRow(block_number, event_index) {
   return {
@@ -21,6 +24,16 @@ function eventRow(block_number, event_index) {
   };
 }
 
+function signedEventEnvelope(rows, key = SIGNING_KEY) {
+  return {
+    schema_version: 1,
+    hmac_sha256: createHmac("sha256", key)
+      .update(JSON.stringify(rows))
+      .digest("hex"),
+    rows,
+  };
+}
+
 function mockEnv({
   rows,
   bad = false,
@@ -28,9 +41,11 @@ function mockEnv({
   deleted = [],
   prepared = [],
   batches = [],
+  signingKey = SIGNING_KEY,
 }) {
   return {
     env: {
+      METAGRAPH_STAGING_SIGNING_KEY: signingKey,
       METAGRAPH_ARCHIVE: {
         async get(key) {
           getCalls.push(key);
@@ -63,16 +78,27 @@ function mockEnv({
   };
 }
 
-test("loadStagedEvents loads JSON via parameterized batches + deletes it (#1346)", async () => {
+function archiveEnv({ get, put, delete: del, signingKey = SIGNING_KEY }) {
+  return {
+    METAGRAPH_STAGING_SIGNING_KEY: signingKey,
+    METAGRAPH_ARCHIVE: { get, put, delete: del },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({}) };
+      },
+      async batch() {},
+    },
+  };
+}
+
+test("loadStagedEvents loads signed JSON via parameterized batches + deletes it (#1346)", async () => {
   const rows = Array.from({ length: 12 }, (_, i) => eventRow(1000 + i, i));
-  const m = mockEnv({ rows });
+  const m = mockEnv({ rows: signedEventEnvelope(rows) });
   const r = await loadStagedEvents(m.env);
   assert.equal(r.ok, true);
   assert.equal(r.rows, 12);
   assert.deepEqual(m.getCalls, ["events/account-events-pending.json"]);
-  // 12 rows / 10 per statement = 2 statements, one batch (<=50).
   assert.deepEqual(m.batches, [2]);
-  // Idempotent + parameterized: INSERT OR IGNORE keyed (block,index), values bound.
   assert.ok(m.prepared[0].startsWith("INSERT OR IGNORE INTO account_events ("));
   assert.ok(m.prepared[0].includes("VALUES (?"));
   assert.ok(
@@ -92,14 +118,34 @@ test("loadStagedEvents no-ops when nothing is staged", async () => {
 });
 
 test("loadStagedEvents deletes + bails on unparseable JSON", async () => {
-  const m = mockEnv({ rows: [], bad: true });
+  const m = mockEnv({ rows: signedEventEnvelope([]), bad: true });
   const r = await loadStagedEvents(m.env);
   assert.equal(r.reason, "parse_failed");
   assert.deepEqual(m.deleted, ["events/account-events-pending.json"]);
 });
 
+test("loadStagedEvents rejects an unsigned envelope", async () => {
+  const m = mockEnv({ rows: [eventRow(1000, 0)] });
+  const r = await loadStagedEvents(m.env);
+  assert.equal(r.reason, "unauthenticated");
+  assert.equal(m.batches.length, 0);
+  assert.deepEqual(m.deleted, ["events/account-events-pending.json"]);
+});
+
+test("loadStagedEvents rejects a bad HMAC", async () => {
+  const rows = [eventRow(1000, 0)];
+  const envelope = signedEventEnvelope(rows);
+  envelope.hmac_sha256 = "0".repeat(64);
+  const m = mockEnv({ rows: envelope });
+  const r = await loadStagedEvents(m.env);
+  assert.equal(r.reason, "unauthenticated");
+  assert.equal(m.batches.length, 0);
+});
+
 test("loadStagedEvents drops rows lacking the (block, index) key", async () => {
-  const m = mockEnv({ rows: [{ event_kind: "X" }] }); // no block_number/event_index
+  const m = mockEnv({
+    rows: signedEventEnvelope([{ event_kind: "StakeAdded" }]),
+  });
   const r = await loadStagedEvents(m.env);
   assert.equal(r.reason, "empty");
   assert.equal(m.batches.length, 0);
@@ -109,11 +155,11 @@ test("loadStagedEvents drops rows lacking the (block, index) key", async () => {
 test("loadStagedEvents drops rows missing required insert fields", async () => {
   const valid = eventRow(1000, 0);
   const m = mockEnv({
-    rows: [
+    rows: signedEventEnvelope([
       { ...valid, observed_at: null },
       { ...valid, event_index: 1, event_kind: null },
       { ...valid, event_index: 2 },
-    ],
+    ]),
   });
   const r = await loadStagedEvents(m.env);
   assert.equal(r.ok, true);
@@ -131,20 +177,20 @@ test("loadStagedEvents is a safe no-op without bindings", async () => {
 test("handleScheduled fast-load cron drains staged batches + skips the probe (#1346 Option A)", async () => {
   const drained = [];
   const env = {
+    METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
     METAGRAPH_ARCHIVE: {
       async get(key) {
-        // Only the events batch is staged; the neuron key returns nothing.
         return key === "events/account-events-pending.json"
           ? {
               async json() {
-                return [
+                return signedEventEnvelope([
                   {
                     block_number: 1,
                     event_index: 0,
                     event_kind: "StakeAdded",
                     observed_at: 1,
                   },
-                ];
+                ]);
               },
             }
           : null;
@@ -161,7 +207,6 @@ test("handleScheduled fast-load cron drains staged batches + skips the probe (#1
     },
   };
   const r = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
-  // Early-returns the fast-load marker (i.e. never falls through to the prober).
   assert.deepEqual(r, { ok: true, fast_load: true });
   assert.ok(
     drained.includes("events/account-events-pending.json"),
@@ -176,73 +221,55 @@ test("loadStagedEvents caps rows/tick + leaves the remainder in R2 (not deleted)
   const rows = Array.from({ length: N }, (_, i) => eventRow(1000 + i, i));
   const puts = [];
   const deleted = [];
-  const env = {
-    METAGRAPH_ARCHIVE: {
-      async get() {
-        return {
-          size: 1024,
-          async json() {
-            return rows;
-          },
-        };
-      },
-      async put(key, body) {
-        puts.push({ key, body });
-      },
-      async delete(key) {
-        deleted.push(key);
-      },
+  const env = archiveEnv({
+    async get() {
+      return {
+        size: 1024,
+        async json() {
+          return signedEventEnvelope(rows);
+        },
+      };
     },
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return { bind: () => ({}) };
-      },
-      async batch() {},
+    async put(key, body) {
+      puts.push({ key, body });
     },
-  };
+    async delete(key) {
+      deleted.push(key);
+    },
+  });
   const r = await loadStagedEvents(env);
   assert.equal(r.ok, true);
   assert.equal(r.rows, MAX_STAGED_EVENT_ROWS);
   assert.equal(r.remaining, 5);
   assert.deepEqual(deleted, [], "must NOT delete while rows are un-persisted");
   assert.equal(puts.length, 1, "remainder rewritten for the next tick");
-  assert.equal(
-    JSON.parse(puts[0].body).length,
-    5,
-    "exactly the un-loaded rows are kept",
-  );
+  const remainder = JSON.parse(puts[0].body);
+  assert.equal(remainder.rows.length, 5, "exactly the un-loaded rows are kept");
+  assert.match(remainder.hmac_sha256, /^[a-f0-9]{64}$/);
 });
 
 test("loadStagedEvents drains a >cap file across ticks without dropping rows", async () => {
   const N = MAX_STAGED_EVENT_ROWS + 5;
   const all = Array.from({ length: N }, (_, i) => eventRow(1000 + i, i));
-  let stored = JSON.stringify(all); // a stateful in-memory R2 object
-  const env = {
-    METAGRAPH_ARCHIVE: {
-      async get() {
-        return stored == null
-          ? null
-          : {
-              size: stored.length,
-              async json() {
-                return JSON.parse(stored);
-              },
-            };
-      },
-      async put(_key, body) {
-        stored = body;
-      },
-      async delete() {
-        stored = null;
-      },
+  let stored = JSON.stringify(signedEventEnvelope(all));
+  const env = archiveEnv({
+    async get() {
+      return stored == null
+        ? null
+        : {
+            size: stored.length,
+            async json() {
+              return JSON.parse(stored);
+            },
+          };
     },
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return { bind: () => ({}) };
-      },
-      async batch() {},
+    async put(_key, body) {
+      stored = body;
     },
-  };
+    async delete() {
+      stored = null;
+    },
+  });
   const t1 = await loadStagedEvents(env);
   assert.equal(t1.rows, MAX_STAGED_EVENT_ROWS);
   assert.equal(t1.remaining, 5);
@@ -261,29 +288,21 @@ test("loadStagedEvents drains a >cap file across ticks without dropping rows", a
 test("loadStagedEvents skips an over-byte-cap file without parsing or deleting it", async () => {
   let jsonCalled = false;
   const deleted = [];
-  const env = {
-    METAGRAPH_ARCHIVE: {
-      async get() {
-        return {
-          size: MAX_STAGED_EVENTS_BYTES + 1,
-          async json() {
-            jsonCalled = true;
-            return [];
-          },
-        };
-      },
-      async put() {},
-      async delete(key) {
-        deleted.push(key);
-      },
+  const env = archiveEnv({
+    async get() {
+      return {
+        size: MAX_STAGED_EVENTS_BYTES + 1,
+        async json() {
+          jsonCalled = true;
+          return [];
+        },
+      };
     },
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return { bind: () => ({}) };
-      },
-      async batch() {},
+    async put() {},
+    async delete(key) {
+      deleted.push(key);
     },
-  };
+  });
   const r = await loadStagedEvents(env);
   assert.equal(r.ok, false);
   assert.equal(r.reason, "too_large");
@@ -300,12 +319,13 @@ test("loadStagedEvents leaves the file intact if a D1 batch throws (no drop on c
   const puts = [];
   const deleted = [];
   const env = {
+    METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
     METAGRAPH_ARCHIVE: {
       async get() {
         return {
           size: 256,
           async json() {
-            return rows;
+            return signedEventEnvelope(rows);
           },
         };
       },
@@ -325,8 +345,6 @@ test("loadStagedEvents leaves the file intact if a D1 batch throws (no drop on c
       },
     },
   };
-  // D1 writes happen BEFORE the R2 shrink, so a write failure must leave the full
-  // file in place to re-drain next tick — never a partial put/delete.
   await assert.rejects(loadStagedEvents(env));
   assert.deepEqual(puts, [], "no remainder written on failure");
   assert.deepEqual(

@@ -70,7 +70,10 @@ function rowsForSql(sql) {
 // Local artifact env + a query-recording D1 + a KV control plane that serves the
 // snapshot stamp. `queries` records every {sql, params} so a test can assert
 // whether D1 was touched at all (the whole point of the cache).
-function analyticsEnv(queries, { lastRunAt = LAST_RUN_AT } = {}) {
+function analyticsEnv(
+  queries,
+  { lastRunAt = LAST_RUN_AT, d1Error = null } = {},
+) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
@@ -79,7 +82,10 @@ function analyticsEnv(queries, { lastRunAt = LAST_RUN_AT } = {}) {
           bind(...params) {
             queries.push({ sql, params });
             return {
-              all: () => Promise.resolve({ results: rowsForSql(sql) }),
+              all: () =>
+                d1Error
+                  ? Promise.reject(d1Error)
+                  : Promise.resolve({ results: rowsForSql(sql) }),
             };
           },
         };
@@ -337,6 +343,30 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries, { d1Error: new Error("D1 unavailable") });
+
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "a D1 fallback response must not poison the edge cache",
+    );
+    assert.equal(cache.store.size, 0);
+  });
+
   test("transparency: the cached body equals the uncached body for the same handler", async () => {
     // Same request, once with the cache stubbed and once without — the served
     // body must be byte-identical (the cache adds nothing to the payload).
@@ -364,5 +394,61 @@ describe("analytics edge cache", () => {
     const cachedBody = await cachedMiss.text();
 
     assert.equal(cachedBody, uncachedBody);
+  });
+
+  test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
+    // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
+    // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation
+    // on every request. Now wrapped in withEdgeCache at the call site, keyed on
+    // the same contract_version + last_run_at + pathname + search.
+    const routes = [
+      {
+        keyParts: "leaderboards",
+        path: "/api/v1/registry/leaderboards",
+        search: "",
+      },
+      {
+        keyParts: "global-incidents",
+        path: "/api/v1/incidents",
+        search: "?window=7d",
+      },
+      {
+        keyParts: "trajectory",
+        path: "/api/v1/subnets/7/trajectory",
+        search: "",
+      },
+      {
+        keyParts: "uptime",
+        path: "/api/v1/subnets/7/uptime",
+        search: "?window=90d",
+      },
+    ];
+    originalCaches = globalThis.caches;
+    for (const r of routes) {
+      const cache = mockCaches();
+      cache.install();
+      const queries = [];
+      const env = analyticsEnv(queries);
+      const url = `https://api.metagraph.sh${r.path}${r.search}`;
+
+      // MISS: runs D1 and caches under the route's key.
+      const miss = await handleRequest(new Request(url), env, ctx);
+      await Promise.resolve();
+      assert.equal(miss.status, 200, `${r.keyParts}: MISS is 200`);
+      assert.ok(
+        cache.putKeys.includes(expectedKey(r.keyParts, r.path, r.search)),
+        `${r.keyParts}: cached under its expected key`,
+      );
+      const queriesAfterMiss = queries.length;
+
+      // HIT: served from cache, no additional D1.
+      const hit = await handleRequest(new Request(url), env, ctx);
+      assert.equal(hit.status, 200, `${r.keyParts}: HIT is 200`);
+      assert.equal(
+        queries.length,
+        queriesAfterMiss,
+        `${r.keyParts}: a HIT issues no further D1 query`,
+      );
+    }
   });
 });

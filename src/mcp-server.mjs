@@ -26,6 +26,8 @@ import {
 } from "./surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
 import {
+  ECONOMIC_LEADERBOARD_BOARDS,
+  formatLeaderboards,
   loadSubnetReliability,
   loadSubnetTrajectory,
   overlayCatalogDetail,
@@ -397,8 +399,14 @@ function requireString(args, key) {
 }
 
 function clampLimit(value, fallback, max) {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.min(max, Math.floor(value)));
+  // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
+  // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
+  // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
+  // reads to an agent as "this registry knows one subnet" (see the same fix in
+  // src/ai-search.mjs).
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(max, Math.floor(n));
 }
 
 // A search.json document → keywordScore shape: title/slug are identity; subtitle
@@ -1256,6 +1264,68 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "find_subnet_opportunities",
+    title: "Rank subnets by economic opportunity",
+    description:
+      "Compare subnets across the network by the economics a miner or validator " +
+      "actually weighs, as ranked boards: open-slots (most room to register), " +
+      "cheapest-registration (lowest cost to join, registration open), " +
+      "highest-emission (where the emission/yield is concentrated), and " +
+      "validator-headroom (open validator permits). Each entry carries the " +
+      "decision fields — open_slots, registration_cost_tao, emission_share, " +
+      "validator/miner counts. Omit `board` for all four. Economics is refreshed " +
+      "periodically, not live-by-the-second; use get_subnet for one subnet's full " +
+      "current economics.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        board: {
+          type: "string",
+          enum: [...ECONOMIC_LEADERBOARD_BOARDS],
+          description:
+            "Optional single board. Omit to return all economic boards.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max subnets per board (1-100, default 10).",
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const board = optionalEnum(args, "board", ECONOMIC_LEADERBOARD_BOARDS);
+      const limit = clampLimit(args?.limit, 10, 100);
+      const economics = await loadArtifactData(
+        ctx,
+        "/metagraph/economics.json",
+      );
+      const rows = Array.isArray(economics.subnets) ? economics.subnets : [];
+      // Reuse the exact ranking the REST leaderboards use, so the MCP answer can
+      // never drift from /api/v1/registry/leaderboards. No health/rpc inputs are
+      // supplied, so only the economic boards are populated; the operational
+      // boards come back empty and are dropped below.
+      const ranked = formatLeaderboards({
+        board,
+        limit,
+        observedAt: economics.captured_at || economics.generated_at || null,
+        economicsRows: rows,
+        subnetMeta: new Map(),
+      });
+      const boards = {};
+      for (const key of ECONOMIC_LEADERBOARD_BOARDS) {
+        if (ranked.boards[key]) boards[key] = ranked.boards[key];
+      }
+      return {
+        board: board || null,
+        observed_at: ranked.observed_at,
+        with_economics_count: rows.length,
+        boards,
+      };
+    },
+  },
+  {
     name: "semantic_search",
     title: "Semantic search across the registry",
     description:
@@ -1351,12 +1421,17 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
+      const live = await mcpLiveHealth(ctx);
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/agent-catalog.json",
       );
+      // Overlay live probe health onto the catalog index before ranking so each
+      // result's `health` reflects the current cron-probed status, not the
+      // build-time "unknown" stub baked into the artifact.
+      const overlaidCatalog = overlayCatalogIndex(catalog, live) || catalog;
       const byNetuid = new Map(
-        (catalog.subnets || []).map((entry) => [entry.netuid, entry]),
+        (overlaidCatalog.subnets || []).map((entry) => [entry.netuid, entry]),
       );
       const { mode, ranked } = await rankSubnetsForTask(
         ctx,
@@ -1896,6 +1971,27 @@ const TOOL_OUTPUT_SCHEMAS = {
       next_steps: { type: "array" },
       operational_observed_at: NULLABLE_STRING,
       health_source: NULLABLE_STRING,
+    },
+  },
+  find_subnet_opportunities: {
+    type: "object",
+    additionalProperties: true,
+    required: ["boards", "with_economics_count"],
+    properties: {
+      board: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      with_economics_count: { type: "integer" },
+      // Map of board key -> ranked subnet entries. additionalProperties keeps it
+      // open to the board-specific projected fields (open_slots, emission_share,
+      // validator_headroom, …) without re-listing each board's shape.
+      boards: {
+        type: "object",
+        additionalProperties: objectItems({
+          netuid: { type: "integer" },
+          slug: NULLABLE_STRING,
+          name: NULLABLE_STRING,
+        }),
+      },
     },
   },
   semantic_search: {

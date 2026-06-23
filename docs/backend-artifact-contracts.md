@@ -83,11 +83,13 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/subnets/{netuid}/metagraph.json`: schema for the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/metagraph` (no static file).
 - `/metagraph/subnets/{netuid}/neurons/{uid}.json`: schema for a single neuron's metagraph state served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/neurons/{uid}` (no static file).
 - `/metagraph/subnets/{netuid}/validators.json`: schema for a subnet's validators (validator_permit) ranked by stake, served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/validators` (no static file).
+- `/metagraph/subnets/{netuid}/neurons/{uid}/history.json`: schema for a UID's per-day metagraph time series served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/neurons/{uid}/history` (no static file).
+- `/metagraph/subnets/{netuid}/history.json`: schema for a subnet's per-day metagraph history (one snapshot/day) served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/history` (no static file).
 - `/metagraph/accounts/{ss58}.json`: schema for a cross-subnet account summary (chain-event aggregates joined to current registrations), served live from the `account_events` + `neurons` D1 tiers at `GET /api/v1/accounts/{ss58}` (no static file).
 - `/metagraph/accounts/{ss58}/events.json`: schema for an account's paginated chain-event history, served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/events` (no static file).
 - `/metagraph/accounts/{ss58}/subnets.json`: schema for the subnets where an account's hotkey is currently registered, served live from the `neurons` D1 tier at `GET /api/v1/accounts/{ss58}/subnets` (no static file).
 - `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
-- `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards served live from D1 + registry projections at `GET /api/v1/registry/leaderboards` (no static file).
+- `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — served live from D1 + registry projections + the economics tier at `GET /api/v1/registry/leaderboards` (no static file).
 - `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
@@ -127,10 +129,12 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}/metagraph`: fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon); `?validator_permit=true` for validators only (live from the `neurons` D1 tier).
 - `/api/v1/subnets/{netuid}/neurons/{uid}`: fetch a single neuron's metagraph state by UID (live from the `neurons` D1 tier; 200 with `neuron:null` when cold/absent).
 - `/api/v1/subnets/{netuid}/validators`: fetch the validators (validator_permit) ranked by stake (live from the `neurons` D1 tier).
+- `/api/v1/subnets/{netuid}/neurons/{uid}/history`: fetch a UID's per-day metagraph time series over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
+- `/api/v1/subnets/{netuid}/history`: fetch a subnet's per-day metagraph history over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
 - `/api/v1/accounts/{ss58}`: fetch a cross-subnet account summary (chain-event aggregates joined to current registrations + stake) for a hotkey or coldkey (live from the `account_events` + `neurons` D1 tiers).
 - `/api/v1/accounts/{ss58}/events`: fetch an account's paginated chain-event history, newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
 - `/api/v1/accounts/{ss58}/subnets`: fetch the subnets where an account's hotkey is currently registered (live from the `neurons` D1 tier).
-- `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|fastest-growing`, or omit for all).
+- `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|most-enriched|fastest-growing|open-slots|cheapest-registration|highest-emission|validator-headroom`, or omit for all). The four economic boards rank cross-subnet miner/validator opportunity from the economics tier; pairs with the `find_subnet_opportunities` MCP tool.
 - `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
@@ -232,11 +236,13 @@ The RPC proxy route is intentionally disabled unless `METAGRAPH_ENABLE_RPC_PROXY
 metagraph.sh regenerates its dataset on an event-driven publish — on each human-input registry merge, plus a daily floor (ADR 0007) — so the realtime surface is a **change feed**: a notification within seconds of each publish, not a sub-second tail. These routes live outside the artifact contract (dynamic, KV-backed) and degrade to `503 webhooks_unavailable` when the `METAGRAPH_CONTROL` KV binding is absent.
 
 - `POST /api/v1/webhooks/subscriptions` — register `{ url, filters?: { netuids?: integer[], kinds?: ("subnets"|"artifacts")[] }, secret? }`. The `url` must be a public `https://` endpoint (private/loopback/link-local hosts and non-default ports are rejected). Returns `{ id, secret, ... }` once; the secret is never echoed again.
-- `GET /api/v1/webhooks/subscriptions/{id}` — fetch a subscription's public view (no secret).
+- `GET /api/v1/webhooks/subscriptions/{id}` — fetch a subscription's public view (no secret), including a `delivery` health summary (`status` `ok`/`retrying`/`dead_letter`, `pending`/`dead_letter` counts, and a `last_failure` with attempt count, reason, and next-attempt time).
 - `DELETE /api/v1/webhooks/subscriptions/{id}` — delete; requires the secret in the `x-metagraph-webhook-secret` header.
 - `GET /api/v1/events` — thin SSE change feed: emits the current change snapshot (derived from `changelog.json` + the KV `latest` pointer) as one `event: snapshot`, with `retry: 300000` advising a 5-minute reconnect. There is no value in holding a connection open between publishes.
 
-At publish time the dispatcher reads `changelog.json`, matches each subscription's filters, and `POST`s the change event signed with `HMAC-SHA256` (hex) over the raw body in the `x-metagraph-signature` header. Subscriptions auto-expire after 180 days of inactivity. The SSRF guard is best-effort and cannot prevent DNS rebinding; the dispatcher runs on GitHub-hosted runners with no access to the project's network, which bounds the residual risk.
+At publish time the dispatcher reads `changelog.json`, matches each subscription's filters, and `POST`s the change event signed with `HMAC-SHA256` (hex) over the raw body in the `x-metagraph-signature` header. Each delivery also carries `x-metagraph-event-id` (stable per event content) and `x-metagraph-idempotency-key` (stable per subscription + event), so subscribers can dedupe retries safely.
+
+Delivery is **at-least-once**. Within a run a transient failure (network/timeout/5xx/429) is retried with short backoff; if it still fails it is parked per-(subscription, event) under the `webhooks:delivery:<id>:<event_id>` KV prefix and re-attempted on subsequent publish runs with bounded exponential spacing (5 min → 12 h). After 8 failed rounds — or on a deterministic rejection (4xx/redirect) — the delivery becomes a dead letter, surfaced via the `delivery` summary on GET. Successful (re)delivery clears the parked record. Parked records (like subscriptions) auto-expire after 180 days. The SSRF guard is best-effort and cannot prevent DNS rebinding; the dispatcher runs on GitHub-hosted runners with no access to the project's network, which bounds the residual risk.
 
 ## Remote MCP Server (AI agents)
 

@@ -330,6 +330,19 @@ describe("buildChangeEvent + eventMatchesFilters", () => {
     assert.equal(eventMatchesFilters(event, { netuids: [7] }), true);
     assert.equal(eventMatchesFilters(event, { netuids: [99] }), false);
   });
+
+  test("an explicit empty allowlist matches nothing (not everything)", () => {
+    // normalizeFilters preserves `[]`, so these are reachable subscriptions.
+    // An empty allowlist allows zero items → no event matches.
+    assert.equal(eventMatchesFilters(event, { kinds: [] }), false);
+    assert.equal(eventMatchesFilters(event, { netuids: [] }), false);
+    assert.equal(eventMatchesFilters(event, { netuids: [], kinds: [] }), false);
+    // An empty allowlist on one facet rejects even when the other would match.
+    assert.equal(
+      eventMatchesFilters(event, { netuids: [7], kinds: [] }),
+      false,
+    );
+  });
 });
 
 // --- signPayload / timingSafeEqual -------------------------------------------

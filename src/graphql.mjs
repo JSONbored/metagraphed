@@ -86,26 +86,43 @@ function buildFragmentMap(documentNode) {
 // complexity 1 and fully bypassing both limits. `visited` guards against
 // fragment cycles: validate() reports those, but our rules run in the same pass
 // and would otherwise recurse forever.
-function selectionDepth(selectionSet, fragments, visited, depth = 0) {
-  let max = depth;
+//
+// Inline fragments (`... on Type { ... }`, or a bare `... @include(if:) { ... }`)
+// are likewise transparent: a type condition is not a nesting level or an extra
+// field. Counting them would over-measure a query relative to its equivalent
+// inlined or named-fragment form, wrongly rejecting valid queries.
+function selectionDepth(selectionSet, fragments, visited, memo, max) {
+  let deepest = 0;
   for (const sel of selectionSet.selections) {
+    let depth = 0;
     if (sel.kind === "FragmentSpread") {
-      const frag = fragments.get(sel.name.value);
-      if (frag && !visited.has(sel.name.value)) {
-        const d = selectionDepth(
-          frag.selectionSet,
-          fragments,
-          new Set(visited).add(sel.name.value),
-          depth,
-        );
-        if (d > max) max = d;
+      const fragName = sel.name.value;
+      const frag = fragments.get(fragName);
+      if (frag && !visited.has(fragName)) {
+        if (memo.has(fragName)) {
+          depth = memo.get(fragName);
+        } else {
+          depth = selectionDepth(
+            frag.selectionSet,
+            fragments,
+            new Set(visited).add(fragName),
+            memo,
+            max,
+          );
+          memo.set(fragName, depth);
+        }
       }
+    } else if (sel.kind === "InlineFragment") {
+      // Transparent: recurse at the same depth (the type condition is not a level).
+      depth = selectionDepth(sel.selectionSet, fragments, visited, memo, max);
     } else if (sel.selectionSet) {
-      const d = selectionDepth(sel.selectionSet, fragments, visited, depth + 1);
-      if (d > max) max = d;
+      depth =
+        1 + selectionDepth(sel.selectionSet, fragments, visited, memo, max);
     }
+    if (depth > deepest) deepest = depth;
+    if (deepest > max) return max + 1;
   }
-  return max;
+  return deepest;
 }
 
 export function maxDepthRule(max) {
@@ -119,6 +136,8 @@ export function maxDepthRule(max) {
               def.selectionSet,
               fragments,
               new Set(),
+              new Map(),
+              max,
             );
             if (depth > max) {
               context.reportError(
@@ -135,24 +154,50 @@ export function maxDepthRule(max) {
   });
 }
 
-function selectionComplexity(selectionSet, fragments, visited) {
+function selectionComplexity(selectionSet, fragments, visited, memo, max) {
   let count = 0;
   for (const sel of selectionSet.selections) {
     if (sel.kind === "FragmentSpread") {
-      const frag = fragments.get(sel.name.value);
-      if (frag && !visited.has(sel.name.value)) {
+      const fragName = sel.name.value;
+      const frag = fragments.get(fragName);
+      if (frag && !visited.has(fragName)) {
+        if (memo.has(fragName)) {
+          count += memo.get(fragName);
+        } else {
+          const fragCount = selectionComplexity(
+            frag.selectionSet,
+            fragments,
+            new Set(visited).add(fragName),
+            memo,
+            max,
+          );
+          memo.set(fragName, fragCount);
+          count += fragCount;
+        }
+      }
+    } else if (sel.kind === "InlineFragment") {
+      // Transparent like a named spread: count the contained fields, not the
+      // inline type condition itself.
+      count += selectionComplexity(
+        sel.selectionSet,
+        fragments,
+        visited,
+        memo,
+        max,
+      );
+    } else {
+      count += 1;
+      if (sel.selectionSet) {
         count += selectionComplexity(
-          frag.selectionSet,
+          sel.selectionSet,
           fragments,
-          new Set(visited).add(sel.name.value),
+          visited,
+          memo,
+          max,
         );
       }
-      continue;
     }
-    count += 1;
-    if (sel.selectionSet) {
-      count += selectionComplexity(sel.selectionSet, fragments, visited);
-    }
+    if (count > max) return max + 1;
   }
   return count;
 }
@@ -168,6 +213,8 @@ export function maxComplexityRule(max) {
               def.selectionSet,
               fragments,
               new Set(),
+              new Map(),
+              max,
             );
             if (complexity > max) {
               context.reportError(

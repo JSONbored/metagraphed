@@ -373,6 +373,20 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-neuron-history",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-history",
+      "path": "/metagraph/subnets/{netuid}/history.json",
+      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "schema_ref": "#/components/schemas/AccountSummaryArtifact",
@@ -3913,6 +3927,58 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "cache": "short",
+      "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-neuron-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/history.json",
+      "cache": "short",
+      "description": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/accounts/{ss58}.json",
       "cache": "short",
       "description": "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.",
@@ -3996,7 +4062,7 @@
     {
       "artifact_path": "/metagraph/registry/leaderboards.json",
       "cache": "standard",
-      "description": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
       "id": "registry-leaderboards",
       "method": "GET",
       "path": "/api/v1/registry/leaderboards",
@@ -4012,7 +4078,11 @@
               "fastest-rpc",
               "most-complete",
               "most-enriched",
-              "fastest-growing"
+              "fastest-growing",
+              "open-slots",
+              "cheapest-registration",
+              "highest-emission",
+              "validator-headroom"
             ],
             "type": "string"
           }

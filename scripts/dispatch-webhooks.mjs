@@ -22,7 +22,7 @@ import {
 } from "./lib.mjs";
 import {
   buildChangeEvent,
-  dispatchChangeEvent,
+  dispatchWithRedelivery,
   isPublicWebhookAddress,
   WEBHOOK_KV_PREFIX,
 } from "../src/webhooks.mjs";
@@ -95,31 +95,42 @@ for (const key of keys) {
   }
 }
 
-const results = await dispatchChangeEvent({
+// At-least-once delivery: fires the fresh event and retries the now-due backlog of
+// previously-failed deliveries, persisting state to the same METAGRAPH_CONTROL namespace.
+const { delivered, redelivered } = await dispatchWithRedelivery({
   subscriptions,
   event,
   fetchFn: safeWebhookFetch,
   now: () => new Date().toISOString(),
+  store: makeDeliveryStore(namespaceId),
   concurrency: 8,
   timeoutMs: 8000,
   maxAttempts: 3,
   resolveHostnames: resolvePublicHostnames,
 });
 
-const tally = results.reduce((acc, result) => {
+const tally = delivered.reduce((acc, result) => {
   acc[result.status] = (acc[result.status] || 0) + 1;
   return acc;
 }, {});
-for (const failure of results.filter((result) => result.status === "failed")) {
+for (const failure of delivered.filter(
+  (result) => result.status === "failed",
+)) {
+  const fate = failure.retryable ? "parked for redelivery" : "dropped";
   console.error(
-    `::warning::webhook ${failure.id} failed after ${failure.attempts} attempt(s): ${failure.reason} (status ${failure.status_code ?? "-"})`,
+    `::warning::webhook ${failure.id} failed after ${failure.attempts} attempt(s): ${failure.reason} (status ${failure.status_code ?? "-"}) — ${fate}`,
   );
 }
+const redeliveryTally = redelivered.reduce((acc, result) => {
+  acc[result.status] = (acc[result.status] || 0) + 1;
+  return acc;
+}, {});
 console.log(
   stableStringify({
     mode: "dispatch",
     subscription_count: subscriptions.length,
     results: tally,
+    redelivered: redeliveryTally,
   }),
 );
 // Exit 0 regardless of per-subscriber failures: the data publish already
@@ -157,6 +168,52 @@ function getKvValue(nsId, key) {
     nsId,
     "--remote",
   ]);
+}
+
+function putKvValue(nsId, key, value, ttlSeconds) {
+  const wranglerArgs = [
+    "kv",
+    "key",
+    "put",
+    key,
+    value,
+    "--namespace-id",
+    nsId,
+    "--remote",
+  ];
+  if (Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
+    wranglerArgs.push("--ttl", String(Math.floor(ttlSeconds)));
+  }
+  runWrangler(wranglerArgs);
+}
+
+function deleteKvValue(nsId, key) {
+  runWrangler(["kv", "key", "delete", key, "--namespace-id", nsId, "--remote"]);
+}
+
+// KV-backed delivery store for dispatchWithRedelivery. Best-effort: runWrangler
+// logs + returns null on failure, so a KV hiccup never fails the publish.
+function makeDeliveryStore(nsId) {
+  return {
+    async listKeys(prefix) {
+      return listKvKeys(nsId, prefix);
+    },
+    async get(key) {
+      const raw = getKvValue(nsId, key);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+    async put(key, value, { ttlSeconds } = {}) {
+      putKvValue(nsId, key, JSON.stringify(value), ttlSeconds);
+    },
+    async delete(key) {
+      deleteKvValue(nsId, key);
+    },
+  };
 }
 
 async function resolvePublicHostnames(hostname) {

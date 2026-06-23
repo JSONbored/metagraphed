@@ -242,11 +242,10 @@ test("loadStagedNeurons rejects rows that fail per-field bounding (#1360)", asyn
   }
 });
 
-test("loadStagedNeurons snapshot-replaces: deletes every row older than the snapshot stamp", async () => {
-  // INVARIANT: after a successful load, the prune deletes ALL prior-snapshot rows
-  // table-wide (not scoped to a subnet), keyed on the snapshot's captured_at — so
-  // no row with captured_at < the stamp can remain. A coverage envelope still
-  // verifies + loads, but the prune is derived from the rows, not the envelope.
+test("loadStagedNeurons coverage envelope prunes only refreshed netuids", async () => {
+  // INVARIANT: coverage envelopes can be partial refreshes, so after a successful
+  // load the prune deletes prior-snapshot rows only for refreshed netuids. This
+  // preserves rows for subnets that were not represented in the staged payload.
   const captured_at = 2_000_000_000_000;
   const rows = [{ ...neuronRow(1, 0), captured_at }];
   const m = mockEnv({
@@ -258,17 +257,9 @@ test("loadStagedNeurons snapshot-replaces: deletes every row older than the snap
   const purges = m.runs.filter((run) =>
     run.sql.includes("DELETE FROM neurons"),
   );
-  assert.equal(
-    purges.length,
-    1,
-    "exactly one table-wide prune, not per-subnet",
-  );
-  // Cutoff is the snapshot stamp and ONLY the stamp (no netuid scoping).
-  assert.deepEqual(purges[0].v, [captured_at]);
-  assert.ok(
-    !/netuid/.test(purges[0].sql),
-    "prune must be table-wide, not scoped to a netuid",
-  );
+  assert.equal(purges.length, 1, "exactly one coverage-scoped prune");
+  assert.deepEqual(purges[0].v, [1, captured_at]);
+  assert.match(purges[0].sql, /WHERE netuid IN \(\?\) AND captured_at < \?/);
   // The prune runs strictly after the inserts (so a failed insert never prunes).
   assert.ok(m.batches.length > 0);
 });
@@ -339,6 +330,18 @@ function statefulEnv(table, { signingKey = SIGNING_KEY } = {}) {
                   }
                   return { meta: { changes } };
                 }
+                if (sql.startsWith("DELETE FROM neurons WHERE netuid IN")) {
+                  const cutoff = v.at(-1);
+                  const refreshed = new Set(v.slice(0, -1));
+                  let changes = 0;
+                  for (const [k, row] of table) {
+                    if (refreshed.has(row.netuid) && row.captured_at < cutoff) {
+                      table.delete(k);
+                      changes += 1;
+                    }
+                  }
+                  return { meta: { changes } };
+                }
                 return { meta: { changes: 0 } };
               },
             }),
@@ -388,6 +391,27 @@ test("loadStagedNeurons snapshot-replace removes a deregistered UID across snaps
   );
   assert.equal(table.get("1:0").captured_at, T2);
   assert.equal(table.has("1:1"), false);
+});
+
+test("loadStagedNeurons keeps unrefreshed subnets during a partial coverage refresh", async () => {
+  const table = new Map();
+  const m = statefulEnv(table);
+
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:1", { ...neuronRow(1, 1), captured_at: T1 });
+  table.set("2:0", { ...neuronRow(2, 0), captured_at: T1 });
+
+  const T2 = T1 + 60_000;
+  const partial = [{ ...neuronRow(1, 0), captured_at: T2 }];
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(partial, [1], T2);
+
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 1, "only stale rows in refreshed subnet 1 are pruned");
+  assert.deepEqual([...table.keys()].sort(), ["1:0", "2:0"]);
+  assert.equal(table.get("1:0").captured_at, T2);
+  assert.equal(table.get("2:0").captured_at, T1);
 });
 
 test("loadStagedNeurons makes NO prune and keeps the staged object when a batch fails (safety)", async () => {

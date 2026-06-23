@@ -927,6 +927,22 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.count, 0);
   });
 
+  test("search_subnets limit:0 falls back to the default, not a single result", async () => {
+    // tools/call does not enforce inputSchema `minimum:1`, so limit:0 reaches
+    // clampLimit. It must fall back to the default (10), not clamp up to 1 — a
+    // query matching two subnets returns both, not one.
+    const res = await callTool(
+      "search_subnets",
+      { query: "data compute", limit: 0 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(
+      out.results.length >= 2,
+      `expected >=2 results (fallback), got ${out.results.length}`,
+    );
+  });
+
   test("search_subnets requires a non-empty query", async () => {
     const res = await callTool("search_subnets", { query: "   " }, { deps });
     assert.equal(res.body.result.isError, true);
@@ -1177,6 +1193,130 @@ describe("MCP tools (injected deps)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /No resource/);
+  });
+
+  const opportunityDeps = makeDeps({
+    "/metagraph/economics.json": {
+      captured_at: "2026-06-20T00:00:00Z",
+      subnets: [
+        {
+          netuid: 10,
+          slug: "ten",
+          name: "Ten",
+          open_slots: 200,
+          max_uids: 256,
+          registration_cost_tao: 1,
+          registration_allowed: true,
+          emission_share: 0.1,
+          total_stake_tao: 5000,
+          validator_count: 10,
+          miner_count: 46,
+          max_validators: 64,
+        },
+        {
+          netuid: 11,
+          slug: "eleven",
+          name: "Eleven",
+          open_slots: 50,
+          registration_cost_tao: 0.5,
+          registration_allowed: true,
+          emission_share: 0.3,
+          total_stake_tao: 9000,
+          validator_count: 60,
+          miner_count: 18,
+          max_validators: 64,
+        },
+      ],
+    },
+  });
+
+  test("find_subnet_opportunities ranks the economic boards", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { limit: 10 },
+      { deps: opportunityDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.with_economics_count, 2);
+    assert.equal(out.observed_at, "2026-06-20T00:00:00Z");
+    // Only the four economic boards are returned (no operational boards).
+    assert.deepEqual(Object.keys(out.boards).sort(), [
+      "cheapest-registration",
+      "highest-emission",
+      "open-slots",
+      "validator-headroom",
+    ]);
+    assert.deepEqual(
+      out.boards["open-slots"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.deepEqual(
+      out.boards["highest-emission"].map((e) => e.netuid),
+      [11, 10],
+    );
+  });
+
+  test("find_subnet_opportunities filters to a single board", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { board: "cheapest-registration", limit: 1 },
+      { deps: opportunityDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(Object.keys(out.boards), ["cheapest-registration"]);
+    assert.equal(out.boards["cheapest-registration"].length, 1);
+    assert.equal(out.boards["cheapest-registration"][0].netuid, 11);
+  });
+
+  test("find_subnet_opportunities rejects an unknown board", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { board: "bogus" },
+      { deps: opportunityDeps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("find_subnet_opportunities reports a missing economics artifact", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      { deps: makeDeps({}) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No resource/);
+  });
+
+  test("find_subnet_opportunities tolerates an economics artifact with no subnets", async () => {
+    // No subnets array -> empty boards; observed_at falls back to generated_at.
+    let res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      {
+        deps: makeDeps({
+          "/metagraph/economics.json": { generated_at: "2026-06-19T00:00:00Z" },
+        }),
+      },
+    );
+    let out = res.body.result.structuredContent;
+    assert.equal(out.with_economics_count, 0);
+    assert.equal(out.observed_at, "2026-06-19T00:00:00Z");
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.deepEqual(out.boards[key], []);
+    }
+
+    // Neither captured_at nor generated_at -> observed_at is null.
+    res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      { deps: makeDeps({ "/metagraph/economics.json": {} }) },
+    );
+    assert.equal(res.body.result.structuredContent.observed_at, null);
   });
 });
 
@@ -2212,6 +2352,49 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       assert.equal(out.services[0].health.stale, false);
       assert.equal(out.services[0].eligibility.callable, false);
       assert.equal(out.health_source, "live-cron-prober");
+    });
+
+    test("find_subnet_for_task overlays live health onto ranked results", async () => {
+      const deps = makeDeps(
+        {
+          "/metagraph/search.json": {
+            documents: [
+              {
+                type: "subnet",
+                netuid: 7,
+                slug: "x",
+                title: "X",
+                tokens: ["bitcoin", "data"],
+              },
+            ],
+          },
+          "/metagraph/agent-catalog.json": {
+            subnets: [
+              {
+                netuid: 7,
+                slug: "x",
+                name: "X",
+                categories: ["bitcoin"],
+                service_kinds: ["subnet-api"],
+                callable_count: 3,
+                integration_readiness: 80,
+              },
+            ],
+          },
+        },
+        { "health:current": liveKv },
+      );
+      const res = await callTool(
+        "find_subnet_for_task",
+        { task: "bitcoin" },
+        { deps },
+      );
+      const match = res.body.result.structuredContent.results.find(
+        (r) => r.netuid === 7,
+      );
+      assert.ok(match, "subnet 7 should rank for the task");
+      // health reflects the LIVE probe ("failed"), not the build-time stub.
+      assert.equal(match.health, "failed");
     });
 
     test("cold KV → static current-health is NOT served (live-only); reports unknown", async () => {

@@ -11,7 +11,7 @@ name: Refresh Chain Events (first-party poller)
 # (block_number, event_index)), so frequent overlapping runs need no cursor and
 # self-heal small gaps. Live-forward only: public nodes prune ~300 blocks, so this
 # runs often to stay inside that window; deep history is the optional archive-RPC
-# upgrade (#1349). No new secret — uses the existing CLOUDFLARE_* R2 permission.
+# upgrade (#1349). Reuses METAGRAPH_STAGING_SIGNING_KEY (same as refresh-metagraph).
 on:
   schedule:
     # Every 5 min (#1346 Option A) — the practical CI floor (each run has ~3 min of
@@ -33,19 +33,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       # No `cache: npm` here on purpose: this workflow holds Cloudflare secrets, so
       # we don't consume a shared npm cache another workflow could poison.
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.23.0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Install
         run: npm ci
@@ -81,16 +81,20 @@ jobs:
       - name: Poll finney events (first-party, public RPC, no key)
         run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
-          # Overlap FLOOR (not the whole story anymore): ~250 blocks ≈ 50 min of
-          # chain guarantees generous idempotent overlap so a cold/empty cursor is
-          # safe and re-loads are harmless. The cursor (above) handles gaps LONGER
-          # than this; the window just bounds the per-run scan + provides overlap.
+          # Bounded overlap: ~250 blocks ≈ 50 min of chain is re-scanned every
+          # run so staged-but-not-yet-loaded event batches can be regenerated if
+          # the single pending R2 object is overwritten before the Worker drains it.
           EVENTS_WINDOW: "250"
-          # Highest block already staged (blank on a cold start → window floor).
+          # Highest block already staged; used for lag/health accounting only.
           EVENTS_CURSOR: ${{ steps.cursor.outputs.block }}
           # Emit a ::warning:: (and webhook alert, if configured) when the cursor
           # falls within a window of the public-RPC prune horizon.
           METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+
+      - name: Sign staged chain-event batch
+        run: node scripts/sign-staged-neurons.mjs dist/account-events.json
+        env:
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
       # Stage to R2 (the token's existing R2 permission); the Worker loads it into
       # D1 through its binding (loadStagedEvents) — no API-token D1 permission.
@@ -100,11 +104,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # Advance the durable cursor ONLY after a successful stage above. fetch-events
-      # wrote the next cursor (the max block it scanned) to dist/events-cursor.json;
-      # promote it to R2 so the next run resumes from here. If staging failed, this
-      # step is skipped and the cursor stays put — so the next run re-scans from the
-      # last *confirmed-staged* block rather than skipping the un-staged range.
+      # Advance the cursor ONLY after a successful stage above. fetch-events wrote
+      # the next cursor (the max block it scanned) to dist/events-cursor.json; promote
+      # it to R2 for lag/health accounting. The poller still re-scans the bounded
+      # overlap window because R2 staging is not proof of asynchronous D1 import.
       - name: Advance event cursor in R2
         run: npx wrangler r2 object put metagraphed-artifacts/events/cursor.json --file=dist/events-cursor.json --remote
         env:

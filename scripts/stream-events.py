@@ -75,9 +75,19 @@ signal.signal(signal.SIGTERM, _handle_signal)
 signal.signal(signal.SIGINT, _handle_signal)
 
 
-def decode_head(s, block_number, head_ts):
+def decode_head(s, block_number):
     """Decode the SubtensorModule events of one finalized block → ingest rows."""
     block_hash = s.get_block_hash(block_number)
+    # Read the block's timestamp AT THIS block_hash. Querying Timestamp.Now
+    # without a block_hash resolves at the chain's current best block, which
+    # leads the finalized head being processed by ~2-3 blocks — skewing every
+    # event's observed_at into the future (and mis-binning events near a UTC-day
+    # boundary). The events query below already pins block_hash; the timestamp
+    # must use the same one.
+    try:
+        head_ts = int(s.query("Timestamp", "Now", block_hash=block_hash).value)
+    except Exception:
+        head_ts = None
     rows = []
     for event_index, ev in enumerate(
         s.query("System", "Events", block_hash=block_hash)
@@ -189,11 +199,7 @@ def run():
                 if _stop:
                     return True  # non-None return cancels the subscription
                 bn = obj["header"]["number"]
-                try:
-                    head_ts = int(s.query("Timestamp", "Now").value)
-                except Exception:
-                    head_ts = None
-                rows = decode_head(s, bn, head_ts)
+                rows = decode_head(s, bn)
                 ok = push(rows)
                 stats["blocks"] += 1
                 stats["events"] += len(rows)
