@@ -24,7 +24,7 @@ historical state (verified). dTAO launched ~block 4,920,351 (2025-02-13); the pa
 year is entirely post-dTAO so units are consistent.
 
 Run (one-time; resumable):
-  METAGRAPH_EVENTS_INGEST_SECRET=... \
+  METAGRAPH_BACKFILL_SECRET=... \
   uv run --with bittensor python scripts/backfill-neuron-history.py --days 365
 """
 import argparse
@@ -41,7 +41,9 @@ BLOCK_MS = 12_000  # finney block time, empirically exactly 12.0s
 API_BASE = os.environ.get("METAGRAPH_API_BASE", "https://api.metagraph.sh")
 INGEST_PATH = "/api/v1/internal/backfill-neurons"
 INGEST_HEADER = "x-metagraph-events-token"  # EVENTS_INGEST_TOKEN_HEADER
-SECRET = os.environ.get("METAGRAPH_EVENTS_INGEST_SECRET", "")
+SECRET = os.environ.get("METAGRAPH_BACKFILL_SECRET") or os.environ.get(
+    "METAGRAPH_EVENTS_INGEST_SECRET", ""
+)
 
 
 def to_float(value):
@@ -196,7 +198,7 @@ def main():
     args = p.parse_args()
 
     if not SECRET and not args.dry_run:
-        sys.exit("METAGRAPH_EVENTS_INGEST_SECRET is required (or use --dry-run)")
+        sys.exit("METAGRAPH_BACKFILL_SECRET is required (or use --dry-run)")
 
     s = bt.SubtensorApi(network=args.network)
     head_block = int(s.block)

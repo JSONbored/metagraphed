@@ -650,10 +650,11 @@ export async function handleEventIngest(request, env) {
 }
 
 // POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
-// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until
-// METAGRAPH_EVENTS_INGEST_SECRET is configured (reuses the internal-ingest secret +
-// header — same trust boundary); then a constant-time token compare. The body is an
-// array of neuron_daily rows (or {rows:[...]}), each carrying its own snapshot_date,
+// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until the
+// dedicated METAGRAPH_BACKFILL_SECRET is configured (falls back to the events-ingest
+// secret; reuses the EVENTS_INGEST_TOKEN_HEADER header); then a constant-time token
+// compare. The body is an array of neuron_daily rows (or {rows:[...]}), each carrying
+// its own snapshot_date,
 // upserted with the SAME column set + ON CONFLICT target as the forward rollup, so a
 // backfilled row is byte-identical to a rolled one and any re-POST is idempotent on
 // (netuid,uid,snapshot_date). NOT in the public contract.
@@ -661,11 +662,12 @@ export async function handleNeuronBackfill(request, env) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "POST only.", 405);
   }
-  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  const configured =
+    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
   if (!configured) {
     return errorResponse(
       "backfill_disabled",
-      "Historical backfill requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
       503,
     );
   }
