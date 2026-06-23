@@ -4159,6 +4159,14 @@ async function handleHealthRequest(request, env) {
 
   const headers = apiHeaders("short");
   headers.set("x-metagraph-health", stale ? "degraded" : "ok");
+  if (stale) {
+    // The degraded branch is a transient 503; a 503 carrying explicit freshness
+    // (public, max-age=60, stale-while-revalidate=300) is cacheable per RFC 7234,
+    // so a shared/edge cache could keep serving "degraded" for up to ~6 min after
+    // the data recovers. Never cache it — mirror errorResponse in workers/http.mjs.
+    headers.set("cache-control", "no-store");
+    headers.set("x-metagraph-cache-profile", "no-store");
+  }
   return new Response(request.method === "HEAD" ? null : body, {
     status: stale ? 503 : 200,
     headers,
