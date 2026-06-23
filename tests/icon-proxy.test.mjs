@@ -27,6 +27,7 @@ test("rejects invalid hosts (400): empty, IP literal, localhost, single-label", 
 test("serves + caches a fetched favicon (R2 miss -> 200, put called)", async () => {
   const puts = [];
   const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
     METAGRAPH_ARCHIVE: {
       get: async () => null,
       put: async (k, _v, o) => puts.push({ k, o }),
@@ -50,6 +51,7 @@ test("serves + caches a fetched favicon (R2 miss -> 200, put called)", async () 
 test("serves from the R2 cache when present (hit, no fetch)", async () => {
   let fetched = false;
   const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
     METAGRAPH_ARCHIVE: {
       get: async () => ({
         body: PNG,
@@ -72,6 +74,7 @@ test("serves from the R2 cache when present (hit, no fetch)", async () => {
 
 test("404 when no source resolves", async () => {
   const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
     METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
@@ -83,6 +86,7 @@ test("404 when no source resolves", async () => {
 
 test("rejects too-small (placeholder) responses -> 404", async () => {
   const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
     METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
   };
   const tiny = new Uint8Array(10).buffer;
@@ -99,6 +103,7 @@ test("rejects too-small (placeholder) responses -> 404", async () => {
 
 test("304 on matching If-None-Match (no fetch, no R2)", async () => {
   const res = await call("?host=example.com&size=64", {
+    env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
     headers: { "if-none-match": '"icon-example.com-64"' },
   });
   assert.equal(res.status, 304);
@@ -108,8 +113,45 @@ test("non-GET is 405", async () => {
   const url = new URL("https://api.metagraph.sh/api/v1/icon?host=example.com");
   const res = await handleIconProxy(
     new Request(url, { method: "POST" }),
-    {},
+    { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
     url,
   );
   assert.equal(res.status, 405);
+});
+
+test("404 for syntactically valid but non-allowlisted hosts", async () => {
+  let fetched = false;
+  const res = await call("?host=attacker.example.com", {
+    env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
+    fetchImpl: async () => {
+      fetched = true;
+      return new Response(PNG, { status: 200 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.equal(fetched, false);
+});
+
+test("rejects oversized upstream responses before caching", async () => {
+  const puts = [];
+  const tooLarge = new Uint8Array(256 * 1024 + 1).fill(1);
+  const res = await call("?host=example.com", {
+    env: {
+      METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+      METAGRAPH_ARCHIVE: {
+        get: async () => null,
+        put: async (k) => puts.push(k),
+      },
+    },
+    fetchImpl: async () =>
+      new Response(tooLarge, {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+          "content-length": String(tooLarge.byteLength),
+        },
+      }),
+  });
+  assert.equal(res.status, 404);
+  assert.equal(puts.length, 0);
 });

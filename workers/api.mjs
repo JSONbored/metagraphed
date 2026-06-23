@@ -934,7 +934,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
   // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
   if (url.pathname === "/api/v1/icon") {
-    return handleIconProxy(request, env, url);
+    return handleIconProxy(request, env, url, { readArtifact });
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
