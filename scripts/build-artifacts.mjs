@@ -2008,8 +2008,7 @@ async function buildProfilesPhase() {
       generated_at: generatedAt,
       profile: profileArtifacts.byNetuid.get(subnet.netuid),
       subnet,
-      candidate_surfaces:
-        activeCandidateIndexByNetuid.get(subnet.netuid) || [],
+      candidate_surfaces: activeCandidateIndexByNetuid.get(subnet.netuid) || [],
       endpoints: subnetEndpoints,
       gaps: subnet.gaps,
       surfaces: subnetSurfaces,
@@ -2245,8 +2244,8 @@ async function buildEndpointsPhase() {
       counts: {
         surfaces: (overviewSurfacesByNetuid.get(subnet.netuid) || []).length,
         endpoints: (overviewEndpointsByNetuid.get(subnet.netuid) || []).length,
-        candidates:
-          (overviewCandidatesByNetuid.get(subnet.netuid) || []).length,
+        candidates: (overviewCandidatesByNetuid.get(subnet.netuid) || [])
+          .length,
       },
       gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
     });
@@ -2369,7 +2368,9 @@ async function buildAgentPhase() {
     subnet_count: agentCatalogIndex.length,
     blocked_subnet_count: blockedAgentCatalogIndex.length,
     callable_service_count: callableServiceCount,
-    blocker_summary: summarizeAgentReadinessBlockers(blockedAgentCatalogSubnets),
+    blocker_summary: summarizeAgentReadinessBlockers(
+      blockedAgentCatalogSubnets,
+    ),
     subnets: agentCatalogSubnets,
     blocked_subnets: blockedAgentCatalogSubnets,
   };
@@ -2854,7 +2855,11 @@ Anonymous abuse-control limits apply per client IP (no key raises them):
 - OpenAPI 3.1: ${llmsApiBase}/metagraph/openapi.json
 - MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
 `;
-  await fs.writeFile(path.join(repoRoot, "public/auth.md"), authMarkdown, "utf8");
+  await fs.writeFile(
+    path.join(repoRoot, "public/auth.md"),
+    authMarkdown,
+    "utf8",
+  );
 }
 
 async function buildContractsPhase() {
@@ -3003,7 +3008,11 @@ async function buildContractsPhase() {
   await writeJson(artifactFile("schemas/index.json"), schemaIndexArtifact);
   for (const entry of schemaIndexArtifact.schemas || []) {
     const relativePath = schemaDetailArtifactPath(entry);
-    if (!relativePath || !entry.snapshot || typeof entry.snapshot !== "object") {
+    if (
+      !relativePath ||
+      !entry.snapshot ||
+      typeof entry.snapshot !== "object"
+    ) {
       continue;
     }
     // Re-attach the sanitized OpenAPI document captured before the staging wipe,
@@ -3033,7 +3042,10 @@ async function buildContractsPhase() {
     .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
   const fixtureCoverage = fixtureCoverageEntries(surfaces);
   for (const fixture of capturedFixtures.values()) {
-    await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
+    await writeJson(
+      artifactFile(`fixtures/${fixture.surface_id}.json`),
+      fixture,
+    );
   }
   if (capturedFixtureReport) {
     await writeJson(artifactFile("fixtures/_capture-report.json"), {
@@ -3047,8 +3059,9 @@ async function buildContractsPhase() {
     published_at: publishedAt(),
     candidate_count: fixtureCoverage.length,
     fixture_count: fixtureIndexEntries.length,
-    missing_count: fixtureCoverage.filter((entry) => entry.status !== "available")
-      .length,
+    missing_count: fixtureCoverage.filter(
+      (entry) => entry.status !== "available",
+    ).length,
     status_counts: countBy(fixtureCoverage, "status"),
     coverage: fixtureCoverage,
     fixtures: fixtureIndexEntries,
@@ -3077,7 +3090,10 @@ async function buildReviewPhase() {
     summary: adapterCandidateSummary(curationReview.adapter_candidates),
     candidates: curationReview.adapter_candidates,
   });
-  await writeJson(artifactFile("review/enrichment-queue.json"), enrichmentQueue);
+  await writeJson(
+    artifactFile("review/enrichment-queue.json"),
+    enrichmentQueue,
+  );
   // Per-subnet gap + enrichment split (R2-tier; the contribution-flywheel data
   // behind /api/v1/subnets/{netuid}/gaps). `priorities` is the queryable
   // collection; `enrichment_queue` rides along with the richer "where to help"
