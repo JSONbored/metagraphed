@@ -732,6 +732,9 @@ function normalizeSubnet(raw: unknown): Subnet {
     icon_url: firstString(s.icon_url, s.logo_url),
     // API key is website_url; the BrandIcon favicon fallback reads `website`.
     website: firstString(s.website, s.website_url),
+    // API key is source_repo; the BrandIcon GitHub-avatar fallback reads `repo`
+    // (CORS-clean + Worker-reachable — the most reliable icon source).
+    repo: firstString(s.repo, s.source_repo),
     updated_at: firstString(s.updated_at, s.last_checked, s.last_ok),
   } as Subnet;
 }

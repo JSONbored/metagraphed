@@ -266,6 +266,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       for (const s of rows)
         prefetchBrandIcon(s.website, 32, {
           iconUrl: s.icon_url,
+          repoUrl: s.repo,
           lookup: { netuid: s.netuid },
         });
     });
@@ -379,6 +380,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             <div className="flex items-center gap-3 min-w-0">
               <BrandIcon
                 url={s.website}
+                repoUrl={s.repo}
                 iconUrl={s.icon_url}
                 netuid={s.netuid}
                 name={s.name}
@@ -532,6 +534,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       >
                         <BrandIcon
                           url={s.website}
+                          repoUrl={s.repo}
                           iconUrl={s.icon_url}
                           netuid={s.netuid}
                           name={s.name}

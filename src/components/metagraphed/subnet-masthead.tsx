@@ -278,6 +278,7 @@ export function SubnetMasthead({
         <div className="shrink-0 mt-0.5">
           <BrandIcon
             url={profile?.website ?? profile?.homepage}
+            repoUrl={profile?.repo}
             iconUrl={profile?.icon_url}
             netuid={netuid}
             subnetSlug={profile?.slug}

@@ -65,6 +65,7 @@ export interface Subnet {
   freshness?: string; // iso
   updated_at?: string;
   website?: string;
+  repo?: string;
   icon_url?: string | { light: string; dark?: string };
   [key: string]: unknown;
 }
