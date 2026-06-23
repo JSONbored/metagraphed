@@ -95,12 +95,25 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks a private v4 tunnelled inside an IPv6 literal host", () => {
+    for (const url of [
+      "http://[::ffff:169.254.169.254]/latest", // IPv4-mapped metadata IP
+      "http://[::127.0.0.1]/x", // IPv4-compatible loopback
+      "http://[2002:7f00:1::]/x", // 6to4 loopback
+      "http://[2002:a00:1::]/x", // 6to4 of 10.0.0.1
+      "http://[64:ff9b::a9fe:a9fe]/x", // NAT64 of 169.254.169.254
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
   test("allows public http(s)/ws(s)", () => {
     for (const url of [
       "https://entrypoint-finney.opentensor.ai",
       "http://example.com/api",
       "wss://lite.chain.opentensor.ai:443",
       "https://172.15.0.1/x", // just outside the private 172.16-31 range
+      "https://[2002:808:808::]/x", // 6to4 of public 8.8.8.8 stays allowed
     ]) {
       assert.equal(isUnsafePublicUrl(url), false, url);
     }
