@@ -32,7 +32,7 @@ Three ways to use Metagraphed. Pick one.
 
 #### 🤖 AI agent (MCP)
 
-Agent-native, public, read-only, Streamable-HTTP. 16 tools to discover a subnet, check if it's up, and learn how to call it.
+Agent-native, public, read-only, Streamable-HTTP. 23 tools to discover a subnet, check if it's up, read its economics and metagraph, and learn how to call it.
 
 ```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
@@ -40,7 +40,7 @@ claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 
 > Cursor / other clients: add an MCP server with url `https://api.metagraph.sh/mcp`, transport `streamable-http`.
 >
-> Tools: `search_subnets` · `list_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call` · `verify_integration`
+> Tools: `search_subnets` · `list_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `get_subnet_economics` · `get_subnet_trajectory` · `get_subnet_metagraph` · `list_subnet_validators` · `get_neuron` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `list_enrichment_targets` · `find_subnet_opportunities` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call` · `verify_integration`
 
 #### 📦 Typed client
 

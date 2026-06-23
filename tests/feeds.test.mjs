@@ -150,6 +150,57 @@ describe("feeds — item builders", () => {
     assert.deepEqual(registryItems({}), []);
   });
 
+  test("registryItems clamp does not split a surrogate pair in a title", () => {
+    // Emoji placed so its surrogate pair straddles the 80-char title clamp.
+    const path = "a".repeat(78) + "😀" + "z".repeat(20);
+    const items = registryItems({ artifacts: { modified: [{ path }] } });
+    assert.equal(items.length, 1);
+    const loneSurrogate =
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    assert.ok(
+      !loneSurrogate.test(items[0].title),
+      "feed title must not contain a lone surrogate",
+    );
+    assert.ok(!loneSurrogate.test(items[0].summary));
+  });
+
+  test("registryItems clamp keeps a title that fits in code points but not code units", () => {
+    // 60 ASCII + 3 emoji = 63 code points (well under the 80 cap) but 66 UTF-16
+    // code units. The guard must measure code points, or this gets truncated.
+    const path = "a".repeat(60) + "😀😀😀";
+    assert.equal([...path].length <= 80, true);
+    assert.equal(path.length > 80, false); // sanity: still <= 80 code units here
+    const longer = "a".repeat(75) + "😀😀😀"; // 78 code points, 81 code units
+    assert.equal([...longer].length <= 80, true);
+    assert.equal(longer.length > 80, true); // > 80 code units → old guard truncates
+    const items = registryItems({
+      artifacts: { modified: [{ path: longer }] },
+    });
+    assert.equal(items.length, 1);
+    // The full path survives in the title (not truncated to an ellipsis).
+    assert.ok(
+      items[0].title.includes(longer),
+      "a title within the code-point cap must not be truncated",
+    );
+  });
+
+  test("registryItems coverage delta describes only the present side", () => {
+    // Partial coverage_delta (candidate_count only) must not emit "+0 surfaces"
+    // or "Surfaces undefined→undefined" for the absent surface side.
+    const items = registryItems({
+      summary: {
+        coverage_delta: {
+          candidate_count: { before: 50, after: 49, delta: -1 },
+        },
+      },
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, "Coverage updated: -1 candidates");
+    assert.equal(items[0].summary, "candidates 50→49.");
+    assert.ok(!items[0].summary.includes("undefined"));
+    assert.ok(!items[0].title.includes("surfaces"));
+  });
+
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {
     const all = incidentItems(INCIDENTS);
     assert.equal(all.length, 2); // the no-incidents surface contributes none

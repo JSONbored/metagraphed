@@ -18,6 +18,7 @@ import {
 } from "../src/ai-search.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { overlayCatalogIndex } from "../src/health-serving.mjs";
 
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
@@ -168,6 +169,12 @@ describe("embedding helpers", () => {
     const long = "surface:" + "x".repeat(80);
     assert.ok(vectorId(long).startsWith("h:"));
     assert.ok(vectorId(long).length <= 64);
+    // Vectorize caps ids at 64 BYTES, not UTF-16 length: a multi-byte id that is
+    // <=64 chars but >64 bytes must still be folded to a hashed id.
+    const multibyte = "é".repeat(40); // 40 chars, 80 UTF-8 bytes
+    assert.ok(new TextEncoder().encode(multibyte).length > 64);
+    assert.equal(multibyte.length <= 64, true); // would wrongly pass the old check
+    assert.ok(vectorId(multibyte).startsWith("h:"));
   });
   test("embeddingMetadata normalises missing fields to null", () => {
     assert.deepEqual(embeddingMetadata({ type: "subnet", netuid: 7 }), {
@@ -784,6 +791,41 @@ describe("ai-search defensive branches", () => {
     const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
     const userMessage = askCall.input.messages.at(-1).content;
     assert.match(userMessage, /api\.one\.io/);
+  });
+
+  test("askQuestion overlays LIVE probe health onto the catalog enrichment", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const readArtifact = () =>
+      Promise.resolve({
+        ok: true,
+        data: {
+          subnets: [
+            {
+              netuid: 1,
+              callable_count: 3,
+              base_url: "https://api.one.io",
+              health: "unknown", // build-time stub baked into the artifact
+            },
+          ],
+        },
+      });
+    // The /ask handler resolves the live snapshot and injects it + the overlay
+    // helper. Assert the live status reaches the prompt, overriding the stub.
+    const liveHealth = {
+      last_run_at: "2026-06-22T18:00:00.000Z",
+      subnets: [{ netuid: 1, status: "degraded" }],
+    };
+    const out = await askQuestion(
+      env,
+      "Which subnet does images?",
+      {},
+      { readArtifact, liveHealth, overlayCatalogIndex },
+    );
+    assert.ok(out.answer.length > 0);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.at(-1).content;
+    // Live "degraded" status overrides the baked "unknown" stub in the context.
+    assert.match(userMessage, /degraded/);
   });
 
   test("askQuestion degrades gracefully when the catalog read fails", async () => {

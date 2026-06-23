@@ -37,13 +37,18 @@ import {
 } from "./request-handlers/discovery.mjs";
 import {
   buildChangeEvent,
+  deliveryStoragePrefix,
   generateSecret,
   generateSubscriptionId,
   isValidSubscriptionId,
   publicSubscriptionView,
   subscriptionStorageKey,
+  summarizeDeliveryRecords,
+  WEBHOOK_REDELIVERY_LIST_LIMIT,
   timingSafeEqual,
   validateSubscriptionInput,
+  WEBHOOK_EVENT_ID_HEADER,
+  WEBHOOK_IDEMPOTENCY_HEADER,
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
@@ -57,6 +62,7 @@ import {
   workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import {
   dailyLatencyColumns,
   latencyStatColumns,
@@ -72,7 +78,6 @@ import {
   formatLeaderboards,
   formatPercentiles,
   formatRpcUsage,
-  formatTrajectory,
   formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
@@ -87,16 +92,29 @@ import {
   overlayRpcPoolEligibility,
   overlaySubnetEconomics,
   overlaySubnetHealth,
+  loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
 import {
-  NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
-  buildSubnetMetagraph,
-  buildSubnetValidators,
-  buildNeuronDetail,
+  loadSubnetMetagraph,
+  loadSubnetValidators,
+  loadNeuron,
 } from "../src/metagraph-neurons.mjs";
+import {
+  rollupNeuronDaily,
+  archiveNeuronDaily,
+  archivePrunableNeuronDaily,
+  pruneNeuronDaily,
+  neuronDailyUpsertStatements,
+  validNeuronDailyRows,
+  buildNeuronHistory,
+  buildSubnetHistory,
+  parseHistoryWindow,
+  NEURON_DAILY_READ_COLUMNS,
+  MAX_HISTORY_POINTS,
+} from "../src/neuron-history.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
   buildAccountEvents,
@@ -107,10 +125,15 @@ import {
   pruneAccountEvents,
   validEventRows,
 } from "../src/account-events.mjs";
+import {
+  economicsSnapshotUpsertStatements,
+  validEconomicsBackfillRows,
+} from "../src/economics-backfill.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
+import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   aiEnabled,
@@ -136,19 +159,27 @@ import {
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
+  MAX_BACKFILL_INGEST_BODY_BYTES,
+  MAX_BACKFILL_INGEST_ROWS,
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
+  MAX_STAGED_EVENTS_BYTES,
+  MAX_STAGED_EVENT_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_RPC_BODY_BYTES,
   MAX_UPTIME_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
+  NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  resolveClientIp,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
+  SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
+  SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -242,15 +273,77 @@ export default {
 
 // Sanity bounds for an authenticated, HMAC-signed staged neuron batch (the data
 // is already trusted; these are defense-in-depth caps so a malformed signed file
-// can't blow up the D1 load). netuid and uid are both u16 on-chain, so each is
+// can't blow up the D1 load). The byte cap intentionally allows the
+// expected all-subnet signed JSON envelope (~33k rows) while still bounding
+// memory use before parsing. netuid and uid are both u16 on-chain, so each is
 // capped at the u16 max (65535) — matching the existing netuid guard in
 // src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
 const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
-const MAX_STAGED_NEURONS_BYTES = 2_000_000;
+const STAGED_EVENTS_KEY = "events/account-events-pending.json";
+const MAX_STAGED_NEURONS_BYTES = 32_000_000;
 const MAX_STAGED_NEURON_ROWS = 50_000;
 const MAX_STAGED_NEURON_STRING_BYTES = 512;
 const MAX_STAGED_NETUID = 65_535;
 const MAX_STAGED_UID = 65_535;
+const MAX_STAGED_REFRESHED_NETUIDS = 256;
+
+function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
+  if (refreshed_netuids == null && captured_at == null) {
+    return JSON.stringify(rows);
+  }
+  return JSON.stringify({ rows, refreshed_netuids, captured_at });
+}
+
+function parseNeuronStagingMeta(envelope, rows) {
+  const hasRefreshed = envelope?.refreshed_netuids !== undefined;
+  const hasCaptured = envelope?.captured_at !== undefined;
+  if (!hasRefreshed && !hasCaptured) {
+    return { legacy: true };
+  }
+  if (!hasRefreshed || !hasCaptured) {
+    return { invalid: true };
+  }
+  const refreshed_netuids = envelope.refreshed_netuids;
+  const captured_at = envelope.captured_at;
+  if (
+    !Array.isArray(refreshed_netuids) ||
+    refreshed_netuids.length > MAX_STAGED_REFRESHED_NETUIDS ||
+    !Number.isInteger(captured_at) ||
+    captured_at < 0
+  ) {
+    return { invalid: true };
+  }
+  const refreshedSet = new Set();
+  for (const netuid of refreshed_netuids) {
+    if (
+      !Number.isInteger(netuid) ||
+      netuid < 0 ||
+      netuid > MAX_STAGED_NETUID ||
+      refreshedSet.has(netuid)
+    ) {
+      return { invalid: true };
+    }
+    refreshedSet.add(netuid);
+  }
+  for (const row of rows) {
+    if (row.captured_at !== captured_at || !refreshedSet.has(row.netuid)) {
+      return { invalid: true };
+    }
+  }
+  return { legacy: false, refreshed_netuids, captured_at };
+}
+
+function eventStagingSignPayload(rows) {
+  return JSON.stringify(rows);
+}
+
+async function signedEventEnvelope(signingKey, rows) {
+  return {
+    schema_version: 1,
+    hmac_sha256: await hmacHex(signingKey, eventStagingSignPayload(rows)),
+    rows,
+  };
+}
 
 function utf8Bytes(value) {
   return new TextEncoder().encode(value);
@@ -309,12 +402,16 @@ function validStagedNeuronRow(row) {
 }
 
 // Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
-// refresh-metagraph CI job fetches Taostats, wraps the neuron rows in an
-// HMAC-signed envelope, and writes it to R2 (metagraph/neurons-pending.json)
-// using its existing R2 permission; we load only authenticated, bounded,
-// schema-valid rows through the METAGRAPH_HEALTH_DB binding — which needs no
-// API-token D1 permission — with PARAMETERIZED inserts (values are always bound,
-// never interpolated), then delete the object so it loads exactly once.
+// refresh-metagraph CI job fetches the metagraph first-party (#1348), wraps the
+// neuron rows in an HMAC-signed envelope, and writes it to R2
+// (metagraph/neurons-pending.json) using its existing R2 permission; we load only
+// authenticated, bounded, schema-valid rows through the METAGRAPH_HEALTH_DB
+// binding — which needs no API-token D1 permission — with PARAMETERIZED inserts
+// (values are always bound, never interpolated). After every batch succeeds we
+// delete older rows for the coverage represented by the staged payload: legacy
+// bare-array snapshots replace the full table, while coverage envelopes replace
+// only their refreshed subnets. Then delete the staged object so it loads exactly
+// once.
 export async function loadStagedNeurons(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
@@ -347,14 +444,26 @@ export async function loadStagedNeurons(env) {
     await bucket.delete(STAGED_NEURONS_KEY);
     return { ok: false, reason: "too_many_rows" };
   }
-  const expected = await hmacHex(signingKey, JSON.stringify(rows));
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "unauthenticated" };
-  }
   if (!rows.length || rows.some((row) => !validStagedNeuronRow(row))) {
     await bucket.delete(STAGED_NEURONS_KEY);
     return { ok: false, reason: "invalid" };
+  }
+  const stagingMeta = parseNeuronStagingMeta(envelope, rows);
+  if (stagingMeta.invalid) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "invalid" };
+  }
+  const expected = await hmacHex(
+    signingKey,
+    neuronStagingSignPayload(
+      rows,
+      stagingMeta.legacy ? null : stagingMeta.refreshed_netuids,
+      stagingMeta.legacy ? null : stagingMeta.captured_at,
+    ),
+  );
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_NEURONS_KEY);
+    return { ok: false, reason: "unauthenticated" };
   }
   const cols = NEURON_INSERT_COLUMNS;
   const colList = cols.join(",");
@@ -373,47 +482,136 @@ export async function loadStagedNeurons(env) {
         .bind(...values),
     );
   }
-  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+  // A staged snapshot is replacement data for its declared coverage: every row
+  // shares one captured_at stamp (set once by the producer). If ANY batch throws,
+  // bail WITHOUT deleting prior rows or the staged object — the prior snapshot
+  // stays as a fallback and the next cron retries the same staged file.
+  try {
+    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+    }
+  } catch {
+    return { ok: false, reason: "load_failed" };
+  }
+  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete
+  // rows older than this snapshot's stamp for the same replacement scope. Legacy
+  // bare-array snapshots have no coverage metadata, so they replace the whole
+  // table. Coverage envelopes can intentionally represent a partial refresh, so
+  // prune only those refreshed netuids; otherwise a subnet that failed to fetch
+  // could be erased by an unrelated newer captured_at stamp.
+  let snapshotCapturedAt = 0;
+  for (const row of rows) {
+    if (
+      Number.isInteger(row.captured_at) &&
+      row.captured_at > snapshotCapturedAt
+    )
+      snapshotCapturedAt = row.captured_at;
+  }
+  let purged;
+  try {
+    const prune = stagingMeta.legacy
+      ? db
+          .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
+          .bind(snapshotCapturedAt)
+      : db
+          .prepare(
+            `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
+              .map(() => "?")
+              .join(",")}) AND captured_at < ?`,
+          )
+          .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
+    const result = await prune.run();
+    purged = result?.meta?.changes ?? 0;
+  } catch {
+    // Rows are already loaded; a failed prune just leaves stale rows for the next
+    // run to clear. Do NOT delete the staged object — let the next cron re-prune.
+    return { ok: false, reason: "purge_failed" };
   }
   await bucket.delete(STAGED_NEURONS_KEY);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: rows.length, purged };
 }
 
 // Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
-// refresh-events CI job decodes finney's System.Events first-party (no Taostats)
-// and writes account_events rows as JSON to R2 (events/account-events-pending.json)
-// with its existing R2 permission; we load them here through the binding (no
-// API-token D1 permission) with PARAMETERIZED INSERT OR IGNORE keyed
-// (block_number, event_index) — so overlapping poller windows re-insert harmlessly
-// (idempotent, no cursor needed) and a tampered file can only fail, never inject.
-// Then delete the object so each batch loads once.
+// refresh-events CI job decodes finney's System.Events first-party (no Taostats),
+// signs rows with METAGRAPH_STAGING_SIGNING_KEY, and writes the envelope to R2;
+// we load only authenticated rows through the binding (no API-token D1 permission)
+// with PARAMETERIZED INSERT OR IGNORE keyed (block_number, event_index) — so
+// overlapping poller windows re-insert harmlessly (idempotent, no cursor needed).
+// Then delete the object (or rewrite a signed remainder) so each batch loads once.
 export async function loadStagedEvents(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
-  if (!bucket?.get || !db?.prepare) return { ok: false, reason: "unavailable" };
-  const key = "events/account-events-pending.json";
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const key = STAGED_EVENTS_KEY;
   const object = await bucket.get(key);
   if (!object) return { ok: false, reason: "none" };
-  let parsed;
+  // Byte cap: never materialize a pathological body. `size` is object metadata,
+  // available before the body is streamed. Do NOT delete — that would drop rows the
+  // producer staged; leave it (loud) and let the overlapping poller's next window
+  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
+  // producer, not parsed here.
+  if (Number(object.size || 0) > MAX_STAGED_EVENTS_BYTES) {
+    console.warn(
+      `loadStagedEvents: staged file ${object.size} bytes exceeds ${MAX_STAGED_EVENTS_BYTES}; skipping (poller overlap self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
+  }
+  let envelope;
   try {
-    parsed = await object.json();
+    envelope = await object.json();
   } catch {
     await bucket.delete(key);
     return { ok: false, reason: "parse_failed" };
   }
-  const rows = validEventRows(parsed);
-  if (!rows.length) {
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(key);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const expected = await hmacHex(signingKey, eventStagingSignPayload(rows));
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(key);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const validRows = validEventRows(rows);
+  if (!validRows.length) {
     await bucket.delete(key);
     return { ok: false, reason: "empty" };
   }
-  const statements = eventInsertStatements(db, rows);
+  // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
+  // now; if rows remain, rewrite the object with ONLY the signed remainder so the
+  // next tick continues — never delete while rows are un-persisted. Order matters:
+  // write to D1 FIRST, then shrink R2. A crash between them re-reads the full file
+  // next tick and re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so
+  // nothing is dropped.
+  const batch =
+    validRows.length > MAX_STAGED_EVENT_ROWS
+      ? validRows.slice(0, MAX_STAGED_EVENT_ROWS)
+      : validRows;
+  const remainder =
+    validRows.length > MAX_STAGED_EVENT_ROWS
+      ? validRows.slice(MAX_STAGED_EVENT_ROWS)
+      : [];
+  const statements = eventInsertStatements(db, batch);
   const STMTS_PER_BATCH = 50;
   for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
     await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
   }
+  if (remainder.length) {
+    await bucket.put(
+      key,
+      JSON.stringify(await signedEventEnvelope(signingKey, remainder)),
+    );
+    return { ok: true, rows: batch.length, remaining: remainder.length };
+  }
   await bucket.delete(key);
-  return { ok: true, rows: rows.length };
+  return { ok: true, rows: batch.length };
 }
 
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
@@ -484,13 +682,193 @@ export async function handleEventIngest(request, env) {
     );
   }
   const rows = validEventRows(incoming);
+  // Report rows ACTUALLY inserted, not rows validated. The statements use
+  // INSERT OR IGNORE on (block_number, event_index), and the streamer/poller
+  // ingest windows overlap by design, so duplicates are the normal case and are
+  // silently dropped — `rows.length` over-reports. Sum the per-statement
+  // D1 `meta.changes` instead.
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(eventInsertStatements(db, rows));
+    const results = await db.batch(eventInsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
-  return new Response(JSON.stringify({ ok: true, inserted: rows.length }), {
+  return new Response(JSON.stringify({ ok: true, inserted }), {
     status: 200,
     headers: { "content-type": JSON_CONTENT_TYPE },
   });
+}
+
+// POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
+// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until the
+// dedicated METAGRAPH_BACKFILL_SECRET is configured (falls back to the events-ingest
+// secret; reuses the EVENTS_INGEST_TOKEN_HEADER header); then a constant-time token
+// compare. The body is an array of neuron_daily rows (or {rows:[...]}), each carrying
+// its own snapshot_date,
+// upserted with the SAME column set + ON CONFLICT target as the forward rollup, so a
+// backfilled row is byte-identical to a rolled one and any re-POST is idempotent on
+// (netuid,uid,snapshot_date). NOT in the public contract.
+export async function handleNeuronBackfill(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured =
+    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "backfill_disabled",
+      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "History store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_BACKFILL_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
+      413,
+    );
+  }
+  const rows = validNeuronDailyRows(incoming);
+  if (rows.length) {
+    await db.batch(neuronDailyUpsertStatements(db, rows));
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      received: incoming.length,
+      inserted: rows.length,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
+}
+
+// POST /api/v1/internal/backfill-economics (#1307, epic #1302): the per-SUBNET
+// alpha-price history backfill ingest for scripts/backfill-economics-history.py —
+// the analogue of handleNeuronBackfill, but for the economics time series. Auth +
+// caps are IDENTICAL to the neuron backfill: disabled (503) until
+// METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) is configured,
+// then a constant-time token compare over the shared EVENTS_INGEST_TOKEN_HEADER.
+// The body is an array of {netuid, snapshot_date, captured_at, alpha_price_tao}
+// rows (or {rows:[...]}), upserted into subnet_snapshots on (netuid,snapshot_date)
+// with the SAME COALESCE semantics as the forward prober — only alpha_price_tao +
+// the key/captured_at columns are touched, so a backfilled value fills a NULL but
+// never clobbers a forward fire or any other column, and any re-POST is idempotent.
+// NOT in the public contract.
+export async function handleEconomicsBackfill(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured =
+    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "backfill_disabled",
+      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "History store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_BACKFILL_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of economics rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of economics rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
+      413,
+    );
+  }
+  const rows = validEconomicsBackfillRows(incoming);
+  if (rows.length) {
+    await db.batch(economicsSnapshotUpsertStatements(db, rows));
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      received: incoming.length,
+      inserted: rows.length,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
 }
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
@@ -499,36 +877,79 @@ export async function handleEventIngest(request, env) {
 
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
-  // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
-  // snapshot and load it via the D1 binding on whichever cron fires next; it then
-  // self-deletes. Isolated so a load failure never affects the prober/prune below.
-  await loadStagedNeurons(env).catch(() => {});
-  // Token-free chain-event load (#1346): pick up any R2-staged event batch from
-  // the first-party poller and load it via the binding. Isolated like the neuron
-  // load so a failure never affects the prober/prune below.
-  await loadStagedEvents(env).catch(() => {});
-  // Fast-load cron (#1346 Option A): its whole job is to drain staged batches into
-  // D1 quickly (above) — return without running the heavier probe/prune so we can
-  // tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
+  // batches into D1 quickly, then return without running the heavier probe/prune so
+  // it can tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  //
+  // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
+  // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
+  // each staged load is an unlocked R2 read-modify-write (read → load → delete /
+  // rewrite). Running the loaders on every tick let a concurrent invocation clobber a
+  // freshly-staged file via the delete path; owning the drain on a single cron removes
+  // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
+  // load failure never affects the early-return below.
   if (cron === EVENTS_LOAD_CRON) {
+    // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
+    // snapshot and load it via the D1 binding; it then self-deletes.
+    await loadStagedNeurons(env).catch(() => {});
+    // Token-free chain-event load (#1346): pick up any R2-staged event batch from
+    // the first-party poller and load it via the binding.
+    await loadStagedEvents(env).catch(() => {});
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
     // deleted (PR3). Roll the chain events the same way (#1346) before their
-    // 90-day window is pruned. Then prune + snapshot.
-    await rollupDailyUptime(env);
-    await rollupAccountEventsDaily(env).catch(() => {});
+    // 90-day window is pruned. Skip prune when either rollup fails so raw rows
+    // are never deleted without being aggregated first.
+    const uptimeRollup = await rollupDailyUptime(env);
+    const eventsRollup = await rollupAccountEventsDaily(env);
+    const snapshotPromise = writeSubnetSnapshot(env, { readArtifact });
+    if (!uptimeRollup.rolled || !eventsRollup.rolled) {
+      const snapshot = await snapshotPromise;
+      return {
+        pruned: false,
+        rollup_skipped_prune: true,
+        uptime_rolled: uptimeRollup.rolled,
+        events_rolled: eventsRollup.rolled,
+        snapshot,
+      };
+    }
     const [pruned] = await Promise.all([
       pruneHealthHistory(env),
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      writeSubnetSnapshot(env, { readArtifact }),
+      snapshotPromise,
     ]);
     return pruned;
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === NEURON_HISTORY_ROLLUP_CRON) {
+    // Once/day (#1345): snapshot the current `neurons` tier into the dated
+    // neuron_daily table, archive that day and any prunable backlog to the R2
+    // cold tier, then prune D1 to the 90-day hot window. Archive runs BEFORE
+    // prune and the prune is GATED on confirmed archives for every day eligible
+    // for deletion, so a day is never dropped from D1 before it exists in R2. Its
+    // own cron minute so the ~33k-row work never piles onto the probe/prune/fast
+    // crons; each step is .catch-isolated.
+    const rolled = await rollupNeuronDaily(env).catch(() => ({
+      rolled: false,
+    }));
+    const archived = await archiveNeuronDaily(env).catch(() => ({
+      archived: false,
+    }));
+    const archivedPrunable = await archivePrunableNeuronDaily(env).catch(
+      () => ({
+        archived: false,
+      }),
+    );
+    const pruned =
+      archived.archived && archivedPrunable.archived
+        ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+        : { pruned: false, reason: "archive-not-confirmed" };
+    return { rolled, archived, archivedPrunable, pruned };
   }
   return runHealthProber(env, ctx);
 }
@@ -588,10 +1009,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   if (url.pathname === "/api/v1/internal/events") {
     return handleEventIngest(request, env);
   }
+  if (url.pathname === "/api/v1/internal/backfill-neurons") {
+    return handleNeuronBackfill(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/backfill-economics") {
+    return handleEconomicsBackfill(request, env);
+  }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
+  // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
+  // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    const limited = await graphqlRateLimited(request, env);
+    if (limited) return limited;
     return handleGraphQLRequest(request, env);
   }
 
@@ -636,6 +1067,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // wasm is lazy-loaded inside the handler so this never weighs on other routes.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readArtifact });
+  }
+
+  // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
+  // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
+  // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
+  if (url.pathname === "/api/v1/icon") {
+    return handleIconProxy(request, env, url, { readArtifact });
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
@@ -683,7 +1121,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
   if (url.pathname === "/api/v1/registry/leaderboards") {
-    return handleLeaderboards(request, env, url);
+    // Deterministic per-cron-tick D1 leaderboard; edge-cache keyed on the health
+    // snapshot's last_run_at (auto-busts on the next probe) like the sibling
+    // analytics routes, so a polling/cross-colo burst doesn't re-run the SQL.
+    return withEdgeCache(request, ctx, env, "leaderboards", () =>
+      handleLeaderboards(request, env, url),
+    );
   }
 
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
@@ -722,11 +1165,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (bulkTrendsMatch) {
-      return handleBulkHealthTrends(request, env, resolved.url);
+      return handleBulkHealthTrends(request, env, resolved.url, ctx);
     }
     const trendsMatch = TRENDS_PATH_PATTERN.exec(resolved.url.pathname);
     if (trendsMatch) {
-      return handleHealthTrends(request, env, Number(trendsMatch[1]));
+      return handleHealthTrends(
+        request,
+        env,
+        Number(trendsMatch[1]),
+        resolved.url,
+        ctx,
+      );
     }
     const percentilesMatch = PERCENTILES_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -737,6 +1186,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(percentilesMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const incidentsMatch = INCIDENTS_PATH_PATTERN.exec(resolved.url.pathname);
@@ -746,22 +1196,50 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(incidentsMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(
-        request,
-        env,
-        Number(trajectoryMatch[1]),
-        resolved.url,
+      return withEdgeCache(request, ctx, env, "trajectory", () =>
+        handleTrajectory(
+          request,
+          env,
+          Number(trajectoryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
-      return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+      return withEdgeCache(request, ctx, env, "uptime", () =>
+        handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (neuronHistoryMatch) {
+      return handleNeuronHistory(
+        request,
+        env,
+        Number(neuronHistoryMatch[1]),
+        Number(neuronHistoryMatch[2]),
+        resolved.url,
+      );
+    }
+    const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetHistoryMatch) {
+      return handleSubnetHistory(
+        request,
+        env,
+        Number(subnetHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -817,7 +1295,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleAccount(request, env, accountMatch[1]);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
-      return handleGlobalIncidents(request, env, resolved.url);
+      return withEdgeCache(request, ctx, env, "global-incidents", () =>
+        handleGlobalIncidents(request, env, resolved.url),
+      );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
@@ -1252,6 +1732,37 @@ export async function readHealthMetaKv(env, now = Date.now()) {
   return value;
 }
 
+// economics:current is a large blob (one row per subnet) that resolveLiveEconomics
+// reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
+// request (the per-subnet economics overlay, #1308). Neither route is edge-cached
+// for the live overlay, so a warm isolate re-fetches + re-parses the same blob per
+// request. Memoize the read in-isolate — same pattern as readHealthMetaKv (#1375),
+// readRpcPoolArtifact (#1309), latestPointer (#367). Safe: resolveLiveEconomics
+// re-validates the blob's captured_at freshness against the live clock on every
+// call, so the 60 s memo (≪ the 8 h freshness window) never extends how long a
+// stale blob can serve. Null results are not cached so a transient cold KV does
+// not stay sticky; keyed on env so tests / multi-binding callers never cross-read.
+export const ECONOMICS_CURRENT_KV_TTL_MS = 60_000;
+let economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readEconomicsCurrentKv(env, now = Date.now()) {
+  if (
+    economicsCurrentKvMemo.env === env &&
+    now < economicsCurrentKvMemo.expiresAt
+  ) {
+    return economicsCurrentKvMemo.value;
+  }
+  const value = await readHealthKv(env, KV_ECONOMICS_CURRENT);
+  if (value !== null) {
+    economicsCurrentKvMemo = {
+      env,
+      value,
+      expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
+    };
+  }
+  return value;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -1467,7 +1978,7 @@ async function handleApiRequest(
     // fallback, so it can never 404.
     artifact = await readArtifact(env, artifactPath);
     live = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
@@ -1498,7 +2009,7 @@ async function handleApiRequest(
     typeof baseData === "object"
   ) {
     const liveEconomics = await resolveLiveEconomics({
-      readHealthKv,
+      readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
@@ -1624,6 +2135,7 @@ async function handleBulkHealthTrends(
   request,
   env,
   url = new URL(request.url),
+  ctx = {},
 ) {
   for (const key of url.searchParams.keys()) {
     return errorResponse(
@@ -1634,14 +2146,15 @@ async function handleBulkHealthTrends(
     );
   }
 
-  const nowMs = Date.now();
-  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-  const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const rows = await d1All(
-    env,
-    `SELECT netuid,
+  return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
+    const nowMs = Date.now();
+    const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
+    const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    const rows = await d1All(
+      env,
+      `SELECT netuid,
             day AS date,
             SUM(samples) AS total,
             SUM(ok_count) AS ok_count,
@@ -1651,60 +2164,70 @@ async function handleBulkHealthTrends(
      GROUP BY netuid, day
      ORDER BY netuid, day
      LIMIT ?`,
-    [cutoffDay, MAX_BULK_TREND_ROWS],
-  );
-  const windows = {};
-  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-    const windowCutoff = new Date(nowMs - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    windows[label] = rows.filter(
-      (row) => String(row.day || row.date) >= windowCutoff,
+      [cutoffDay, MAX_BULK_TREND_ROWS],
     );
-  }
-  const meta = await readHealthMetaKv(env);
-  const data = formatBulkTrends({
-    observedAt: meta?.last_run_at || null,
-    windows,
-    windowDays: HEALTH_TREND_WINDOWS,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: {
-        artifact_path: "/metagraph/health/trends.json",
-        cache: "short",
-        contract_version: contractVersion(env),
-        generated_at: data.observed_at,
-        published_at: await publishedAt(env),
-        source: "live-cron-prober",
+    const windows = {};
+    for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+      const windowCutoff = new Date(nowMs - days * DAY_MS)
+        .toISOString()
+        .slice(0, 10);
+      windows[label] = rows.filter(
+        (row) => String(row.day || row.date) >= windowCutoff,
+      );
+    }
+    const meta = await readHealthMetaKv(env);
+    const data = formatBulkTrends({
+      observedAt: meta?.last_run_at || null,
+      windows,
+      windowDays: HEALTH_TREND_WINDOWS,
+    });
+    const response = envelopeResponse(
+      request,
+      {
+        data,
+        meta: {
+          artifact_path: "/metagraph/health/trends.json",
+          cache: "short",
+          contract_version: contractVersion(env),
+          generated_at: data.observed_at,
+          published_at: await publishedAt(env),
+          source: "live-cron-prober",
+        },
       },
-    },
-    "short",
-  );
+      "short",
+    );
+    return hasD1FallbackRows(rows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
 }
 
 // D1-backed 7d/30d uptime + latency trends for one subnet's operational
 // surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
 // never errors (mirrors the live-overlay fall-back philosophy).
-async function handleHealthTrends(request, env, netuid) {
-  const db = env.METAGRAPH_HEALTH_DB;
-  const nowMs = Date.now();
-  const windows = {};
-  // The per-window aggregations are independent — run them in parallel (one D1
-  // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
-  // serializing the two with an await-in-loop.
-  const windowRows = await Promise.all(
-    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-      if (!db?.prepare) {
-        return [label, []];
-      }
-      try {
-        const result = await withTimeout(
-          db
-            .prepare(
-              `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
+  // Reject unsupported query params (400) like every sibling analytics route
+  // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
+  // route takes no params and returns all configured windows.
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  return withEdgeCache(request, ctx, env, "trends", async () => {
+    const db = env.METAGRAPH_HEALTH_DB;
+    const nowMs = Date.now();
+    const windows = {};
+    // The per-window aggregations are independent — run them in parallel (one D1
+    // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
+    // serializing the two with an await-in-loop.
+    const windowRows = await Promise.all(
+      Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+        if (!db?.prepare) {
+          return [label, []];
+        }
+        try {
+          const result = await withTimeout(
+            db
+              .prepare(
+                `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
              SELECT MAX(surface_id) AS surface_id,
                     surface_key,
                     COUNT(*) AS total,
@@ -1712,41 +2235,45 @@ async function handleHealthTrends(request, env, netuid) {
                     ${latencyStatColumns({ includeMinMax: false })}
              FROM ranked
              GROUP BY surface_key`,
-            )
-            .bind(netuid, nowMs - days * DAY_MS)
-            .all(),
-          d1TimeoutMs(env),
-        );
-        return [label, result?.results || []];
-      } catch {
-        return [label, []];
-      }
-    }),
-  );
-  for (const [label, rows] of windowRows) {
-    windows[label] = rows;
-  }
-  const meta = await readHealthMetaKv(env);
-  const data = formatTrends({
-    netuid,
-    observedAt: meta?.last_run_at || null,
-    windows,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: {
-        artifact_path: `/metagraph/health/trends/${netuid}.json`,
-        cache: "short",
-        contract_version: contractVersion(env),
-        generated_at: data.observed_at,
-        published_at: await publishedAt(env),
-        source: "live-cron-prober",
+              )
+              .bind(netuid, nowMs - days * DAY_MS)
+              .all(),
+            d1TimeoutMs(env),
+          );
+          return [label, result?.results || []];
+        } catch {
+          return [label, markD1FallbackRows([])];
+        }
+      }),
+    );
+    for (const [label, rows] of windowRows) {
+      windows[label] = rows;
+    }
+    const meta = await readHealthMetaKv(env);
+    const data = formatTrends({
+      netuid,
+      observedAt: meta?.last_run_at || null,
+      windows,
+    });
+    const response = envelopeResponse(
+      request,
+      {
+        data,
+        meta: {
+          artifact_path: `/metagraph/health/trends/${netuid}.json`,
+          cache: "short",
+          contract_version: contractVersion(env),
+          generated_at: data.observed_at,
+          published_at: await publishedAt(env),
+          source: "live-cron-prober",
+        },
       },
-    },
-    "short",
-  );
+      "short",
+    );
+    return hasD1FallbackRows(...Object.values(windows))
+      ? markD1FallbackResponse(response)
+      : response;
+  });
 }
 
 function validateQueryParams(url, allowedParams) {
@@ -1793,6 +2320,25 @@ function analyticsQueryError(error) {
   });
 }
 
+let d1FallbackGeneration = 0;
+const D1_FALLBACK_ROWS = new WeakSet();
+const D1_FALLBACK_RESPONSES = new WeakSet();
+
+function markD1FallbackRows(rows = []) {
+  d1FallbackGeneration += 1;
+  D1_FALLBACK_ROWS.add(rows);
+  return rows;
+}
+
+function hasD1FallbackRows(...rowSets) {
+  return rowSets.some((rows) => D1_FALLBACK_ROWS.has(rows));
+}
+
+function markD1FallbackResponse(response) {
+  D1_FALLBACK_RESPONSES.add(response);
+  return response;
+}
+
 async function d1All(env, sql, params) {
   const db = env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return [];
@@ -1806,9 +2352,13 @@ async function d1All(env, sql, params) {
     );
     return result?.results || [];
   } catch {
-    return [];
+    return markD1FallbackRows([]);
   }
 }
+
+// Bind the timeout-guarded D1 reader to an env as a (sql, params) => rows runner
+// for the shared loaders, so these routes and the MCP tools share one read path.
+const d1Runner = (env) => (sql, params) => d1All(env, sql, params);
 
 async function analyticsMeta(env, artifactPath, observedAt) {
   return {
@@ -1823,65 +2373,125 @@ async function analyticsMeta(env, artifactPath, observedAt) {
   };
 }
 
+// Edge-cache wrapper for the D1-backed analytics routes (audit #6). Each of these
+// re-runs a full-window D1 aggregation on EVERY request, yet the result only
+// changes when the health cron writes a new snapshot — so a cross-colo / agent-
+// polling burst re-executes the same 7d/30d aggregation needlessly. Mirrors the
+// live-overlay collection cache exactly (the CACHEABLE_OVERLAY_ROUTE_IDS path):
+// same Cache API, same `edge-cache.metagraph.sh` key host, same last_run_at
+// keying, same conditional-GET 304 short-circuit, same ctx.waitUntil put.
+//
+// The key varies on everything that changes the body: contract_version (a deploy
+// can never serve a cross-version payload) + the cron snapshot stamp
+// (`last_run_at`) + the request path (carries netuid) + the canonical search
+// (carries `window`). `keyParts` is the extra namespace segment per route. When
+// the snapshot stamp is cold (null), caching is skipped entirely so a cold-KV
+// empty payload can never seed a stale entry — identical to the overlay cache's
+// `if (lastRunAt)` guard. The cache is transparent: body/shape/headers are
+// whatever buildResponse() produced; only 200s are cached, never errors.
+async function withEdgeCache(request, ctx, env, keyParts, buildResponse) {
+  const cache = request.method === "GET" ? globalThis.caches?.default : null;
+  // Cheap, per-isolate-memoized read of just the snapshot time. On a hit this +
+  // the cache match is the whole request (no D1 aggregation at all).
+  const lastRunAt = cache ? (await readHealthMetaKv(env))?.last_run_at : null;
+  let cacheKey = null;
+  if (cache && lastRunAt) {
+    const url = new URL(request.url);
+    cacheKey = new Request(
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        contractVersion(env),
+      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${url.pathname}${url.search}`,
+    );
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      // Honour conditional requests against the cached body's weak ETag so
+      // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
+        return new Response(null, { status: 304, headers: hit.headers });
+      }
+      return hit;
+    }
+  }
+  const fallbackGeneration = d1FallbackGeneration;
+  const response = await buildResponse();
+  // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
+  // a 400 bad-window or 5xx must not be persisted).
+  if (
+    cacheKey &&
+    response.status === 200 &&
+    !D1_FALLBACK_RESPONSES.has(response) &&
+    d1FallbackGeneration === fallbackGeneration
+  ) {
+    ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
+  }
+  return response;
+}
+
 // p50/p95/p99 latency percentiles per surface, computed in D1.
-async function handleHealthPercentiles(request, env, netuid, url) {
+async function handleHealthPercentiles(request, env, netuid, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  const rows = await d1All(
-    env,
-    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+  return withEdgeCache(request, ctx, env, "percentiles", async () => {
+    const rows = await d1All(
+      env,
+      `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
             ${latencyStatColumns()}
      FROM ranked
      GROUP BY surface_key
      HAVING MAX(lat_cnt) > 0`,
-    [netuid, Date.now() - days * DAY_MS],
-  );
-  const meta = await readHealthMetaKv(env);
-  const data = formatPercentiles({
-    netuid,
-    window: label,
-    observedAt: meta?.last_run_at || null,
-    rows,
+      [netuid, Date.now() - days * DAY_MS],
+    );
+    const meta = await readHealthMetaKv(env);
+    const data = formatPercentiles({
+      netuid,
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      rows,
+    });
+    const response = envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          `/metagraph/health/percentiles/${netuid}.json`,
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(rows)
+      ? markD1FallbackResponse(response)
+      : response;
   });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(
-        env,
-        `/metagraph/health/percentiles/${netuid}.json`,
-        data.observed_at,
-      ),
-    },
-    "short",
-  );
 }
 
 // SLA + reconstructed downtime incidents per surface.
-async function handleHealthIncidents(request, env, netuid, url) {
+async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  const since = Date.now() - days * DAY_MS;
-  const [slaRows, incidentRows] = await Promise.all([
-    d1All(
-      env,
-      `SELECT MAX(surface_id) AS surface_id,
+  return withEdgeCache(request, ctx, env, "incidents", async () => {
+    const since = Date.now() - days * DAY_MS;
+    const [slaRows, incidentRows] = await Promise.all([
+      d1All(
+        env,
+        `SELECT MAX(surface_id) AS surface_id,
               COALESCE(surface_key, surface_id) AS surface_key,
               COUNT(*) AS total,
               SUM(ok) AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
        GROUP BY COALESCE(surface_key, surface_id)`,
-      [netuid, since],
-    ),
-    // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-    // incident threshold) into one incident row, then cap the public payload so
-    // flapping endpoints cannot force unbounded result sets/responses.
-    d1All(
-      env,
-      `WITH checks AS (
+        [netuid, since],
+      ),
+      // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+      // incident threshold) into one incident row, then cap the public payload so
+      // flapping endpoints cannot force unbounded result sets/responses.
+      d1All(
+        env,
+        `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
                 surface_id,
                 checked_at,
@@ -1911,30 +2521,40 @@ async function handleHealthIncidents(request, env, netuid, url) {
        HAVING COUNT(*) >= ?
        ORDER BY surface_id, started_at
        LIMIT ?`,
-      [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
-    ),
-  ]);
-  const meta = await readHealthMetaKv(env);
-  const data = formatIncidents({
-    netuid,
-    window: label,
-    observedAt: meta?.last_run_at || null,
-    slaRows,
-    incidentRows,
-    maxIncidents: MAX_INCIDENT_ROWS,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(
-        env,
-        `/metagraph/health/incidents/${netuid}.json`,
-        data.observed_at,
+        [
+          netuid,
+          since,
+          INCIDENT_GAP_MS,
+          MIN_INCIDENT_SAMPLES,
+          MAX_INCIDENT_ROWS,
+        ],
       ),
-    },
-    "short",
-  );
+    ]);
+    const meta = await readHealthMetaKv(env);
+    const data = formatIncidents({
+      netuid,
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      slaRows,
+      incidentRows,
+      maxIncidents: MAX_INCIDENT_ROWS,
+    });
+    const response = envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          `/metagraph/health/incidents/${netuid}.json`,
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(slaRows, incidentRows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
 }
 
 // Global, cross-subnet incident ledger — the same gap-island grouping as the
@@ -2016,20 +2636,7 @@ async function handleGlobalIncidents(request, env, url) {
 async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
-  // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
-  const rows = await d1All(
-    env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-            validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share
-     FROM subnet_snapshots
-     WHERE netuid = ?
-     ORDER BY snapshot_date DESC
-     LIMIT 400`,
-    [netuid],
-  );
-  const data = formatTrajectory({ netuid, rows });
+  const data = await loadSubnetTrajectory(d1Runner(env), netuid);
   return envelopeResponse(
     request,
     {
@@ -2063,14 +2670,9 @@ async function handleSubnetMetagraph(request, env, netuid, url) {
   const validationError = validateQueryParams(url, ["validator_permit"]);
   if (validationError) return analyticsQueryError(validationError);
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
-      validatorsOnly ? " AND validator_permit = 1" : ""
-    } ORDER BY uid`,
-    [netuid],
-  );
-  const data = buildSubnetMetagraph(rows, netuid);
+  const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
+    validatorsOnly,
+  });
   return envelopeResponse(
     request,
     {
@@ -2086,14 +2688,9 @@ async function handleSubnetMetagraph(request, env, netuid, url) {
 }
 
 async function handleNeuron(request, env, netuid, uid) {
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
-    [netuid, uid],
-  );
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
-  const data = buildNeuronDetail(rows[0] ?? null, netuid);
+  const data = await loadNeuron(d1Runner(env), netuid, uid);
   return envelopeResponse(
     request,
     {
@@ -2111,12 +2708,7 @@ async function handleNeuron(request, env, netuid, uid) {
 async function handleSubnetValidators(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
-    [netuid],
-  );
-  const data = buildSubnetValidators(rows, netuid);
+  const data = await loadSubnetValidators(d1Runner(env), netuid);
   return envelopeResponse(
     request,
     {
@@ -2125,6 +2717,88 @@ async function handleSubnetValidators(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// ---- Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345) --
+// Served from the dated neuron_daily rollup tier (D1). Cold/absent store → 200
+// with empty points (never 404), consistent with the live metagraph tiers.
+
+// GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
+// Per-UID time series (one point per snapshot_date, newest first, bounded).
+async function handleNeuronHistory(request, env, netuid, uid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid, uid];
+  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
+  if (days != null) {
+    // Cutoff computed in JS and bound as a plain YYYY-MM-DD (idx_neuron_daily_uid_date covers it).
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildNeuronHistory(rows, netuid, uid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
+        data.points[0]?.captured_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/history?window=7d|30d|90d|1y|all
+// Per-subnet daily aggregates over time (count + totals) for a history sparkline,
+// without shipping every UID's row.
+async function handleSubnetHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid];
+  let sql =
+    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
+    "SUM(validator_permit) AS validator_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE netuid = ?";
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildSubnetHistory(rows, netuid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/history.json`,
+        null,
       ),
     },
     "short",
@@ -2358,8 +3032,28 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
   return projection;
 }
 
+// Economic source for cross-subnet projections (e.g. the leaderboard economic
+// boards): the live KV 'economics:current' blob when fresh/on-contract/integrity-
+// checked, else the committed R2 economics.json — the same KV-primary/R2-fallback
+// the /api/v1/economics route uses. Always resolves to an array (empty when both
+// tiers are cold), so every caller stays null-safe.
+async function resolveEconomicsRows(env) {
+  const live = await resolveLiveEconomics({
+    readHealthKv,
+    env,
+    contractVersion: contractVersion(env),
+  });
+  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
+  const artifact = await readArtifact(env, "/metagraph/economics.json");
+  return artifact.ok && Array.isArray(artifact.data?.subnets)
+    ? artifact.data.subnets
+    : [];
+}
+
 // Registry leaderboards: healthiest / fastest-rpc / most-complete /
-// fastest-growing. Combines live D1 status with registry projections.
+// most-enriched / fastest-growing plus the economic opportunity boards
+// (open-slots / cheapest-registration / highest-emission / validator-headroom).
+// Combines live D1 status with registry projections and the economics tier.
 async function handleLeaderboards(request, env, url) {
   const validationError = validateQueryParams(url, ["board", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -2390,35 +3084,39 @@ async function handleLeaderboards(request, env, url) {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples] = await Promise.all([
-    d1All(
-      env,
-      `SELECT netuid,
+  const [healthRows, rpcRows, growthSamples, economicsRows] = await Promise.all(
+    [
+      d1All(
+        env,
+        `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
               AVG(latency_ms) AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
-      [],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, MIN(latency_ms) AS min_latency_ms
+        [],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
        FROM surface_status
        WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
          AND status = 'ok' AND latency_ms IS NOT NULL
        GROUP BY netuid`,
-      [],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, snapshot_date, completeness_score
+        [],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, snapshot_date, completeness_score
        FROM subnet_snapshots
        WHERE snapshot_date >= ?
        ORDER BY netuid, snapshot_date`,
-      [sevenDaysAgo],
-    ),
-  ]);
+        [sevenDaysAgo],
+      ),
+      // Economic boards: the economics tier alongside the operational D1 queries.
+      resolveEconomicsRows(env),
+    ],
+  );
 
   // Per-subnet completeness delta over the window (latest - earliest sample).
   const growthByNetuid = new Map();
@@ -2450,6 +3148,7 @@ async function handleLeaderboards(request, env, url) {
     rpcRows,
     mostComplete,
     growthRows,
+    economicsRows,
     subnetMeta,
   });
   return envelopeResponse(
@@ -2630,10 +3329,7 @@ async function verifyMeta(env) {
 // confirm "callable right now" before wiring.
 async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -2742,10 +3438,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // (local dev / not yet provisioned) so tests and local runs are unaffected;
   // enforced on Cloudflare where the binding is bound.
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for") ||
-      "anonymous";
+    const clientKey = resolveClientIp(request);
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -3170,6 +3863,34 @@ function setRpcRateLimitHeaders(headers) {
   );
 }
 
+// Per-client abuse control for the GraphQL endpoint. GraphQL is POST-only and
+// runs before the read-only method gate, so — unlike the GET REST routes that
+// the edge can cache — every call hits the worker and fans out into one or more
+// artifact reads + query execution. That makes it at least as expensive as the
+// RPC proxy, so it shares the SAME strict limiter binding, bucket strategy
+// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. Skipped
+// only when the binding is absent (local dev / CI), matching the RPC/MCP paths.
+// Returns a 429 Response when the caller is over the limit, else null.
+async function graphqlRateLimited(request, env) {
+  if (!env.RPC_RATE_LIMITER?.limit) return null;
+  const { success } = await env.RPC_RATE_LIMITER.limit({
+    key: resolveClientIp(request),
+  });
+  if (success) return null;
+  return errorResponse(
+    "graphql_rate_limited",
+    "Too many GraphQL requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
 // Try each ordered endpoint in turn; return the first success / non-transient
 // response, and a clean 502 only when every attempt is a transient failure.
 // Transient HTTP statuses are classified before reading bodies, and JSON-RPC
@@ -3391,15 +4112,17 @@ async function handleHealthRequest(request, env) {
     : null;
 
   // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
-  // MAX(observed_at) is the chain timestamp of the latest indexed event; age_seconds
-  // is ~12-30s while the streamer is live, growing toward the ~5-min poller backstop
-  // if it's down. Reported for observability (does NOT gate the HTTP status, like
-  // operational_health); best-effort + null on a cold/unbound store.
+  // The newest observed_at row is an index-friendly heartbeat for the latest
+  // indexed chain event; age_seconds is ~12-30s while the streamer is live,
+  // growing toward the ~5-min poller backstop if it's down. Reported for
+  // observability (does NOT gate the HTTP status, like operational_health);
+  // best-effort + null on a cold/unbound store.
   let chainEvents = null;
   if (bindings.health_db) {
     const rows = await d1All(
       env,
-      "SELECT MAX(block_number) AS block, MAX(observed_at) AS at FROM account_events",
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
       [],
     );
     const row = rows[0] || {};
@@ -3484,6 +4207,17 @@ async function handleWebhookRequest(request, env, url) {
 }
 
 async function createWebhookSubscription(request, env) {
+  // Authenticate BEFORE touching the request body. An unauthenticated or
+  // wrong-token caller must be rejected (503 when disabled, else 401) before we
+  // read, JSON-parse, or validate any attacker-controlled payload — this avoids
+  // doing parsing/validation work for unauthenticated callers and avoids leaking
+  // body-validation behavior (which error fires for which input) to them. The
+  // token compare itself is constant-time (see validateWebhookSubscriptionToken).
+  const authorized = validateWebhookSubscriptionToken(request, env);
+  if (!authorized.ok) {
+    return authorized.response;
+  }
+
   if (
     Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
   ) {
@@ -3515,11 +4249,6 @@ async function createWebhookSubscription(request, env) {
   const validated = validateSubscriptionInput(body);
   if (!validated.ok) {
     return errorResponse("invalid_subscription", validated.error, 400);
-  }
-
-  const authorized = validateWebhookSubscriptionToken(request, env);
-  if (!authorized.ok) {
-    return authorized.response;
   }
 
   const id = generateSubscriptionId();
@@ -3564,7 +4293,9 @@ async function createWebhookSubscription(request, env) {
         content_type: JSON_CONTENT_TYPE,
         signature_header: WEBHOOK_SIGNATURE_HEADER,
         signature_algorithm: "hmac-sha256-hex",
-        note: "HMAC-SHA256 of the raw request body, hex-encoded, keyed by your secret.",
+        event_id_header: WEBHOOK_EVENT_ID_HEADER,
+        idempotency_header: WEBHOOK_IDEMPOTENCY_HEADER,
+        note: "HMAC-SHA256 of the raw request body, hex-encoded, keyed by your secret. Delivery is at-least-once: dedupe retries on the idempotency header.",
       },
     },
     201,
@@ -3618,7 +4349,34 @@ async function getWebhookSubscription(env, id) {
       },
     );
   }
-  return dataResponse(env, publicSubscriptionView(record));
+  return dataResponse(env, {
+    ...publicSubscriptionView(record),
+    delivery: await readDeliveryStatus(env, id),
+  });
+}
+
+// Delivery health for the public GET, summarized from the parked records.
+// Best-effort — a list/get hiccup or a store without `list` degrades to "ok".
+async function readDeliveryStatus(env, id) {
+  try {
+    if (typeof env.METAGRAPH_CONTROL.list !== "function") {
+      return summarizeDeliveryRecords([]); // local dev: KV mock without list()
+    }
+    const { keys } = await env.METAGRAPH_CONTROL.list({
+      prefix: deliveryStoragePrefix(id),
+      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
+    });
+    const records = await Promise.all(
+      keys
+        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
+        .map((entry) =>
+          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
+        ),
+    );
+    return summarizeDeliveryRecords(records);
+  } catch {
+    return summarizeDeliveryRecords([]); // best-effort: never break the read
+  }
 }
 
 async function deleteWebhookSubscription(request, env, id) {
@@ -3725,11 +4483,7 @@ function aiRateLimitedResponse() {
 }
 
 function aiClientKey(request, scope) {
-  const ip =
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for") ||
-    "anon";
-  return `${scope}:${ip}`;
+  return `${scope}:${resolveClientIp(request)}`;
 }
 
 async function readBoundedRequestText(request, maxBytes) {
@@ -3841,11 +4595,19 @@ async function handleAskRequest(request, env) {
     );
   }
   try {
+    // Resolve live probe health once and inject it so /ask context reflects the
+    // current operational status of each subnet's surfaces, not the build-time
+    // "unknown" stub baked into the agent-catalog artifact.
+    const liveHealth = await resolveLiveHealth({
+      readHealthKv,
+      env,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
     const data = await askQuestion(
       env,
       body?.question,
       { topK: body?.topK },
-      { readArtifact },
+      { readArtifact, liveHealth, overlayCatalogIndex },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {

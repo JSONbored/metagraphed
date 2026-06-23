@@ -10,12 +10,29 @@ if (!inputPath || !key) {
   );
 }
 
-const rows = JSON.parse(readFileSync(inputPath, "utf8"));
-if (!Array.isArray(rows))
-  throw new Error("staged neurons payload must be an array");
-const payload = JSON.stringify(rows);
+const parsed = JSON.parse(readFileSync(inputPath, "utf8"));
+let rows;
+let refreshed_netuids;
+let captured_at;
+let payload;
+if (Array.isArray(parsed)) {
+  rows = parsed;
+  payload = JSON.stringify(rows);
+} else if (parsed && typeof parsed === "object") {
+  rows = parsed.rows;
+  refreshed_netuids = parsed.refreshed_netuids;
+  captured_at = parsed.captured_at;
+  if (!Array.isArray(rows)) {
+    throw new Error("staged payload rows must be a JSON array");
+  }
+  payload = JSON.stringify({ rows, refreshed_netuids, captured_at });
+} else {
+  throw new Error("staged payload must be a JSON array or staging object");
+}
+
 const hmac_sha256 = createHmac("sha256", key).update(payload).digest("hex");
-writeFileSync(
-  outputPath,
-  `${JSON.stringify({ schema_version: 1, hmac_sha256, rows })}\n`,
-);
+const envelope = { schema_version: 1, hmac_sha256, rows };
+if (refreshed_netuids !== undefined)
+  envelope.refreshed_netuids = refreshed_netuids;
+if (captured_at !== undefined) envelope.captured_at = captured_at;
+writeFileSync(outputPath, `${JSON.stringify(envelope)}\n`);

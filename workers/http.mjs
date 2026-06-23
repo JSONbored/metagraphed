@@ -28,6 +28,12 @@ export function errorResponse(
   extraHeaders = {},
 ) {
   const headers = apiHeaders("short");
+  // Errors must never be cached by shared/edge caches: a transient 5xx (e.g. an
+  // R2 timeout) or a not-yet-published 404 would otherwise be served stale for
+  // up to max-age + stale-while-revalidate, turning a blip into a multi-minute
+  // edge outage. Mirror dataResponse / og-image error / webhook responses.
+  headers.set("cache-control", "no-store");
+  headers.set("x-metagraph-cache-profile", "no-store");
   headers.set("x-metagraph-error-code", code);
   for (const [key, value] of Object.entries(extraHeaders)) {
     headers.set(key, value);

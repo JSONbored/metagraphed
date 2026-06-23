@@ -256,6 +256,18 @@ await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
 
+// Economic opportunity boards project from the committed economics.json in the
+// cold local env; assert the call succeeds and returns the economic boards.
+const opportunities = await callOk("find_subnet_opportunities", { limit: 5 });
+assert.ok(
+  opportunities.boards && typeof opportunities.boards === "object",
+  "find_subnet_opportunities must return a boards object",
+);
+assert.ok(
+  Array.isArray(opportunities.boards["open-slots"]),
+  "find_subnet_opportunities must return the open-slots board",
+);
+
 // Goal-shaped tools work without the AI layer (find_subnet_for_task falls back
 // to keyword discovery; how_do_i_call reads the agent-catalog detail).
 const taskMatch = await callOk("find_subnet_for_task", {
@@ -284,6 +296,44 @@ assert.ok(
   Array.isArray(rpc.endpoints),
   "get_best_rpc_endpoint must return endpoints[]",
 );
+
+// --- Economics + metagraph data tools --------------------------------------
+// Economics serves live-KV-primary with committed-R2 fallback; this cold env has
+// no live KV, so it falls back to the committed economics.json (netuid 7 has a row).
+const econ = await callOk("get_subnet_economics", { netuid: 7 });
+assert.ok(
+  econ.economics && Number.isInteger(econ.economics.netuid),
+  "get_subnet_economics must return the per-subnet economics row",
+);
+
+// The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
+// has no neurons DB, so each tool must degrade to its schema-stable empty
+// payload (validated against the declared outputSchema), never an error.
+const traj = await callOk("get_subnet_trajectory", { netuid: 7 });
+assert.ok(
+  Array.isArray(traj.points),
+  "get_subnet_trajectory must return points[]",
+);
+const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
+assert.ok(
+  Array.isArray(meta.neurons),
+  "get_subnet_metagraph must return neurons[]",
+);
+const metaValidators = await callOk("get_subnet_metagraph", {
+  netuid: 7,
+  validator_permit: true,
+});
+assert.ok(
+  Array.isArray(metaValidators.neurons),
+  "get_subnet_metagraph (validator_permit) must return neurons[]",
+);
+const vals = await callOk("list_subnet_validators", { netuid: 7 });
+assert.ok(
+  Array.isArray(vals.validators),
+  "list_subnet_validators must return validators[]",
+);
+const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
+assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);

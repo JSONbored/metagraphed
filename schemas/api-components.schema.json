@@ -4894,11 +4894,19 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "conflicts_with_source_netuid": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
                     "reason": {
                       "enum": [
                         "invalid-approval",
                         "source-netuid-missing",
-                        "target-netuid-missing"
+                        "target-netuid-missing",
+                        "target-netuid-conflict"
                       ]
                     },
                     "source_netuid": {
@@ -5151,6 +5159,70 @@
           "schema_version",
           "netuid",
           "neuron"
+        ],
+        "type": "object"
+      },
+      "NeuronHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-UID daily metagraph history (block-explorer Tier-1, #1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Each point is a Neuron's state on one snapshot_date.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "description": "A Neuron's metagraph state on one snapshot_date (the Neuron fields plus snapshot_date/captured_at/block_number).",
+              "properties": {
+                "block_number": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "captured_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "snapshot_date": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "uid",
+          "point_count",
+          "points"
         ],
         "type": "object"
       },
@@ -9308,6 +9380,75 @@
             "type": "object"
           }
         ]
+      },
+      "SubnetHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-subnet daily aggregate history (count + totals) for sparklines (#1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "neuron_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "total_emission_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "total_stake_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validator_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
       },
       "SubnetIndexEntry": {
         "additionalProperties": false,

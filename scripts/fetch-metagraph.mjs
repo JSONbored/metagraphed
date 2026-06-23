@@ -3,11 +3,11 @@
 // #1302) — the chain-level depth metagraphed lacked.
 //
 // Reads TAOSTATS_API_KEY from the env; the netuid list from the committed native
-// snapshot (registry/native/finney-subnets.json). Output: a JSON array of neuron
-// rows that the refresh-metagraph workflow stages to R2; the Worker's scheduled
-// handler then loads them into the metagraphed-health D1 `neurons` table with
-// parameterized inserts (loadStagedNeurons), keyed (netuid, uid) so a re-run
-// overwrites in place (slots are reused on-chain) and the table stays bounded.
+// snapshot (registry/native/finney-subnets.json). Output: a staging object with
+// captured_at, refreshed_netuids (subnets successfully fetched), and neuron rows.
+// The refresh-metagraph workflow signs and stages it to R2; the Worker's scheduled
+// handler loads rows with parameterized INSERT OR REPLACE, then deletes prior-
+// capture rows within refreshed subnets so deregistered UIDs do not linger.
 //
 // Units verified against /api/v1/economics ground truth (2026-06-21):
 //   stake_tao    = total_alpha_stake / 1e9   (Σ matches economics total_stake_tao)
@@ -139,10 +139,12 @@ async function main() {
   const delayMs = Number(process.env.METAGRAPH_FETCH_DELAY_MS) || 1200;
   const capturedAt = Date.now();
   const rows = [];
+  const refreshedNetuids = [];
   let failures = 0;
   for (const netuid of netuids) {
     try {
       const neurons = await fetchSubnet(netuid, key);
+      refreshedNetuids.push(netuid);
       for (const n of neurons) rows.push(normalizeNeuron(n, capturedAt));
       process.stderr.write(`netuid ${netuid}: ${neurons.length} neurons\n`);
     } catch (error) {
@@ -163,9 +165,16 @@ async function main() {
     (r) => Number.isInteger(r.netuid) && Number.isInteger(r.uid),
   );
   mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-  writeFileSync(OUT_PATH, JSON.stringify(valid));
+  writeFileSync(
+    OUT_PATH,
+    JSON.stringify({
+      captured_at: capturedAt,
+      refreshed_netuids: refreshedNetuids,
+      rows: valid,
+    }),
+  );
   console.log(
-    `wrote ${valid.length} neurons across ${netuids.length - failures}/${netuids.length} subnets -> ${OUT_PATH}`,
+    `wrote ${valid.length} neurons across ${refreshedNetuids.length}/${netuids.length} subnets -> ${OUT_PATH}`,
   );
 }
 

@@ -19,6 +19,13 @@ function makeKv() {
     async delete(key) {
       store.delete(key);
     },
+    async list({ prefix, limit } = {}) {
+      const keys = [...store.keys()]
+        .filter((key) => !prefix || key.startsWith(prefix))
+        .slice(0, Number.isFinite(limit) ? limit : undefined)
+        .map((name) => ({ name }));
+      return { keys, list_complete: true };
+    },
   };
 }
 
@@ -111,6 +118,64 @@ describe("webhook subscription routes", () => {
     assert.equal((await res.json()).error.code, "unauthorized");
   });
 
+  // Security hardening (#3: authenticate BEFORE touching the untrusted payload).
+  // A request with a bad/missing token AND a malformed body must fail with the
+  // AUTH error (401), not the body-validation error (400). A 400 here would mean
+  // the worker parsed/validated attacker input before checking auth.
+  test("auth runs first: bad token + malformed body returns 401, not a 400 body error", async () => {
+    const kv = makeKv();
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": "wrong-token",
+        },
+        body: "{not even json",
+      }),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).error.code, "unauthorized");
+    // Nothing should have been persisted for an unauthenticated caller.
+    assert.equal(kv.store.size, 0);
+  });
+
+  test("missing token + malformed body still returns 401 (no body parsing leaked)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "}{ broken",
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).error.code, "unauthorized");
+  });
+
+  // The reorder must NOT break the authenticated body path: a VALID token with a
+  // malformed body still surfaces the JSON error, and a valid token + valid body
+  // still processes (covered by the create test above).
+  test("valid token + malformed body still returns the 400 body error", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body: "{not json",
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_json");
+  });
+
   test("disables subscription creation when the subscription token is unconfigured", async () => {
     const kv = makeKv();
     const res = await handleRequest(
@@ -157,6 +222,126 @@ describe("webhook subscription routes", () => {
     const body = await res.json();
     assert.equal(body.data.url, "https://hooks.example.com/mg");
     assert.equal(body.data.secret, undefined);
+    // A healthy subscription with no parked deliveries reports "ok".
+    assert.deepEqual(body.data.delivery, {
+      status: "ok",
+      pending: 0,
+      dead_letter: 0,
+      last_failure: null,
+    });
+  });
+
+  test("GET surfaces parked-delivery health (retrying + dead-letter)", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    kv.store.set(
+      `webhooks:delivery:${id}:event-pending`,
+      JSON.stringify({
+        subscription_id: id,
+        event_id: "event-pending",
+        state: "pending",
+        round: 1,
+        reason: "timeout",
+        last_attempt_at: "2026-06-22T00:00:00.000Z",
+        next_attempt_at: "2026-06-22T00:05:00.000Z",
+      }),
+    );
+    kv.store.set(
+      `webhooks:delivery:${id}:event-dead`,
+      JSON.stringify({
+        subscription_id: id,
+        event_id: "event-dead",
+        state: "dead",
+        round: 8,
+        reason: "http-503",
+        status_code: 503,
+        last_attempt_at: "2026-06-22T01:00:00.000Z",
+        next_attempt_at: null,
+      }),
+    );
+
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`),
+      envWith(kv),
+      {},
+    );
+    const { delivery } = (await res.json()).data;
+    assert.equal(delivery.status, "dead_letter");
+    assert.equal(delivery.pending, 1);
+    assert.equal(delivery.dead_letter, 1);
+    assert.equal(delivery.last_failure.event_id, "event-dead"); // latest attempt
+    assert.equal(delivery.last_failure.attempts, 8);
+    assert.equal(delivery.last_failure.reason, "http-503");
+  });
+
+  test("GET delivery health limits parked-delivery KV work", async () => {
+    const kv = makeKv();
+    const seen = [];
+    const originalList = kv.list;
+    kv.list = async (options) => {
+      seen.push(options);
+      return originalList(options);
+    };
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    for (let i = 0; i < 300; i += 1) {
+      kv.store.set(
+        `webhooks:delivery:${id}:event-${i}`,
+        JSON.stringify({
+          subscription_id: id,
+          event_id: `event-${i}`,
+          state: "pending",
+          round: 1,
+          last_attempt_at: "2026-06-22T00:00:00.000Z",
+        }),
+      );
+    }
+
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`),
+      envWith(kv),
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(seen[0].limit, 256);
+    assert.equal((await res.json()).data.delivery.pending, 256);
+  });
+
+  test("GET delivery health degrades to ok when the store lacks list()", async () => {
+    const kv = makeKv();
+    delete kv.list; // local-dev KV mock without list support
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
+      envWith(kv),
+      {},
+    );
+    assert.equal((await res.json()).data.delivery.status, "ok");
+  });
+
+  test("GET delivery health degrades to ok when a KV list throws", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    kv.list = async () => {
+      throw new Error("kv list down");
+    };
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).data.delivery.status, "ok");
   });
 
   test("DELETE requires the matching secret", async () => {

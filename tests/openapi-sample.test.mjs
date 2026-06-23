@@ -217,6 +217,44 @@ describe("sampleFromSchema", () => {
     assert.equal(Array.isArray(sampleFromSchema(arr, {}, "root")), true);
   });
 
+  test("bounds recursion: self-referential ($ref) schemas don't overflow", () => {
+    // A linked-list / tree node whose self-reference is a REQUIRED property:
+    // optional-depth dropping can't save us here, so the $ref depth budget must.
+    const selfRef = {
+      Node: {
+        type: "object",
+        required: ["value", "next"],
+        properties: {
+          value: { type: "integer" },
+          next: { $ref: "#/components/schemas/Node" },
+        },
+      },
+    };
+    let out;
+    assert.doesNotThrow(() => {
+      out = sampleFromSchema(selfRef.Node, selfRef, "Node");
+    });
+    // Bottoms out at a finite depth rather than recursing until the stack overflows.
+    assert.equal(typeof out, "object");
+    assert.equal(out.value, 1);
+
+    // An array-of-self schema is likewise bounded.
+    const selfArr = {
+      Tree: {
+        type: "object",
+        required: ["id", "children"],
+        properties: {
+          id: { type: "integer" },
+          children: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Tree" },
+          },
+        },
+      },
+    };
+    assert.doesNotThrow(() => sampleFromSchema(selfArr.Tree, selfArr, "Tree"));
+  });
+
   test("a sampled instance validates against its own schema (round-trip)", () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: true });
     addFormats(ajv);

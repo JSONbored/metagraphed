@@ -254,12 +254,14 @@ describe("/health readiness", () => {
 
   test("reports chain-event index freshness (#1361)", async () => {
     const atMs = Date.now() - 18_000; // latest indexed event ~18s ago
+    const preparedSql = [];
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
       METAGRAPH_HEALTH_DB: {
-        prepare() {
+        prepare(sql) {
+          preparedSql.push(sql);
           return {
             bind() {
               return {
@@ -283,6 +285,10 @@ describe("/health readiness", () => {
       `age_seconds out of range: ${body.chain_events.age_seconds}`,
     );
     assert.ok(body.chain_events.latest_event_at.startsWith("20"));
+    assert.deepEqual(preparedSql, [
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
+    ]);
   });
 
   test("chain_events is schema-stable nulls when the event tier is cold (#1361)", async () => {
@@ -427,6 +433,46 @@ describe("badge SVG handler", () => {
       {},
     );
     assert.equal(res.status, 304);
+  });
+
+  test("304 for a badge when if-none-match sends the strong (W/-less) validator", async () => {
+    // weakEtag emits W/"…", but If-None-Match uses weak comparison (RFC 7232),
+    // so the strong form "…" must also match. The previous strict === check
+    // only matched the exact W/"…" echo and returned 200 here.
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/metagraph/health/badges/7.svg"),
+      env,
+      {},
+    );
+    const strong = first.headers.get("etag").replace(/^W\//, "");
+    const res = await handleRequest(
+      req("/metagraph/health/badges/7.svg", {
+        headers: { "if-none-match": strong },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 304);
+  });
+
+  test("304 for the MCP server card / agent-tools with the strong validator", async () => {
+    // The same weak-comparison fix applies to the other two discovery handlers.
+    const env = createLocalArtifactEnv();
+    for (const path of [
+      "/.well-known/mcp/server-card.json",
+      "/.well-known/agent-tools/openai.json",
+    ]) {
+      const first = await handleRequest(req(path), env, {});
+      assert.equal(first.status, 200, `${path} first GET`);
+      const strong = first.headers.get("etag").replace(/^W\//, "");
+      const res = await handleRequest(
+        req(path, { headers: { "if-none-match": strong } }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 304, `${path} strong-form revalidation`);
+    }
   });
 
   test("prefers the live KV overlay status when present", async () => {

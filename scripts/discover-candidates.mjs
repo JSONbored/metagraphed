@@ -97,6 +97,9 @@ for (const file of await listJsonFilesRecursive(
 }
 const restoredProviders = new Set();
 const TAOPEDIA_ARTICLE_PROBE_MAX_BYTES = 64 * 1024;
+// TaoMarketCap normally reports a finite `count`, but keep count-less
+// pagination bounded so a malformed `next` chain cannot hang refresh jobs.
+const TAOMARKETCAP_MAX_PAGES = 50;
 
 await discoverFromNativeChainIdentity();
 await discoverFromTaoMarketCap();
@@ -294,7 +297,11 @@ async function discoverFromTaoMarketCap() {
   let offset = 0;
   let expectedCount = null;
 
-  while (expectedCount === null || offset < expectedCount) {
+  for (let pageIndex = 0; pageIndex < TAOMARKETCAP_MAX_PAGES; pageIndex += 1) {
+    if (expectedCount !== null && offset >= expectedCount) {
+      break;
+    }
+
     const pageUrl = `https://api.taomarketcap.com/public/v1/subnets/?limit=${limit}&offset=${offset}`;
     const page = await fetchJson(pageUrl);
     if (!page) {
@@ -304,9 +311,12 @@ async function discoverFromTaoMarketCap() {
       return;
     }
 
-    expectedCount = Number.isInteger(page.count)
-      ? page.count
-      : offset + (page.results || []).length;
+    // Only bound the loop by total when the API actually reports one. The old
+    // fallback `offset + results.length` equalled the just-advanced offset, so a
+    // response without `count` exited after page 1 even when `page.next` pointed
+    // at more pages. Leave it null and let the `if (!page.next) break` below
+    // (the API's own pagination signal) terminate the walk.
+    expectedCount = Number.isInteger(page.count) ? page.count : null;
     for (const subnet of page.results || []) {
       const netuid = Number(subnet.netuid);
       if (!nativeByNetuid.has(netuid) || subnet.is_active === false) {
@@ -361,6 +371,12 @@ async function discoverFromTaoMarketCap() {
       break;
     }
     offset += limit;
+
+    if (pageIndex === TAOMARKETCAP_MAX_PAGES - 1) {
+      warnings.push(
+        `TaoMarketCap pagination exceeded ${TAOMARKETCAP_MAX_PAGES} pages; stopping discovery to avoid an unbounded refresh`,
+      );
+    }
   }
 }
 

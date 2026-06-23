@@ -18,6 +18,11 @@ export const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // ~5 min WITHOUT running the (heavier) health probe. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const EVENTS_LOAD_CRON = "*/3 * * * *";
+// Daily neuron-history rollup (#1345 Tier-1): snapshots the current `neurons`
+// table into the dated neuron_daily table once a day, on its own minute (distinct
+// from the probe/prune/embed/fast crons) so the ~33k-row INSERT...SELECT runs
+// exactly once/day, not on every tick. Must match a wrangler.jsonc cron entry.
+export const NEURON_HISTORY_ROLLUP_CRON = "47 5 * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
@@ -40,6 +45,12 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345): time
+// series read from the neuron_daily rollup tier.
+export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/;
+export const SUBNET_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
 // D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
 export const ACCOUNT_PATH_PATTERN =
@@ -66,6 +77,22 @@ export const MAX_GLOBAL_INCIDENT_SOURCE_ROWS = 5000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+
+// Fixed bucket used as the rate-limit key (and request-scoped client id) when no
+// trustworthy client IP is available.
+export const ANONYMOUS_CLIENT_KEY = "anonymous";
+
+// Resolve the client IP for rate-limiting / per-client keys. On Cloudflare,
+// `CF-Connecting-IP` is set by the edge and cannot be spoofed by the client.
+// `X-Forwarded-For` is fully client-controlled and MUST NOT be trusted here: an
+// attacker could rotate it to mint a fresh rate-limit bucket per request and
+// evade the limiter. So we read `cf-connecting-ip` ONLY; when it is absent
+// (non-CF / local / the test harness) we collapse to a single fixed bucket
+// rather than honoring any client-supplied header. A shared fixed bucket is the
+// safe failure mode — worst case all such callers share one limit.
+export function resolveClientIp(request) {
+  return request.headers.get("cf-connecting-ip") || ANONYMOUS_CLIENT_KEY;
+}
 
 // Read-only, bounded Substrate/Subtensor methods safe to expose through the
 // public proxy. Deliberately excludes heavy/abusable reads (state_getMetadata,
@@ -102,6 +129,25 @@ export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
 export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
 export const MAX_EVENTS_INGEST_BODY_BYTES = 262144; // 256 KB
 export const MAX_EVENTS_INGEST_ROWS = 500;
+// Internal historical backfill ingest (#1345 Phase 1): batched neuron_daily
+// upserts from the chain-direct backfill script (scripts/backfill-neuron-history.py).
+// Auth via the dedicated METAGRAPH_BACKFILL_SECRET (falls back to the events-ingest
+// secret) over the shared EVENTS_INGEST_TOKEN_HEADER. Caps are wider than the event
+// ingest because a metagraph row is wider and a subnet-day is up to ~256 rows; the
+// script chunks well under these and the PK upsert makes any re-POST idempotent.
+export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
+export const MAX_BACKFILL_INGEST_ROWS = 2_000;
+// Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
+// single bounded HTTP body above, a staged file is produced by the CI poller and
+// can grow large on a backfill or a stuck window. The byte cap guards against
+// materializing a pathological body; the row cap bounds the D1 writes + subrequests
+// PER */3 tick (10 000 rows -> ~1 000 INSERT statements -> ~20 db.batch() calls,
+// far under the 1 000-subrequest limit). On overflow the drain loads up to the row
+// cap and LEAVES the remainder in R2 for the next tick — it never deletes
+// un-persisted rows; INSERT OR IGNORE on (block_number, event_index) makes any
+// re-drain idempotent.
+export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
+export const MAX_STAGED_EVENT_ROWS = 10_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;

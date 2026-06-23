@@ -79,30 +79,30 @@ export async function rollupAccountEventsDaily(env, overrides = {}) {
   if (!db?.prepare) return { rolled: false };
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
-  const stmt = db.prepare(
-    `INSERT INTO account_events_daily
-       (hotkey, netuid, day, event_count, event_kinds, first_block, last_block, updated_at)
-     SELECT
-       hotkey,
-       netuid,
-       ? AS day,
-       COUNT(*) AS event_count,
-       GROUP_CONCAT(DISTINCT event_kind) AS event_kinds,
-       MIN(block_number) AS first_block,
-       MAX(block_number) AS last_block,
-       ? AS updated_at
-     FROM account_events
-     WHERE hotkey IS NOT NULL AND netuid IS NOT NULL
-       AND observed_at >= ? AND observed_at < ?
-     GROUP BY hotkey, netuid
-     ON CONFLICT(hotkey, netuid, day) DO UPDATE SET
-       event_count = excluded.event_count,
-       event_kinds = excluded.event_kinds,
-       first_block = excluded.first_block,
-       last_block = excluded.last_block,
-       updated_at = excluded.updated_at`,
-  );
   try {
+    const stmt = db.prepare(
+      `INSERT INTO account_events_daily
+         (hotkey, netuid, day, event_count, event_kinds, first_block, last_block, updated_at)
+       SELECT
+         hotkey,
+         netuid,
+         ? AS day,
+         COUNT(*) AS event_count,
+         GROUP_CONCAT(DISTINCT event_kind) AS event_kinds,
+         MIN(block_number) AS first_block,
+         MAX(block_number) AS last_block,
+         ? AS updated_at
+       FROM account_events
+       WHERE hotkey IS NOT NULL AND netuid IS NOT NULL
+         AND observed_at >= ? AND observed_at < ?
+       GROUP BY hotkey, netuid
+       ON CONFLICT(hotkey, netuid, day) DO UPDATE SET
+         event_count = excluded.event_count,
+         event_kinds = excluded.event_kinds,
+         first_block = excluded.first_block,
+         last_block = excluded.last_block,
+         updated_at = excluded.updated_at`,
+    );
     await db.batch(
       days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
     );

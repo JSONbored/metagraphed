@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
+import { Blob } from "node:buffer";
+import { buildSchema, parse, validate } from "graphql";
 import { describe, test } from "vitest";
 import {
+  GRAPHQL_MAX_BODY_BYTES,
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_DEPTH,
+  GRAPHQL_MAX_QUERY_BYTES,
   handleGraphQLRequest,
   maxComplexityRule,
   maxDepthRule,
 } from "../src/graphql.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { resolveClientIp } from "../workers/config.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
@@ -75,6 +80,48 @@ describe("handleGraphQLRequest — request validation", () => {
     assert.ok(body.errors[0].message.includes("JSON"));
   });
 
+  test("oversized Content-Length is rejected before reading the body", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(GRAPHQL_MAX_BODY_BYTES + 1),
+      },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("body"));
+  });
+
+  test("oversized streaming body without Content-Length is rejected", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: new Blob([" ".repeat(GRAPHQL_MAX_BODY_BYTES + 1)]).stream(),
+      duplex: "half",
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("body"));
+  });
+
+  test("oversized GraphQL query is rejected before parsing", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `# ${"x".repeat(GRAPHQL_MAX_QUERY_BYTES)}\n{ __typename }`,
+      }),
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 413);
+    const body = await res.json();
+    assert.ok(body.errors[0].message.includes("query"));
+  });
+
   test("missing query field returns 400", async () => {
     const { status, body } = await gql(undefined);
     assert.equal(status, 400);
@@ -121,6 +168,111 @@ describe("handleGraphQLRequest — validation rules", () => {
       ext,
       `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
     );
+  });
+
+  test("complexity counts fields inside named fragments (no spread bypass)", async () => {
+    // Moving the whole selection into a fragment must NOT bypass the limit: the
+    // spread is transparent, so its fields are counted at the operation level.
+    const fields = Array.from(
+      { length: GRAPHQL_MAX_COMPLEXITY + 1 },
+      (_, i) => `t${i}: __typename`,
+    ).join(" ");
+    const q = `query { ...Big } fragment Big on Query { ${fields} }`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected COMPLEXITY_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("depth counts nesting inside named fragments (no spread bypass)", async () => {
+    // Deep nesting hidden inside a fragment must still be counted. Without
+    // following the spread, the operation's selection set is just `...Big` and
+    // counts as depth 0, bypassing the limit.
+    const nested =
+      "subnets { items { ".repeat(GRAPHQL_MAX_DEPTH + 1) +
+      "netuid" +
+      " } }".repeat(GRAPHQL_MAX_DEPTH + 1);
+    const q = `query { ...Big } fragment Big on Query { ${nested} }`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("validation memoizes repeated named fragment spreads", async () => {
+    const fragments = ["fragment F0 on Query { __typename }"];
+    for (let i = 1; i <= 20; i += 1) {
+      fragments.push(`fragment F${i} on Query { ...F${i - 1} ...F${i - 1} }`);
+    }
+    const q = `query { ...F20 } ${fragments.join(" ")}`;
+    const { status, body } = await gql(q);
+    assert.equal(status, 400);
+    const ext = body.errors.find(
+      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+    );
+    assert.ok(
+      ext,
+      `expected COMPLEXITY_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("inline fragments are transparent for complexity (no over-count)", async () => {
+    // Exactly at the limit, wrapped in a type-conditional inline fragment. The
+    // inline fragment is not a field, so this must pass — counting it would
+    // over-measure (51) and wrongly reject a query identical to its inlined form.
+    const fields = Array.from(
+      { length: GRAPHQL_MAX_COMPLEXITY },
+      (_, i) => `t${i}: __typename`,
+    ).join(" ");
+    const inlineFrag = await gql(`query { ... on Query { ${fields} } }`);
+    assert.equal(
+      inlineFrag.status,
+      200,
+      `inline-fragment query should match its inlined form: ${JSON.stringify(inlineFrag.body.errors)}`,
+    );
+    // Same fields without the inline fragment also pass — equal measurement.
+    const plain = await gql(`query { ${fields} }`);
+    assert.equal(plain.status, 200);
+    // One field over the limit is still rejected through the inline fragment.
+    const over = await gql(
+      `query { ... on Query { ${fields} t_extra: __typename } }`,
+    );
+    assert.equal(over.status, 400);
+    assert.ok(
+      over.body.errors.find(
+        (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      ),
+    );
+  });
+
+  test("maxDepthRule treats inline fragments transparently", () => {
+    // `{ a { b { c } } }` is depth 2 (a->1, b->2; c is a scalar leaf). Wrapping
+    // the selection in an inline fragment must NOT add a level — otherwise the
+    // inline form measures depth 3 and is wrongly rejected at limit 2.
+    const depthSchema = buildSchema(
+      `type Query { a: A } type A { b: B } type B { c: Int }`,
+    );
+    const plain = parse("{ a { b { c } } }");
+    const inline = parse("{ ... on Query { a { b { c } } } }");
+    assert.equal(validate(depthSchema, plain, [maxDepthRule(2)]).length, 0);
+    assert.equal(
+      validate(depthSchema, inline, [maxDepthRule(2)]).length,
+      0,
+      "inline-wrapped query must measure the same depth as its inlined form",
+    );
+    // Transparency is not a free pass: limit 1 still rejects both equally.
+    assert.equal(validate(depthSchema, plain, [maxDepthRule(1)]).length, 1);
+    assert.equal(validate(depthSchema, inline, [maxDepthRule(1)]).length, 1);
   });
 
   test("complexity exceeded returns COMPLEXITY_LIMIT_EXCEEDED extension", async () => {
@@ -291,6 +443,43 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.deepEqual(body.data.providers.items[0].netuids, []);
   });
 
+  test("provider resolves a valid slug id from the store", async () => {
+    const env = fakeArtifactEnv({
+      "/metagraph/providers/acme-1.0.json": { id: "acme-1.0", name: "Acme" },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme-1.0") { id name } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.provider.name, "Acme");
+  });
+
+  test("provider rejects a traversal/invalid id without reading any artifact", async () => {
+    // The id is interpolated into the artifact path and the static-asset tier
+    // collapses "../", so an unvalidated id could escape the providers/
+    // namespace. The resolver must reject a non-slug id BEFORE touching storage.
+    let reads = 0;
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return null;
+        },
+      },
+    };
+    for (const id of ["../subnets", "../../economics", "a/b", "foo bar", ""]) {
+      const { status, body } = await gql(
+        `{ provider(id: ${JSON.stringify(id)}) { id name } }`,
+        env,
+      );
+      assert.equal(status, 200, id);
+      assert.equal(body.data.provider, null, id);
+    }
+    assert.equal(reads, 0, "no artifact read should happen for an invalid id");
+  });
+
   test("economics returns subnet economics list", async () => {
     const env = fakeArtifactEnv({
       "/metagraph/economics.json": {
@@ -445,5 +634,108 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.netuids, [1, 7]);
+  });
+});
+
+// Security hardening (#1: GraphQL must run through the rate limiter). GraphQL is
+// POST-only and fans out into artifact reads, so it shares the strict RPC
+// limiter binding. A counting limiter that allows the first N keyed hits and
+// denies the rest models the Cloudflare binding closely enough to prove the
+// gate fires on /api/v1/graphql.
+function countingRateLimiterEnv(limit, extra = {}) {
+  const counts = new Map();
+  return {
+    ...extra,
+    RPC_RATE_LIMITER: {
+      limit({ key }) {
+        const next = (counts.get(key) || 0) + 1;
+        counts.set(key, next);
+        return Promise.resolve({ success: next <= limit });
+      },
+    },
+  };
+}
+
+const gqlPost = (env, headers = {}) =>
+  handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    }),
+    env,
+    {},
+  );
+
+describe("handleRequest — GraphQL rate limiting (#security)", () => {
+  test("N requests within the window pass, the N+1 returns 429", async () => {
+    const N = 3;
+    const env = countingRateLimiterEnv(N);
+    // The first N requests are under the limit and reach the handler (200).
+    for (let i = 0; i < N; i += 1) {
+      const res = await gqlPost(env);
+      assert.equal(res.status, 200, `request ${i + 1} should pass`);
+    }
+    // The N+1th request is over the limit -> 429 from the GraphQL gate.
+    const limited = await gqlPost(env);
+    assert.equal(limited.status, 429);
+    const body = await limited.json();
+    assert.equal(body.error.code, "graphql_rate_limited");
+    assert.equal(limited.headers.get("retry-after"), "60");
+    assert.equal(limited.headers.get("x-ratelimit-remaining"), "0");
+  });
+
+  test("no limiter binding (local/CI) lets GraphQL through", async () => {
+    // emptyEnv has no RPC_RATE_LIMITER; the gate must no-op, not 429.
+    const res = await gqlPost(emptyEnv);
+    assert.equal(res.status, 200);
+  });
+});
+
+describe("client IP resolution — x-forwarded-for is not trusted (#security)", () => {
+  test("resolveClientIp ignores x-forwarded-for, uses cf-connecting-ip only", () => {
+    const sameCf = (xff) =>
+      resolveClientIp(
+        new Request("https://api.metagraph.sh/api/v1/graphql", {
+          method: "POST",
+          headers: {
+            "cf-connecting-ip": "203.0.113.7",
+            "x-forwarded-for": xff,
+          },
+        }),
+      );
+    // Two forged XFF values, same trusted cf-connecting-ip -> identical key.
+    assert.equal(sameCf("1.1.1.1"), sameCf("9.9.9.9"));
+    assert.equal(sameCf("1.1.1.1"), "203.0.113.7");
+  });
+
+  test("absent cf-connecting-ip falls back to a fixed bucket, not the XFF header", () => {
+    const key = resolveClientIp(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "x-forwarded-for": "attacker-controlled" },
+      }),
+    );
+    assert.equal(key, "anonymous");
+    assert.notEqual(key, "attacker-controlled");
+  });
+
+  test("two forged x-forwarded-for share ONE rate-limit bucket (2nd is limited)", async () => {
+    // limit=1: the first request from cf-connecting-ip 203.0.113.7 passes; a
+    // second request with the SAME cf-connecting-ip but a DIFFERENT forged
+    // x-forwarded-for must be counted in the same bucket -> 429. If the forged
+    // header were honored it would mint a fresh bucket and wrongly pass.
+    const env = countingRateLimiterEnv(1);
+    const first = await gqlPost(env, {
+      "cf-connecting-ip": "203.0.113.7",
+      "x-forwarded-for": "10.0.0.1",
+    });
+    assert.equal(first.status, 200);
+    const second = await gqlPost(env, {
+      "cf-connecting-ip": "203.0.113.7",
+      "x-forwarded-for": "10.0.0.2",
+    });
+    assert.equal(second.status, 429);
+    assert.equal((await second.json()).error.code, "graphql_rate_limited");
   });
 });

@@ -913,6 +913,18 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-neuron-history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+    "NeuronHistoryArtifact",
+  ),
+  artifact(
+    "subnet-history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+    "SubnetHistoryArtifact",
+  ),
+  artifact(
     "account-summary",
     "/metagraph/accounts/{ss58}.json",
     "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
@@ -945,7 +957,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
@@ -1549,6 +1561,41 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-neuron-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "uid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
+    "subnet-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "account-summary",
     "GET",
     "/api/v1/accounts/{ss58}",
@@ -1601,9 +1648,9 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
     "standard",
-    ["registry", "analytics"],
+    ["registry", "analytics", "subnets"],
     [
       {
         name: "board",
@@ -1615,6 +1662,10 @@ export const API_ROUTES = [
             "most-complete",
             "most-enriched",
             "fastest-growing",
+            "open-slots",
+            "cheapest-registration",
+            "highest-emission",
+            "validator-headroom",
           ],
         },
       },

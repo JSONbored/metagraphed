@@ -36,6 +36,26 @@ describe("health-sql latency builders", () => {
     assert.ok(!cols.includes("CAST(ROUND("));
   });
 
+  test("latencyStatColumns picks percentiles by nearest rank (ceil), not floor+1", () => {
+    const cols = latencyStatColumns();
+    // ceil(q*N): truncate toward zero, then add 1 only on a fractional part.
+    // The old floor(q*N)+1 overshot by one whenever q*N was an integer (the
+    // common case, e.g. N=100 → p50/p95/p99 hit ranks 51/96/100, not 50/95/99).
+    for (const q of ["0.5", "0.95", "0.99"]) {
+      assert.ok(
+        cols.includes(
+          `CAST(${q} * lat_cnt AS INTEGER) + (${q} * lat_cnt > CAST(${q} * lat_cnt AS INTEGER))`,
+        ),
+        `percentile ${q} must select the nearest-rank (ceil) position`,
+      );
+    }
+    // The off-by-one `floor(q*N) + 1` form must be gone.
+    assert.ok(
+      !/CAST\([0-9.]+ \* lat_cnt AS INTEGER\) \+ 1\b/.test(cols),
+      "must not use the floor+1 rank that overshoots at integer boundaries",
+    );
+  });
+
   test("latencyStatColumns honours roundedAvg and includeMinMax options", () => {
     assert.ok(latencyStatColumns({ roundedAvg: true }).includes("CAST(ROUND("));
     const noMinMax = latencyStatColumns({ includeMinMax: false });
@@ -55,5 +75,9 @@ describe("health-sql latency builders", () => {
     assert.ok(
       dailyLatencyColumns({ roundedAvg: true }).includes("CAST(ROUND("),
     );
+    // The weighted mean must use REAL division — avg_latency_ms and the sample
+    // counts are INTEGER columns, so a plain SUM(int)/SUM(int) would truncate.
+    assert.ok(cols.includes("CAST(SUM("));
+    assert.ok(cols.includes("AS REAL) /"));
   });
 });

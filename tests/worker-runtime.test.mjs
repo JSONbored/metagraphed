@@ -1879,4 +1879,28 @@ describe("Agent discovery surfaces", () => {
     assert.equal(Array.isArray(tools), true);
     assert.ok(tools.length >= 14);
   });
+
+  test("routes /api/v1/icon to the icon proxy (allowlist-gated, no fetch on miss)", async () => {
+    let fetched = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetched = true;
+      return new Response("", { status: 200 });
+    };
+    try {
+      // A syntactically valid host that is NOT in the artifact/env allowlist:
+      // the proxy fails closed with a 404 and never reaches an upstream fetch.
+      const response = await handleRequest(
+        new Request(
+          "https://api.metagraph.sh/api/v1/icon?host=definitely-not-allowlisted.example",
+        ),
+        env,
+        {},
+      );
+      assert.equal(response.status, 404);
+      assert.equal(fetched, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });

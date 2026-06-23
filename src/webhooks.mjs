@@ -7,12 +7,33 @@
 // They perform NO I/O — KV and fetch are injected by callers — so every branch
 // is unit-testable. Runs unchanged on the Workers runtime and Node 22 (both
 // expose Web Crypto + TextEncoder + URL).
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 
 export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
+// Per-(subscription, event) delivery state for at-least-once redelivery: a failed
+// transient delivery is parked here, retried on later runs, then dead-lettered.
+export const WEBHOOK_DELIVERY_PREFIX = "webhooks:delivery:";
 export const WEBHOOK_SIGNATURE_HEADER = "x-metagraph-signature";
 export const WEBHOOK_TIMESTAMP_HEADER = "x-metagraph-timestamp";
 export const WEBHOOK_SECRET_HEADER = "x-metagraph-webhook-secret";
+// Stable per-content event id + per-(subscription, event) idempotency key so a
+// subscriber can dedupe the retries at-least-once delivery implies.
+export const WEBHOOK_EVENT_ID_HEADER = "x-metagraph-event-id";
+export const WEBHOOK_IDEMPOTENCY_HEADER = "x-metagraph-idempotency-key";
 export const WEBHOOK_EVENT_TYPE = "metagraph.publish";
+
+// Redelivery schedule: a parked delivery becomes due `min(base * 2^(round-1), max)`
+// after its last attempt, and dead-letters after MAX_DELIVERY_ROUNDS failed rounds.
+export const WEBHOOK_MAX_DELIVERY_ROUNDS = 8;
+export const WEBHOOK_REDELIVERY_BASE_MS = 5 * 60 * 1000; // 5 min
+export const WEBHOOK_REDELIVERY_MAX_MS = 12 * 60 * 60 * 1000; // 12 h
+// Parked deliveries self-clean on the same 180-day horizon as dormant subscriptions.
+export const WEBHOOK_DELIVERY_TTL_SECONDS = 180 * 24 * 60 * 60;
+// Redelivery sweeps are intentionally budgeted so a long-lived failing endpoint
+// cannot make publish runs retry an unbounded parked backlog.
+export const WEBHOOK_REDELIVERY_LIST_LIMIT = 256;
+export const WEBHOOK_REDELIVERY_MAX_PER_RUN = 64;
+export const WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION = 8;
 
 const MAX_FILTER_NETUIDS = 64;
 const MAX_FILTER_KINDS = 8;
@@ -20,6 +41,16 @@ const VALID_CHANGE_KINDS = new Set(["subnets", "artifacts"]);
 
 export function subscriptionStorageKey(id) {
   return `${WEBHOOK_KV_PREFIX}${id}`;
+}
+
+// All of a subscription's parked deliveries share this prefix, so its delivery
+// health lists in one scan.
+export function deliveryStoragePrefix(subscriptionId) {
+  return `${WEBHOOK_DELIVERY_PREFIX}${subscriptionId}:`;
+}
+
+export function deliveryStorageKey(subscriptionId, eventId) {
+  return `${deliveryStoragePrefix(subscriptionId)}${eventId}`;
 }
 
 // --- URL safety: best-effort SSRF guard ---------------------------------------
@@ -53,6 +84,11 @@ function isIpv4Literal(host) {
   });
 }
 
+function isPrivateIpv4Octets(octets) {
+  const dotted = octets.join(".");
+  return PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(dotted));
+}
+
 function isLiteralIp(host) {
   return isIpv4Literal(host) || host.includes(":");
 }
@@ -65,13 +101,18 @@ export function isPublicWebhookAddress(value) {
     if (
       host === "::1" ||
       host === "::" ||
-      host.startsWith("fe80") || // link-local
+      host.startsWith("fe") || // fe00::/8 reserved: link-local fe80::/10 + deprecated site-local fec0::/10
       host.startsWith("fc") || // unique-local fc00::/7
       host.startsWith("fd") ||
       host.startsWith("::ffff:") // IPv4-mapped
     ) {
       return false;
     }
+    // IPv4-compatible (::a.b.c.d, normalised to ::7f00:1 by the URL parser),
+    // 6to4 (2002::/16), and NAT64 (64:ff9b::/96) tunnel a v4 address past the
+    // prefix checks above — re-check the embedded v4 against the private ranges.
+    const embedded = ipv6EmbeddedIpv4(host);
+    if (embedded && isPrivateIpv4Octets(embedded)) return false;
     return true;
   }
 
@@ -286,17 +327,23 @@ export function buildChangeEvent({ changelog, pointer } = {}) {
 }
 
 export function eventMatchesFilters(event, filters) {
+  // No filters object (or neither facet present) means "no restriction" — match
+  // every event. A PRESENT facet is an allowlist, including an explicit empty
+  // one: `{kinds: []}` allows zero kinds, so it must match NOTHING, not fall
+  // through to match-all. normalizeFilters preserves an empty array, so a
+  // subscriber can create such a filter and would otherwise be flooded with
+  // every event instead of receiving none.
   if (
     !filters ||
     (filters.netuids === undefined && filters.kinds === undefined)
   ) {
     return true;
   }
-  if (Array.isArray(filters.kinds) && filters.kinds.length > 0) {
+  if (Array.isArray(filters.kinds)) {
     const eventKinds = new Set(event?.change_kinds || []);
     if (!filters.kinds.some((kind) => eventKinds.has(kind))) return false;
   }
-  if (Array.isArray(filters.netuids) && filters.netuids.length > 0) {
+  if (Array.isArray(filters.netuids)) {
     const affected = new Set(event?.affected_netuids || []);
     if (!filters.netuids.some((netuid) => affected.has(netuid))) return false;
   }
@@ -304,6 +351,21 @@ export function eventMatchesFilters(event, filters) {
 }
 
 // --- HMAC signing -------------------------------------------------------------
+// Lowercase hex — shared by HMAC signing, secret generation, and the digests below.
+function bytesToHex(buffer) {
+  return [...new Uint8Array(buffer)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(String(text)),
+  );
+  return bytesToHex(digest);
+}
+
 export async function signPayload(secret, bodyText) {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -318,9 +380,20 @@ export async function signPayload(secret, bodyText) {
     key,
     encoder.encode(String(bodyText)),
   );
-  return [...new Uint8Array(signature)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return bytesToHex(signature);
+}
+
+// Stable id for an event's content: same bytes ⇒ same id, for every subscriber
+// and every (re)delivery of that event. Subscribers use it to correlate retries.
+export async function webhookEventId(bodyText) {
+  return (await sha256Hex(bodyText)).slice(0, 32);
+}
+
+// Idempotency key scoped to one subscriber and one event, derived from the
+// subscription id and the exact event body. Every retry within a run and every
+// redelivery on a later run carries the same key, so subscribers can dedupe.
+export async function webhookIdempotencyKey(subscriptionId, bodyText) {
+  return sha256Hex(`${subscriptionId}\n${bodyText}`);
 }
 
 export function timingSafeEqual(a, b) {
@@ -342,7 +415,7 @@ export function timingSafeEqual(a, b) {
 export function generateSecret() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return bytesToHex(bytes);
 }
 
 export function generateSubscriptionId() {
@@ -373,10 +446,13 @@ export function publicSubscriptionView(record) {
 // `now` are injected so the dispatcher is fully unit-testable. Re-validates the
 // URL at delivery time (defense in depth vs. a record that slipped past intake),
 // skips on filter mismatch, signs with HMAC-SHA256, and retries transient
-// failures (network/timeout/5xx/429) but not deterministic 4xx rejections.
+// failures (network/timeout/5xx/429) but not deterministic 4xx rejections. The
+// result carries `retryable` + the stable `event_id`/`idempotency_key`; pass
+// `bodyText` to re-send a stored event verbatim (stable signature across runs).
 export async function deliverChangeEvent({
   subscription,
   event,
+  bodyText: providedBodyText,
   fetchFn,
   now,
   timeoutMs = 8000,
@@ -405,16 +481,26 @@ export async function deliverChangeEvent({
     return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
   }
 
-  const bodyText = JSON.stringify(event);
+  const bodyText =
+    typeof providedBodyText === "string"
+      ? providedBodyText
+      : JSON.stringify(event);
   const timestamp =
     typeof now === "function" ? now() : new Date(0).toISOString();
-  const signature = await signPayload(subscription.secret, bodyText);
+  const [signature, eventId, idempotencyKey] = await Promise.all([
+    signPayload(subscription.secret, bodyText),
+    webhookEventId(bodyText),
+    webhookIdempotencyKey(subscription.id, bodyText),
+  ]);
   const headers = {
     "content-type": "application/json",
     "user-agent": "metagraphed-webhook/1.0",
     [WEBHOOK_SIGNATURE_HEADER]: signature,
     [WEBHOOK_TIMESTAMP_HEADER]: timestamp,
+    [WEBHOOK_EVENT_ID_HEADER]: eventId,
+    [WEBHOOK_IDEMPOTENCY_HEADER]: idempotencyKey,
   };
+  const identity = { event_id: eventId, idempotency_key: idempotencyKey };
 
   let lastReason = "unknown";
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -439,6 +525,7 @@ export async function deliverChangeEvent({
           status: "delivered",
           status_code: status,
           attempts: attempt,
+          ...identity,
         };
       }
       lastReason = `http-${status}`;
@@ -449,6 +536,8 @@ export async function deliverChangeEvent({
           status_code: status,
           reason: "redirect-not-followed",
           attempts: attempt,
+          retryable: false,
+          ...identity,
         };
       }
       // 4xx (except 429) is a deterministic rejection — do not retry.
@@ -459,6 +548,8 @@ export async function deliverChangeEvent({
           status_code: status,
           reason: lastReason,
           attempts: attempt,
+          retryable: false,
+          ...identity,
         };
       }
       // 5xx / 429 — fall through to backoff + retry.
@@ -475,37 +566,19 @@ export async function deliverChangeEvent({
     status: "failed",
     reason: lastReason,
     attempts: maxAttempts,
+    retryable: true,
+    ...identity,
   };
 }
 
-// Bounded fan-out over many subscriptions. Concurrency-capped; never rejects —
-// each subscription resolves to a result record (delivered/failed/filtered/
-// skipped) so one bad endpoint can't sink the batch.
-export async function dispatchChangeEvent({
-  subscriptions,
-  event,
-  fetchFn,
-  now,
-  timeoutMs,
-  maxAttempts,
-  resolveHostnames,
-  concurrency = 8,
-}) {
-  const queue = [...(subscriptions || [])];
+// Bounded-concurrency map: drains `items` through at most `concurrency` in-flight
+// `fn` calls. Shared by the fresh fan-out and the redelivery sweep.
+async function mapBounded(items, concurrency, fn) {
+  const queue = [...(items || [])];
   const results = [];
   const worker = async () => {
     while (queue.length > 0) {
-      const subscription = queue.shift();
-      const result = await deliverChangeEvent({
-        subscription,
-        event,
-        fetchFn,
-        now,
-        timeoutMs,
-        maxAttempts,
-        resolveHostnames,
-      });
-      results.push(result);
+      results.push(await fn(queue.shift()));
     }
   };
   const workers = Array.from(
@@ -514,4 +587,273 @@ export async function dispatchChangeEvent({
   );
   await Promise.all(workers);
   return results;
+}
+
+// Bounded fan-out over many subscriptions. Concurrency-capped; never rejects —
+// each subscription resolves to a result record (delivered/failed/filtered/
+// skipped) so one bad endpoint can't sink the batch.
+export async function dispatchChangeEvent({
+  subscriptions,
+  event,
+  bodyText,
+  fetchFn,
+  now,
+  timeoutMs,
+  maxAttempts,
+  resolveHostnames,
+  concurrency = 8,
+}) {
+  return mapBounded(subscriptions, concurrency, (subscription) =>
+    deliverChangeEvent({
+      subscription,
+      event,
+      bodyText,
+      fetchFn,
+      now,
+      timeoutMs,
+      maxAttempts,
+      resolveHostnames,
+    }),
+  );
+}
+
+// --- at-least-once delivery (persisted redelivery + dead-letter) --------------
+// Fold one failed round into a parked record: bump the round, schedule the next
+// attempt with bounded backoff, and dead-letter at the cap or on a hard failure.
+function nextDeliveryRecord({
+  existing,
+  result,
+  bodyText,
+  nowIso,
+  nowMs,
+  maxRounds,
+  baseMs,
+  maxMs,
+}) {
+  const round = (existing?.round || 0) + 1;
+  const dead = result.retryable === false || round >= maxRounds;
+  const delayMs = Math.min(baseMs * 2 ** (round - 1), maxMs);
+  return {
+    subscription_id: result.id,
+    event_id: result.event_id,
+    idempotency_key: result.idempotency_key,
+    body: bodyText,
+    state: dead ? "dead" : "pending",
+    round,
+    reason: result.reason,
+    status_code: result.status_code ?? null,
+    first_failed_at: existing?.first_failed_at || nowIso,
+    last_attempt_at: nowIso,
+    next_attempt_at: dead ? null : new Date(nowMs + delayMs).toISOString(),
+  };
+}
+
+// Roll a subscription's parked records into a compact health view for the public
+// GET. Pure — the caller injects the records it listed from the store.
+export function summarizeDeliveryRecords(records) {
+  const list = (records || []).filter(
+    (record) => record && typeof record === "object",
+  );
+  let pending = 0;
+  let deadLetter = 0;
+  let latest = null; // the failure with the most recent attempt (ISO sorts lexically)
+  for (const record of list) {
+    if (record.state === "dead") deadLetter += 1;
+    else pending += 1;
+    if (!latest || record.last_attempt_at > latest.last_attempt_at) {
+      latest = record;
+    }
+  }
+  return {
+    status: deadLetter > 0 ? "dead_letter" : pending > 0 ? "retrying" : "ok",
+    pending,
+    dead_letter: deadLetter,
+    last_failure: latest
+      ? {
+          event_id: latest.event_id,
+          attempts: latest.round,
+          reason: latest.reason,
+          status_code: latest.status_code,
+          state: latest.state,
+          last_attempt_at: latest.last_attempt_at,
+          next_attempt_at: latest.next_attempt_at,
+        }
+      : null,
+  };
+}
+
+// At-least-once dispatch: deliver the current event, then redeliver the backlog of
+// previously-failed deliveries now due, persisting state to an injected `store`
+// ({ listKeys, get, put, delete }). Store calls are best-effort — a hiccup degrades
+// to a redelivery next run (the idempotency key keeps that safe), never a throw.
+export async function dispatchWithRedelivery({
+  subscriptions,
+  event,
+  fetchFn,
+  now,
+  store,
+  resolveHostnames,
+  timeoutMs,
+  maxAttempts,
+  concurrency = 8,
+  ttlSeconds = WEBHOOK_DELIVERY_TTL_SECONDS,
+  maxRounds = WEBHOOK_MAX_DELIVERY_ROUNDS,
+  redeliveryBaseMs = WEBHOOK_REDELIVERY_BASE_MS,
+  redeliveryMaxMs = WEBHOOK_REDELIVERY_MAX_MS,
+  redeliveryListLimit = WEBHOOK_REDELIVERY_LIST_LIMIT,
+  maxRedeliveriesPerRun = WEBHOOK_REDELIVERY_MAX_PER_RUN,
+  maxRedeliveriesPerSubscription = WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
+}) {
+  const nowIso = typeof now === "function" ? now() : new Date(0).toISOString();
+  const nowMs = Date.parse(nowIso) || 0; // 0 on the epoch fallback or a bad clock
+  const subList = (subscriptions || []).filter(Boolean);
+  const subById = new Map(
+    subList.filter((sub) => sub.id).map((sub) => [sub.id, sub]),
+  );
+
+  // Store wrappers: a control-store hiccup degrades to a retry next run, never throws.
+  const safeListKeys = async (prefix, limit) => {
+    try {
+      const keys = await store.listKeys(prefix, { limit });
+      return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
+    } catch {
+      return [];
+    }
+  };
+  const safeGet = async (key) => {
+    try {
+      return await store.get(key);
+    } catch {
+      return null;
+    }
+  };
+  const safePut = async (key, value) => {
+    try {
+      await store.put(key, value, { ttlSeconds });
+    } catch {
+      /* deduped via the idempotency key on the next run's retry */
+    }
+  };
+  const safeDelete = async (key) => {
+    try {
+      await store.delete(key);
+    } catch {
+      /* a stale record is harmless and TTL-reaped */
+    }
+  };
+  const park = (key, existing, result, bodyText) =>
+    safePut(
+      key,
+      nextDeliveryRecord({
+        existing,
+        result,
+        bodyText,
+        nowIso,
+        nowMs,
+        maxRounds,
+        baseMs: redeliveryBaseMs,
+        maxMs: redeliveryMaxMs,
+      }),
+    );
+
+  // Snapshot the parked backlog once. Phase 1 consumes the keys it touches so it
+  // only reads/writes KV when a record actually exists (no blind deletes on the
+  // healthy path); Phase 2 then sweeps whatever remains.
+  const parked = store
+    ? new Set(await safeListKeys(WEBHOOK_DELIVERY_PREFIX, redeliveryListLimit))
+    : new Set();
+
+  // --- Phase 1: deliver the freshly-published event ---------------------------
+  // One body for all subscribers (only the per-subscriber signature/key differ),
+  // so what we send is exactly what we park.
+  const freshBody = JSON.stringify(event);
+  const delivered = await dispatchChangeEvent({
+    subscriptions: subList,
+    event,
+    bodyText: freshBody,
+    fetchFn,
+    now,
+    timeoutMs,
+    maxAttempts,
+    resolveHostnames,
+    concurrency,
+  });
+  if (store) {
+    for (const result of delivered) {
+      if (!result?.event_id) continue; // skipped/filtered → nothing was attempted
+      const key = deliveryStorageKey(result.id, result.event_id);
+      const wasParked = parked.delete(key); // claim it so Phase 2 won't redo it
+      if (result.status === "delivered") {
+        if (wasParked) await safeDelete(key); // recovered → clear the prior park
+      } else if (result.status === "failed" && result.retryable) {
+        await park(
+          key,
+          wasParked ? await safeGet(key) : null,
+          result,
+          freshBody,
+        );
+      }
+    }
+  }
+
+  // --- Phase 2: redeliver whatever is still parked and now due ----------------
+  // Records (re)parked in Phase 1 were removed from `parked`, so they can't be
+  // re-attempted this run. Independent keys → concurrent sweep.
+  const due = [];
+  const dueBySubscription = new Map();
+  for (const candidate of (
+    await mapBounded([...parked], concurrency, async (key) => {
+      const record = await safeGet(key);
+      return record &&
+        record.state === "pending" &&
+        subById.has(record.subscription_id) && // gone/beyond cap → TTL reaps it
+        !(record.next_attempt_at && Date.parse(record.next_attempt_at) > nowMs)
+        ? { key, record }
+        : null;
+    })
+  ).filter(Boolean)) {
+    if (due.length >= maxRedeliveriesPerRun) break;
+    const count = dueBySubscription.get(candidate.record.subscription_id) || 0;
+    if (count >= maxRedeliveriesPerSubscription) continue;
+    dueBySubscription.set(candidate.record.subscription_id, count + 1);
+    due.push(candidate);
+  }
+  const redelivered = await mapBounded(
+    due,
+    concurrency,
+    async ({ key, record }) => {
+      const result = await deliverChangeEvent({
+        subscription: subById.get(record.subscription_id),
+        event: safeParseJson(record.body),
+        bodyText: record.body,
+        fetchFn,
+        now,
+        timeoutMs,
+        maxAttempts,
+        resolveHostnames,
+      });
+      if (result.status === "failed") {
+        await park(key, record, result, record.body);
+      } else {
+        // delivered, or no longer applicable (filters/secret changed) → stop tracking
+        await safeDelete(key);
+      }
+      return {
+        id: record.subscription_id,
+        event_id: record.event_id,
+        status: result.status,
+        round: record.round,
+      };
+    },
+  );
+
+  return { delivered, redelivered };
+}
+
+function safeParseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
