@@ -965,6 +965,20 @@ describe("parseBlockNumber", () => {
     assert.equal(parseBlockNumber({ number: { nested: true } }), null);
     assert.equal(parseBlockNumber({}), null);
   });
+  test("malformed numeric string returns null, not NaN", () => {
+    assert.equal(parseBlockNumber({ number: "0x" }), null);
+    assert.equal(parseBlockNumber({ number: "0xZZ" }), null);
+    assert.equal(parseBlockNumber({ number: "" }), null);
+  });
+  test("non-finite or non-integer number field returns null", () => {
+    assert.equal(parseBlockNumber({ number: NaN }), null);
+    assert.equal(parseBlockNumber({ number: Infinity }), null);
+    assert.equal(parseBlockNumber({ number: 1.5 }), null);
+  });
+  test("genesis block 0 is preserved", () => {
+    assert.equal(parseBlockNumber({ number: 0 }), 0);
+    assert.equal(parseBlockNumber({ number: "0x0" }), 0);
+  });
 });
 
 describe("contentMismatch (remaining branches)", () => {

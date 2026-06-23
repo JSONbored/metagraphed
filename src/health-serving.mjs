@@ -995,6 +995,24 @@ export function formatTrajectory({ netuid, rows }) {
   };
 }
 
+// One subnet's trajectory from the daily snapshots, via the injected `d1` runner
+// (shared by the REST route and the MCP tool). DESC keeps the most-recent window
+// — formatTrajectory re-sorts ascending, and ASC + LIMIT would freeze on the
+// oldest 400 days once history exceeds the cap. Cold D1 → [] → empty trajectory.
+export async function loadSubnetTrajectory(d1, netuid) {
+  const rows = await d1(
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
+     FROM subnet_snapshots
+     WHERE netuid = ?
+     ORDER BY snapshot_date DESC
+     LIMIT 400`,
+    [netuid],
+  );
+  return formatTrajectory({ netuid, rows });
+}
+
 function diff(now, then) {
   if (now == null || then == null) return null;
   return Number(now) - Number(then);

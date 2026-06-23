@@ -2533,3 +2533,363 @@ describe("list_subnets", () => {
     assert.equal(byDomain.subnets[0].netuid, 8);
   });
 });
+
+describe("MCP economics + metagraph data tools", () => {
+  // One valid live economics blob: contract matches, captured_at fresh, the row
+  // count matches the summary, and emission_share sums to ~1 (resolveLiveEconomics
+  // rejects a blob that fails any of these, falling through to the R2 artifact).
+  const ECON_ROW = {
+    netuid: 7,
+    name: "Allways",
+    slug: "allways",
+    emission_share: 1,
+    registration_cost_tao: 0.5,
+    registration_allowed: true,
+    open_slots: 3,
+    miner_readiness: 80,
+    validator_count: 12,
+    miner_count: 200,
+    total_stake_tao: 1000,
+    max_stake_tao: 5000,
+    alpha_price_tao: 0.06,
+  };
+  const ECON_BLOB = {
+    contract_version: "test-contract",
+    captured_at: FRESH_RUN,
+    schema_version: 1,
+    network: "finney",
+    summary: {
+      with_economics_count: 1,
+      subnet_count: 1,
+      registration_open_count: 1,
+    },
+    subnets: [ECON_ROW],
+  };
+
+  test("get_subnet_economics serves the live KV economics tier (KV-primary)", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps({}, { "economics:current": ECON_BLOB }),
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-kv");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.economics.open_slots, 3);
+    assert.equal(out.economics.registration_cost_tao, 0.5);
+    assert.equal(out.summary.with_economics_count, 1);
+    assert.equal(out.captured_at, FRESH_RUN);
+  });
+
+  test("get_subnet_economics falls back to the committed R2 artifact when KV is cold", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.economics.netuid, 7);
+  });
+
+  test("get_subnet_economics falls back to R2 when the KV blob is off-contract", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps(
+          { "/metagraph/economics.json": ECON_BLOB },
+          { "economics:current": ECON_BLOB },
+        ),
+        // mcpContractVersion mismatches the blob's contract_version → KV rejected.
+        env: { METAGRAPH_CONTRACT_VERSION: "different-contract" },
+      },
+    );
+    assert.equal(res.body.result.structuredContent.source, "r2-fallback");
+  });
+
+  test("get_subnet_economics returns economics:null for a subnet with no row", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 999 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.economics, null);
+    assert.equal(out.source, "r2-fallback");
+  });
+
+  test("get_subnet_economics null-fills captured_at and summary when the snapshot omits them", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps(
+          {
+            "/metagraph/economics.json": {
+              subnets: [{ netuid: 7, open_slots: 1 }],
+            },
+          },
+          {},
+        ),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.captured_at, null);
+    assert.equal(out.summary, null);
+    assert.equal(out.economics.netuid, 7);
+  });
+
+  test("get_subnet_economics surfaces not_found when neither tier has data", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
+  // mirroring the metagraph-neurons unit-test fixtures.
+  const ROW = {
+    uid: 0,
+    hotkey: "5Hk1",
+    coldkey: "5Co1",
+    active: 1,
+    validator_permit: 1,
+    rank: 1,
+    trust: 0.5,
+    validator_trust: 0.99,
+    consensus: 0.4,
+    incentive: 0.1,
+    dividends: 0.2,
+    emission_tao: 22.1,
+    stake_tao: 1000.5,
+    registered_at_block: 6702485,
+    is_immunity_period: 0,
+    axon: "1.2.3.4:8091",
+    block_number: 8454388,
+    captured_at: 1750000000000,
+  };
+  const MINER = { ...ROW, uid: 5, validator_permit: 0, hotkey: "5Hk5" };
+  const SNAPSHOTS = [
+    {
+      snapshot_date: "2026-06-01",
+      completeness_score: 90,
+      surface_count: 10,
+      endpoint_count: 12,
+      validator_count: 8,
+      miner_count: 100,
+      total_stake_tao: 500,
+      alpha_price_tao: 0.05,
+      emission_share: 0.04,
+    },
+    {
+      snapshot_date: "2026-06-10",
+      completeness_score: 97,
+      surface_count: 13,
+      endpoint_count: 15,
+      validator_count: 12,
+      miner_count: 200,
+      total_stake_tao: 1000,
+      alpha_price_tao: 0.06,
+      emission_share: 0.05,
+    },
+  ];
+
+  // D1 binding honoring the loaders' WHERE clauses (neurons + subnet_snapshots).
+  function metagraphD1({ neurons = [], snapshots = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all() {
+                if (sql.includes("FROM neurons")) {
+                  let r = neurons;
+                  if (sql.includes("validator_permit = 1")) {
+                    r = r.filter((x) => x.validator_permit === 1);
+                  }
+                  if (sql.includes("AND uid = ?")) {
+                    r = r.filter((x) => x.uid === params[1]);
+                  }
+                  return Promise.resolve({ results: r });
+                }
+                if (sql.includes("FROM subnet_snapshots")) {
+                  return Promise.resolve({ results: snapshots });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+  const d1Env = {
+    METAGRAPH_HEALTH_DB: metagraphD1({
+      neurons: [ROW, MINER],
+      snapshots: SNAPSHOTS,
+    }),
+  };
+
+  test("get_subnet_metagraph returns every neuron with booleans coerced", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.block_number, 8454388);
+    assert.equal(typeof out.captured_at, "string");
+    assert.equal(out.neurons[0].validator_permit, true);
+    assert.equal(out.neurons[0].is_immunity_period, false);
+  });
+
+  test("get_subnet_metagraph with validator_permit returns only validators", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7, validator_permit: true },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 1);
+    assert.equal(out.neurons[0].uid, 0);
+  });
+
+  test("get_subnet_metagraph rejects a non-boolean validator_permit", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7, validator_permit: "yes" },
+      { env: d1Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /boolean/);
+  });
+
+  test("list_subnet_validators returns permit-holders ranked by stake", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].validator_permit, true);
+  });
+
+  test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
+    const present = await callTool(
+      "get_neuron",
+      { netuid: 7, uid: 0 },
+      { env: d1Env },
+    );
+    assert.equal(present.body.result.structuredContent.neuron.uid, 0);
+    const absent = await callTool(
+      "get_neuron",
+      { netuid: 7, uid: 999 },
+      { env: d1Env },
+    );
+    assert.equal(absent.body.result.structuredContent.neuron, null);
+  });
+
+  test("get_neuron requires a non-negative uid", async () => {
+    const res = await callTool("get_neuron", { netuid: 7 }, { env: d1Env });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /uid/);
+  });
+
+  test("get_subnet_trajectory computes the time series + deltas (sorted ascending)", async () => {
+    const res = await callTool(
+      "get_subnet_trajectory",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].date, "2026-06-01");
+    assert.equal(out.points[1].validator_count, 12);
+    assert.equal(out.deltas["7d"].completeness_score, 7);
+  });
+
+  test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
+    const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
+    assert.equal(meta.body.result.isError, false);
+    assert.equal(meta.body.result.structuredContent.neuron_count, 0);
+    assert.deepEqual(meta.body.result.structuredContent.neurons, []);
+
+    const vals = await callTool("list_subnet_validators", { netuid: 7 });
+    assert.equal(vals.body.result.structuredContent.validator_count, 0);
+
+    const neuron = await callTool("get_neuron", { netuid: 7, uid: 0 });
+    assert.equal(neuron.body.result.structuredContent.neuron, null);
+
+    const traj = await callTool("get_subnet_trajectory", { netuid: 7 });
+    assert.equal(traj.body.result.structuredContent.point_count, 0);
+  });
+
+  test("the D1 runner swallows a query error and a missing result set", async () => {
+    // A bound DB whose .all() throws must be caught and yield an empty payload.
+    const throwingEnv = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all() {
+              throw new Error("d1 unavailable");
+            },
+          }),
+        }),
+      },
+    };
+    const thrown = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: throwingEnv },
+    );
+    assert.equal(thrown.body.result.isError, false);
+    assert.equal(thrown.body.result.structuredContent.neuron_count, 0);
+
+    // A result object with no `results` array falls back to [] (no throw).
+    const noResultsEnv = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({ bind: () => ({ all: () => Promise.resolve({}) }) }),
+      },
+    };
+    const empty = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: noResultsEnv },
+    );
+    assert.equal(empty.body.result.structuredContent.neuron_count, 0);
+  });
+
+  test("the data tools reject a negative netuid", async () => {
+    for (const name of [
+      "get_subnet_economics",
+      "get_subnet_trajectory",
+      "get_subnet_metagraph",
+      "list_subnet_validators",
+    ]) {
+      const res = await callTool(name, { netuid: -1 }, { env: d1Env });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `${name} must reject netuid -1`,
+      );
+    }
+  });
+});

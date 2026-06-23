@@ -353,8 +353,12 @@ function summarizeGroup(rows) {
     degraded_count: counts.degraded,
     failed_count: counts.failed,
     unknown_count: counts.unknown,
-    last_checked: iso(lastChecked) || null,
-    last_ok: iso(lastOk) || null,
+    // Guard the 0 sentinel before iso(): iso(0) is the truthy epoch string
+    // "1970-01-01T00:00:00.000Z", so `iso(0) || null` would report a fake last_ok
+    // for a subnet whose surfaces have never probed OK. (last_checked is always
+    // set from runAt, but guard it the same way for symmetry.)
+    last_checked: lastChecked ? iso(lastChecked) : null,
+    last_ok: lastOk ? iso(lastOk) : null,
     avg_latency_ms: latencies.length
       ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
       : null,
