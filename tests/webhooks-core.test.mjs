@@ -46,6 +46,26 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
   });
 
+  test("IPv4 tunnelled inside an IPv6 literal → false", () => {
+    // IPv4-compatible (deprecated); the URL parser re-serialises ::127.0.0.1 to
+    // ::7f00:1, so both spellings must be caught.
+    assert.equal(isPublicWebhookAddress("::127.0.0.1"), false);
+    assert.equal(isPublicWebhookAddress("::7f00:1"), false);
+    assert.equal(isPublicWebhookAddress("::192.168.1.1"), false);
+    // 6to4 (2002::/16) wrapping a private/loopback v4.
+    assert.equal(isPublicWebhookAddress("2002:7f00:1::"), false);
+    assert.equal(isPublicWebhookAddress("2002:a00:1::"), false); // 10.0.0.1
+    // NAT64 (64:ff9b::/96) wrapping a private/loopback v4.
+    assert.equal(isPublicWebhookAddress("64:ff9b::7f00:1"), false);
+    assert.equal(isPublicWebhookAddress("64:ff9b::c0a8:101"), false); // 192.168.1.1
+  });
+
+  test("an IPv6 form wrapping a PUBLIC v4 stays public", () => {
+    // 6to4 / NAT64 of 8.8.8.8 is genuinely routable — don't over-block.
+    assert.equal(isPublicWebhookAddress("2002:808:808::"), true);
+    assert.equal(isPublicWebhookAddress("64:ff9b::808:808"), true);
+  });
+
   test("private IPv4 literals → false", () => {
     assert.equal(isPublicWebhookAddress("10.0.0.1"), false);
     assert.equal(isPublicWebhookAddress("127.0.0.1"), false);
@@ -90,6 +110,14 @@ describe("isPublicWebhookUrl", () => {
 
   test("rejects a private IPv4 literal host", () => {
     assert.equal(isPublicWebhookUrl("https://169.254.169.254/x"), false);
+  });
+
+  test("rejects a v4 loopback tunnelled through an IPv6 literal host", () => {
+    // The URL parser normalises [::127.0.0.1] → [::7f00:1]; the SSRF guard must
+    // still see the embedded loopback rather than treating it as public IPv6.
+    assert.equal(isPublicWebhookUrl("https://[::127.0.0.1]/x"), false);
+    assert.equal(isPublicWebhookUrl("https://[2002:7f00:1::]/x"), false);
+    assert.equal(isPublicWebhookUrl("https://[64:ff9b::7f00:1]/x"), false);
   });
 
   test("allows a public IPv4 literal host", () => {

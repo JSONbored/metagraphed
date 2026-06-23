@@ -8,6 +8,7 @@
 // URL, TextEncoder). The classification + scoring logic is lifted verbatim from
 // the historical build so artifacts stay byte-stable after the extraction
 // (writeJson sorts keys via stableStringify, so only VALUES must match).
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 
 export const SUBTENSOR_PROBE_CALLS = [
   { key: "chain_getHeader", method: "chain_getHeader", params: [] },
@@ -83,6 +84,20 @@ export function isUnsafePublicUrl(value) {
     // 172.16.0.0 – 172.31.255.255 (private range).
     if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) {
       return true;
+    }
+    // IPv4 tunnelled inside an IPv6 literal (::ffff:a.b.c.d mapped, ::a.b.c.d
+    // compatible, 2002::/16 6to4, 64:ff9b::/96 NAT64) hides a private/loopback
+    // target — e.g. ::ffff:169.254.169.254 (cloud metadata) — from the prefix
+    // patterns. Re-check the embedded v4 against the same ranges.
+    const embedded = ipv6EmbeddedIpv4(host);
+    if (embedded) {
+      const dotted = embedded.join(".");
+      if (
+        /^172\.(1[6-9]|2\d|3[01])\./.test(dotted) ||
+        UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(dotted))
+      ) {
+        return true;
+      }
     }
     return UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(host));
   } catch {

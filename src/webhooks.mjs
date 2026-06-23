@@ -7,6 +7,7 @@
 // They perform NO I/O — KV and fetch are injected by callers — so every branch
 // is unit-testable. Runs unchanged on the Workers runtime and Node 22 (both
 // expose Web Crypto + TextEncoder + URL).
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 
 export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
 // Per-(subscription, event) delivery state for at-least-once redelivery: a failed
@@ -78,6 +79,11 @@ function isIpv4Literal(host) {
   });
 }
 
+function isPrivateIpv4Octets(octets) {
+  const dotted = octets.join(".");
+  return PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(dotted));
+}
+
 function isLiteralIp(host) {
   return isIpv4Literal(host) || host.includes(":");
 }
@@ -97,6 +103,11 @@ export function isPublicWebhookAddress(value) {
     ) {
       return false;
     }
+    // IPv4-compatible (::a.b.c.d, normalised to ::7f00:1 by the URL parser),
+    // 6to4 (2002::/16), and NAT64 (64:ff9b::/96) tunnel a v4 address past the
+    // prefix checks above — re-check the embedded v4 against the private ranges.
+    const embedded = ipv6EmbeddedIpv4(host);
+    if (embedded && isPrivateIpv4Octets(embedded)) return false;
     return true;
   }
 

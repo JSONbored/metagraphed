@@ -22,6 +22,7 @@ import {
   rollupSubnetStatus,
 } from "./health-probe-core.mjs";
 import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -116,25 +117,32 @@ function ipv4Octets(value) {
   return octets.every((n) => n !== null) ? octets : null;
 }
 
+function isUnsafeIpv4(octets) {
+  const [a, b, c, d] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224 ||
+    (a === 255 && b === 255 && c === 255 && d === 255)
+  );
+}
+
 function isUnsafeIpAddress(value) {
   const host = normalizedHostname(value);
   const v4 = ipv4Octets(host);
-  if (v4) {
-    const [a, b, c, d] = v4;
-    return (
-      a === 0 ||
-      a === 10 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 0 && c === 0) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224 ||
-      (a === 255 && b === 255 && c === 255 && d === 255)
-    );
-  }
+  if (v4) return isUnsafeIpv4(v4);
+  // IPv4-mapped (::ffff:a.b.c.d), IPv4-compatible (::a.b.c.d), 6to4 (2002::/16),
+  // and NAT64 (64:ff9b::/96) tunnel a v4 address that the prefix checks below
+  // can't see — re-check the embedded v4 against the same private ranges.
+  const embedded = ipv6EmbeddedIpv4(host);
+  if (embedded && isUnsafeIpv4(embedded)) return true;
   return (
     host === "::" ||
     host === "::1" ||

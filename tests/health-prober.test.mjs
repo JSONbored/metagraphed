@@ -94,6 +94,22 @@ describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
     assert.equal(await guard("https://v6.example.com/x"), true);
   });
 
+  test("blocks an AAAA answer that tunnels a private v4 (mapped/6to4/NAT64)", async () => {
+    // A rebinding answer can hide a loopback/link-local target inside an IPv6
+    // literal; the guard must decode the embedded v4 and block it.
+    for (const aaaa of [
+      "::ffff:169.254.169.254", // IPv4-mapped link-local (cloud metadata)
+      "::127.0.0.1", // IPv4-compatible loopback
+      "2002:7f00:1::", // 6to4 loopback
+      "64:ff9b::a00:1", // NAT64 of 10.0.0.1
+    ]) {
+      const guard = workerResolvedUrlSafetyGuard({
+        fetchImpl: dohFetch({ "evil.example.com": { AAAA: [aaaa] } }),
+      });
+      assert.equal(await guard("https://evil.example.com/x"), true, aaaa);
+    }
+  });
+
   test("allows a hostname that resolves to a public IP", async () => {
     const guard = workerResolvedUrlSafetyGuard({
       fetchImpl: dohFetch({ "ok.example.com": { A: ["93.184.216.34"] } }),
