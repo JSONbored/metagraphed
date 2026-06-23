@@ -279,8 +279,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // og:url is injected per-route (canonical URL) in src/server.ts so deep
         // pages unfurl to themselves, not the homepage.
         { name: "twitter:card", content: "summary_large_image" },
+        // Brand ink (mint-M favicon set). og:image stays the per-route /og card
+        // injected in src/server.ts.
+        { name: "theme-color", content: "#0B1F1A" },
       ],
-      links: [{ rel: "stylesheet", href: appCss }],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        // Mint-M brand favicons (assets in public/, from the brand kit).
+        { rel: "icon", href: "/favicon.ico", sizes: "any" },
+        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" },
+        { rel: "manifest", href: "/site.webmanifest" },
+      ],
     };
   },
   shellComponent: RootShell,
