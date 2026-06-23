@@ -2429,8 +2429,9 @@ export interface components {
         LineageArtifact: components["schemas"]["ArtifactBase"] & ({
             broken_link_count?: number;
             broken_links?: {
+                conflicts_with_source_netuid?: number | null;
                 /** @enum {unknown} */
-                reason: "invalid-approval" | "source-netuid-missing" | "target-netuid-missing";
+                reason: "invalid-approval" | "source-netuid-missing" | "target-netuid-missing" | "target-netuid-conflict";
                 source_netuid: number | null;
                 target_netuid: number | null;
             }[];

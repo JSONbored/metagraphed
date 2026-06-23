@@ -1575,6 +1575,7 @@ export function buildSubnetLineageLinks(
   );
   const links = [];
   const seen = new Set();
+  const seenTargets = new Map();
   for (const approval of approvedLinks || []) {
     const sourceNetuid = approval?.source_netuid ?? approval?.mainnet_netuid;
     const targetNetuid = approval?.target_netuid ?? approval?.testnet_netuid;
@@ -1605,7 +1606,24 @@ export function buildSubnetLineageLinks(
     }
     const key = `${sourceNetuid}:${targetNetuid}`;
     if (seen.has(key)) continue;
+    const existingSourceNetuid = seenTargets.get(targetNetuid);
+    if (
+      Number.isInteger(existingSourceNetuid) &&
+      existingSourceNetuid !== sourceNetuid
+    ) {
+      // A testnet subnet can only graduate to one mainnet subnet in the public
+      // lineage artifact. Surface conflicting curated approvals instead of
+      // publishing ambiguous many-to-one lineage.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: "target-netuid-conflict",
+        conflicts_with_source_netuid: existingSourceNetuid,
+      });
+      continue;
+    }
     seen.add(key);
+    seenTargets.set(targetNetuid, sourceNetuid);
     links.push({
       source_netuid: sourceNetuid,
       target_netuid: targetNetuid,
