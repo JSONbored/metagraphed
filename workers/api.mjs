@@ -124,6 +124,7 @@ import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
+import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   aiEnabled,
@@ -920,6 +921,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // wasm is lazy-loaded inside the handler so this never weighs on other routes.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readArtifact });
+  }
+
+  // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
+  // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
+  // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
+  if (url.pathname === "/api/v1/icon") {
+    return handleIconProxy(request, env, url);
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources
