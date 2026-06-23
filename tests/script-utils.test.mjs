@@ -1515,6 +1515,8 @@ describe("script utility contracts", () => {
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://100.64.0.1"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
+    assert.equal(isUnsafeUrl("http://240.0.0.1"), true); // reserved/future 240.0.0.0/4
+    assert.equal(isUnsafeUrl("http://250.1.2.3"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
     assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
     assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);

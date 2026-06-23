@@ -79,6 +79,7 @@ unsafeIpBlocks.addSubnet("192.0.0.0", 24);
 unsafeIpBlocks.addSubnet("192.168.0.0", 16);
 unsafeIpBlocks.addSubnet("198.18.0.0", 15);
 unsafeIpBlocks.addSubnet("224.0.0.0", 4);
+unsafeIpBlocks.addSubnet("240.0.0.0", 4); // reserved/future (incl. 255.255.255.255 broadcast)
 unsafeIpBlocks.addSubnet("255.255.255.255", 32);
 unsafeIpBlocks.addSubnet("::", 128, "ipv6");
 unsafeIpBlocks.addSubnet("::1", 128, "ipv6");

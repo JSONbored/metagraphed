@@ -75,8 +75,18 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("100.64.0.1"), false);
   });
 
+  test("multicast / reserved IPv4 (224.0.0.0/3) → false", () => {
+    // The prober already blocks `a >= 224`; the webhook guard only caught 255.*.
+    assert.equal(isPublicWebhookAddress("224.0.0.1"), false); // multicast
+    assert.equal(isPublicWebhookAddress("239.255.255.250"), false); // SSDP multicast
+    assert.equal(isPublicWebhookAddress("240.0.0.1"), false); // reserved/future
+    assert.equal(isPublicWebhookAddress("250.1.2.3"), false);
+    assert.equal(isPublicWebhookAddress("255.255.255.255"), false); // broadcast
+  });
+
   test("public IPv4 literal → true", () => {
     assert.equal(isPublicWebhookAddress("8.8.8.8"), true);
+    assert.equal(isPublicWebhookAddress("223.255.255.255"), true); // just below 224
   });
 
   test("a bare hostname (not an IP literal) → false", () => {

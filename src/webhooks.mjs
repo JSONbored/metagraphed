@@ -67,7 +67,13 @@ const PRIVATE_IPV4_PATTERNS = [
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // 100.64.0.0/10 CGNAT
   /^192\.0\.0\./,
   /^198\.1[89]\./,
-  /^255\./,
+  // 224.0.0.0/3 (multicast 224.0.0.0/4 + reserved/future 240.0.0.0/4, incl. the
+  // 255.255.255.255 broadcast) — not valid public unicast targets. The health
+  // prober already blocks these (isUnsafeIpv4: `a >= 224`); match it here.
+  /^22[4-9]\./,
+  /^23\d\./,
+  /^24\d\./,
+  /^25[0-5]\./,
 ];
 
 function normalizedHostname(value) {
