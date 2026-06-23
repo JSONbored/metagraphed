@@ -786,12 +786,15 @@ export async function dispatchWithRedelivery({
       if (result.status === "delivered") {
         if (wasParked) await safeDelete(key); // recovered → clear the prior park
       } else if (result.status === "failed" && result.retryable) {
-        await park(
-          key,
-          wasParked ? await safeGet(key) : null,
-          result,
-          freshBody,
-        );
+        // Read the prior record straight from KV, not via `wasParked`: the parked
+        // snapshot is capped at `redeliveryListLimit` and KV lists
+        // lexicographically, so a still-parked key sorting past the cap is absent
+        // from the snapshot. Trusting `wasParked` there would re-park it as a
+        // brand-new record (round reset to 1, backoff + first_failed_at reset), so
+        // a chronically-failing endpoint with a large backlog never reaches the
+        // dead-letter cap. safeGet returns null on a genuine miss, so the healthy
+        // "nothing parked yet" path still parks at round 1.
+        await park(key, await safeGet(key), result, freshBody);
       }
     }
   }

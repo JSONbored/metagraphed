@@ -233,8 +233,18 @@ export function maxComplexityRule(max) {
 
 // --- Pagination ---
 
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 100;
+
 function paginate(items, limit, cursor, keyFn) {
-  const safeLimit = Math.min(Math.max(1, limit ?? 20), 100);
+  // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
+  // 1. An explicit `limit: 0` reaching `Math.max(1, …)` would return a single
+  // result, which reads to an agent as "this registry knows one subnet" (the same
+  // reasoning as clampLimit in src/mcp-server.mjs and src/ai-search.mjs).
+  const safeLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit >= 1
+      ? Math.min(MAX_PAGE_LIMIT, Math.floor(limit))
+      : DEFAULT_PAGE_LIMIT;
   let start = 0;
   if (cursor) {
     const idx = items.findIndex((item) => String(keyFn(item)) === cursor);

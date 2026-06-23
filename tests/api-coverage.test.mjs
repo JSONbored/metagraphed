@@ -235,6 +235,9 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 503);
     assert.equal(res.headers.get("x-metagraph-health"), "degraded");
+    // A transient degraded 503 must not be edge-cached (it would pin the outage
+    // for up to max-age + stale-while-revalidate after recovery).
+    assert.equal(res.headers.get("cache-control"), "no-store");
     const body = await res.json();
     assert.equal(body.status, "degraded");
     assert.equal(body.freshness.stale, true);
@@ -250,6 +253,8 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 200);
     assert.equal((await res.json()).status, "ok");
+    // The healthy path stays edge-cacheable (short profile) for load relief.
+    assert.match(res.headers.get("cache-control"), /max-age=/);
   });
 
   test("reports chain-event index freshness (#1361)", async () => {

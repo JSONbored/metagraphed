@@ -78,7 +78,6 @@ import {
   formatLeaderboards,
   formatPercentiles,
   formatRpcUsage,
-  formatTrajectory,
   formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
@@ -93,15 +92,15 @@ import {
   overlayRpcPoolEligibility,
   overlaySubnetEconomics,
   overlaySubnetHealth,
+  loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
 import {
-  NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
-  buildSubnetMetagraph,
-  buildSubnetValidators,
-  buildNeuronDetail,
+  loadSubnetMetagraph,
+  loadSubnetValidators,
+  loadNeuron,
 } from "../src/metagraph-neurons.mjs";
 import {
   rollupNeuronDaily,
@@ -2357,6 +2356,10 @@ async function d1All(env, sql, params) {
   }
 }
 
+// Bind the timeout-guarded D1 reader to an env as a (sql, params) => rows runner
+// for the shared loaders, so these routes and the MCP tools share one read path.
+const d1Runner = (env) => (sql, params) => d1All(env, sql, params);
+
 async function analyticsMeta(env, artifactPath, observedAt) {
   return {
     artifact_path: artifactPath,
@@ -2633,20 +2636,7 @@ async function handleGlobalIncidents(request, env, url) {
 async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  // Keep the most-recent window (DESC) — formatTrajectory re-sorts ascending.
-  // ASC + LIMIT would freeze on the oldest 400 days once history exceeds the cap.
-  const rows = await d1All(
-    env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-            validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share
-     FROM subnet_snapshots
-     WHERE netuid = ?
-     ORDER BY snapshot_date DESC
-     LIMIT 400`,
-    [netuid],
-  );
-  const data = formatTrajectory({ netuid, rows });
+  const data = await loadSubnetTrajectory(d1Runner(env), netuid);
   return envelopeResponse(
     request,
     {
@@ -2680,14 +2670,9 @@ async function handleSubnetMetagraph(request, env, netuid, url) {
   const validationError = validateQueryParams(url, ["validator_permit"]);
   if (validationError) return analyticsQueryError(validationError);
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
-      validatorsOnly ? " AND validator_permit = 1" : ""
-    } ORDER BY uid`,
-    [netuid],
-  );
-  const data = buildSubnetMetagraph(rows, netuid);
+  const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
+    validatorsOnly,
+  });
   return envelopeResponse(
     request,
     {
@@ -2703,14 +2688,9 @@ async function handleSubnetMetagraph(request, env, netuid, url) {
 }
 
 async function handleNeuron(request, env, netuid, uid) {
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
-    [netuid, uid],
-  );
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
-  const data = buildNeuronDetail(rows[0] ?? null, netuid);
+  const data = await loadNeuron(d1Runner(env), netuid, uid);
   return envelopeResponse(
     request,
     {
@@ -2728,12 +2708,7 @@ async function handleNeuron(request, env, netuid, uid) {
 async function handleSubnetValidators(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const rows = await d1All(
-    env,
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
-    [netuid],
-  );
-  const data = buildSubnetValidators(rows, netuid);
+  const data = await loadSubnetValidators(d1Runner(env), netuid);
   return envelopeResponse(
     request,
     {
@@ -3257,8 +3232,8 @@ async function handleRpcUsage(request, env, url) {
            FROM rpc_proxy_events
            WHERE observed_at >= ? AND latency_ms IS NOT NULL
          )
-         SELECT MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p50,
-                MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + 1 THEN latency_ms END) AS p95
+         SELECT MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + (0.50 * cnt > CAST(0.50 * cnt AS INTEGER)) THEN latency_ms END) AS p50,
+                MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + (0.95 * cnt > CAST(0.95 * cnt AS INTEGER)) THEN latency_ms END) AS p95
          FROM ranked`,
         [since],
       ),
@@ -4184,6 +4159,14 @@ async function handleHealthRequest(request, env) {
 
   const headers = apiHeaders("short");
   headers.set("x-metagraph-health", stale ? "degraded" : "ok");
+  if (stale) {
+    // The degraded branch is a transient 503; a 503 carrying explicit freshness
+    // (public, max-age=60, stale-while-revalidate=300) is cacheable per RFC 7234,
+    // so a shared/edge cache could keep serving "degraded" for up to ~6 min after
+    // the data recovers. Never cache it — mirror errorResponse in workers/http.mjs.
+    headers.set("cache-control", "no-store");
+    headers.set("x-metagraph-cache-profile", "no-store");
+  }
   return new Response(request.method === "HEAD" ? null : body, {
     status: stale ? 503 : 200,
     headers,

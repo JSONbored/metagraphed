@@ -104,3 +104,36 @@ export function buildNeuronDetail(row, netuid) {
     neuron: formatNeuron(row),
   };
 }
+
+// D1 read paths shared by the REST handlers and the MCP tools (one source of
+// truth). `d1` is a (sql, params) => Promise<rows[]> runner; a cold/unbound DB
+// returns [] → a schema-stable empty payload.
+export async function loadSubnetMetagraph(
+  d1,
+  netuid,
+  { validatorsOnly = false } = {},
+) {
+  const rows = await d1(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
+      validatorsOnly ? " AND validator_permit = 1" : ""
+    } ORDER BY uid`,
+    [netuid],
+  );
+  return buildSubnetMetagraph(rows, netuid);
+}
+
+export async function loadSubnetValidators(d1, netuid) {
+  const rows = await d1(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
+    [netuid],
+  );
+  return buildSubnetValidators(rows, netuid);
+}
+
+export async function loadNeuron(d1, netuid, uid) {
+  const rows = await d1(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
+    [netuid, uid],
+  );
+  return buildNeuronDetail(rows[0] ?? null, netuid);
+}

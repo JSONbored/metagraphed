@@ -297,6 +297,44 @@ assert.ok(
   "get_best_rpc_endpoint must return endpoints[]",
 );
 
+// --- Economics + metagraph data tools --------------------------------------
+// Economics serves live-KV-primary with committed-R2 fallback; this cold env has
+// no live KV, so it falls back to the committed economics.json (netuid 7 has a row).
+const econ = await callOk("get_subnet_economics", { netuid: 7 });
+assert.ok(
+  econ.economics && Number.isInteger(econ.economics.netuid),
+  "get_subnet_economics must return the per-subnet economics row",
+);
+
+// The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
+// has no neurons DB, so each tool must degrade to its schema-stable empty
+// payload (validated against the declared outputSchema), never an error.
+const traj = await callOk("get_subnet_trajectory", { netuid: 7 });
+assert.ok(
+  Array.isArray(traj.points),
+  "get_subnet_trajectory must return points[]",
+);
+const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
+assert.ok(
+  Array.isArray(meta.neurons),
+  "get_subnet_metagraph must return neurons[]",
+);
+const metaValidators = await callOk("get_subnet_metagraph", {
+  netuid: 7,
+  validator_permit: true,
+});
+assert.ok(
+  Array.isArray(metaValidators.neurons),
+  "get_subnet_metagraph (validator_permit) must return neurons[]",
+);
+const vals = await callOk("list_subnet_validators", { netuid: 7 });
+assert.ok(
+  Array.isArray(vals.validators),
+  "list_subnet_validators must return validators[]",
+);
+const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
+assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
+
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);
 if (schemaService) {

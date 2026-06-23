@@ -254,6 +254,64 @@ describe("dispatchWithRedelivery", () => {
     assert.equal(record.first_failed_at, T0); // preserved across rounds
   });
 
+  test("Phase 1 re-park continues the round even when the parked snapshot is truncated by redeliveryListLimit", async () => {
+    // KV lists lexicographically and the parked snapshot is capped at
+    // redeliveryListLimit. A still-parked key sorting past the cap is absent from
+    // the snapshot, so `wasParked` is false — but the record still exists in KV.
+    // The re-park must continue its round, not reset it to 1.
+    const map = new Map();
+    const limitStore = {
+      async listKeys(prefix, opts = {}) {
+        let ks = [...map.keys()].filter((k) => k.startsWith(prefix)).sort();
+        if (opts.limit) ks = ks.slice(0, opts.limit);
+        return ks;
+      },
+      async get(k) {
+        return map.has(k) ? JSON.parse(map.get(k)) : null;
+      },
+      async put(k, v) {
+        map.set(k, JSON.stringify(v));
+      },
+      async delete(k) {
+        map.delete(k);
+      },
+    };
+    const eid = await webhookEventId(JSON.stringify(event7));
+    const targetKey = deliveryStorageKey("sub-7", eid);
+    map.set(
+      targetKey,
+      JSON.stringify({
+        subscription_id: "sub-7",
+        event_id: eid,
+        round: 2,
+        state: "pending",
+        first_failed_at: "2026-06-20T00:00:00.000Z",
+        body: JSON.stringify(event7),
+        next_attempt_at: T0,
+      }),
+    );
+    // A decoy that sorts before targetKey ("sub-0" < "sub-7") fills the 1-slot
+    // snapshot, truncating targetKey away.
+    map.set(`${WEBHOOK_DELIVERY_PREFIX}sub-0:${"z".repeat(32)}`, "{}");
+
+    await dispatchWithRedelivery({
+      subscriptions: [SUB],
+      event: event7,
+      store: limitStore,
+      fetchFn: fail503,
+      now: () => "2026-06-22T00:00:05.000Z",
+      maxAttempts: 1,
+      redeliveryBaseMs: 1000,
+      redeliveryMaxMs: 60_000,
+      maxRounds: 5,
+      redeliveryListLimit: 1,
+    });
+
+    const record = JSON.parse(map.get(targetKey));
+    assert.equal(record.round, 3); // continued, not reset to 1
+    assert.equal(record.first_failed_at, "2026-06-20T00:00:00.000Z"); // preserved
+  });
+
   test("does NOT park a deterministic 4xx failure", async () => {
     store = makeStore();
     const { delivered } = await run({
