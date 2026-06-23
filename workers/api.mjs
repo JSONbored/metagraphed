@@ -118,6 +118,7 @@ import {
 } from "../src/neuron-history.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
+  INDEXED_EVENT_KINDS,
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
@@ -1764,6 +1765,24 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
   return value;
 }
 
+// KV_HEALTH_RPC_POOL is read on every proxied RPC request (handleRpcProxy) and
+// the rpc-endpoints artifact overlay — same hot-path pattern as KV_HEALTH_META
+// and KV_ECONOMICS_CURRENT above. Memoize in-isolate to collapse repeated reads.
+// Null results are not cached so a transient cold KV does not stay sticky.
+export const RPC_POOL_KV_TTL_MS = 60_000;
+let rpcPoolKvMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readRpcPoolKv(env, now = Date.now()) {
+  if (rpcPoolKvMemo.env === env && now < rpcPoolKvMemo.expiresAt) {
+    return rpcPoolKvMemo.value;
+  }
+  const value = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+  if (value !== null) {
+    rpcPoolKvMemo = { env, value, expiresAt: now + RPC_POOL_KV_TTL_MS };
+  }
+  return value;
+}
+
 async function resolveSubnetSlugRoute(
   env,
   url,
@@ -2904,9 +2923,15 @@ async function handleAccountEvents(request, env, ss58, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const kind = url.searchParams.get("kind");
+  if (kind !== null && !INDEXED_EVENT_KINDS.includes(kind)) {
+    return analyticsQueryError({
+      parameter: "kind",
+      message: `"${kind}" is not a valid event kind. Supported: ${INDEXED_EVENT_KINDS.join(", ")}.`,
+    });
+  }
   const params = [ss58, ss58];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (hotkey = ? OR coldkey = ?)`;
-  if (kind) {
+  if (kind !== null) {
     sql += " AND event_kind = ?";
     params.push(kind);
   }
@@ -3577,7 +3602,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // (the in-isolate breaker still handles instantaneous failures). Falls back to
   // the static pool when the live snapshot is cold (always the case for the static
   // testnet pool, which is intentionally not probe-derived).
-  const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+  const liveRpcPool = await readRpcPoolKv(env);
   const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
   // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
   // recorder is best-effort + async (never adds latency to / fails the call).
@@ -4725,7 +4750,7 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "rpc-endpoints": {
-      const pool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+      const pool = await readRpcPoolKv(env);
       data = mergeRpcEndpoints(staticData, pool);
       break;
     }
