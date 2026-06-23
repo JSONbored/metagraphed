@@ -7,7 +7,7 @@
 #
 # Build (from the repo root):
 #   docker build -f deploy/streamer.Dockerfile -t metagraphed-streamer .
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Run as a non-root user (least privilege).
 RUN useradd --create-home --uid 10001 streamer

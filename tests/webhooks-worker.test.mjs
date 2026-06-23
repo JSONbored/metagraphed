@@ -111,6 +111,64 @@ describe("webhook subscription routes", () => {
     assert.equal((await res.json()).error.code, "unauthorized");
   });
 
+  // Security hardening (#3: authenticate BEFORE touching the untrusted payload).
+  // A request with a bad/missing token AND a malformed body must fail with the
+  // AUTH error (401), not the body-validation error (400). A 400 here would mean
+  // the worker parsed/validated attacker input before checking auth.
+  test("auth runs first: bad token + malformed body returns 401, not a 400 body error", async () => {
+    const kv = makeKv();
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": "wrong-token",
+        },
+        body: "{not even json",
+      }),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).error.code, "unauthorized");
+    // Nothing should have been persisted for an unauthenticated caller.
+    assert.equal(kv.store.size, 0);
+  });
+
+  test("missing token + malformed body still returns 401 (no body parsing leaked)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "}{ broken",
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).error.code, "unauthorized");
+  });
+
+  // The reorder must NOT break the authenticated body path: a VALID token with a
+  // malformed body still surfaces the JSON error, and a valid token + valid body
+  // still processes (covered by the create test above).
+  test("valid token + malformed body still returns the 400 body error", async () => {
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body: "{not json",
+      }),
+      envWith(makeKv()),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_json");
+  });
+
   test("disables subscription creation when the subscription token is unconfigured", async () => {
     const kv = makeKv();
     const res = await handleRequest(

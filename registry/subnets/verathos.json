@@ -234,5 +234,6 @@
       "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts."
     }
   ],
-  "website_url": "https://verathos.ai/"
+  "website_url": "https://verathos.ai/",
+  "contact": "info@verathos.ai"
 }

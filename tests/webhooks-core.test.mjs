@@ -32,6 +32,16 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("::ffff:10.0.0.1"), false);
   });
 
+  test("the rest of the fe00::/8 reserved range → false", () => {
+    // Only fe80 was blocked before; the rest of fe00::/8 (none of it is global
+    // unicast, which is 2000::/3) was wrongly classified as public. Notably
+    // fec0::/10 is deprecated site-local — a real internal range, and URL
+    // parsing does not compress it away (unlike loopback).
+    assert.equal(isPublicWebhookAddress("fec0::1"), false);
+    assert.equal(isPublicWebhookAddress("fe00::1"), false);
+    assert.equal(isPublicWebhookAddress("feff::1"), false);
+  });
+
   test("public IPv6 → true", () => {
     assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
   });
