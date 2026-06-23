@@ -334,9 +334,9 @@ function clampLimit(value, fallback, max) {
   // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
   // reads to an agent as "this registry knows one subnet" (see the same fix in
   // src/ai-search.mjs).
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 1) return fallback;
-  return Math.min(max, Math.floor(n));
+  if (typeof value !== "number") return fallback;
+  if (!Number.isFinite(value) || value < 1) return fallback;
+  return Math.min(max, Math.floor(value));
 }
 
 // A search.json document → keywordScore shape: title/slug are identity; subtitle

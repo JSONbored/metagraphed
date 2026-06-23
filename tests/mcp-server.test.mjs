@@ -943,6 +943,23 @@ describe("MCP tools (injected deps)", () => {
     );
   });
 
+  test("search_subnets malformed limit values fall back to the default", async () => {
+    // tools/call passes raw JSON arguments to handlers, so clampLimit must not
+    // coerce schema-invalid values like true or "1" into a one-result limit.
+    for (const limit of [true, "1", [1], { toString: null }]) {
+      const res = await callTool(
+        "search_subnets",
+        { query: "data compute", limit },
+        { deps },
+      );
+      const out = res.body.result.structuredContent;
+      assert.ok(
+        out.results.length >= 2,
+        `expected fallback for limit ${JSON.stringify(limit)}, got ${out.results.length}`,
+      );
+    }
+  });
+
   test("search_subnets requires a non-empty query", async () => {
     const res = await callTool("search_subnets", { query: "   " }, { deps });
     assert.equal(res.body.result.isError, true);
