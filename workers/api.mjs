@@ -99,6 +99,18 @@ import {
   buildNeuronDetail,
 } from "../src/metagraph-neurons.mjs";
 import {
+  rollupNeuronDaily,
+  archiveNeuronDaily,
+  pruneNeuronDaily,
+  neuronDailyUpsertStatements,
+  validNeuronDailyRows,
+  buildNeuronHistory,
+  buildSubnetHistory,
+  parseHistoryWindow,
+  NEURON_DAILY_READ_COLUMNS,
+  MAX_HISTORY_POINTS,
+} from "../src/neuron-history.mjs";
+import {
   ACCOUNT_EVENT_COLUMNS,
   buildAccountEvents,
   buildAccountSubnets,
@@ -137,6 +149,8 @@ import {
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
+  MAX_BACKFILL_INGEST_BODY_BYTES,
+  MAX_BACKFILL_INGEST_ROWS,
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
@@ -147,12 +161,15 @@ import {
   MAX_RPC_BODY_BYTES,
   MAX_UPTIME_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
+  NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
   RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
+  SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
+  SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -632,6 +649,91 @@ export async function handleEventIngest(request, env) {
   });
 }
 
+// POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
+// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until the
+// dedicated METAGRAPH_BACKFILL_SECRET is configured (falls back to the events-ingest
+// secret; reuses the EVENTS_INGEST_TOKEN_HEADER header); then a constant-time token
+// compare. The body is an array of neuron_daily rows (or {rows:[...]}), each carrying
+// its own snapshot_date,
+// upserted with the SAME column set + ON CONFLICT target as the forward rollup, so a
+// backfilled row is byte-identical to a rolled one and any re-POST is idempotent on
+// (netuid,uid,snapshot_date). NOT in the public contract.
+export async function handleNeuronBackfill(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured =
+    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "backfill_disabled",
+      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "History store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_BACKFILL_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
+      413,
+    );
+  }
+  const rows = validNeuronDailyRows(incoming);
+  if (rows.length) {
+    await db.batch(neuronDailyUpsertStatements(db, rows));
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      received: incoming.length,
+      inserted: rows.length,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
+}
+
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
@@ -686,6 +788,24 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === NEURON_HISTORY_ROLLUP_CRON) {
+    // Once/day (#1345): snapshot the current `neurons` tier into the dated
+    // neuron_daily table, archive that day to the R2 cold tier, then prune D1 to
+    // the 90-day hot window. Archive runs BEFORE prune and the prune is GATED on
+    // a confirmed archive, so a day is never dropped from D1 before it exists in
+    // R2. Its own cron minute so the ~33k-row work never piles onto the
+    // probe/prune/fast crons; each step is .catch-isolated.
+    const rolled = await rollupNeuronDaily(env).catch(() => ({
+      rolled: false,
+    }));
+    const archived = await archiveNeuronDaily(env).catch(() => ({
+      archived: false,
+    }));
+    const pruned = archived.archived
+      ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+      : { pruned: false, reason: "archive-not-confirmed" };
+    return { rolled, archived, pruned };
   }
   return runHealthProber(env, ctx);
 }
@@ -744,6 +864,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
   if (url.pathname === "/api/v1/internal/events") {
     return handleEventIngest(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/backfill-neurons") {
+    return handleNeuronBackfill(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
@@ -844,7 +967,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
   if (url.pathname === "/api/v1/registry/leaderboards") {
-    return handleLeaderboards(request, env, url);
+    // Deterministic per-cron-tick D1 leaderboard; edge-cache keyed on the health
+    // snapshot's last_run_at (auto-busts on the next probe) like the sibling
+    // analytics routes, so a polling/cross-colo burst doesn't re-run the SQL.
+    return withEdgeCache(request, ctx, env, "leaderboards", () =>
+      handleLeaderboards(request, env, url),
+    );
   }
 
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
@@ -919,18 +1047,45 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return handleTrajectory(
-        request,
-        env,
-        Number(trajectoryMatch[1]),
-        resolved.url,
+      return withEdgeCache(request, ctx, env, "trajectory", () =>
+        handleTrajectory(
+          request,
+          env,
+          Number(trajectoryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
     if (uptimeMatch) {
-      return handleUptime(request, env, Number(uptimeMatch[1]), resolved.url);
+      return withEdgeCache(request, ctx, env, "uptime", () =>
+        handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (neuronHistoryMatch) {
+      return handleNeuronHistory(
+        request,
+        env,
+        Number(neuronHistoryMatch[1]),
+        Number(neuronHistoryMatch[2]),
+        resolved.url,
+      );
+    }
+    const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetHistoryMatch) {
+      return handleSubnetHistory(
+        request,
+        env,
+        Number(subnetHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -986,7 +1141,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleAccount(request, env, accountMatch[1]);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
-      return handleGlobalIncidents(request, env, resolved.url);
+      return withEdgeCache(request, ctx, env, "global-incidents", () =>
+        handleGlobalIncidents(request, env, resolved.url),
+      );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
@@ -2430,6 +2587,88 @@ async function handleSubnetValidators(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// ---- Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345) --
+// Served from the dated neuron_daily rollup tier (D1). Cold/absent store → 200
+// with empty points (never 404), consistent with the live metagraph tiers.
+
+// GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
+// Per-UID time series (one point per snapshot_date, newest first, bounded).
+async function handleNeuronHistory(request, env, netuid, uid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid, uid];
+  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
+  if (days != null) {
+    // Cutoff computed in JS and bound as a plain YYYY-MM-DD (idx_neuron_daily_uid_date covers it).
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildNeuronHistory(rows, netuid, uid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
+        data.points[0]?.captured_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/history?window=7d|30d|90d|1y|all
+// Per-subnet daily aggregates over time (count + totals) for a history sparkline,
+// without shipping every UID's row.
+async function handleSubnetHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [netuid];
+  let sql =
+    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
+    "SUM(validator_permit) AS validator_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE netuid = ?";
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildSubnetHistory(rows, netuid, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/history.json`,
+        null,
       ),
     },
     "short",
@@ -4172,11 +4411,19 @@ async function handleAskRequest(request, env) {
     );
   }
   try {
+    // Resolve live probe health once and inject it so /ask context reflects the
+    // current operational status of each subnet's surfaces, not the build-time
+    // "unknown" stub baked into the agent-catalog artifact.
+    const liveHealth = await resolveLiveHealth({
+      readHealthKv,
+      env,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
     const data = await askQuestion(
       env,
       body?.question,
       { topK: body?.topK },
-      { readArtifact },
+      { readArtifact, liveHealth, overlayCatalogIndex },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {

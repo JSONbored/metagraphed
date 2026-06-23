@@ -39,6 +39,8 @@ const R2_ONLY_PATTERNS = [
   // never written as files.
   /^subnets\/(?:\d+|\{netuid\})\/metagraph\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
   // Account entity tiers (#1347): computed live from account_events + neurons at
   // /api/v1/accounts/{ss58}(/events|/subnets) — never written as files.
