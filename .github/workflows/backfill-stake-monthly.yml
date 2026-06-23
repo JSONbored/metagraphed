@@ -46,14 +46,23 @@ jobs:
       # matching the daily backfill). One block per month, every subnet, stake included;
       # the ingest upsert is idempotent so a rerun is harmless.
       - name: Backfill monthly stake
+        env:
+          MONTHS_INPUT: ${{ github.event.inputs.months }}
+          METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
+          METAGRAPH_API_BASE: https://api.metagraph.sh
         run: |
-          MONTHS="${{ github.event.inputs.months }}"
+          MONTHS="${MONTHS_INPUT:-8}"
+          if ! [[ "$MONTHS" =~ ^[0-9]+$ ]]; then
+            echo "months must be an integer" >&2
+            exit 1
+          fi
+          if (( MONTHS < 1 || MONTHS > 12 )); then
+            echo "months must be between 1 and 12" >&2
+            exit 1
+          fi
           echo "backfilling stake for $MONTHS month(s)"
           uvx --from bittensor==10.4.0 python scripts/backfill-stake-monthly.py \
             --months "$MONTHS"
-        env:
-          METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
-          METAGRAPH_API_BASE: https://api.metagraph.sh
 
   notify-on-failure:
     needs: [backfill]

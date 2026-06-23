@@ -45,15 +45,27 @@ jobs:
       # refresh-metagraph). Each shard covers a contiguous, non-overlapping day range;
       # the ingest upsert is idempotent so a rerun or overlap is harmless.
       - name: Backfill shard ${{ matrix.shard }}
-        run: |
-          DAYS="${{ github.event.inputs.days_per_shard }}"
-          END_OFFSET=$(( ${{ matrix.shard }} * DAYS + 1 ))
-          echo "shard ${{ matrix.shard }}: --days $DAYS --end-offset $END_OFFSET"
-          uvx --from bittensor==10.4.0 --with xxhash python scripts/backfill-neuron-history.py \
-            --days "$DAYS" --end-offset "$END_OFFSET"
         env:
+          DAYS_PER_SHARD: ${{ inputs.days_per_shard }}
           METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
           METAGRAPH_API_BASE: https://api.metagraph.sh
+        run: |
+          case "$DAYS_PER_SHARD" in
+            ''|*[!0-9]*)
+              echo "days_per_shard must be a positive integer" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$DAYS_PER_SHARD" -lt 1 ]; then
+            echo "days_per_shard must be a positive integer" >&2
+            exit 1
+          fi
+
+          DAYS="$DAYS_PER_SHARD"
+          END_OFFSET=$(( ${{ matrix.shard }} * DAYS + 1 ))
+          echo "shard ${{ matrix.shard }}: --days $DAYS --end-offset $END_OFFSET"
+          uvx --from bittensor==10.4.0 --with xxhash==3.5.0 python scripts/backfill-neuron-history.py \
+            --days "$DAYS" --end-offset "$END_OFFSET"
 
   notify-on-failure:
     needs: [backfill]
