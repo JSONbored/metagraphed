@@ -112,21 +112,41 @@ function resolveRef(ref, components) {
 
 // Sample a JSON-Schema (2020-12 subset used by the metagraphed contract) into a
 // concrete, valid instance. `components` is the bundle's components.schemas map.
-export function sampleFromSchema(schema, components, name = "", depth = 0) {
+// `seenRefs` tracks the $refs resolved along the current descent path (see the
+// $ref branch) and is threaded through every recursive call; callers leave it
+// at its default.
+export function sampleFromSchema(
+  schema,
+  components,
+  name = "",
+  depth = 0,
+  seenRefs = new Set(),
+) {
   if (!schema || typeof schema !== "object") return null;
   if (schema.$ref) {
     // Bound self-referential schemas. The object and array branches grow
-    // `depth` as they descend, but only the array branch had a MAX_DEPTH guard,
-    // so a required self-referential property (a linked list / tree node)
-    // recursed through $ref until the stack overflowed. A self-reference always
-    // routes back through here, so guard at this chokepoint — without changing
-    // `depth`, so non-cyclic schemas still sample exactly as before.
+    // `depth` as they descend, so an object/array self-reference (a linked list
+    // / tree node) trips this MAX_DEPTH guard. But the allOf/oneOf/anyOf and
+    // $ref branches recurse WITHOUT growing `depth`, so a self-reference routed
+    // purely through composition keywords (e.g. `Node: { oneOf: [$ref Node] }`)
+    // never advanced `depth` and recursed until the stack overflowed.
     if (depth >= MAX_DEPTH) return null;
+    // Cut a non-advancing cycle: if this same $ref recurs at the same `depth` we
+    // already passed through on this path, no progress is being made. Keying by
+    // depth (not the ref alone) preserves depth-advancing object/array
+    // self-refs, which keep descending until the MAX_DEPTH guard above — so
+    // non-cyclic schemas still sample exactly as before.
+    const refKey = `${schema.$ref}@${depth}`;
+    if (seenRefs.has(refKey)) return null;
+    // Clone so sibling branches at this depth each get an independent path set.
+    const nextSeen = new Set(seenRefs);
+    nextSeen.add(refKey);
     return sampleFromSchema(
       resolveRef(schema.$ref, components),
       components,
       name,
       depth,
+      nextSeen,
     );
   }
   if ("const" in schema) return schema.const;
@@ -137,7 +157,7 @@ export function sampleFromSchema(schema, components, name = "", depth = 0) {
     let merged = {};
     let scalar;
     for (const sub of schema.allOf) {
-      const part = sampleFromSchema(sub, components, name, depth);
+      const part = sampleFromSchema(sub, components, name, depth, seenRefs);
       if (part && typeof part === "object" && !Array.isArray(part)) {
         merged = { ...merged, ...part };
       } else if (part !== null && part !== undefined) {
@@ -151,7 +171,7 @@ export function sampleFromSchema(schema, components, name = "", depth = 0) {
     const pick =
       variants.find((variant) => pickType(variant.type) !== "null") ||
       variants[0];
-    return sampleFromSchema(pick, components, name, depth);
+    return sampleFromSchema(pick, components, name, depth, seenRefs);
   }
 
   const type = pickType(schema.type);
@@ -164,7 +184,13 @@ export function sampleFromSchema(schema, components, name = "", depth = 0) {
     const includeOptional = depth < OPTIONAL_DEPTH;
     for (const [key, propSchema] of Object.entries(props)) {
       if (!required.has(key) && !includeOptional) continue;
-      out[key] = sampleFromSchema(propSchema, components, key, depth + 1);
+      out[key] = sampleFromSchema(
+        propSchema,
+        components,
+        key,
+        depth + 1,
+        seenRefs,
+      );
     }
     // Pure map object (additionalProperties is a schema, no named props): show
     // one representative entry so the shape is visible.
@@ -179,6 +205,7 @@ export function sampleFromSchema(schema, components, name = "", depth = 0) {
         components,
         "example",
         depth + 1,
+        seenRefs,
       );
     }
     return out;
@@ -186,7 +213,15 @@ export function sampleFromSchema(schema, components, name = "", depth = 0) {
 
   if (type === "array") {
     if (depth >= MAX_DEPTH) return [];
-    return [sampleFromSchema(schema.items || {}, components, name, depth + 1)];
+    return [
+      sampleFromSchema(
+        schema.items || {},
+        components,
+        name,
+        depth + 1,
+        seenRefs,
+      ),
+    ];
   }
 
   if (type === "string") {
