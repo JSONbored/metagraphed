@@ -33,6 +33,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.request
 
 import bittensor as bt
@@ -270,18 +271,31 @@ def post_chunk(rows, dry_run):
     if dry_run or not rows:
         return
     body = json.dumps({"rows": rows}).encode()
-    req = urllib.request.Request(
-        API_BASE + INGEST_PATH,
-        data=body,
-        method="POST",
-        headers={
-            "content-type": "application/json",
-            INGEST_HEADER: SECRET,
-            "user-agent": "metagraphed-backfill/2.0",  # CF WAF 403s default urllib UA
-        },
-    )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        json.loads(resp.read())
+    headers = {
+        "content-type": "application/json",
+        INGEST_HEADER: SECRET,
+        "user-agent": "metagraphed-backfill/2.0",  # CF WAF 403s default urllib UA
+    }
+    # Retry transient ingest/D1 errors (5xx/429/network) with backoff — the parallel
+    # shards contend on D1 and occasionally trip a 500, which must not kill the shard.
+    for attempt in range(5):
+        try:
+            req = urllib.request.Request(
+                API_BASE + INGEST_PATH, data=body, method="POST", headers=headers
+            )
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                json.loads(resp.read())
+            return
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < 4:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt < 4:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise
 
 
 def main():
@@ -291,7 +305,7 @@ def main():
     p.add_argument("--end-offset", type=int, default=1, help="newest day = today-N")
     p.add_argument("--hour", type=int, default=5, help="UTC hour (forward cron is 47 5)")
     p.add_argument("--minute", type=int, default=47)
-    p.add_argument("--chunk", type=int, default=1500, help="rows per ingest POST")
+    p.add_argument("--chunk", type=int, default=1000, help="rows per ingest POST")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
     if not SECRET and not args.dry_run:
