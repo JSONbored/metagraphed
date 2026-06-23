@@ -1404,6 +1404,35 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.last_checked, new Date(5000).toISOString());
   });
 
+  test("a zero checked-at timestamp reports last_checked null, not the epoch", async () => {
+    // Same 0-sentinel guard as last_ok, on the last_checked field: with the
+    // clock at the Unix epoch every row's checked_at_ms is 0, so lastChecked
+    // stays 0. `iso(0)` is the truthy "1970-01-01T00:00:00.000Z", so the field
+    // must be guarded (`lastChecked ? iso(lastChecked) : null`) to report null.
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 0,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [buildSurface("z1", 13)],
+        probeSurface: async () => ({
+          status: "unknown",
+          classification: null,
+          latency_ms: null,
+        }),
+        probeOptions: {},
+      },
+    );
+    const subnet = kv
+      .json(KV_HEALTH_CURRENT)
+      .subnets.find((s) => s.netuid === 13);
+    assert.equal(subnet.last_checked, null);
+    assert.equal(subnet.last_ok, null);
+  });
+
   test("mixed ok+failed subnet rolls up to degraded with avg latency", async () => {
     const kv = makeKv();
     await runHealthProber(
