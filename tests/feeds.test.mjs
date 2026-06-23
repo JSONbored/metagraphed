@@ -10,8 +10,15 @@ import {
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
-const { registryItems, incidentItems, jsonFeed, rssFeed, atomFeed, escapeXml } =
-  __test;
+const {
+  registryItems,
+  incidentItems,
+  jsonFeed,
+  rssFeed,
+  atomFeed,
+  escapeXml,
+  filterByTag,
+} = __test;
 
 const CHANGELOG = {
   generated_at: "2026-06-15T00:00:00.000Z",
@@ -216,6 +223,39 @@ describe("feeds — item builders", () => {
   });
 });
 
+describe("feeds — filterByTag", () => {
+  const items = [
+    { id: "a", tags: ["registry", "subnet", "added"] },
+    { id: "b", tags: ["registry", "coverage"] },
+    { id: "c", tags: ["incident", "sn7", "ongoing"] },
+  ];
+
+  test("a null/empty tag is a no-op (returns the input)", () => {
+    assert.equal(filterByTag(items, null), items);
+    assert.equal(filterByTag(items, ""), items);
+    assert.equal(filterByTag(items, undefined), items);
+  });
+
+  test("keeps only items carrying the tag", () => {
+    assert.deepEqual(
+      filterByTag(items, "incident").map((i) => i.id),
+      ["c"],
+    );
+    assert.deepEqual(
+      filterByTag(items, "registry").map((i) => i.id),
+      ["a", "b"],
+    );
+  });
+
+  test("an unknown tag yields an empty list", () => {
+    assert.deepEqual(filterByTag(items, "nope"), []);
+  });
+
+  test("an item with no tags array is safely skipped", () => {
+    assert.deepEqual(filterByTag([{ id: "x" }], "incident"), []);
+  });
+});
+
 describe("feeds — serializers", () => {
   const meta = {
     title: "t",
@@ -345,6 +385,40 @@ describe("feeds — handleFeedRequest", () => {
     const parsed = JSON.parse(text);
     assert.equal(parsed.items.length, 0);
     assert.ok(parsed.title && parsed.feed_url);
+  });
+
+  test("?tag= narrows the registry feed to matching items", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry?tag=coverage");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.items.length > 0);
+    assert.ok(parsed.items.every((i) => i.id.startsWith("registry:coverage")));
+  });
+
+  test("?tag= on a per-subnet feed keeps only that tag across both sources", async () => {
+    const { text } = await feed("/api/v1/feeds/subnets/7?tag=incident");
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.items.length > 0);
+    assert.ok(parsed.items.every((i) => i.id.startsWith("incident:")));
+  });
+
+  test("an unknown ?tag= yields a valid but empty feed", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry?tag=does-not-exist",
+    );
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.items.length, 0);
+    assert.ok(parsed.title && parsed.feed_url);
+  });
+
+  test("no ?tag= returns the full feed (filter is a no-op)", async () => {
+    const all = await feed("/api/v1/feeds/registry");
+    const tagged = await feed("/api/v1/feeds/registry?tag=registry");
+    const allItems = JSON.parse(all.text).items.length;
+    const taggedItems = JSON.parse(tagged.text).items.length;
+    // Every registry item carries the "registry" tag, so the two match.
+    assert.equal(taggedItems, allItems);
   });
 });
 
