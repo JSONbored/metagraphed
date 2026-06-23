@@ -443,6 +443,43 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.deepEqual(body.data.providers.items[0].netuids, []);
   });
 
+  test("provider resolves a valid slug id from the store", async () => {
+    const env = fakeArtifactEnv({
+      "/metagraph/providers/acme-1.0.json": { id: "acme-1.0", name: "Acme" },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme-1.0") { id name } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.provider.name, "Acme");
+  });
+
+  test("provider rejects a traversal/invalid id without reading any artifact", async () => {
+    // The id is interpolated into the artifact path and the static-asset tier
+    // collapses "../", so an unvalidated id could escape the providers/
+    // namespace. The resolver must reject a non-slug id BEFORE touching storage.
+    let reads = 0;
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return null;
+        },
+      },
+    };
+    for (const id of ["../subnets", "../../economics", "a/b", "foo bar", ""]) {
+      const { status, body } = await gql(
+        `{ provider(id: ${JSON.stringify(id)}) { id name } }`,
+        env,
+      );
+      assert.equal(status, 200, id);
+      assert.equal(body.data.provider, null, id);
+    }
+    assert.equal(reads, 0, "no artifact read should happen for an invalid id");
+  });
+
   test("economics returns subnet economics list", async () => {
     const env = fakeArtifactEnv({
       "/metagraph/economics.json": {

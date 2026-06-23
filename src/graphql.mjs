@@ -250,6 +250,16 @@ function paginate(items, limit, cursor, keyFn) {
 
 // --- Resolvers ---
 
+// `provider(id)` interpolates the client-supplied id straight into an artifact
+// path, and readArtifact's static-asset tier resolves it through `new
+// Request("https://assets.local" + path)`, whose URL parser COLLAPSES "../"
+// segments. An id like "../subnets" would therefore escape the providers/
+// namespace and read a different artifact. Constrain the id to the same safe
+// slug charset every other id-bearing artifact path enforces (mcp-server's
+// resourceArtifactPath, get_api_schema). `subnet(netuid)` is Int-typed by the
+// schema so it needs no equivalent guard.
+const VALID_PROVIDER_ID = /^[A-Za-z0-9._:-]+$/;
+
 const rootValue = {
   async subnets({ limit, cursor }, context) {
     const { ok, data } = await readArtifact(
@@ -295,6 +305,7 @@ const rootValue = {
   },
 
   async provider({ id }, context) {
+    if (typeof id !== "string" || !VALID_PROVIDER_ID.test(id)) return null;
     const { ok, data } = await readArtifact(
       context.env,
       `/metagraph/providers/${id}.json`,
