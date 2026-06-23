@@ -86,6 +86,11 @@ function buildFragmentMap(documentNode) {
 // complexity 1 and fully bypassing both limits. `visited` guards against
 // fragment cycles: validate() reports those, but our rules run in the same pass
 // and would otherwise recurse forever.
+//
+// Inline fragments (`... on Type { ... }`, or a bare `... @include(if:) { ... }`)
+// are likewise transparent: a type condition is not a nesting level or an extra
+// field. Counting them would over-measure a query relative to its equivalent
+// inlined or named-fragment form, wrongly rejecting valid queries.
 function selectionDepth(selectionSet, fragments, visited, memo, max) {
   let deepest = 0;
   for (const sel of selectionSet.selections) {
@@ -107,6 +112,9 @@ function selectionDepth(selectionSet, fragments, visited, memo, max) {
           memo.set(fragName, depth);
         }
       }
+    } else if (sel.kind === "InlineFragment") {
+      // Transparent: recurse at the same depth (the type condition is not a level).
+      depth = selectionDepth(sel.selectionSet, fragments, visited, memo, max);
     } else if (sel.selectionSet) {
       depth =
         1 + selectionDepth(sel.selectionSet, fragments, visited, memo, max);
@@ -167,6 +175,16 @@ function selectionComplexity(selectionSet, fragments, visited, memo, max) {
           count += fragCount;
         }
       }
+    } else if (sel.kind === "InlineFragment") {
+      // Transparent like a named spread: count the contained fields, not the
+      // inline type condition itself.
+      count += selectionComplexity(
+        sel.selectionSet,
+        fragments,
+        visited,
+        memo,
+        max,
+      );
     } else {
       count += 1;
       if (sel.selectionSet) {

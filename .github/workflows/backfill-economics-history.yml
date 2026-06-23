@@ -1,0 +1,74 @@
+name: Backfill Economics History (one-time, #1307)
+
+# One-time chain-direct backfill of historical per-SUBNET alpha prices into the
+# `subnet_snapshots.alpha_price_tao` column, so the homepage marquee can show real
+# per-subnet alpha-price sparklines immediately instead of accruing forward over
+# months. Reads the public ARCHIVE node (full historical state, no API key) via
+# scripts/backfill-economics-history.py and POSTs each day's rows to the Worker's
+# secret-gated /api/v1/internal/backfill-economics ingest (idempotent COALESCE
+# upsert → safe to re-run, never clobbers a forward fire). Manual only.
+#
+# Economics is LIGHT — one scalar per subnet (~129 keys/block, one batched
+# round-trip per day) — so a single job covers a full year well within the job
+# limit (no quarterly sharding needed, unlike the neuron backfill).
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of trailing UTC days to backfill"
+        required: false
+        default: "365"
+      end_offset:
+        description: "Newest day backfilled = today - this (default 1 = yesterday)"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-economics-history
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120 # ~one batched round-trip per day; a full year fits easily
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      # Chain-direct off the public archive node (pinned bittensor, matching
+      # refresh-metagraph). The ingest upsert is idempotent so a rerun is harmless.
+      - name: Backfill economics
+        run: |
+          DAYS="${{ github.event.inputs.days }}"
+          END_OFFSET="${{ github.event.inputs.end_offset }}"
+          echo "backfill: --days $DAYS --end-offset $END_OFFSET"
+          uvx --from bittensor==10.4.0 --with xxhash python scripts/backfill-economics-history.py \
+            --days "$DAYS" --end-offset "$END_OFFSET"
+        env:
+          METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
+          METAGRAPH_API_BASE: https://api.metagraph.sh
+
+  notify-on-failure:
+    needs: [backfill]
+    if: ${{ always() && needs.backfill.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Notify on failure
+        env:
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "$METAGRAPH_ALERT_WEBHOOK_URL" ]; then
+            exit 0
+          fi
+          curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d '{"content":"🔴 metagraphed backfill-economics-history FAILED — historical alpha-price backfill incomplete."}'
