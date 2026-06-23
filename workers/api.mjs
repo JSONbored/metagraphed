@@ -120,10 +120,15 @@ import {
   pruneAccountEvents,
   validEventRows,
 } from "../src/account-events.mjs";
+import {
+  economicsSnapshotUpsertStatements,
+  validEconomicsBackfillRows,
+} from "../src/economics-backfill.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
+import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   aiEnabled,
@@ -640,10 +645,17 @@ export async function handleEventIngest(request, env) {
     );
   }
   const rows = validEventRows(incoming);
+  // Report rows ACTUALLY inserted, not rows validated. The statements use
+  // INSERT OR IGNORE on (block_number, event_index), and the streamer/poller
+  // ingest windows overlap by design, so duplicates are the normal case and are
+  // silently dropped — `rows.length` over-reports. Sum the per-statement
+  // D1 `meta.changes` instead.
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(eventInsertStatements(db, rows));
+    const results = await db.batch(eventInsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
-  return new Response(JSON.stringify({ ok: true, inserted: rows.length }), {
+  return new Response(JSON.stringify({ ok: true, inserted }), {
     status: 200,
     headers: { "content-type": JSON_CONTENT_TYPE },
   });
@@ -723,6 +735,94 @@ export async function handleNeuronBackfill(request, env) {
   const rows = validNeuronDailyRows(incoming);
   if (rows.length) {
     await db.batch(neuronDailyUpsertStatements(db, rows));
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      received: incoming.length,
+      inserted: rows.length,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
+}
+
+// POST /api/v1/internal/backfill-economics (#1307, epic #1302): the per-SUBNET
+// alpha-price history backfill ingest for scripts/backfill-economics-history.py —
+// the analogue of handleNeuronBackfill, but for the economics time series. Auth +
+// caps are IDENTICAL to the neuron backfill: disabled (503) until
+// METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) is configured,
+// then a constant-time token compare over the shared EVENTS_INGEST_TOKEN_HEADER.
+// The body is an array of {netuid, snapshot_date, captured_at, alpha_price_tao}
+// rows (or {rows:[...]}), upserted into subnet_snapshots on (netuid,snapshot_date)
+// with the SAME COALESCE semantics as the forward prober — only alpha_price_tao +
+// the key/captured_at columns are touched, so a backfilled value fills a NULL but
+// never clobbers a forward fire or any other column, and any re-POST is idempotent.
+// NOT in the public contract.
+export async function handleEconomicsBackfill(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured =
+    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "backfill_disabled",
+      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "History store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (raw.length > MAX_BACKFILL_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of economics rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON array of economics rows (or {rows:[...]}).",
+      400,
+    );
+  }
+  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
+      413,
+    );
+  }
+  const rows = validEconomicsBackfillRows(incoming);
+  if (rows.length) {
+    await db.batch(economicsSnapshotUpsertStatements(db, rows));
   }
   return new Response(
     JSON.stringify({
@@ -868,6 +968,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   if (url.pathname === "/api/v1/internal/backfill-neurons") {
     return handleNeuronBackfill(request, env);
   }
+  if (url.pathname === "/api/v1/internal/backfill-economics") {
+    return handleEconomicsBackfill(request, env);
+  }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
@@ -920,6 +1023,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // wasm is lazy-loaded inside the handler so this never weighs on other routes.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readArtifact });
+  }
+
+  // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
+  // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
+  // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
+  if (url.pathname === "/api/v1/icon") {
+    return handleIconProxy(request, env, url);
   }
 
   // Agent/AI discovery surfaces. The homepage advertises the machine resources

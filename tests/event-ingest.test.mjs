@@ -26,6 +26,9 @@ function dbCapture(captured) {
     },
     async batch(stmts) {
       captured.push(stmts.length);
+      // Mirror D1: each statement result carries meta.changes (rows written).
+      // All-inserted here (one multi-row statement per <=10 rows).
+      return stmts.map(() => ({ meta: { changes: 1 } }));
     },
   };
 }
@@ -140,6 +143,57 @@ test("handleRequest ingest writes rows end-to-end with a valid token", async () 
   );
   assert.equal(res.status, 200);
   assert.equal((await res.json()).inserted, 1);
+});
+
+test("ingest reports actually-inserted rows, not validated rows (INSERT OR IGNORE)", async () => {
+  // A row that validates but is a duplicate is dropped by INSERT OR IGNORE
+  // (meta.changes = 0). `inserted` must reflect the real write count, not the
+  // validated count.
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }),
+      async batch(stmts) {
+        return stmts.map(() => ({ meta: { changes: 0 } })); // all duplicates
+      },
+    },
+  };
+  const rows = [
+    {
+      block_number: 9,
+      event_index: 0,
+      event_kind: "WeightsSet",
+      observed_at: 1,
+    },
+  ];
+  const res = await handleEventIngest(post(rows, { secret: SECRET }), env);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).inserted, 0); // validated 1, inserted 0
+});
+
+test("ingest tolerates a batch result missing meta.changes (counts 0)", async () => {
+  // Defensive: a driver/result without `meta.changes` must fold to 0, not NaN —
+  // exercises the `result?.meta?.changes ?? 0` fallback branch.
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }),
+      async batch(stmts) {
+        return stmts.map(() => ({})); // no meta on the result
+      },
+    },
+  };
+  const rows = [
+    {
+      block_number: 11,
+      event_index: 0,
+      event_kind: "WeightsSet",
+      observed_at: 1,
+    },
+  ];
+  const res = await handleEventIngest(post(rows, { secret: SECRET }), env);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).inserted, 0);
 });
 
 test("ingest returns 503 when the event store is unavailable", async () => {
