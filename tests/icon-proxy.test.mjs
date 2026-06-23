@@ -428,9 +428,10 @@ test("aborts a hung upstream fetch via the timeout controller", async () => {
     let pending;
     try {
       pending = handleIconProxy(new Request(url), env, url);
-      // both favicon sources hang; advance past each FETCH_TIMEOUT_MS window
-      await vi.advanceTimersByTimeAsync(3000);
-      await vi.advanceTimersByTimeAsync(3000);
+      // Every favicon source hangs; advance past each FETCH_TIMEOUT_MS window so the
+      // handler aborts each in turn and exhausts the list (loop covers all sources +
+      // margin, robust to the source count changing).
+      for (let i = 0; i < 8; i += 1) await vi.advanceTimersByTimeAsync(3000);
       const res = await pending;
       assert.equal(res.status, 404);
       assert.equal(aborts >= 1, true); // controller.abort() fired
