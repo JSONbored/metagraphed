@@ -283,7 +283,7 @@ export function SubnetMasthead({
             subnetSlug={profile?.slug}
             name={profile?.name}
             fallback={netuid}
-            size={44}
+            size={64}
           />
         </div>
         <div className="min-w-0">

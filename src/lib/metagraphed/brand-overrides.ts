@@ -43,9 +43,14 @@ export interface BrandOverrideLookup {
   netuid?: number | string | null;
 }
 
-/** Public proxy base URL, e.g. "https://metagraph.sh/api/v1/icon". */
+/**
+ * Public proxy base URL. Defaults to the production backend favicon proxy
+ * (src/icon-proxy.mjs in metagraphed) so brand icons resolve out-of-the-box;
+ * override with VITE_ICON_PROXY_URL for local/staging.
+ */
 export const ICON_PROXY_URL: string | null =
-  (import.meta.env.VITE_ICON_PROXY_URL as string | undefined)?.trim() || null;
+  (import.meta.env.VITE_ICON_PROXY_URL as string | undefined)?.trim() ||
+  "https://api.metagraph.sh/api/v1/icon";
 
 const BLOCKED_PROXY_TLDS = new Set(["localhost", "local", "internal"]);
 

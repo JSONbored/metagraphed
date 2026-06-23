@@ -5,9 +5,15 @@ import {
   resolveBrandOverride,
   buildProxyIconUrl,
   pickIconSource,
+  ICON_PROXY_URL,
   type BrandOverrideLookup,
   type IconSource,
 } from "@/lib/metagraphed/brand-overrides";
+
+/** A candidate served by our own icon proxy (CORS-enabled; trust its sizing). */
+function isProxiedIcon(candidate?: string | null): boolean {
+  return Boolean(candidate && ICON_PROXY_URL && candidate.startsWith(ICON_PROXY_URL));
+}
 
 /**
  * Multi-source favicon resolution with low-resolution rejection and
@@ -343,7 +349,10 @@ export function BrandIcon({
   const onImgLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
-      const min = Math.max(16, Math.floor(size * 0.9));
+      // Proxied favicons are the best available source for a host and are often
+      // 32-64px — a real favicon beats a monogram, so only reject genuinely tiny
+      // (broken) images for those. Direct sources keep the stricter hi-res bar.
+      const min = isProxiedIcon(candidate) ? 16 : Math.max(16, Math.floor(size * 0.9));
       if (img.naturalWidth > 0 && img.naturalWidth < min) {
         if (candidate) failedUrls.add(candidate);
         advance();
@@ -431,7 +440,11 @@ export function BrandIcon({
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
+        // Only request CORS for our own proxy (which sets ACAO:* and enables the
+        // luminance/contrast-tile canvas check). For third-party sources (GitHub
+        // avatars, favicon CDNs) crossOrigin="anonymous" makes the browser DROP the
+        // image when CORS headers are absent — the cause of site-wide missing icons.
+        crossOrigin={isProxiedIcon(candidate) ? "anonymous" : undefined}
         className={classNames(
           "relative block transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0",
