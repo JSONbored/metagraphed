@@ -551,7 +551,7 @@ function loadEconomics(context) {
 // `prefetch` lets the single-subnet path serve surfaces/endpoints from the
 // detail artifact it already read; economics + health are not in that artifact.
 function subnetNode(identity, prefetch = {}) {
-  const netuid = identity?.netuid;
+  const netuid = identity.netuid;
   const bundledOr = (rows, load) =>
     rows !== undefined
       ? () => rows ?? []
@@ -727,7 +727,7 @@ const rootValue = {
       economicsRows: rows,
       subnetMeta: new Map(),
     });
-    const boards = ranked.boards || {};
+    const boards = ranked.boards;
     return {
       observed_at: ranked.observed_at,
       with_economics_count: rows.length,

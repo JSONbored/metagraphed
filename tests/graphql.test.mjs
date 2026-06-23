@@ -1193,3 +1193,199 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
     );
   });
 });
+
+// --- Branch coverage for the changed resolvers/handler ----------------------
+
+describe("graphql — resolver branch coverage", () => {
+  test("a spread to an undefined fragment is handled by the depth/complexity guards", async () => {
+    // frag is undefined, so the rules skip the spread instead of throwing.
+    const { status } = await gql("{ ...Ghost }");
+    assert.equal(status, 400); // unknown-fragment validation error, no crash
+  });
+
+  test("list-item surfaces/endpoints resolve lazily by netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": { subnets: [{ netuid: 1, name: "A" }] },
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "s1", netuid: 1, kind: "subnet-api" },
+          { id: "s2", netuid: 2, kind: "rpc" },
+        ],
+      },
+      "/metagraph/endpoints.json": {
+        endpoints: [{ id: "e1", netuid: 1, status: "ok" }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnets { items { netuid surfaces { id } endpoints { id } } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const item = body.data.subnets.items[0];
+    assert.deepEqual(
+      item.surfaces.map((s) => s.id),
+      ["s1"],
+    );
+    assert.deepEqual(
+      item.endpoints.map((e) => e.id),
+      ["e1"],
+    );
+  });
+
+  test("a null bundled surfaces/endpoints list resolves to an empty list", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/3.json": {
+        subnet: { netuid: 3, name: "C" },
+        surfaces: null,
+        endpoints: null,
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet(netuid: 3) { surfaces { id } endpoints { id } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet.surfaces, []);
+    assert.deepEqual(body.data.subnet.endpoints, []);
+  });
+
+  test("subnet.economics is null when the netuid has no economics row", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/5.json": { subnet: { netuid: 5, name: "E" } },
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 9, emission_share: 1 }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet(netuid: 5) { economics { emission_share } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet.economics, null);
+  });
+
+  test("provider.subnets is empty when the provider lists no netuids", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers/solo.json": {
+        provider: { id: "solo", name: "Solo", netuids: [] },
+      },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "solo") { subnets { netuid } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.provider.subnets, []);
+  });
+
+  test("providers paginate with an id cursor", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        providers: [
+          { id: "a", name: "A" },
+          { id: "b", name: "B" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ providers(limit: 1) { items { id } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.providers.total, 2);
+    assert.equal(body.data.providers.next_cursor, "a");
+  });
+
+  test("surfaces paginate, falling back to key for the cursor when id is absent", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { key: "k1", netuid: 1, kind: "sse" }, // no id → cursor uses key
+          { id: "s2", netuid: 1, kind: "rpc" },
+        ],
+      },
+    });
+    const first = await gql(
+      "{ surfaces(limit: 1) { items { kind } total next_cursor } }",
+      env,
+    );
+    assert.equal(first.body.data.surfaces.total, 2);
+    assert.equal(first.body.data.surfaces.next_cursor, "k1");
+  });
+
+  test("invalid Content-Length is rejected before the body is read", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "-1" },
+      body: JSON.stringify({ query: "{ __typename }" }),
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 400);
+    assert.ok((await res.json()).errors[0].message.includes("Content-Length"));
+  });
+
+  test("a POST with no body returns a missing-query error", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 400);
+    assert.ok((await res.json()).errors[0].message.includes("query"));
+  });
+
+  test("OPTIONS /mcp advertises POST, OPTIONS (the sibling CORS branch)", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/mcp", { method: "OPTIONS" }),
+      emptyEnv,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS /api/v1/ask advertises POST, OPTIONS (the other CORS operand)", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/ask", { method: "OPTIONS" }),
+      emptyEnv,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS on a default route keeps the read-only CORS methods", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets", {
+        method: "OPTIONS",
+      }),
+      emptyEnv,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "GET, HEAD, OPTIONS",
+    );
+  });
+
+  test("an in-bounds Content-Length is accepted and the body is read", async () => {
+    const payload = JSON.stringify({ query: "{ __typename }" });
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(new TextEncoder().encode(payload).byteLength),
+      },
+      body: payload,
+    });
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
+  });
+});
