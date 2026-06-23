@@ -1397,9 +1397,10 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.status, "unknown");
     assert.equal(subnet.unknown_count, 2);
     assert.equal(subnet.avg_latency_ms, null);
-    // No surface ever went ok → lastOk stays at the 0 epoch sentinel (iso(0)),
-    // which is truthy so the `|| null` fallback does not fire.
-    assert.equal(subnet.last_ok, new Date(0).toISOString());
+    // No surface ever went ok → last_ok is null ("never"), not the 1970 epoch.
+    // (iso(0) is the truthy string "1970-01-01T00:00:00.000Z", so the old
+    // `iso(lastOk) || null` reported a fabricated last-healthy timestamp here.)
+    assert.equal(subnet.last_ok, null);
     assert.equal(subnet.last_checked, new Date(5000).toISOString());
   });
 
