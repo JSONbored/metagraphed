@@ -19,6 +19,17 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.20.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.20.0...platform-v0.20.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* **backfill:** pin xxhash dependency ([#1510](https://github.com/JSONbored/metagraphed/issues/1510)) ([37b5cc6](https://github.com/JSONbored/metagraphed/commit/37b5cc62c1303f4e606d5461ffe9ba1f35efa775))
+* **history:** return structured window errors ([#1492](https://github.com/JSONbored/metagraphed/issues/1492)) ([57c37b0](https://github.com/JSONbored/metagraphed/commit/57c37b0cb811d4cc55778d2725acbc65aa87a8b3))
+* validate backfill workflow inputs ([#1516](https://github.com/JSONbored/metagraphed/issues/1516)) ([d6a24fd](https://github.com/JSONbored/metagraphed/commit/d6a24fd8e09d6bb26976e2941b7f0445685a1040))
+* **workflows:** validate backfill shard input ([#1518](https://github.com/JSONbored/metagraphed/issues/1518)) ([5ad6685](https://github.com/JSONbored/metagraphed/commit/5ad66859712905a6e8bed49e3439e62297e6bf7c))
+* **workflows:** validate stake backfill months input ([#1515](https://github.com/JSONbored/metagraphed/issues/1515)) ([1358c8c](https://github.com/JSONbored/metagraphed/commit/1358c8c29c87f0c16414e3b15b672d3f92a6e2c7))
+
 ## [0.20.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.19.0...platform-v0.20.0) (2026-06-23)
 
 
