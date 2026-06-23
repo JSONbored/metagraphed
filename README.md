@@ -12,7 +12,7 @@ The Bittensor subnet integration registry. For every subnet it answers: **what d
 [![PyPI](https://img.shields.io/pypi/v/metagraphed?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/metagraphed/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](./LICENSE)
 
-**[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Agent workflows](https://api.metagraph.sh/agent-workflows.md) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
+**[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [GraphQL](https://api.metagraph.sh/api/v1/graphql) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Agent workflows](https://api.metagraph.sh/agent-workflows.md) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
 
 </div>
 
@@ -59,6 +59,16 @@ Stable JSON envelope `{ ok, data, meta, error }`. OpenAPI at [`/metagraph/openap
 curl https://api.metagraph.sh/api/v1/subnets
 ```
 
+#### 🔮 GraphQL
+
+Shape one request across the registry — a subnet with its health, surfaces, endpoints, and economics, a provider with its subnets, or the economic opportunity boards. `POST` to [`/api/v1/graphql`](https://api.metagraph.sh/api/v1/graphql); `GET` returns the SDL and introspection is enabled.
+
+```bash
+curl -X POST https://api.metagraph.sh/api/v1/graphql \
+  -H 'content-type: application/json' \
+  -d '{"query":"{ subnet(netuid: 7) { name health { status } surfaces { kind url } economics { emission_share } } }"}'
+```
+
 ## For agents
 
 | Resource              | URL                                                                                                                                                                                                 |
@@ -66,6 +76,7 @@ curl https://api.metagraph.sh/api/v1/subnets
 | Copyable agent prompt | [`/agent.md`](https://api.metagraph.sh/agent.md)                                                                                                                                                    |
 | Agent workflows       | [`/agent-workflows.md`](https://api.metagraph.sh/agent-workflows.md)                                                                                                                                |
 | Machine index         | [`/llms.txt`](https://api.metagraph.sh/llms.txt)                                                                                                                                                    |
+| GraphQL               | [`/api/v1/graphql`](https://api.metagraph.sh/api/v1/graphql) — POST a shaped query (subnet + health + surfaces + endpoints + economics, provider + subnets, opportunity boards); GET returns the SDL |
 | Drop-in skill         | [`/skills/bittensor/SKILL.md`](https://api.metagraph.sh/skills/bittensor/SKILL.md)                                                                                                                  |
 | Resources index       | [`/metagraph/agent-resources.json`](https://api.metagraph.sh/metagraph/agent-resources.json)                                                                                                        |
 | Content feeds         | [`/api/v1/feeds/registry`](https://api.metagraph.sh/api/v1/feeds/registry) — registry changes + incidents, as RSS / Atom / JSON Feed (per-subnet at `/api/v1/feeds/subnets/{netuid}`)               |

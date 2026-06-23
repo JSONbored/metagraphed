@@ -19,6 +19,7 @@ metagraphed catalogs the application/operational layer of Bittensor (complementa
 - [Bittensor skill](https://api.metagraph.sh/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"
 - [Semantic search](https://api.metagraph.sh/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces
 - [Ask](https://api.metagraph.sh/api/v1/ask): POST { question } for a grounded, cited answer over the registry
+- [GraphQL](https://api.metagraph.sh/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.
 - [API index](https://api.metagraph.sh/api/v1): route list + response envelope
 - [Registry summary](https://api.metagraph.sh/api/v1/registry/summary): coverage + completeness leaderboard
 - [Bulk datasets](https://api.metagraph.sh/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)

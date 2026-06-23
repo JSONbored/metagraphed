@@ -3,16 +3,19 @@ import { Blob } from "node:buffer";
 import { buildSchema, parse, validate } from "graphql";
 import { describe, test } from "vitest";
 import {
+  FIELD_COMPLEXITY,
   GRAPHQL_MAX_BODY_BYTES,
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_DEPTH,
   GRAPHQL_MAX_QUERY_BYTES,
+  SDL,
   handleGraphQLRequest,
   maxComplexityRule,
   maxDepthRule,
 } from "../src/graphql.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "../src/kv-keys.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
@@ -27,14 +30,63 @@ async function gql(query, env = emptyEnv, extras = {}) {
   return { status: res.status, body: await res.json() };
 }
 
+// Inject synthetic artifacts (R2) and optional live KV tiers (health:current,
+// economics:current — the fresh sources REST prefers) into a fake env. `reads`/
+// `kvReads` record per-key access counts so tests can prove per-request read
+// memoization. GraphQL source paths are R2-only; fixtures are keyed by full
+// artifact path, e.g. "/metagraph/subnets.json". `kv` maps KV keys to values.
+function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
+  const env = {
+    METAGRAPH_R2_LATEST_PREFIX: "latest/",
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        if (reads) reads.set(key, (reads.get(key) || 0) + 1);
+        const path = "/metagraph/" + key.replace(/^latest\//, "");
+        const data = fixtures[path];
+        return data === undefined ? null : { async json() {
+          return data;
+        } };
+      },
+    },
+  };
+  if (kv) {
+    env.METAGRAPH_CONTROL = {
+      async get(key) {
+        if (kvReads) kvReads.set(key, (kvReads.get(key) || 0) + 1);
+        return Object.hasOwn(kv, key) ? kv[key] : null;
+      },
+    };
+  }
+  return env;
+}
+
 describe("handleGraphQLRequest — method guard", () => {
-  test("GET returns 405", async () => {
+  test("GET publishes the SDL document (discoverability)", async () => {
     const req = new Request("https://api.metagraph.sh/api/v1/graphql");
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    assert.equal(res.status, 200);
+    assert.match(
+      res.headers.get("content-type") || "",
+      /application\/graphql/,
+    );
+    assert.equal(res.headers.get("allow"), "GET, POST");
+    const sdl = await res.text();
+    // The published shape advertises the broadened graph + its relationships.
+    assert.ok(sdl.includes("type Query"));
+    assert.ok(sdl.includes("opportunity_boards"));
+    assert.ok(sdl.includes("type Subnet"));
+    assert.ok(sdl.includes("health: SubnetHealth"));
+  });
+
+  test("an unsupported method (PUT) returns 405 advertising GET, POST", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
+      method: "PUT",
+    });
     const res = await handleGraphQLRequest(req, emptyEnv);
     assert.equal(res.status, 405);
     const body = await res.json();
     assert.ok(body.errors[0].message.includes("POST"));
-    assert.equal(res.headers.get("allow"), "POST");
+    assert.equal(res.headers.get("allow"), "GET, POST");
   });
 });
 
@@ -51,7 +103,7 @@ describe("handleRequest — GraphQL routing", () => {
     assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
   });
 
-  test("OPTIONS /api/v1/graphql advertises POST for CORS preflight", async () => {
+  test("OPTIONS /api/v1/graphql advertises GET + POST for CORS preflight", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "OPTIONS",
@@ -62,8 +114,22 @@ describe("handleRequest — GraphQL routing", () => {
     assert.equal(res.status, 204);
     assert.equal(
       res.headers.get("access-control-allow-methods"),
-      "POST, OPTIONS",
+      "GET, POST, OPTIONS",
     );
+  });
+
+  test("GET /api/v1/graphql through the router returns the SDL", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql"),
+      emptyEnv,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(
+      res.headers.get("content-type") || "",
+      /application\/graphql/,
+    );
+    assert.ok((await res.text()).includes("type Query"));
   });
 });
 
@@ -351,30 +417,8 @@ describe("handleGraphQLRequest — resolvers (cold store)", () => {
 });
 
 describe("handleGraphQLRequest — resolvers (injected data)", () => {
-  // Inject synthetic artifact data via the R2 binding (all GraphQL source
-  // paths are R2-only; ASSETS is never tried for them). Fixtures are keyed by
-  // full artifact path, e.g. "/metagraph/subnets.json".
-  function fakeArtifactEnv(fixtures) {
-    return {
-      METAGRAPH_R2_LATEST_PREFIX: "latest/",
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          // key = "latest/subnets.json" → fixture key = "/metagraph/subnets.json"
-          const artifactPath = "/metagraph/" + key.replace(/^latest\//, "");
-          const data = fixtures[artifactPath];
-          if (data === undefined) return null;
-          return {
-            async json() {
-              return data;
-            },
-          };
-        },
-      },
-    };
-  }
-
   test("subnets resolves items and total from fixture data", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
           { netuid: 1, name: "Alpha", slug: "alpha" },
@@ -393,7 +437,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 
   test("subnets pagination: limit and next_cursor", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
           { netuid: 1, name: "A", slug: "a" },
@@ -413,7 +457,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 
   test("subnet resolves a single subnet by netuid", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/subnets/7.json": {
         netuid: 7,
         name: "Tao Subnet",
@@ -430,7 +474,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 
   test("providers normalises missing netuids to empty array", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/providers.json": {
         providers: [{ id: "acme", name: "Acme" }],
       },
@@ -444,7 +488,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 
   test("economics returns subnet economics list", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/economics.json": {
         subnets: [
           { netuid: 1, name: "Root", emission_share: 0.05, miner_count: 10 },
@@ -497,24 +541,7 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
 
   // Cursor not found in items → start stays 0 (no crash).
   test("subnets with an unresolvable cursor returns first page", async () => {
-    function fakeEnv(fixtures) {
-      return {
-        METAGRAPH_R2_LATEST_PREFIX: "latest/",
-        METAGRAPH_ARCHIVE: {
-          async get(key) {
-            const path = "/metagraph/" + key.replace(/^latest\//, "");
-            const data = fixtures[path];
-            if (data === undefined) return null;
-            return {
-              async json() {
-                return data;
-              },
-            };
-          },
-        },
-      };
-    }
-    const env = fakeEnv({
+    const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
           { netuid: 1, name: "A" },
@@ -532,21 +559,7 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
 
   // Data keys missing from artifact (subnets array absent → empty list).
   test("subnets artifact without subnets key returns empty list", async () => {
-    const env = {
-      METAGRAPH_R2_LATEST_PREFIX: "latest/",
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          if (key === "latest/subnets.json") {
-            return {
-              async json() {
-                return {};
-              },
-            };
-          }
-          return null;
-        },
-      },
-    };
+    const env = fixtureEnv({ "/metagraph/subnets.json": {} });
     const { status, body } = await gql("{ subnets { total } }", env);
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 0);
@@ -554,21 +567,7 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
 
   // Providers artifact without providers key → empty list.
   test("providers artifact without providers key returns empty list", async () => {
-    const env = {
-      METAGRAPH_R2_LATEST_PREFIX: "latest/",
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          if (key === "latest/providers.json") {
-            return {
-              async json() {
-                return {};
-              },
-            };
-          }
-          return null;
-        },
-      },
-    };
+    const env = fixtureEnv({ "/metagraph/providers.json": {} });
     const { status, body } = await gql("{ providers { total } }", env);
     assert.equal(status, 200);
     assert.equal(body.data.providers.total, 0);
@@ -576,21 +575,13 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
 
   // Provider artifact with netuids present → returned as-is.
   test("provider artifact with netuids returns them", async () => {
-    const env = {
-      METAGRAPH_R2_LATEST_PREFIX: "latest/",
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          if (key === "latest/providers/acme.json") {
-            return {
-              async json() {
-                return { id: "acme", name: "Acme Corp", netuids: [1, 7] };
-              },
-            };
-          }
-          return null;
-        },
+    const env = fixtureEnv({
+      "/metagraph/providers/acme.json": {
+        id: "acme",
+        name: "Acme Corp",
+        netuids: [1, 7],
       },
-    };
+    });
     const { status, body } = await gql(
       '{ provider(id: "acme") { netuids } }',
       env,
@@ -700,5 +691,464 @@ describe("client IP resolution — x-forwarded-for is not trusted (#security)", 
     });
     assert.equal(second.status, 429);
     assert.equal((await second.json()).error.code, "graphql_rate_limited");
+  });
+});
+
+// --- Broadened registry coverage --------------------------------------------
+
+describe("graphql — broadened Subnet + nested relationships", () => {
+  test("subnet detail serves bundled surfaces/endpoints from one read; economics loads lazily", async () => {
+    const reads = new Map();
+    const env = fixtureEnv(
+      {
+        // The real detail artifact has no economics key (REST overlays it live),
+        // but it does bundle surfaces/endpoints.
+        "/metagraph/subnets/7.json": {
+          subnet: {
+            netuid: 7,
+            name: "Allways",
+            slug: "allways",
+            categories: ["inference"],
+            status: "active",
+            integration_readiness: 80,
+          },
+          surfaces: [{ id: "s1", netuid: 7, kind: "subnet-api", status: "ok" }],
+          endpoints: [{ id: "e1", netuid: 7, status: "ok", kind: "rpc" }],
+        },
+        "/metagraph/economics.json": {
+          subnets: [{ netuid: 7, emission_share: 0.12, open_slots: 4 }],
+        },
+      },
+      { reads },
+    );
+    const { status, body } = await gql(
+      `{ subnet(netuid: 7) {
+          netuid name slug categories status integration_readiness
+          economics { netuid emission_share open_slots }
+          surfaces { id kind status }
+          endpoints { id kind status }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const s = body.data.subnet;
+    assert.equal(s.netuid, 7);
+    assert.equal(s.name, "Allways");
+    assert.deepEqual(s.categories, ["inference"]);
+    assert.equal(s.integration_readiness, 80);
+    assert.equal(s.economics.emission_share, 0.12);
+    assert.equal(s.surfaces[0].kind, "subnet-api");
+    assert.equal(s.endpoints[0].id, "e1");
+    // surfaces/endpoints came from the detail artifact (never read separately);
+    // economics is not in it, so it loads lazily — once.
+    assert.equal(reads.get("latest/subnets/7.json"), 1);
+    assert.equal(reads.get("latest/economics.json"), 1);
+    assert.equal(reads.has("latest/surfaces.json"), false);
+    assert.equal(reads.has("latest/endpoints.json"), false);
+  });
+
+  test("subnet.health resolves from the live health snapshot by netuid", async () => {
+    const env = fixtureEnv(
+      { "/metagraph/subnets/7.json": { subnet: { netuid: 7, name: "Allways" } } },
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            subnets: [
+              { netuid: 7, status: "ok", ok_count: 3, surface_count: 3 },
+              { netuid: 8, status: "failed", ok_count: 0 },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      "{ subnet(netuid: 7) { netuid health { status ok_count surface_count } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet.health.status, "ok");
+    assert.equal(body.data.subnet.health.ok_count, 3);
+  });
+
+  test("list items resolve economics/health by netuid, reading each source once (memoized)", async () => {
+    const reads = new Map();
+    const kvReads = new Map();
+    const env = fixtureEnv(
+      {
+        "/metagraph/subnets.json": {
+          subnets: [
+            { netuid: 1, name: "A" },
+            { netuid: 2, name: "B" },
+          ],
+        },
+        "/metagraph/economics.json": {
+          subnets: [
+            { netuid: 1, emission_share: 0.1 },
+            { netuid: 2, emission_share: 0.2 },
+          ],
+        },
+      },
+      {
+        reads,
+        kvReads,
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            subnets: [
+              { netuid: 1, status: "ok" },
+              { netuid: 2, status: "degraded" },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      "{ subnets { items { netuid economics { emission_share } health { status } } total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 2);
+    assert.equal(body.data.subnets.items[0].economics.emission_share, 0.1);
+    assert.equal(body.data.subnets.items[1].health.status, "degraded");
+    // Two items, but the economics source and the live health snapshot are each
+    // resolved exactly once.
+    assert.equal(reads.get("latest/economics.json"), 1);
+    assert.equal(kvReads.get(KV_HEALTH_CURRENT), 1);
+  });
+
+  test("provider.subnets resolves the provider's netuids to full subnet nodes", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers/acme.json": {
+        provider: { id: "acme", name: "Acme", netuids: [2, 1] },
+      },
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a" },
+          { netuid: 2, name: "B", slug: "b" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { id netuids subnets { netuid name } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.provider.netuids, [2, 1]);
+    // Order follows the provider's netuids list.
+    assert.equal(body.data.provider.subnets[0].netuid, 2);
+    assert.equal(body.data.provider.subnets[1].name, "A");
+  });
+});
+
+describe("graphql — surfaces / endpoints / health roots", () => {
+  test("surfaces filters by netuid and paginates", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "s1", netuid: 1, kind: "subnet-api" },
+          { id: "s2", netuid: 2, kind: "rpc" },
+          { id: "s3", netuid: 1, kind: "sse" },
+        ],
+      },
+    });
+    const filtered = await gql(
+      "{ surfaces(netuid: 1) { items { id netuid } total } }",
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.surfaces.total, 2);
+    assert.ok(filtered.body.data.surfaces.items.every((s) => s.netuid === 1));
+
+    const paged = await gql(
+      "{ surfaces(limit: 1) { items { id } total next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.surfaces.items.length, 1);
+    assert.equal(paged.body.data.surfaces.total, 3);
+    assert.equal(paged.body.data.surfaces.next_cursor, "s1");
+  });
+
+  test("endpoints filters by netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/endpoints.json": {
+        endpoints: [
+          { id: "e1", netuid: 5, status: "ok" },
+          { id: "e2", netuid: 6, status: "failed" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ endpoints(netuid: 6) { items { id status netuid } total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.endpoints.total, 1);
+    assert.equal(body.data.endpoints.items[0].id, "e2");
+  });
+
+  test("endpoints paginate, falling back to surface_id for the cursor when id is absent", async () => {
+    const env = fixtureEnv({
+      "/metagraph/endpoints.json": {
+        endpoints: [
+          { surface_id: "x1", netuid: 1, status: "ok" }, // no id → cursor uses surface_id
+          { id: "e2", netuid: 2, status: "failed" },
+        ],
+      },
+    });
+    const first = await gql(
+      "{ endpoints(limit: 1) { items { status } total next_cursor } }",
+      env,
+    );
+    assert.equal(first.body.data.endpoints.total, 2);
+    assert.equal(first.body.data.endpoints.next_cursor, "x1");
+    const second = await gql(
+      '{ endpoints(limit: 1, cursor: "x1") { items { id } } }',
+      env,
+    );
+    assert.equal(second.body.data.endpoints.items[0].id, "e2");
+  });
+
+  test("health lifts the live rollup and exposes per-subnet summaries", async () => {
+    const env = fixtureEnv(
+      {},
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            summary: { status: "degraded", ok_count: 40, surface_count: 50 },
+            subnets: [
+              { netuid: 1, status: "ok" },
+              { netuid: 2, status: "failed" },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      "{ health { status ok_count surface_count health_source subnets { netuid status } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.health.status, "degraded");
+    assert.equal(body.data.health.ok_count, 40);
+    assert.equal(body.data.health.health_source, "live-cron-prober");
+    assert.equal(body.data.health.subnets.length, 2);
+    assert.equal(body.data.health.subnets[1].status, "failed");
+  });
+
+  test("health returns null when the live store is cold", async () => {
+    const { status, body } = await gql("{ health { status } }", emptyEnv);
+    assert.equal(status, 200);
+    assert.equal(body.data.health, null);
+  });
+});
+
+describe("graphql — economics pagination", () => {
+  const env = () =>
+    fixtureEnv({
+      "/metagraph/economics.json": {
+        subnets: [
+          { netuid: 1, emission_share: 0.1 },
+          { netuid: 2, emission_share: 0.2 },
+          { netuid: 3, emission_share: 0.3 },
+        ],
+      },
+    });
+
+  test("limit + next_cursor page through the economics rows", async () => {
+    const first = await gql(
+      "{ economics(limit: 2) { subnets { netuid } total next_cursor } }",
+      env(),
+    );
+    assert.equal(first.body.data.economics.subnets.length, 2);
+    assert.equal(first.body.data.economics.total, 3);
+    assert.equal(first.body.data.economics.next_cursor, "2");
+
+    const second = await gql(
+      '{ economics(limit: 2, cursor: "2") { subnets { netuid } next_cursor } }',
+      env(),
+    );
+    assert.equal(second.body.data.economics.subnets.length, 1);
+    assert.equal(second.body.data.economics.subnets[0].netuid, 3);
+    assert.equal(second.body.data.economics.next_cursor, null);
+  });
+
+  test("prefers the fresh KV economics tier over the committed artifact", async () => {
+    const env = fixtureEnv(
+      // Stale committed copy — must NOT be served while the KV tier is fresh.
+      { "/metagraph/economics.json": { subnets: [{ netuid: 9, emission_share: 1 }] } },
+      {
+        kv: {
+          [KV_ECONOMICS_CURRENT]: {
+            captured_at: new Date().toISOString(),
+            subnets: [
+              { netuid: 1, emission_share: 0.6 },
+              { netuid: 2, emission_share: 0.4 },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      "{ economics { subnets { netuid } total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics.total, 2);
+    assert.deepEqual(
+      body.data.economics.subnets.map((s) => s.netuid),
+      [1, 2],
+    );
+  });
+});
+
+describe("graphql — opportunity boards (reuse the leaderboard ranking)", () => {
+  const env = () =>
+    fixtureEnv({
+      "/metagraph/economics.json": {
+        captured_at: "2026-06-23T00:00:00.000Z",
+        subnets: [
+          {
+            netuid: 1,
+            slug: "a",
+            name: "A",
+            open_slots: 5,
+            max_uids: 256,
+            registration_cost_tao: 0.5,
+            registration_allowed: true,
+            emission_share: 0.1,
+            total_stake_tao: 1000,
+            validator_count: 10,
+            max_validators: 64,
+            miner_count: 50,
+          },
+          {
+            netuid: 2,
+            slug: "b",
+            name: "B",
+            open_slots: 0,
+            registration_cost_tao: 0.2,
+            registration_allowed: false,
+            emission_share: 0.3,
+            total_stake_tao: 2000,
+            validator_count: 64,
+            max_validators: 64,
+            miner_count: 100,
+          },
+          {
+            netuid: 3,
+            slug: "c",
+            name: "C",
+            open_slots: 20,
+            registration_cost_tao: 0.1,
+            registration_allowed: true,
+            emission_share: 0.05,
+            total_stake_tao: 500,
+            validator_count: 5,
+            max_validators: 64,
+            miner_count: 10,
+          },
+        ],
+      },
+    });
+
+  test("boards rank by their economic metric", async () => {
+    const { status, body } = await gql(
+      `{ opportunity_boards {
+          observed_at with_economics_count
+          open_slots { netuid open_slots }
+          highest_emission { netuid emission_share }
+          cheapest_registration { netuid registration_cost_tao }
+          validator_headroom { netuid validator_headroom }
+        } }`,
+      env(),
+    );
+    assert.equal(status, 200);
+    const b = body.data.opportunity_boards;
+    assert.equal(b.with_economics_count, 3);
+    assert.equal(b.observed_at, "2026-06-23T00:00:00.000Z");
+    // Most open slots first; the full subnet (open_slots 0) is dropped.
+    assert.equal(b.open_slots[0].netuid, 3);
+    assert.equal(b.open_slots[0].open_slots, 20);
+    assert.equal(b.open_slots.length, 2);
+    // Highest emission first.
+    assert.equal(b.highest_emission[0].netuid, 2);
+    // Cheapest open registration first (the closed subnet is excluded).
+    assert.equal(b.cheapest_registration[0].netuid, 3);
+    assert.ok(b.cheapest_registration.every((e) => e.netuid !== 2));
+    // Most validator headroom first.
+    assert.equal(b.validator_headroom[0].netuid, 3);
+  });
+
+  test("opportunity_boards degrades to empty boards on a cold store", async () => {
+    const { status, body } = await gql(
+      "{ opportunity_boards { with_economics_count open_slots { netuid } } }",
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.opportunity_boards.with_economics_count, 0);
+    assert.deepEqual(body.data.opportunity_boards.open_slots, []);
+  });
+});
+
+describe("graphql — complexity weights keep the guard meaningful", () => {
+  test("FIELD_COMPLEXITY weights the read/fan-out fields above scalars", () => {
+    for (const field of [
+      "subnets",
+      "subnet",
+      "providers",
+      "provider",
+      "economics",
+      "surfaces",
+      "endpoints",
+      "health",
+      "opportunity_boards",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+
+  test("a single weighted field trips a tight complexity budget", () => {
+    const s = buildSchema(SDL);
+    const doc = parse("{ health { status } }"); // 5 (health) + 1 (status) = 6
+    assert.equal(validate(s, doc, [maxComplexityRule(6)]).length, 0);
+    const errs = validate(s, doc, [maxComplexityRule(5)]);
+    assert.equal(errs.length, 1);
+    assert.equal(errs[0].extensions?.code, "COMPLEXITY_LIMIT_EXCEEDED");
+  });
+
+  test("the headline composition — one subnet with all its relationships — stays within budget", async () => {
+    // The whole point of GraphQL here: a subnet + health + surfaces + endpoints
+    // + economics in one shaped request must NOT trip the guard.
+    const { status, body } = await gql(
+      `{ subnet(netuid: 1) {
+          netuid name slug
+          health { status ok_count }
+          surfaces { id kind status }
+          endpoints { id kind status }
+          economics { emission_share open_slots }
+      } }`,
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet, null); // cold store, but the query was accepted
+  });
+
+  test("greedily pulling many fields of several relationships across the list exceeds the budget", async () => {
+    // subnets(5) items(1) + four relationship containers (5 each = 20) + 28 leaf
+    // fields = 54 > 50.
+    const { status, body } = await gql(
+      `{ subnets { items {
+          economics { netuid emission_share open_slots max_uids miner_count validator_count total_stake_tao }
+          endpoints { id status kind url latency_ms last_ok score }
+          health { status ok_count failed_count degraded_count unknown_count surface_count avg_latency_ms }
+          surfaces { id key kind status url provider name }
+      } } }`,
+      emptyEnv,
+    );
+    assert.equal(status, 400);
+    assert.ok(
+      body.errors.find(
+        (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      ),
+    );
   });
 });
