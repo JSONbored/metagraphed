@@ -395,6 +395,53 @@ describe("dispatchWithRedelivery", () => {
     assert.equal((await keysOf()).length, 1); // untouched
   });
 
+  test("redelivery sweep honors list, run, and per-subscription budgets", async () => {
+    store = makeStore();
+    const sub8 = { ...SUB, id: "sub-8", filters: { netuids: [9] } };
+    for (let i = 0; i < 6; i += 1) {
+      const subscriptionId = i < 4 ? SUB.id : sub8.id;
+      const dueBody = JSON.stringify(
+        subscriptionId === SUB.id ? event7 : event9,
+      );
+      store.map.set(
+        deliveryStorageKey(subscriptionId, `event-${i}`),
+        JSON.stringify({
+          subscription_id: subscriptionId,
+          event_id: `event-${i}`,
+          body: dueBody,
+          state: "pending",
+          round: 1,
+          next_attempt_at: T0,
+        }),
+      );
+    }
+
+    let attempts = 0;
+    const { redelivered } = await dispatchWithRedelivery({
+      subscriptions: [SUB, sub8],
+      store,
+      event: buildChangeEvent({
+        changelog: { artifacts: { added: ["meta"] } },
+      }),
+      now: () => "2026-06-22T00:00:05.000Z",
+      maxAttempts: 1,
+      redeliveryListLimit: 5,
+      maxRedeliveriesPerRun: 3,
+      maxRedeliveriesPerSubscription: 2,
+      fetchFn: async () => {
+        attempts += 1;
+        return new Response("", { status: 200 });
+      },
+    });
+
+    assert.equal(redelivered.length, 3);
+    assert.equal(attempts, 3);
+    assert.deepEqual(
+      redelivered.map((result) => result.id),
+      [SUB.id, SUB.id, sub8.id],
+    );
+  });
+
   test("a redelivery get failure skips that record without crashing", async () => {
     // The store lists a parked key but its get throws → the record is treated as
     // absent and the sweep moves on, rather than rejecting the whole dispatch.

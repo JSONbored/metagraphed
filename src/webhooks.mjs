@@ -28,6 +28,11 @@ export const WEBHOOK_REDELIVERY_BASE_MS = 5 * 60 * 1000; // 5 min
 export const WEBHOOK_REDELIVERY_MAX_MS = 12 * 60 * 60 * 1000; // 12 h
 // Parked deliveries self-clean on the same 180-day horizon as dormant subscriptions.
 export const WEBHOOK_DELIVERY_TTL_SECONDS = 180 * 24 * 60 * 60;
+// Redelivery sweeps are intentionally budgeted so a long-lived failing endpoint
+// cannot make publish runs retry an unbounded parked backlog.
+export const WEBHOOK_REDELIVERY_LIST_LIMIT = 256;
+export const WEBHOOK_REDELIVERY_MAX_PER_RUN = 64;
+export const WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION = 8;
 
 const MAX_FILTER_NETUIDS = 64;
 const MAX_FILTER_KINDS = 8;
@@ -684,6 +689,9 @@ export async function dispatchWithRedelivery({
   maxRounds = WEBHOOK_MAX_DELIVERY_ROUNDS,
   redeliveryBaseMs = WEBHOOK_REDELIVERY_BASE_MS,
   redeliveryMaxMs = WEBHOOK_REDELIVERY_MAX_MS,
+  redeliveryListLimit = WEBHOOK_REDELIVERY_LIST_LIMIT,
+  maxRedeliveriesPerRun = WEBHOOK_REDELIVERY_MAX_PER_RUN,
+  maxRedeliveriesPerSubscription = WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
 }) {
   const nowIso = typeof now === "function" ? now() : new Date(0).toISOString();
   const nowMs = Date.parse(nowIso) || 0; // 0 on the epoch fallback or a bad clock
@@ -693,9 +701,10 @@ export async function dispatchWithRedelivery({
   );
 
   // Store wrappers: a control-store hiccup degrades to a retry next run, never throws.
-  const safeListKeys = async (prefix) => {
+  const safeListKeys = async (prefix, limit) => {
     try {
-      return await store.listKeys(prefix);
+      const keys = await store.listKeys(prefix, { limit });
+      return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
     } catch {
       return [];
     }
@@ -740,7 +749,7 @@ export async function dispatchWithRedelivery({
   // only reads/writes KV when a record actually exists (no blind deletes on the
   // healthy path); Phase 2 then sweeps whatever remains.
   const parked = store
-    ? new Set(await safeListKeys(WEBHOOK_DELIVERY_PREFIX))
+    ? new Set(await safeListKeys(WEBHOOK_DELIVERY_PREFIX, redeliveryListLimit))
     : new Set();
 
   // --- Phase 1: deliver the freshly-published event ---------------------------
@@ -779,7 +788,9 @@ export async function dispatchWithRedelivery({
   // --- Phase 2: redeliver whatever is still parked and now due ----------------
   // Records (re)parked in Phase 1 were removed from `parked`, so they can't be
   // re-attempted this run. Independent keys → concurrent sweep.
-  const due = (
+  const due = [];
+  const dueBySubscription = new Map();
+  for (const candidate of (
     await mapBounded([...parked], concurrency, async (key) => {
       const record = await safeGet(key);
       return record &&
@@ -789,7 +800,13 @@ export async function dispatchWithRedelivery({
         ? { key, record }
         : null;
     })
-  ).filter(Boolean);
+  ).filter(Boolean)) {
+    if (due.length >= maxRedeliveriesPerRun) break;
+    const count = dueBySubscription.get(candidate.record.subscription_id) || 0;
+    if (count >= maxRedeliveriesPerSubscription) continue;
+    dueBySubscription.set(candidate.record.subscription_id, count + 1);
+    due.push(candidate);
+  }
   const redelivered = await mapBounded(
     due,
     concurrency,

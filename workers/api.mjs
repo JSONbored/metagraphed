@@ -44,6 +44,7 @@ import {
   publicSubscriptionView,
   subscriptionStorageKey,
   summarizeDeliveryRecords,
+  WEBHOOK_REDELIVERY_LIST_LIMIT,
   timingSafeEqual,
   validateSubscriptionInput,
   WEBHOOK_EVENT_ID_HEADER,
@@ -4388,11 +4389,14 @@ async function readDeliveryStatus(env, id) {
     }
     const { keys } = await env.METAGRAPH_CONTROL.list({
       prefix: deliveryStoragePrefix(id),
+      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
     });
     const records = await Promise.all(
-      keys.map((entry) =>
-        env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
-      ),
+      keys
+        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
+        .map((entry) =>
+          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
+        ),
     );
     return summarizeDeliveryRecords(records);
   } catch {

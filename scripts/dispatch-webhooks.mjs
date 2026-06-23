@@ -25,6 +25,9 @@ import {
   dispatchWithRedelivery,
   isPublicWebhookAddress,
   WEBHOOK_KV_PREFIX,
+  WEBHOOK_REDELIVERY_LIST_LIMIT,
+  WEBHOOK_REDELIVERY_MAX_PER_RUN,
+  WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
 } from "../src/webhooks.mjs";
 
 const args = new Set(process.argv.slice(2));
@@ -107,6 +110,9 @@ const { delivered, redelivered } = await dispatchWithRedelivery({
   timeoutMs: 8000,
   maxAttempts: 3,
   resolveHostnames: resolvePublicHostnames,
+  redeliveryListLimit: WEBHOOK_REDELIVERY_LIST_LIMIT,
+  maxRedeliveriesPerRun: WEBHOOK_REDELIVERY_MAX_PER_RUN,
+  maxRedeliveriesPerSubscription: WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
 });
 
 const tally = delivered.reduce((acc, result) => {
@@ -136,7 +142,7 @@ console.log(
 // Exit 0 regardless of per-subscriber failures: the data publish already
 // succeeded, and one broken endpoint must not fail the run.
 
-function listKvKeys(nsId, prefix) {
+function listKvKeys(nsId, prefix, { limit } = {}) {
   const stdout = runWrangler([
     "kv",
     "key",
@@ -150,9 +156,10 @@ function listKvKeys(nsId, prefix) {
   if (!stdout) return [];
   try {
     const entries = JSON.parse(stdout);
-    return Array.isArray(entries)
+    const keys = Array.isArray(entries)
       ? entries.map((entry) => entry.name).filter(Boolean)
       : [];
+    return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
   } catch {
     return [];
   }
@@ -195,8 +202,8 @@ function deleteKvValue(nsId, key) {
 // logs + returns null on failure, so a KV hiccup never fails the publish.
 function makeDeliveryStore(nsId) {
   return {
-    async listKeys(prefix) {
-      return listKvKeys(nsId, prefix);
+    async listKeys(prefix, options = {}) {
+      return listKvKeys(nsId, prefix, options);
     },
     async get(key) {
       const raw = getKvValue(nsId, key);

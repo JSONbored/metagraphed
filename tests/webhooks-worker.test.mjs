@@ -19,9 +19,10 @@ function makeKv() {
     async delete(key) {
       store.delete(key);
     },
-    async list({ prefix } = {}) {
+    async list({ prefix, limit } = {}) {
       const keys = [...store.keys()]
         .filter((key) => !prefix || key.startsWith(prefix))
+        .slice(0, Number.isFinite(limit) ? limit : undefined)
         .map((name) => ({ name }));
       return { keys, list_complete: true };
     },
@@ -274,6 +275,42 @@ describe("webhook subscription routes", () => {
     assert.equal(delivery.last_failure.event_id, "event-dead"); // latest attempt
     assert.equal(delivery.last_failure.attempts, 8);
     assert.equal(delivery.last_failure.reason, "http-503");
+  });
+
+  test("GET delivery health limits parked-delivery KV work", async () => {
+    const kv = makeKv();
+    const seen = [];
+    const originalList = kv.list;
+    kv.list = async (options) => {
+      seen.push(options);
+      return originalList(options);
+    };
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    for (let i = 0; i < 300; i += 1) {
+      kv.store.set(
+        `webhooks:delivery:${id}:event-${i}`,
+        JSON.stringify({
+          subscription_id: id,
+          event_id: `event-${i}`,
+          state: "pending",
+          round: 1,
+          last_attempt_at: "2026-06-22T00:00:00.000Z",
+        }),
+      );
+    }
+
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`),
+      envWith(kv),
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(seen[0].limit, 256);
+    assert.equal((await res.json()).data.delivery.pending, 256);
   });
 
   test("GET delivery health degrades to ok when the store lacks list()", async () => {
