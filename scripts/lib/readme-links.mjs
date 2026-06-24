@@ -1,13 +1,13 @@
 // README link selection + classification helpers, extracted verbatim from
-// scripts/lib.mjs (#510 maintainability decomposition). Fully self-contained:
-// pure functions over plain strings/objects with no module state, no I/O, and no
-// dependency on any other lib.mjs symbol — so the output is byte-identical to the
-// in-lib.mjs originals. Re-exported from scripts/lib.mjs so existing importers
-// (scripts/discover-candidates.mjs, tests) keep their import paths unchanged.
+// scripts/lib.mjs (#510 maintainability decomposition). Pure functions over
+// plain strings/objects with no module state and no I/O. Re-exported from
+// scripts/lib.mjs so existing importers (scripts/discover-candidates.mjs, tests)
+// keep their import paths unchanged.
 //
-// `normalizeHost` / `registrableDomain` here are README-local helpers, distinct
-// from lib.mjs's `normalizeHostname` (used by the URL-safety code) — they were
-// always private to this cluster.
+// `registrableDomain` delegates to `clusterDomainFromUrl` for multi-label public
+// suffix handling (#1636) so README dedupe keys cannot drift from clustering.
+
+import { clusterDomainFromUrl } from "../lib.mjs";
 
 export const README_LINK_LIMIT = 5;
 
@@ -217,127 +217,12 @@ function normalizeHost(hostname) {
     .replace(/^www\./, "");
 }
 
-// Mirror `scripts/lib.mjs` multi-label public suffix handling (#1636) so
-// readme dedupe keys stay distinct per tenant on shared platform hosts.
-const README_CLUSTER_CCTLD_SUFFIXES = [
-  "ac.uk",
-  "co.uk",
-  "gov.uk",
-  "ltd.uk",
-  "me.uk",
-  "net.uk",
-  "nhs.uk",
-  "org.uk",
-  "plc.uk",
-  "sch.uk",
-  "asn.au",
-  "com.au",
-  "edu.au",
-  "gov.au",
-  "net.au",
-  "org.au",
-  "co.nz",
-  "geek.nz",
-  "gen.nz",
-  "govt.nz",
-  "iwi.nz",
-  "maori.nz",
-  "net.nz",
-  "org.nz",
-  "school.nz",
-  "ac.jp",
-  "co.jp",
-  "ed.jp",
-  "go.jp",
-  "gr.jp",
-  "ne.jp",
-  "or.jp",
-  "com.br",
-  "com.cn",
-  "com.hk",
-  "com.mx",
-  "com.sg",
-  "com.tr",
-  "com.tw",
-  "co.in",
-  "co.kr",
-  "co.za",
-];
-
-const README_MULTI_TENANT_HOST_SUFFIXES = new Set([
-  "github.io",
-  "gitlab.io",
-  "pages.dev",
-  "workers.dev",
-  "vercel.app",
-  "netlify.app",
-  "netlify.com",
-  "surge.sh",
-  "onrender.com",
-  "azurewebsites.net",
-  "r2.dev",
-  "notion.site",
-  "pythonanywhere.com",
-  "appspot.com",
-  "web.app",
-  "firebaseapp.com",
-  "herokuapp.com",
-  "fly.dev",
-  "glitch.me",
-  "repl.co",
-  "webflow.io",
-]);
-
-const README_CLUSTER_MULTI_LABEL_SUFFIXES = new Set([
-  ...README_CLUSTER_CCTLD_SUFFIXES,
-  ...README_MULTI_TENANT_HOST_SUFFIXES,
-]);
-
-const README_CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([
-  "ac",
-  "co",
-  "com",
-  "edu",
-  "go",
-  "gov",
-  "net",
-  "ne",
-  "or",
-  "org",
-]);
-
-function registrableSuffixDomain(host) {
-  const labels = host.split(".").filter(Boolean);
-  if (labels.length < 2) return host || "";
-  if (labels.at(-1) === "com" && labels.at(-2) === "appspot") {
-    if (labels.at(-3) === "r") {
-      return labels.length >= 5 ? labels.slice(-5).join(".") : host;
-    }
-    return labels.length >= 3 ? labels.slice(-3).join(".") : host;
-  }
-  for (
-    let suffixLabelCount = labels.length;
-    suffixLabelCount >= 2;
-    suffixLabelCount -= 1
-  ) {
-    const suffix = labels.slice(-suffixLabelCount).join(".");
-    if (README_CLUSTER_MULTI_LABEL_SUFFIXES.has(suffix)) {
-      return labels.length > suffixLabelCount
-        ? labels.slice(-(suffixLabelCount + 1)).join(".")
-        : host;
-    }
-  }
-  const [secondLevel, topLevel] = labels.slice(-2);
-  if (
-    labels.length >= 3 &&
-    topLevel.length === 2 &&
-    README_CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS.has(secondLevel)
-  ) {
-    return labels.slice(-3).join(".");
-  }
-  return labels.slice(-2).join(".");
-}
-
 function registrableDomain(hostname) {
-  return registrableSuffixDomain(normalizeHost(hostname));
+  const host = normalizeHost(hostname);
+  if (!host) return "";
+  const labels = host.split(".").filter(Boolean);
+  return (
+    clusterDomainFromUrl(`https://${host}/`) ??
+    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
+  );
 }
