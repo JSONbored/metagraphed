@@ -1,19 +1,35 @@
 {
-  "schema_version": 1,
-  "netuid": 17,
-  "name": "404—GEN",
-  "slug": "sn-17",
-  "status": "active",
   "categories": [],
+  "contact": "404@404.xyz",
   "curation": {
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "surfaces": [],
+  "name": "404—GEN",
+  "netuid": 17,
+  "schema_version": 1,
+  "slug": "sn-17",
   "social": {
     "x": "https://x.com/404gen_"
   },
-  "contact": "404@404.xyz",
   "source_repo": "https://github.com/404-Repo/404-gen-subnet",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-17-404-gen-sdk",
+      "kind": "sdk",
+      "name": "404-GEN Blender add-on",
+      "provider": "404-gen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dripsmvcp"
+      },
+      "source_urls": ["https://github.com/404-Repo/404-gen-subnet"],
+      "url": "https://github.com/404-Repo/404-gen-blender-add-on"
+    }
+  ],
   "website_url": "https://www.404.xyz/"
 }
