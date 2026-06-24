@@ -1047,11 +1047,10 @@ export function formatUptime({
   rows,
   now = null,
 }) {
-  const reliabilityRows = (rows || []).map((row) => ({
-    ...row,
-    surface_id: surfaceLookupKey(row),
-  }));
-  const reliability = computeReliability(reliabilityRows, {
+  // computeReliability keys per-surface aggregation on the stable surface_key
+  // itself (falling back to surface_id), so renamed rows already collapse into
+  // one bucket — no need to pre-rewrite surface_id here.
+  const reliability = computeReliability(rows || [], {
     window: window || null,
     now,
   });

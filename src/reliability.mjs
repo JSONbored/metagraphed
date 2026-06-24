@@ -60,10 +60,14 @@ export function scoreFromStats({
 }
 
 // Aggregate surface_uptime_daily rows into a subnet-level score + a per-surface
-// score map. `rows`: [{ surface_id, day, samples, ok_count, avg_latency_ms,
-// latency_samples }]. The window mean is weighted by latency_samples (healthy
-// readings per day), not total samples; legacy rows fall back to total samples.
-// `subnet` is null when there are no samples.
+// score map. `rows`: [{ surface_id, surface_key?, day, samples, ok_count,
+// avg_latency_ms, latency_samples }]. Per-surface aggregation keys on the stable
+// `surface_key` (the rename-proof identity from #1005), falling back to
+// `surface_id` for legacy rows that predate it — so a surface renamed within the
+// window stays ONE bucket instead of splitting (which would inflate
+// surface_count and fragment its score). The window mean is weighted by
+// latency_samples (healthy readings per day), not total samples; legacy rows
+// fall back to total samples. `subnet` is null when there are no samples.
 export function computeReliability(rows, { window = null, now = null } = {}) {
   const bySurface = new Map();
   let totalSamples = 0;
@@ -80,7 +84,10 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     // Healthy readings behind this day's mean; legacy rows lack it → total samples.
     const latencyCount =
       row.latency_samples == null ? samples : Number(row.latency_samples) || 0;
-    const surface = bySurface.get(row.surface_id) || {
+    // Stable identity first: a surface keeps one `surface_key` across renames,
+    // while `surface_id` can change (and legacy rows only have surface_id).
+    const surfaceKey = row.surface_key || row.surface_id;
+    const surface = bySurface.get(surfaceKey) || {
       samples: 0,
       okCount: 0,
       latencyWeighted: 0,
@@ -94,7 +101,7 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
       latencyWeighted += latency * latencyCount;
       latencySamples += latencyCount;
     }
-    bySurface.set(row.surface_id, surface);
+    bySurface.set(surfaceKey, surface);
     totalSamples += samples;
     totalOk += okCount;
     if (row.day) {
@@ -103,8 +110,8 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
   }
 
   const surfaces = {};
-  for (const [surfaceId, surface] of bySurface) {
-    surfaces[surfaceId] = scoreFromStats({
+  for (const [surfaceKey, surface] of bySurface) {
+    surfaces[surfaceKey] = scoreFromStats({
       samples: surface.samples,
       okCount: surface.okCount,
       avgLatencyMs: surface.latencySamples
