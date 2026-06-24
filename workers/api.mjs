@@ -1358,6 +1358,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Cross-subnet compare (registry structure + economics + live health composed
+  // side by side; the same fileless-D1 pattern as the leaderboards route).
+  // Edge-cached on the cron snapshot's last_run_at so a polling/cross-colo burst
+  // doesn't re-run the economics + D1 reads.
+  if (url.pathname === "/api/v1/compare") {
+    return withEdgeCache(request, ctx, env, "compare", () =>
+      handleCompare(request, env, url),
+    );
+  }
+
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
   if (url.pathname === "/api/v1/rpc/usage") {
     return handleRpcUsage(request, env, url);
@@ -1586,6 +1596,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
+    pathname === "/api/v1/compare" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
@@ -3532,6 +3543,182 @@ async function handleLeaderboards(request, env, url) {
         contract_version: contractVersion(env),
         generated_at: data.observed_at,
         source: "registry+live-cron-prober",
+      },
+    },
+    "standard",
+  );
+}
+
+// The data domains /api/v1/compare can place side by side: registry structure
+// (completeness + surface counts from profiles), the live economics tier, and
+// the live per-subnet probe-health rollup. Composed in one call so a caller can
+// choose between subnets without N×(detail + economics + health) round-trips.
+const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
+// Same shape + hard cap as the subnets collection's `netuids` CSV filter: 1-128
+// ids, each ≤ 5 digits. Bounds the compare fan-out at the parameter layer.
+const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
+
+// Pure projection: fold the requested netuids + the resolved source rows into
+// the side-by-side compare shape, in REQUESTED order. A netuid absent from the
+// registry profiles is returned `found: false` with every requested dimension
+// null (so a caller can still align columns); a found subnet missing from a
+// given source tier gets that one dimension as null. Exported for unit coverage.
+export function composeCompareData({
+  requestedNetuids,
+  dimensions,
+  subnetMeta,
+  structureRows,
+  economicsRows,
+  healthRows,
+  observedAt,
+}) {
+  const includeStructure = dimensions.includes("structure");
+  const includeEconomics = dimensions.includes("economics");
+  const includeHealth = dimensions.includes("health");
+
+  const structureByNetuid = new Map();
+  for (const row of structureRows || []) {
+    structureByNetuid.set(row.netuid, {
+      completeness_score: row.completeness_score,
+      surface_count: row.surface_count,
+      operational_interface_count: row.operational_interface_count,
+    });
+  }
+  const economicsByNetuid = new Map();
+  for (const row of economicsRows || []) {
+    economicsByNetuid.set(row.netuid, {
+      registration_cost_tao: row.registration_cost_tao,
+      registration_allowed: row.registration_allowed,
+      open_slots: row.open_slots,
+      emission_share: row.emission_share,
+      alpha_price_tao: row.alpha_price_tao,
+      validator_count: row.validator_count,
+      miner_count: row.miner_count,
+      total_stake_tao: row.total_stake_tao,
+      miner_readiness: row.miner_readiness,
+    });
+  }
+  const healthByNetuid = new Map();
+  for (const row of healthRows || []) {
+    healthByNetuid.set(row.netuid, {
+      surface_count: row.surface_count,
+      ok_count: row.ok_count,
+      avg_latency_ms: row.avg_latency_ms,
+    });
+  }
+
+  const subnets = requestedNetuids.map((netuid) => {
+    const meta = subnetMeta.get(netuid) || null;
+    const entry = {
+      netuid,
+      name: meta?.name ?? null,
+      slug: meta?.slug ?? null,
+      found: meta !== null,
+    };
+    if (includeStructure) {
+      entry.structure = meta ? (structureByNetuid.get(netuid) ?? null) : null;
+    }
+    if (includeEconomics) {
+      entry.economics = meta ? (economicsByNetuid.get(netuid) ?? null) : null;
+    }
+    if (includeHealth) {
+      entry.health = meta ? (healthByNetuid.get(netuid) ?? null) : null;
+    }
+    return entry;
+  });
+
+  return {
+    schema_version: 1,
+    source: "registry+economics+live-cron-prober",
+    observed_at: observedAt ?? null,
+    dimensions,
+    requested_netuids: requestedNetuids,
+    subnets,
+  };
+}
+
+// Cross-subnet compare: place several subnets side by side across the registry
+// structure, economics, and live-health tiers in one call (fileless-D1 pattern,
+// like handleLeaderboards). `netuids` is required; `dimensions` defaults to all.
+async function handleCompare(request, env, url) {
+  const validationError = validateQueryParams(url, ["netuids", "dimensions"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const netuidsRaw = url.searchParams.get("netuids");
+  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) {
+    return errorResponse(
+      "invalid_query",
+      "netuids is required: a comma-separated list of 1-128 subnet ids.",
+      400,
+      { parameter: "netuids" },
+    );
+  }
+  // Preserve requested order; drop duplicate ids so each subnet appears once.
+  const requestedNetuids = [];
+  const seenNetuids = new Set();
+  for (const part of netuidsRaw.split(",")) {
+    const netuid = Number(part);
+    if (seenNetuids.has(netuid)) continue;
+    seenNetuids.add(netuid);
+    requestedNetuids.push(netuid);
+  }
+
+  let dimensions = COMPARE_DIMENSIONS;
+  const dimensionsRaw = url.searchParams.get("dimensions");
+  if (dimensionsRaw !== null) {
+    const requested = dimensionsRaw.split(",");
+    const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
+    if (unknown !== undefined) {
+      return errorResponse(
+        "invalid_query",
+        `Unknown dimension "${unknown}". Valid dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
+        400,
+        { parameter: "dimensions" },
+      );
+    }
+    // Canonical order, de-duplicated, so the echoed `dimensions` is stable.
+    dimensions = COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
+  }
+
+  // subnetMeta + structure always come from the cached profiles projection;
+  // economics + health are only read when their dimension is requested.
+  const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
+  const [economicsRows, healthRows] = await Promise.all([
+    dimensions.includes("economics") ? resolveEconomicsRows(env) : null,
+    dimensions.includes("health")
+      ? d1All(
+          env,
+          `SELECT netuid,
+                COUNT(*) AS surface_count,
+                SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                ROUND(AVG(latency_ms)) AS avg_latency_ms
+         FROM surface_status
+         GROUP BY netuid`,
+          [],
+        )
+      : null,
+  ]);
+
+  const meta = await readHealthMetaKv(env);
+  const data = composeCompareData({
+    requestedNetuids,
+    dimensions,
+    subnetMeta,
+    structureRows: mostComplete,
+    economicsRows,
+    healthRows,
+    observedAt: meta?.last_run_at ?? null,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/compare.json",
+        cache: "standard",
+        contract_version: contractVersion(env),
+        generated_at: data.observed_at,
+        source: "registry+economics+live-cron-prober",
       },
     },
     "standard",

@@ -9,7 +9,7 @@
 //
 // --write shells out to `gh issue create` (needs gh auth). Each issue mirrors
 // the established format: title "Enrich SN<n> <name> — add <kinds>", body links
-// the candidate:new command + CONTRIBUTING, labels gittensor:priority +
+// the surface:add command + CONTRIBUTING, labels gittensor:priority +
 // good first issue + help wanted, and references the #427 tracker.
 import { execFileSync } from "node:child_process";
 
@@ -47,7 +47,7 @@ const VALUE_PRIORITY = [
   "sdk",
 ];
 
-// Human phrasing + the candidate:new --kind value for each gap kind.
+// Human phrasing + the surface:add --kind value for each gap kind.
 const KIND_LABEL = {
   "source-repo": "source repository",
   website: "official website",
@@ -145,7 +145,7 @@ Search for the subnet's official ${kindList} (project site / GitHub / docs / Bit
 ### Submit — one candidate per surface, one file
 First find the provider slug for the team/operator behind the surface (a wrong slug is the #1 validation failure): \`npm run providers:list\`. Then generate one candidate file:
 \`\`\`bash
-npm run candidate:new -- --netuid ${netuid} --kind ${primary} \\
+npm run surface:add -- --netuid ${netuid} --kind ${primary} \\
   --url <real-public-url> --source-url <link-that-proves-it> \\
   --provider <slug> --submitted-by <your-login> --write
 \`\`\`
@@ -167,12 +167,12 @@ for (const entry of queue) {
   if (covered.has(netuid)) continue;
   const missing = (entry.missing_kinds || [])
     .filter((k) => KINDS.includes(k))
-    // Lead with the highest-value surface so the candidate:new command targets
+    // Lead with the highest-value surface so the surface:add command targets
     // it: a callable API + its spec matter more to agents than artifacts/streams.
     .sort((a, b) => VALUE_PRIORITY.indexOf(a) - VALUE_PRIORITY.indexOf(b));
   if (!missing.length) continue;
   // One issue per subnet; ask for its top 2 in-scope missing kinds (the
-  // candidate:new command targets the first).
+  // surface:add command targets the first).
   const kinds = missing.slice(0, 2);
   planned.push({
     netuid,

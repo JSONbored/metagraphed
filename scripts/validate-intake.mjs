@@ -3,24 +3,16 @@ import path from "node:path";
 import { readJson, repoRoot } from "./lib.mjs";
 
 const templateRoot = path.join(repoRoot, ".github/ISSUE_TEMPLATE");
-const interfaceTemplate = await fs.readFile(
-  path.join(templateRoot, "add-update-subnet-interface.yml"),
+const surfaceTemplate = await fs.readFile(
+  path.join(templateRoot, "add-subnet-surface.yml"),
   "utf8",
 );
 const statusTemplate = await fs.readFile(
   path.join(templateRoot, "report-endpoint-status-issue.yml"),
   "utf8",
 );
-const endpointTemplate = await fs.readFile(
-  path.join(templateRoot, "add-update-endpoint-resource.yml"),
-  "utf8",
-);
 const providerTemplate = await fs.readFile(
   path.join(templateRoot, "add-update-provider-profile.yml"),
-  "utf8",
-);
-const profileSourceTemplate = await fs.readFile(
-  path.join(templateRoot, "add-update-subnet-profile-source.yml"),
   "utf8",
 );
 const pullRequestTemplate = await fs.readFile(
@@ -28,8 +20,8 @@ const pullRequestTemplate = await fs.readFile(
   "utf8",
 );
 const prTemplateRoot = path.join(repoRoot, ".github/PULL_REQUEST_TEMPLATE");
-const directCandidateTemplate = await fs.readFile(
-  path.join(prTemplateRoot, "direct-candidate.md"),
+const surfacePrTemplate = await fs.readFile(
+  path.join(prTemplateRoot, "surface.md"),
   "utf8",
 );
 const providerProfileTemplate = await fs.readFile(
@@ -48,9 +40,6 @@ const submissionGateDocs = await fs.readFile(
   path.join(repoRoot, "docs/submission-gate.md"),
   "utf8",
 );
-const candidateExample = await readJson(
-  path.join(repoRoot, "docs/examples/submissions/direct-candidate.json"),
-);
 const providerExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/provider-profile.json"),
 );
@@ -60,34 +49,39 @@ const directProviderExample = await readJson(
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
 );
-const endpointResourceExample = await readJson(
-  path.join(
-    repoRoot,
-    "docs/examples/submissions/direct-endpoint-resource.json",
-  ),
-);
-const openapiSchemaExample = await readJson(
-  path.join(repoRoot, "docs/examples/submissions/direct-openapi-schema.json"),
-);
-const profileCorrectionExample = await readJson(
-  path.join(
-    repoRoot,
-    "docs/examples/submissions/direct-profile-correction.json",
-  ),
-);
 const errors = [];
 
-checkIncludes(interfaceTemplate.toLowerCase(), "interface template", [
-  "interface-submission",
+// The per-surface community-candidate intake lane is retired — surfaces now live
+// in ONE file per subnet (registry/subnets/<slug>.json), added with
+// `npm run surface:add`. Reject any recreation of the candidate dir so the
+// migrated-away one-file-per-surface farm can't reopen. Runs in both the UGC and
+// full CI lanes (validate:intake is on both), so a candidate file is always caught.
+try {
+  const retiredDir = path.join(repoRoot, "registry/candidates/community");
+  const retiredFiles = (await fs.readdir(retiredDir)).filter((name) =>
+    name.endsWith(".json"),
+  );
+  if (retiredFiles.length > 0) {
+    errors.push(
+      `registry/candidates/community/ is retired (${retiredFiles.length} file(s): ${retiredFiles.join(", ")}). ` +
+        "Add surfaces to registry/subnets/<slug>.json with `npm run surface:add` instead.",
+    );
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+
+checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
+  "surface-submission",
   "metagraphed-under-review",
   "id: netuid",
   "id: kind",
   "id: url",
   "id: source_url",
+  "id: provider",
   "id: auth_required",
-  "schema-valid issues are not auto-published",
-  "direct pr with exactly one `registry/candidates/community/*.json` file",
-  "metagraphed-import-approved",
+  "registry/subnets/<slug>.json",
+  "npm run surface:add",
   "read-only probes",
 ]);
 
@@ -107,7 +101,7 @@ for (const kind of [
   "subtensor-rpc",
   "subtensor-wss",
 ]) {
-  checkIncludes(interfaceTemplate, "interface template", [`- ${kind}`]);
+  checkIncludes(surfaceTemplate, "surface template", [`- ${kind}`]);
 }
 
 checkIncludes(statusTemplate, "status template", [
@@ -119,26 +113,6 @@ checkIncludes(statusTemplate, "status template", [
   "unsafe-or-private",
   "This report does not include secrets",
   "observed health is generated only by Metagraphed probes",
-]);
-
-checkIncludes(endpointTemplate, "endpoint resource template", [
-  "endpoint-submission",
-  "metagraphed-under-review",
-  "id: netuid",
-  "id: layer",
-  "id: kind",
-  "id: url",
-  "id: source_url",
-  "id: provider",
-  "id: auth_required",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "archive",
-  "subnet-api",
-  "openapi",
-  "sse",
-  "data-artifact",
-  "pool eligibility are probe-derived only",
 ]);
 
 checkIncludes(providerTemplate, "provider profile template", [
@@ -153,45 +127,24 @@ checkIncludes(providerTemplate, "provider profile template", [
   "provider approval is required before endpoints can become pool-eligible",
 ]);
 
-checkIncludes(profileSourceTemplate, "profile source template", [
-  "interface-submission",
-  "profile-correction",
-  "metagraphed-under-review",
-  "id: netuid",
-  "id: kind",
-  "id: url",
-  "id: source_url",
-  "id: provider",
-  "id: auth_required",
-  "website",
-  "docs",
-  "source-repo",
-  "data-artifact",
-  "openapi",
-  "do not directly change observed health",
-  "read-only probes",
-]);
-
 checkIncludes(pullRequestTemplate, "pull request template router", [
-  "?template=direct-candidate.md",
+  "?template=surface.md",
   "?template=provider-profile.md",
   "?template=backend-code.md",
   "?template=docs-only.md",
-  "registry/candidates/community/*.json",
+  "registry/subnets/<slug>.json",
   "registry/providers/community/*.json",
   "generated `public/metagraph/**`",
 ]);
 
-checkIncludes(directCandidateTemplate, "direct candidate PR template", [
-  "registry/candidates/community/*.json",
-  "npm run candidate:new",
-  "docs/examples/submissions/direct-candidate.json",
-  "AI-reviewed",
-  "merged automatically",
+checkIncludes(surfacePrTemplate, "surface PR template", [
+  "registry/subnets/<slug>.json",
+  "npm run surface:add",
+  "review.state",
   "Base-layer RPC/WSS/archive",
-  "npm run submission:pr",
-  "npm run validate:intake",
+  "npm run validate:surface",
   "npm run scan:public-safety",
+  "Closes #",
 ]);
 
 checkIncludes(providerProfileTemplate, "provider profile PR template", [
@@ -221,12 +174,6 @@ checkIncludes(docsOnlyTemplate, "docs-only PR template", [
   "git diff --check",
 ]);
 
-checkIncludes(
-  pullRequestTemplate + directCandidateTemplate,
-  "direct UGC docs",
-  ["npm run submission:pr"],
-);
-
 checkIncludes(submissionGateDocs, "submission gate docs", [
   "submit_pr",
   "fix_required",
@@ -255,13 +202,9 @@ checkIncludes(submissionGateDocs, "submission gate docs", [
   "route_away",
 ]);
 
-checkExampleCandidate(candidateExample);
 checkExampleProvider(providerExample);
 checkExampleProviderSubmission(directProviderExample);
 checkExampleStatusReport(statusReportExample);
-checkExampleCandidate(endpointResourceExample);
-checkExampleCandidate(openapiSchemaExample);
-checkExampleCandidate(profileCorrectionExample);
 
 if (errors.length > 0) {
   console.error(`Intake validation failed with ${errors.length} issue(s):`);
@@ -277,29 +220,6 @@ function checkIncludes(content, label, needles) {
   for (const needle of needles) {
     if (!content.includes(needle)) {
       errors.push(`${label}: missing ${needle}`);
-    }
-  }
-}
-
-function checkExampleCandidate(document) {
-  const candidate = document?.candidates?.[0];
-  if (document?.schema_version !== 1 || !candidate) {
-    errors.push(
-      "direct candidate example: missing schema_version or candidate",
-    );
-    return;
-  }
-  for (const field of [
-    "id",
-    "netuid",
-    "kind",
-    "url",
-    "source_url",
-    "provider",
-    "public_safe",
-  ]) {
-    if (candidate[field] === undefined || candidate[field] === "") {
-      errors.push(`direct candidate example: missing ${field}`);
     }
   }
 }

@@ -58,6 +58,11 @@ const R2_ONLY_PATTERNS = [
   /^extrinsics\.json$/,
   /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\{hash\})\.json$/,
   /^registry\/leaderboards\.json$/,
+  // Cross-subnet comparison (#1664), composed live from registry projections +
+  // the economics tier + D1 at /api/v1/compare — never written as a file. R2-only
+  // like its sibling live routes so the contract maps a schema to the route
+  // without the build expecting a committed/staged artifact.
+  /^compare\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,
