@@ -255,6 +255,28 @@ describe("sampleFromSchema", () => {
     assert.doesNotThrow(() => sampleFromSchema(selfArr.Tree, selfArr, "Tree"));
   });
 
+  test("bounds recursion: self-refs routed through oneOf/anyOf/allOf don't overflow", () => {
+    // A self-reference whose only hop is a composition keyword never grows
+    // `depth`, so the MAX_DEPTH budget alone can't break it — the $ref must
+    // also detect a non-advancing cycle.
+    for (const kw of ["oneOf", "anyOf", "allOf"]) {
+      const cyclic = {
+        Node: { [kw]: [{ $ref: "#/components/schemas/Node" }] },
+      };
+      assert.doesNotThrow(
+        () => sampleFromSchema(cyclic.Node, cyclic, "Node"),
+        `${kw} self-ref should be bounded`,
+      );
+    }
+
+    // Mutual recursion through composition keywords is likewise bounded.
+    const mutual = {
+      A: { oneOf: [{ $ref: "#/components/schemas/B" }] },
+      B: { oneOf: [{ $ref: "#/components/schemas/A" }] },
+    };
+    assert.doesNotThrow(() => sampleFromSchema(mutual.A, mutual, "A"));
+  });
+
   test("a sampled instance validates against its own schema (round-trip)", () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: true });
     addFormats(ajv);
