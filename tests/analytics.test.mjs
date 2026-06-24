@@ -1202,3 +1202,46 @@ describe("hourly cron writes a daily snapshot", () => {
     assert.ok(captured[0] > 0, "snapshot batch should write rows");
   });
 });
+
+describe("d1All graceful degradation (#1715)", () => {
+  test("a D1 read failure degrades to an empty response and is logged, not silent", async () => {
+    // A throwing D1 read used to be swallowed to [] with no signal (this is what
+    // dark-served the uptime tier for days). The route must still degrade
+    // gracefully (200 + empty), but the error must now be surfaced.
+    const throwingDb = {
+      prepare: () => ({
+        bind: () => ({
+          async all() {
+            throw new Error("D1 read failed");
+          },
+        }),
+      }),
+    };
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: throwingDb,
+    };
+    const errors = [];
+    const originalError = console.error;
+    console.error = (...args) => errors.push(args.map(String).join(" "));
+    try {
+      const res = await handleRequest(
+        new Request("https://api.metagraph.sh/api/v1/rpc/usage"),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.ok, true);
+      // d1All caught the throw → [] fallback → empty-but-valid usage envelope.
+      assert.equal(body.data.summary.total_requests, 0);
+      assert.deepEqual(body.data.endpoints, []);
+    } finally {
+      console.error = originalError;
+    }
+    assert.ok(
+      errors.some((line) => line.includes("[d1All]")),
+      "d1All should log the swallowed read failure",
+    );
+  });
+});
