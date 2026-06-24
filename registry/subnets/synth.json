@@ -1,0 +1,52 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Synth",
+  "netuid": 50,
+  "schema_version": 1,
+  "slug": "sn-50",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-source-repo",
+      "kind": "source-repo",
+      "name": "Synth source repository",
+      "notes": "Official Synth (SN50) source repository, identified via on-chain subnet identity.",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://github.com/mode-network/synth-subnet",
+        "https://api.taomarketcap.com/public/v1/subnets/50"
+      ],
+      "url": "https://github.com/mode-network/synth-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-website",
+      "kind": "website",
+      "name": "Synth website",
+      "notes": "Official Synth (SN50) project website, identified via on-chain subnet identity.",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://synthdata.co/",
+        "https://api.taomarketcap.com/public/v1/subnets/50"
+      ],
+      "url": "https://synthdata.co/"
+    }
+  ]
+}
