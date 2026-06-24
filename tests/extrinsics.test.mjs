@@ -331,6 +331,63 @@ test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () 
   assert.ok(/WHERE block_number = \?/.test(boundSql));
 });
 
+test("GET /extrinsics?block rejects malformed values instead of querying block 0 (#1615)", async () => {
+  let boundSql;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  for (const bad of ["", "abc", "-5", "1.5", "1e3", "0x10", " "]) {
+    boundSql = null;
+    const res = await handleRequest(
+      req(`/api/v1/extrinsics?block=${encodeURIComponent(bad)}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, `?block=${JSON.stringify(bad)} should 400`);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "block");
+    // Crucially, a malformed filter must never reach the DB as block 0.
+    assert.equal(boundSql, null);
+  }
+});
+
+test("GET /extrinsics?block=0 is a valid filter (genesis block, #1615)", async () => {
+  let boundParam;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...v) {
+            if (/WHERE block_number = \?/.test(sql)) boundParam = v[0];
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(req("/api/v1/extrinsics?block=0"), env, {});
+  assert.equal(res.status, 200);
+  assert.equal(boundParam, 0);
+});
+
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {
   const hash = `0x${"c".repeat(64)}`;
   const env = dbWith({
