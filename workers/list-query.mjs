@@ -271,14 +271,35 @@ function validateListQuery(params, config) {
   }
 
   for (const field of config.range_filters) {
+    let min = null;
+    let max = null;
     for (const bound of ["min", "max"]) {
       const key = `${bound}_${field}`;
-      if (params.has(key) && numberParam(params.get(key)) === null) {
+      if (!params.has(key)) {
+        continue;
+      }
+      const parsed = numberParam(params.get(key));
+      if (parsed === null) {
         return {
           parameter: key,
           message: `${key} must be a number.`,
         };
       }
+      if (bound === "min") {
+        min = parsed;
+      } else {
+        max = parsed;
+      }
+    }
+    // A lower bound above its matching upper bound can never select a row, so it
+    // is a contradictory request. Rejecting it turns a silently-always-empty
+    // response into an explicit, debuggable 400 (mirrors how out-of-range and
+    // malformed bounds are already rejected, rather than guessed at).
+    if (min !== null && max !== null && min > max) {
+      return {
+        parameter: `min_${field}`,
+        message: `min_${field} must not exceed max_${field}.`,
+      };
     }
   }
 

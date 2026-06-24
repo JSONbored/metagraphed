@@ -211,4 +211,35 @@ describe("list-query numeric range filters", () => {
     assert.equal(bad.error.parameter, "max_surface_count");
     assert.match(bad.error.message, /must be a number/);
   });
+
+  test("min above its matching max on the same field is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=9&max_surface_count=2"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "min_surface_count");
+    assert.match(bad.error.message, /min_surface_count must not exceed max_surface_count/);
+  });
+
+  test("equal min and max is a valid (single-value) range, not an error", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=5&max_surface_count=5"),
+      "subnets",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(netuids(result), [3]); // only surface_count === 5
+  });
+
+  test("a contradictory bound on one field is rejected before others are applied", () => {
+    // tempo bound is fine on its own; the contradictory surface_count pair still
+    // produces the error, and names the offending field.
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_tempo=100&min_surface_count=9&max_surface_count=2"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "min_surface_count");
+  });
 });
