@@ -259,8 +259,8 @@ function SiteFooter() {
             />
           </div>
           <p className="mt-2 leading-relaxed max-w-xs">
-            Unofficial public-interface registry and explorer for Bittensor. All data is public. Not
-            a block explorer.
+            Unofficial public-interface registry and developer block explorer for Bittensor. All
+            data is public, chain-direct, and verifiable.
           </p>
         </div>
         <FooterCol title="Registry">
