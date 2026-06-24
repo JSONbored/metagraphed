@@ -19,10 +19,7 @@ import { safeExternalUrl } from "./external-link";
 // actions go through safeExternalUrl (http(s) only, no creds/private hosts); internal
 // actions must be a relative path / anchor / query — never an inline scheme like
 // javascript:. Returns undefined for anything unsafe so the <a> is simply not rendered.
-function safeActionHref(action?: {
-  href: string;
-  external?: boolean;
-}): string | undefined {
+function safeActionHref(action?: { href: string; external?: boolean }): string | undefined {
   if (!action?.href) return undefined;
   if (action.external) return safeExternalUrl(action.href);
   const href = action.href.trim();

@@ -155,6 +155,9 @@ export interface Surface {
   updated_at?: string;
   // Per-surface payload fields from /surfaces and /subnets/{n}/surfaces.
   authority?: string; // official | registry-observed | community | native-chain
+  // Per-surface HUMAN review/governance state (#1676): community-submitted →
+  // maintainer-reviewed | rejected. Distinct from probe-derived health/freshness.
+  review?: { state?: string; submitted_by?: string; submitted_at?: string };
   last_verified_at?: string | null;
   stale?: boolean;
   subnet_name?: string;

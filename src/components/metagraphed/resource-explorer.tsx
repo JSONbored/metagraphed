@@ -10,7 +10,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { HealthDot, CurationChip } from "@/components/metagraphed/chips";
+import { HealthDot, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
@@ -591,6 +591,7 @@ function SurfaceRow({ s }: { s: Surface }) {
             {s.name ?? s.url}
           </span>
           <CurationChip level={s.curation_level} />
+          <ReviewChip state={s.review?.state} />
         </div>
         {s.url ? (
           <Tooltip delayDuration={200}>

@@ -157,6 +157,35 @@ export function CurationChip({ level }: { level?: CurationLevel | string }) {
   );
 }
 
+// Per-surface HUMAN review state (#1676). community-submitted is the default and
+// gets no chip (the authority chip already conveys provenance); surface only the
+// meaningful maintainer-reviewed / rejected outcomes.
+const reviewLabel: Record<string, string> = {
+  "maintainer-reviewed": "Reviewed",
+  rejected: "Rejected",
+};
+
+const reviewCls: Record<string, string> = {
+  "maintainer-reviewed": curationCls["maintainer-reviewed"],
+  rejected: "bg-transparent text-ink-muted border-ink-subtle line-through",
+};
+
+export function ReviewChip({ state }: { state?: string }) {
+  const key = String(state ?? "");
+  if (!Object.hasOwn(reviewLabel, key)) return null;
+  return (
+    <span
+      className={classNames(
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+        reviewCls[key],
+      )}
+      title={`Maintainer review: ${key}`}
+    >
+      {reviewLabel[key]}
+    </span>
+  );
+}
+
 export function CandidateChip() {
   return (
     <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
