@@ -168,7 +168,21 @@ function sortRows(rows, params) {
     return rows;
   }
   const direction = params.get("order") === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => compareValues(a[key], b[key]) * direction);
+  return [...rows].sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    // Missing/null values sort LAST regardless of direction, matching
+    // sortSubnets() in src/mcp-server.mjs — otherwise a null would flip between
+    // first (asc) and last (desc), so the REST list and the MCP list disagree on
+    // identical data (e.g. ?sort=emission_share with unpriced subnets).
+    const aNull = av === null || av === undefined;
+    const bNull = bv === null || bv === undefined;
+    if (aNull || bNull) {
+      if (aNull && bNull) return 0;
+      return aNull ? 1 : -1;
+    }
+    return compareValues(av, bv) * direction;
+  });
 }
 
 function compareValues(a, b) {

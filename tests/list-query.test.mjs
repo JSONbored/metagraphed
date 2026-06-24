@@ -113,6 +113,44 @@ describe("list-query pagination order", () => {
   });
 });
 
+describe("list-query null/missing sort ordering", () => {
+  // Rows whose sort field is null/missing must sort LAST in both directions,
+  // matching sortSubnets() in src/mcp-server.mjs so the REST list and MCP list
+  // agree on identical data.
+  const data = {
+    subnets: [
+      { netuid: 1, emission_share: 0.05 },
+      { netuid: 2 }, // missing emission_share
+      { netuid: 3, emission_share: 0.09 },
+      { netuid: 4, emission_share: null },
+    ],
+  };
+
+  test("ascending keeps real values ordered with null/missing last", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/economics?sort=emission_share&order=asc"),
+      "economics",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [1, 3, 2, 4],
+    );
+  });
+
+  test("descending still keeps null/missing last (not first)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/economics?sort=emission_share&order=desc"),
+      "economics",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [3, 1, 2, 4],
+    );
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
