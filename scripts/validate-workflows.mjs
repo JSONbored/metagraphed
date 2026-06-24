@@ -112,23 +112,24 @@ for (const workflow of workflows) {
     );
   }
   if (workflow === "validate.yml") {
-    // Route classification must stay in this trusted workflow. Running a
-    // checkout-local action/script would let pull requests forge `mode=ugc` and
-    // skip full validation. The deletion-filtered verification is consumed back
-    // in this workflow.
+    // There is NO reduced "ugc" lane to forge — every PR runs the full
+    // validation. The only PR-derived input is the deletion-filtered submitted-
+    // file list, computed inline in this trusted workflow (a checkout-local
+    // action could be PR-controlled) and consumed only to diff-scope the
+    // reproducible-artifact verifier.
     check(
       !content.includes("uses: ./.github/actions/classify-validation-route"),
       workflow,
       "validate workflow must not route CI through PR-controlled local actions",
     );
     check(
-      content.includes("git diff --name-only ") &&
-        content.includes("> changed-files.txt") &&
+      content.includes("git diff --name-only") &&
         content.includes("--diff-filter=d") &&
         content.includes("> submitted-artifact-files.txt") &&
-        content.includes("python3 - <<'PY_ROUTE'"),
+        !content.includes("PY_ROUTE") &&
+        !content.includes("mode=ugc"),
       workflow,
-      "validate workflow must compute routing diffs and classify the route inline from trusted workflow code",
+      "validate workflow must compute the submitted-artifact diff inline and run no reduced ugc lane",
     );
     check(
       content.includes("--changed-files submitted-artifact-files.txt"),
