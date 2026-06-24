@@ -361,13 +361,21 @@ jobs:
       - name: Verify committed derived artifacts are fresh
         if: steps.route.outputs.mode == 'full'
         run: |
-          # public/datasets/ is excluded alongside r2-manifest: those CSV/JSON exports
-          # are DATA-derived (rebuilt + served as static assets on every deploy) and
-          # re-drift on every registry refresh, so gating them just red-lined main on
-          # unrelated PRs. The CONTRACT artifacts (openapi.json/types.d.ts/contracts.json/
-          # api-index.json/operational-surfaces.json) stay gated — they change only with
-          # reviewed schema/source PRs and MUST be regenerated + committed.
-          excludes=(':(exclude)public/metagraph/r2-manifest.json' ':(exclude)public/datasets')
+          # Only CONTRACT artifacts are gated here — openapi.json / types.d.ts /
+          # contracts.json / api-index.json / operational-surfaces.json — because they
+          # change only with reviewed schema/source PRs and MUST be regenerated +
+          # committed. DATA-derived artifacts are NOT gated: they re-drift on every
+          # registry/data edit and would red-line build-less community surface PRs (the
+          # single-file model makes adding a surface a one-file data PR). Those are
+          # handled out-of-band: public/datasets/ + the llms.txt catalogs are gitignored
+          # (rebuilt + served via ASSETS on deploy); r2-manifest.json is the publish
+          # lockfile; schemas/index.json is a network-capture cache the build reconciles
+          # in place (a new openapi surface legitimately adds a not-captured placeholder).
+          excludes=(
+            ':(exclude)public/metagraph/r2-manifest.json'
+            ':(exclude)public/metagraph/schemas/index.json'
+            ':(exclude)public/datasets'
+          )
           status=$(git status --porcelain --untracked-files=all -- public/ "${excludes[@]}")
           if [ -n "$status" ]; then
             echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed, deleted, or recreated them). Run 'npm run build' and commit the result."
