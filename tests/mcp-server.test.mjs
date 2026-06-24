@@ -2551,6 +2551,125 @@ describe("list_subnets", () => {
     assert.equal(byDomain.total, 1);
     assert.equal(byDomain.subnets[0].netuid, 8);
   });
+
+  test("sort by integration_readiness desc returns the most ready first + echoes order", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 0, 8],
+    );
+    assert.equal(out.sort, "integration_readiness");
+    assert.equal(out.order, "desc");
+  });
+
+  test("sort defaults to ascending when order is omitted", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [8, 0, 7],
+    );
+    assert.equal(out.order, "asc");
+  });
+
+  test("sort by name uses string comparison", async () => {
+    const out = (await callTool("list_subnets", { sort: "name" }, { deps }))
+      .body.result.structuredContent;
+    // Allways (7), Parked (8), root (0)
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 8, 0],
+    );
+  });
+
+  test("no sort preserves source order and reports sort/order null", async () => {
+    const out = (await callTool("list_subnets", {}, { deps })).body.result
+      .structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [0, 7, 8],
+    );
+    assert.equal(out.sort, null);
+    assert.equal(out.order, null);
+  });
+
+  test("rejects an unknown sort field or order value", async () => {
+    const badSort = await callTool("list_subnets", { sort: "bogus" }, { deps });
+    assert.equal(badSort.body.result.isError, true);
+    assert.ok(badSort.body.result.content[0].text.includes("sort"));
+    const badOrder = await callTool(
+      "list_subnets",
+      { sort: "netuid", order: "sideways" },
+      { deps },
+    );
+    assert.equal(badOrder.body.result.isError, true);
+    assert.ok(badOrder.body.result.content[0].text.includes("order"));
+  });
+
+  test("unscored subnets sort last and equal values tie-break by netuid", async () => {
+    const tieDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 5, name: "E", integration_readiness: 50 },
+          { netuid: 3, name: "C", integration_readiness: 50 },
+          { netuid: 2, name: "B", integration_readiness: 80 },
+          { netuid: 9, name: "I" }, // no integration_readiness → null
+          { netuid: 1, name: "A" }, // no integration_readiness → null
+        ],
+      },
+    });
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps: tieDeps },
+      )
+    ).body.result.structuredContent;
+    // 80 first; the two 50s tie → netuid asc (3,5); the nulls sort last → netuid
+    // asc (1,9), even under desc.
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [2, 3, 5, 1, 9],
+    );
+  });
+
+  test("a scored subnet sorts before an unscored one for either input order", async () => {
+    // Reversing the input flips which side of the comparator the null lands on,
+    // so both nulls-last branches are exercised; the result is the same.
+    for (const subnets of [
+      [
+        { netuid: 1, name: "A", integration_readiness: 10 },
+        { netuid: 2, name: "B" },
+      ],
+      [
+        { netuid: 2, name: "B" },
+        { netuid: 1, name: "A", integration_readiness: 10 },
+      ],
+    ]) {
+      const out = (
+        await callTool(
+          "list_subnets",
+          { sort: "integration_readiness" },
+          { deps: makeDeps({ "/metagraph/subnets.json": { subnets } }) },
+        )
+      ).body.result.structuredContent;
+      assert.deepEqual(
+        out.subnets.map((s) => s.netuid),
+        [1, 2],
+      );
+    }
+  });
 });
 
 // The keyword search tools share the list_subnets pagination contract: page

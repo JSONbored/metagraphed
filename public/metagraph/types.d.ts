@@ -4074,6 +4074,16 @@ export interface components {
                 window: string;
             };
             rate_limit_notes?: string;
+            /** @description Per-surface review/trust state (single-file contribution model): community-submitted surfaces enter as "community-submitted" and are promoted in place by the Gittensory Gate / maintainer review. Distinct from probe-derived verification (health) and subnet-level curation.review_state. */
+            review?: {
+                /** @enum {unknown} */
+                confidence?: "low" | "medium" | "high";
+                review_notes?: string;
+                /** @enum {unknown} */
+                state: "community-submitted" | "schema-valid" | "auto-verified" | "maintainer-reviewed" | "stale" | "rejected";
+                submitted_at?: string;
+                submitted_by?: string;
+            };
             /** @enum {unknown} */
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
             /** Format: uri */
@@ -11425,6 +11435,21 @@ export interface operations {
                 domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
                 status?: "active" | "inactive";
                 subnet_type?: "root" | "application";
+                q?: string;
+                min_block?: number;
+                max_block?: number;
+                min_candidate_count?: number;
+                max_candidate_count?: number;
+                min_mechanism_count?: number;
+                max_mechanism_count?: number;
+                min_participant_count?: number;
+                max_participant_count?: number;
+                min_probed_surface_count?: number;
+                max_probed_surface_count?: number;
+                min_surface_count?: number;
+                max_surface_count?: number;
+                min_tempo?: number;
+                max_tempo?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;

@@ -10,6 +10,7 @@
     "search",
     "social-data"
   ],
+  "contact": "giga@desearch.ai",
   "curation": {
     "gap_notes": [
       "No verified SSE/event stream yet.",
@@ -35,6 +36,9 @@
   "notes": "Reviewed overlay for SN22 using the official Desearch website, docs, public OpenAPI schema, console, and source repository. The OpenAPI schema advertises api.desearch.ai as the API server; protected method calls require separate review before proxy eligibility.",
   "schema_version": 1,
   "slug": "sn-22",
+  "social": {
+    "x": "https://x.com/desearch_ai"
+  },
   "source_repo": "https://github.com/Desearch-ai/subnet-22",
   "status": "active",
   "surfaces": [
@@ -213,9 +217,31 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/22"],
       "url": "https://taomarketcap.com/subnets/22"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-openapi-api-desearch-ai",
+      "kind": "openapi",
+      "name": "Desearch community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.desearch.ai/openapi.json",
+      "source_urls": ["https://www.desearch.ai/docs"],
+      "url": "https://api.desearch.ai/openapi.json"
     }
   ],
-  "website_url": "https://www.desearch.ai/",
-  "social": { "x": "https://x.com/desearch_ai" },
-  "contact": "giga@desearch.ai"
+  "website_url": "https://www.desearch.ai/"
 }

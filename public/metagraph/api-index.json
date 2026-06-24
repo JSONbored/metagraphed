@@ -748,6 +748,96 @@
           }
         },
         {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",

@@ -150,6 +150,18 @@ public/metagraph/review/maintainer-decisions.json
 # them can't turn CI red. (Contract artifacts stay committed + gated.)
 public/datasets/
 
+# AI-discovery catalogs (llms.txt family) — DATA-derived from the registry (they
+# list every subnet + surface), regenerated + served as static assets on every
+# build/deploy via ASSETS. Same rationale as public/datasets/: never commit. A
+# single community surface PR re-drifts them, which would red-line the
+# fresh-artifacts gate for build-less contributors (the whole point of the
+# single-file model is that adding a surface is one small data PR). The deploy
+# rebuilds them; only the CONTRACT artifacts (openapi/types/contracts/api-index/
+# operational-surfaces) stay committed + gated.
+public/llms.txt
+public/llms-full.txt
+public/.well-known/llms.txt
+
 # Local/private automation implementation details
 private/
 ops/private/
@@ -187,9 +199,11 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Claude Code session directory (local, per-developer) — but version-control the
-# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery).
+# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery) and
+# the committed contributor skill in .claude/skills/ (read by Claude Code + Codex).
 .claude/*
 !.claude/commands/
+!.claude/skills/
 
 # Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
 __pycache__/

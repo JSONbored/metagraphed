@@ -11311,6 +11311,42 @@
           "rate_limit_notes": {
             "type": "string"
           },
+          "review": {
+            "additionalProperties": false,
+            "description": "Per-surface review/trust state (single-file contribution model): community-submitted surfaces enter as \"community-submitted\" and are promoted in place by the Gittensory Gate / maintainer review. Distinct from probe-derived verification (health) and subnet-level curation.review_state.",
+            "properties": {
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "review_notes": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "community-submitted",
+                  "schema-valid",
+                  "auto-verified",
+                  "maintainer-reviewed",
+                  "stale",
+                  "rejected"
+                ]
+              },
+              "submitted_at": {
+                "type": "string"
+              },
+              "submitted_by": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          },
           "schema_status": {
             "enum": [
               "machine-readable",

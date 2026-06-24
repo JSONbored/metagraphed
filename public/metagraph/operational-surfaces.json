@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 55,
+  "surface_count": 73,
   "surfaces": [
     {
       "auth_required": false,
@@ -173,6 +173,24 @@
       "surface_id": "sn-6-numinous-api-health",
       "surface_key": "srf-4d92fe6304cbb843",
       "url": "https://api.numinouslabs.io/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 6,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "subnet_name": "Numinous",
+      "subnet_slug": "numinous",
+      "surface_id": "sn-6-numinous-data-artifact",
+      "surface_key": "srf-2330b9f59734f7b9",
+      "url": "https://api.numinouslabs.io/api/v1/benchmarks/baseline"
     },
     {
       "auth_required": false,
@@ -374,7 +392,25 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 7,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "sn-7-allways-data-artifact",
+      "surface_key": "srf-c1b8cc4bcbfbe442",
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 7,
       "probe": {
@@ -386,13 +422,31 @@
       "public_safe": true,
       "subnet_name": "Allways",
       "subnet_slug": "allways",
-      "surface_id": "community-sn-7-subnet-api-api-all-ways-io",
+      "surface_id": "sn-7-allways-subnet-api",
       "surface_key": "srf-7ae24ec1e4ae7d50",
       "url": "https://api.all-ways.io/swaps"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 14,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "subnet_name": "Cacheon",
+      "subnet_slug": "cacheon",
+      "surface_id": "sn-14-cacheon-data-artifact",
+      "surface_key": "srf-c0fe4dbcf049a0f8",
+      "url": "https://api.cacheon.ai/api/container-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 14,
       "probe": {
@@ -404,7 +458,7 @@
       "public_safe": true,
       "subnet_name": "Cacheon",
       "subnet_slug": "cacheon",
-      "surface_id": "community-sn-14-subnet-api-api-cacheon-ai",
+      "surface_id": "sn-14-cacheon-subnet-api",
       "surface_key": "srf-08ad6da0db95e254",
       "url": "https://api.cacheon.ai/api/status"
     },
@@ -536,6 +590,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 34,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "surface_id": "sn-34-bitmind-data-artifact",
+      "surface_key": "srf-4bfccb16de73d4f2",
+      "url": "https://api.bitmind.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 34,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "surface_id": "sn-34-bitmind-subnet-api",
+      "surface_key": "srf-faea9f5c79d46a06",
+      "url": "https://api.bitmind.ai/health"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 47,
@@ -554,6 +644,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 49,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-robotics-data-artifact",
+      "surface_key": "srf-af1fcbae9651114b",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "kind": "subnet-api",
       "netuid": 51,
@@ -569,6 +677,24 @@
       "surface_id": "sn-51-website-common-api",
       "surface_key": "srf-c27814da8fc343a3",
       "url": "https://lium.io/api"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 56,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-data-artifact",
+      "surface_key": "srf-0c4b158f2a6899cc",
+      "url": "https://api.gradients.io/v1/network/status"
     },
     {
       "auth_required": false,
@@ -644,6 +770,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 58,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "surface_id": "sn-58-handshake58-data-artifact",
+      "surface_key": "srf-96e25dfab86a4d8c",
+      "url": "https://handshake58.com/api/skills"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "subnet-api",
       "netuid": 58,
@@ -677,6 +821,78 @@
       "surface_id": "sn-58-handshake58-skills-api",
       "surface_key": "srf-fdcb03337cc44e64",
       "url": "https://handshake58.com/api/skills?status=published"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 58,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "surface_id": "sn-58-handshake58-subnet-api",
+      "surface_key": "srf-a13272815c6137f4",
+      "url": "https://handshake58.com/api/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-data-artifact",
+      "surface_key": "srf-db88986ea3dcbe82",
+      "url": "https://api.chutes.ai/chutes/gpu_count_history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-data-artifact-api-chutes-ai",
+      "surface_key": "srf-34a4ac83864d4ae7",
+      "url": "https://api.chutes.ai/chutes/boosted"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-data-artifact-api-chutes-ai-2",
+      "surface_key": "srf-6acf119341034de8",
+      "url": "https://api.chutes.ai/chutes/utilization"
     },
     {
       "auth_required": false,
@@ -821,6 +1037,114 @@
       "surface_id": "gittensory-contribution-interface",
       "surface_key": "srf-cc923091819b9bf0",
       "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact",
+      "surface_key": "srf-a396bddd09cb2fe8",
+      "url": "https://api.gittensor.io/dash/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io",
+      "surface_key": "srf-db81d6e1d5e2f173",
+      "url": "https://api.gittensor.io/issues"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io-2",
+      "surface_key": "srf-789f54a62d5ae379",
+      "url": "https://api.gittensor.io/issues/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io-3",
+      "surface_key": "srf-d297acc121477389",
+      "url": "https://api.gittensor.io/dash/languages"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io-4",
+      "surface_key": "srf-02d52d57a8455bfb",
+      "url": "https://api.gittensor.io/dash/repos"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-subnet-api",
+      "surface_key": "srf-e459f9f0b93f549f",
+      "url": "https://api.gittensor.io/miners"
     },
     {
       "auth_required": false,
