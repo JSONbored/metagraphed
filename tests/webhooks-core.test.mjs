@@ -8,11 +8,19 @@ import {
   isPublicWebhookAddress,
   isPublicWebhookUrl,
   isResolvedPublicWebhookUrl,
+  isValidWebhookSecret,
   normalizeFilters,
   publicSubscriptionView,
+  resolveSecretGraceMs,
+  revokeSubscriptionPreviousSecret,
+  rotateSubscriptionSecret,
   signPayload,
+  signPayloadMulti,
+  subscriptionSigningSecrets,
   timingSafeEqual,
   validateSubscriptionInput,
+  WEBHOOK_SECRET_GRACE_MAX_MS,
+  WEBHOOK_SECRET_GRACE_MS,
 } from "../src/webhooks.mjs";
 
 // --- isPublicWebhookAddress ---------------------------------------------------
@@ -665,5 +673,314 @@ describe("dispatchChangeEvent", () => {
     const byId = Object.fromEntries(results.map((r) => [r.id, r.status]));
     assert.equal(byId.ok, "delivered");
     assert.equal(byId.bad, "skipped");
+  });
+});
+
+// --- secret rotation ---------------------------------------------------------
+const ACTIVE = "active-secret-0001";
+const PREVIOUS = "previous-secret-0001";
+const NEW = "new-secret-000000001";
+// A fixed "now" the test grace windows are anchored to.
+const NOW_ISO = "2026-06-11T00:00:00.000Z";
+const NOW_MS = Date.parse(NOW_ISO);
+
+describe("isValidWebhookSecret", () => {
+  test("enforces the 16-256 character string contract", () => {
+    assert.equal(isValidWebhookSecret("a".repeat(16)), true);
+    assert.equal(isValidWebhookSecret("a".repeat(256)), true);
+    assert.equal(isValidWebhookSecret("a".repeat(15)), false);
+    assert.equal(isValidWebhookSecret("a".repeat(257)), false);
+    assert.equal(isValidWebhookSecret(12345), false);
+    assert.equal(isValidWebhookSecret(undefined), false);
+  });
+});
+
+describe("resolveSecretGraceMs", () => {
+  test("defaults when unset, scales seconds→ms, bounds + rejects bad input", () => {
+    assert.equal(resolveSecretGraceMs(undefined), WEBHOOK_SECRET_GRACE_MS);
+    assert.equal(resolveSecretGraceMs(null), WEBHOOK_SECRET_GRACE_MS);
+    assert.equal(resolveSecretGraceMs(0), 0); // explicit no-grace (immediate retire)
+    assert.equal(resolveSecretGraceMs(3600), 3600 * 1000);
+    assert.equal(
+      resolveSecretGraceMs(WEBHOOK_SECRET_GRACE_MAX_MS / 1000),
+      WEBHOOK_SECRET_GRACE_MAX_MS,
+    );
+    assert.equal(
+      resolveSecretGraceMs(WEBHOOK_SECRET_GRACE_MAX_MS / 1000 + 1),
+      null,
+    );
+    assert.equal(resolveSecretGraceMs(-1), null);
+    assert.equal(resolveSecretGraceMs(1.5), null);
+    assert.equal(resolveSecretGraceMs("3600"), null);
+  });
+});
+
+describe("subscriptionSigningSecrets", () => {
+  test("legacy flat-secret record → just the active secret", () => {
+    assert.deepEqual(subscriptionSigningSecrets({ secret: ACTIVE }, NOW_MS), [
+      ACTIVE,
+    ]);
+  });
+
+  test("active + in-grace previous → both, active first", () => {
+    assert.deepEqual(
+      subscriptionSigningSecrets(
+        {
+          secret: ACTIVE,
+          previous_secret: PREVIOUS,
+          previous_secret_expires_at: new Date(NOW_MS + 1000).toISOString(),
+        },
+        NOW_MS,
+      ),
+      [ACTIVE, PREVIOUS],
+    );
+  });
+
+  test("an elapsed grace window drops the previous secret", () => {
+    assert.deepEqual(
+      subscriptionSigningSecrets(
+        {
+          secret: ACTIVE,
+          previous_secret: PREVIOUS,
+          previous_secret_expires_at: new Date(NOW_MS - 1).toISOString(),
+        },
+        NOW_MS,
+      ),
+      [ACTIVE],
+    );
+  });
+
+  test("fails closed on a missing/invalid expiry", () => {
+    assert.deepEqual(
+      subscriptionSigningSecrets(
+        { secret: ACTIVE, previous_secret: PREVIOUS },
+        NOW_MS,
+      ),
+      [ACTIVE],
+    );
+    assert.deepEqual(
+      subscriptionSigningSecrets(
+        {
+          secret: ACTIVE,
+          previous_secret: PREVIOUS,
+          previous_secret_expires_at: "not-a-date",
+        },
+        NOW_MS,
+      ),
+      [ACTIVE],
+    );
+  });
+
+  test("no active secret → empty; a previous equal to active is not duplicated", () => {
+    assert.deepEqual(subscriptionSigningSecrets({}, NOW_MS), []);
+    assert.deepEqual(
+      subscriptionSigningSecrets(
+        {
+          secret: ACTIVE,
+          previous_secret: ACTIVE,
+          previous_secret_expires_at: new Date(NOW_MS + 1000).toISOString(),
+        },
+        NOW_MS,
+      ),
+      [ACTIVE],
+    );
+  });
+});
+
+describe("signPayloadMulti", () => {
+  test("a single secret matches signPayload exactly (unchanged wire format)", async () => {
+    const combined = await signPayloadMulti([ACTIVE], "body");
+    assert.equal(combined, await signPayload(ACTIVE, "body"));
+    assert.match(combined, /^[0-9a-f]{64}$/);
+  });
+
+  test("multiple secrets → comma-joined, each independently verifiable", async () => {
+    const combined = await signPayloadMulti([ACTIVE, PREVIOUS], "body");
+    const parts = combined.split(",");
+    assert.equal(parts.length, 2);
+    assert.equal(parts[0], await signPayload(ACTIVE, "body"));
+    assert.equal(parts[1], await signPayload(PREVIOUS, "body"));
+  });
+
+  test("filters non-string / empty secrets and accepts a bare string", async () => {
+    assert.equal(
+      await signPayloadMulti([ACTIVE, "", null, undefined], "body"),
+      await signPayload(ACTIVE, "body"),
+    );
+    assert.equal(
+      await signPayloadMulti(ACTIVE, "body"),
+      await signPayload(ACTIVE, "body"),
+    );
+    assert.equal(await signPayloadMulti([], "body"), "");
+  });
+});
+
+describe("rotateSubscriptionSecret", () => {
+  const base = {
+    id: "s1",
+    url: "https://hooks.example.com/mg",
+    secret: ACTIVE,
+    created_at: "2026-06-01T00:00:00.000Z",
+    active: true,
+  };
+
+  test("installs the new secret, demotes the old into a grace window", () => {
+    const next = rotateSubscriptionSecret(base, {
+      newSecret: NEW,
+      nowIso: NOW_ISO,
+      graceMs: WEBHOOK_SECRET_GRACE_MS,
+    });
+    assert.equal(next.secret, NEW);
+    assert.equal(next.previous_secret, ACTIVE);
+    assert.equal(next.rotated_at, NOW_ISO);
+    assert.equal(
+      next.previous_secret_expires_at,
+      new Date(NOW_MS + WEBHOOK_SECRET_GRACE_MS).toISOString(),
+    );
+    // Unrelated fields are preserved; the input is not mutated.
+    assert.equal(next.url, base.url);
+    assert.equal(next.created_at, base.created_at);
+    assert.equal(base.secret, ACTIVE);
+  });
+
+  test("a zero grace retires the old secret immediately (no previous)", () => {
+    const next = rotateSubscriptionSecret(base, {
+      newSecret: NEW,
+      nowIso: NOW_ISO,
+      graceMs: 0,
+    });
+    assert.equal(next.secret, NEW);
+    assert.equal(next.previous_secret, undefined);
+    assert.equal(next.previous_secret_expires_at, undefined);
+  });
+
+  test("rotating again replaces the previous secret (only two ever live)", () => {
+    const once = rotateSubscriptionSecret(base, {
+      newSecret: NEW,
+      nowIso: NOW_ISO,
+    });
+    const twice = rotateSubscriptionSecret(once, {
+      newSecret: "third-secret-00001",
+      nowIso: "2026-06-12T00:00:00.000Z",
+    });
+    assert.equal(twice.secret, "third-secret-00001");
+    assert.equal(twice.previous_secret, NEW); // the just-superseded secret
+  });
+
+  test("a record without a prior secret rotates in cleanly (no dangling previous)", () => {
+    const next = rotateSubscriptionSecret(
+      { id: "s2", url: base.url },
+      { newSecret: NEW, nowIso: NOW_ISO },
+    );
+    assert.equal(next.secret, NEW);
+    assert.equal(next.previous_secret, undefined);
+  });
+
+  test("an unparseable nowIso anchors the grace window to the epoch", () => {
+    const next = rotateSubscriptionSecret(base, {
+      newSecret: NEW,
+      nowIso: "not-a-date",
+      graceMs: 1000,
+    });
+    // Date.parse → NaN folds to 0, so the window expires near the epoch (already
+    // past) — the previous secret is honored by no one. Fail-safe, not a throw.
+    assert.equal(next.previous_secret, ACTIVE);
+    assert.equal(next.previous_secret_expires_at, new Date(1000).toISOString());
+  });
+});
+
+describe("revokeSubscriptionPreviousSecret", () => {
+  test("drops the previous secret and ends the window", () => {
+    const next = revokeSubscriptionPreviousSecret({
+      id: "s1",
+      secret: NEW,
+      previous_secret: ACTIVE,
+      previous_secret_expires_at: NOW_ISO,
+    });
+    assert.equal(next.secret, NEW);
+    assert.equal(next.previous_secret, undefined);
+    assert.equal(next.previous_secret_expires_at, undefined);
+  });
+
+  test("is a no-op (same reference) when no previous secret is pending", () => {
+    const record = { id: "s1", secret: NEW };
+    assert.equal(revokeSubscriptionPreviousSecret(record), record);
+    assert.equal(revokeSubscriptionPreviousSecret(null), null);
+  });
+});
+
+describe("publicSubscriptionView rotation metadata", () => {
+  test("exposes rotation timestamps but never the secret values", () => {
+    const view = publicSubscriptionView({
+      id: "s1",
+      url: "https://h.example.com",
+      secret: NEW,
+      previous_secret: ACTIVE,
+      rotated_at: NOW_ISO,
+      previous_secret_expires_at: "2026-06-12T00:00:00.000Z",
+    });
+    assert.equal(view.secret, undefined);
+    assert.equal(view.previous_secret, undefined);
+    assert.equal(view.rotated_at, NOW_ISO);
+    assert.equal(view.previous_secret_expires_at, "2026-06-12T00:00:00.000Z");
+  });
+
+  test("defaults rotation metadata to null for a never-rotated subscription", () => {
+    const view = publicSubscriptionView({ id: "s1", secret: ACTIVE });
+    assert.equal(view.rotated_at, null);
+    assert.equal(view.previous_secret_expires_at, null);
+  });
+});
+
+describe("deliverChangeEvent dual-signing during a rotation grace window", () => {
+  const event = buildChangeEvent({
+    changelog: { subnets: { added: [{ netuid: 7 }] } },
+  });
+  const url = "https://hooks.example.com/mg";
+
+  test("sends both signatures mid-grace; the consumer can verify either", async () => {
+    let header;
+    const out = await deliverChangeEvent({
+      subscription: {
+        id: "s1",
+        url,
+        secret: NEW,
+        previous_secret: ACTIVE,
+        previous_secret_expires_at: new Date(NOW_MS + 60_000).toISOString(),
+      },
+      event,
+      now: () => NOW_ISO,
+      fetchFn: async (_url, init) => {
+        header = init.headers["x-metagraph-signature"];
+        return new Response(null, { status: 204 });
+      },
+    });
+    assert.equal(out.status, "delivered");
+    const body = JSON.stringify(event);
+    assert.deepEqual(header.split(","), [
+      await signPayload(NEW, body),
+      await signPayload(ACTIVE, body),
+    ]);
+  });
+
+  test("sends only the active signature once the grace window has elapsed", async () => {
+    let header;
+    await deliverChangeEvent({
+      subscription: {
+        id: "s1",
+        url,
+        secret: NEW,
+        previous_secret: ACTIVE,
+        previous_secret_expires_at: new Date(NOW_MS - 1).toISOString(),
+      },
+      event,
+      now: () => NOW_ISO,
+      fetchFn: async (_url, init) => {
+        header = init.headers["x-metagraph-signature"];
+        return new Response(null, { status: 204 });
+      },
+    });
+    assert.equal(header.includes(","), false);
+    assert.equal(header, await signPayload(NEW, JSON.stringify(event)));
   });
 });

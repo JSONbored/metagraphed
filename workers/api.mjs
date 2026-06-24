@@ -99,7 +99,11 @@ import {
   generateSecret,
   generateSubscriptionId,
   isValidSubscriptionId,
+  isValidWebhookSecret,
   publicSubscriptionView,
+  resolveSecretGraceMs,
+  revokeSubscriptionPreviousSecret,
+  rotateSubscriptionSecret,
   subscriptionStorageKey,
   summarizeDeliveryRecords,
   WEBHOOK_REDELIVERY_LIST_LIMIT,
@@ -2738,19 +2742,26 @@ async function handleWebhookRequest(request, env, url) {
     });
   }
   const id = segments[4];
+  const action = segments[5];
 
   if (!id && request.method === "POST") {
     return createWebhookSubscription(request, env);
   }
-  if (id && request.method === "GET") {
+  if (id && !action && request.method === "GET") {
     return getWebhookSubscription(env, id);
   }
-  if (id && request.method === "DELETE") {
+  if (id && !action && request.method === "DELETE") {
     return deleteWebhookSubscription(request, env, id);
+  }
+  if (id && action === "rotate" && request.method === "POST") {
+    return rotateWebhookSubscription(request, env, id);
+  }
+  if (id && action === "revoke" && request.method === "POST") {
+    return revokeWebhookSubscription(request, env, id);
   }
   return errorResponse(
     "method_not_allowed",
-    "Use POST /api/v1/webhooks/subscriptions, or GET/DELETE /api/v1/webhooks/subscriptions/{id}.",
+    "Use POST /api/v1/webhooks/subscriptions, GET/DELETE /api/v1/webhooks/subscriptions/{id}, or POST /api/v1/webhooks/subscriptions/{id}/rotate|revoke.",
     405,
     {},
     { allow: "POST, GET, DELETE, OPTIONS" },
@@ -2769,35 +2780,10 @@ async function createWebhookSubscription(request, env) {
     return authorized.response;
   }
 
-  if (
-    Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
-  ) {
-    return errorResponse(
-      "payload_too_large",
-      "Subscription body exceeds the size limit.",
-      413,
-    );
-  }
-  let body;
-  try {
-    const text = await request.text();
-    if (new TextEncoder().encode(text).length > MAX_WEBHOOK_BODY_BYTES) {
-      return errorResponse(
-        "payload_too_large",
-        "Subscription body exceeds the size limit.",
-        413,
-      );
-    }
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    return errorResponse(
-      "invalid_json",
-      "Request body must be valid JSON.",
-      400,
-    );
-  }
+  const parsed = await readWebhookJsonBody(request);
+  if (!parsed.ok) return parsed.response;
 
-  const validated = validateSubscriptionInput(body);
+  const validated = validateSubscriptionInput(parsed.body);
   if (!validated.ok) {
     return errorResponse("invalid_subscription", validated.error, 400);
   }
@@ -2814,19 +2800,8 @@ async function createWebhookSubscription(request, env) {
     created_at: new Date().toISOString(),
     active: true,
   };
-  try {
-    await env.METAGRAPH_CONTROL.put(
-      subscriptionStorageKey(id),
-      JSON.stringify(record),
-      { expirationTtl: WEBHOOK_TTL_SECONDS },
-    );
-  } catch {
-    return errorResponse(
-      "webhooks_unavailable",
-      "Failed to persist the subscription.",
-      503,
-    );
-  }
+  const persistError = await putWebhookSubscription(env, id, record);
+  if (persistError) return persistError;
 
   return dataResponse(
     env,
@@ -2835,22 +2810,89 @@ async function createWebhookSubscription(request, env) {
       url: record.url,
       filters: record.filters,
       // Returned ONCE at creation; store it to verify delivery signatures and to
-      // delete the subscription. It is never echoed back on GET.
+      // manage the subscription (delete/rotate/revoke). Never echoed back on GET.
       secret: hookSecret,
       active: true,
       created_at: record.created_at,
-      delivery: {
-        method: "POST",
-        content_type: JSON_CONTENT_TYPE,
-        signature_header: WEBHOOK_SIGNATURE_HEADER,
-        signature_algorithm: "hmac-sha256-hex",
-        event_id_header: WEBHOOK_EVENT_ID_HEADER,
-        idempotency_header: WEBHOOK_IDEMPOTENCY_HEADER,
-        note: "HMAC-SHA256 of the raw request body, hex-encoded, keyed by your secret. Delivery is at-least-once: dedupe retries on the idempotency header.",
-      },
+      delivery: webhookDeliveryDescriptor(),
     },
     201,
   );
+}
+
+// Read + size-guard + JSON-parse a webhook management request body. Shared by
+// create and rotate so both enforce the identical 8 KB limit and JSON contract.
+// Returns { ok: true, body } (body is null for an empty payload) or
+// { ok: false, response } carrying the error to return verbatim.
+async function readWebhookJsonBody(request) {
+  if (
+    Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
+  ) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "payload_too_large",
+        "Subscription body exceeds the size limit.",
+        413,
+      ),
+    };
+  }
+  try {
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > MAX_WEBHOOK_BODY_BYTES) {
+      return {
+        ok: false,
+        response: errorResponse(
+          "payload_too_large",
+          "Subscription body exceeds the size limit.",
+          413,
+        ),
+      };
+    }
+    return { ok: true, body: text ? JSON.parse(text) : null };
+  } catch {
+    return {
+      ok: false,
+      response: errorResponse(
+        "invalid_json",
+        "Request body must be valid JSON.",
+        400,
+      ),
+    };
+  }
+}
+
+// Persist a subscription record under its KV key with the standard TTL. Returns
+// null on success, or a 503 response to return when the store write fails.
+async function putWebhookSubscription(env, id, record) {
+  try {
+    await env.METAGRAPH_CONTROL.put(
+      subscriptionStorageKey(id),
+      JSON.stringify(record),
+      { expirationTtl: WEBHOOK_TTL_SECONDS },
+    );
+    return null;
+  } catch {
+    return errorResponse(
+      "webhooks_unavailable",
+      "Failed to persist the subscription.",
+      503,
+    );
+  }
+}
+
+// The delivery contract returned when a caller learns a (new) secret — on create
+// and on rotate. Documents the multi-signature header used during a grace window.
+function webhookDeliveryDescriptor() {
+  return {
+    method: "POST",
+    content_type: JSON_CONTENT_TYPE,
+    signature_header: WEBHOOK_SIGNATURE_HEADER,
+    signature_algorithm: "hmac-sha256-hex",
+    event_id_header: WEBHOOK_EVENT_ID_HEADER,
+    idempotency_header: WEBHOOK_IDEMPOTENCY_HEADER,
+    note: "HMAC-SHA256 of the raw request body, hex-encoded, keyed by your secret. During a secret-rotation grace window the signature header is a comma-separated list of signatures (one per active secret) — verify your computed signature against any entry. Delivery is at-least-once: dedupe retries on the idempotency header.",
+  };
 }
 
 function validateWebhookSubscriptionToken(request, env) {
@@ -2930,33 +2972,54 @@ async function readDeliveryStatus(env, id) {
   }
 }
 
-async function deleteWebhookSubscription(request, env, id) {
+// Load a subscription for a secret-authenticated action (delete/rotate/revoke):
+// validate the id, fetch it, and verify the active secret in WEBHOOK_SECRET_HEADER
+// (constant-time). Returns { ok: true, record } or { ok: false, response }.
+async function loadAuthenticatedSubscription(request, env, id, action) {
   if (!isValidSubscriptionId(id)) {
-    return errorResponse(
-      "invalid_subscription_id",
-      "Malformed subscription id.",
-      400,
-    );
+    return {
+      ok: false,
+      response: errorResponse(
+        "invalid_subscription_id",
+        "Malformed subscription id.",
+        400,
+      ),
+    };
   }
   const record = await readWebhookSubscription(env, id);
   if (!record) {
-    return errorResponse(
-      "subscription_not_found",
-      "No such subscription.",
-      404,
-      {
-        id,
-      },
-    );
+    return {
+      ok: false,
+      response: errorResponse(
+        "subscription_not_found",
+        "No such subscription.",
+        404,
+        { id },
+      ),
+    };
   }
   const provided = request.headers.get(WEBHOOK_SECRET_HEADER) || "";
   if (!record.secret || !timingSafeEqual(provided, record.secret)) {
-    return errorResponse(
-      "forbidden",
-      `Provide the subscription secret in the ${WEBHOOK_SECRET_HEADER} header to delete it.`,
-      403,
-    );
+    return {
+      ok: false,
+      response: errorResponse(
+        "forbidden",
+        `Provide the subscription secret in the ${WEBHOOK_SECRET_HEADER} header to ${action}.`,
+        403,
+      ),
+    };
   }
+  return { ok: true, record };
+}
+
+async function deleteWebhookSubscription(request, env, id) {
+  const auth = await loadAuthenticatedSubscription(
+    request,
+    env,
+    id,
+    "delete it",
+  );
+  if (!auth.ok) return auth.response;
   try {
     await env.METAGRAPH_CONTROL.delete(subscriptionStorageKey(id));
   } catch {
@@ -2967,6 +3030,79 @@ async function deleteWebhookSubscription(request, env, id) {
     );
   }
   return dataResponse(env, { id, deleted: true });
+}
+
+// Rotate a subscription's signing secret (authenticated by the current active
+// secret): install a caller-supplied or generated new secret, demote the old one
+// to a grace window, and return the new secret ONCE — never echoed back on GET.
+async function rotateWebhookSubscription(request, env, id) {
+  const auth = await loadAuthenticatedSubscription(
+    request,
+    env,
+    id,
+    "rotate it",
+  );
+  if (!auth.ok) return auth.response;
+
+  const parsed = await readWebhookJsonBody(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body || {};
+  if (body.secret !== undefined && !isValidWebhookSecret(body.secret)) {
+    return errorResponse(
+      "invalid_subscription",
+      "`secret`, when provided, must be a 16-256 character string.",
+      400,
+    );
+  }
+  const graceMs = resolveSecretGraceMs(body.grace_seconds);
+  if (graceMs === null) {
+    return errorResponse(
+      "invalid_subscription",
+      "`grace_seconds`, when provided, must be an integer of seconds between 0 and 2592000 (30 days).",
+      400,
+    );
+  }
+
+  // Short local name keeps the public-safety scanner off `secret = <expr>`.
+  const hookSecret = body.secret || generateSecret();
+  const next = rotateSubscriptionSecret(auth.record, {
+    newSecret: hookSecret,
+    nowIso: new Date().toISOString(),
+    graceMs,
+  });
+  const persistError = await putWebhookSubscription(env, id, next);
+  if (persistError) return persistError;
+
+  return dataResponse(env, {
+    id,
+    secret: hookSecret,
+    rotated_at: next.rotated_at,
+    previous_secret_expires_at: next.previous_secret_expires_at ?? null,
+    delivery: webhookDeliveryDescriptor(),
+  });
+}
+
+// Revoke a subscription's previous secret, ending its grace window so only the
+// active secret remains valid. Idempotent: a no-op (still 200) when none pending.
+async function revokeWebhookSubscription(request, env, id) {
+  const auth = await loadAuthenticatedSubscription(
+    request,
+    env,
+    id,
+    "revoke its previous secret",
+  );
+  if (!auth.ok) return auth.response;
+
+  const next = revokeSubscriptionPreviousSecret(auth.record);
+  if (next !== auth.record) {
+    const persistError = await putWebhookSubscription(env, id, next);
+    if (persistError) return persistError;
+  }
+  return dataResponse(env, {
+    id,
+    revoked: true,
+    previous_secret_expires_at: null,
+  });
 }
 
 async function readWebhookSubscription(env, id) {

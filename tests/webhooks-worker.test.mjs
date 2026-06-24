@@ -403,6 +403,257 @@ describe("webhook subscription routes", () => {
   });
 });
 
+describe("webhook secret rotation + revocation routes", () => {
+  // Create a subscription and return { env, kv, id, secret } for the rotation tests.
+  async function seedSubscription() {
+    const kv = makeKv();
+    const env = envWith(kv);
+    const created = await (
+      await postSub(env, { url: "https://hooks.example.com/mg" })
+    ).json();
+    return { env, kv, id: created.data.id, secret: created.data.secret };
+  }
+  const rotate = (env, id, secret, body) =>
+    handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}/rotate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(secret ? { "x-metagraph-webhook-secret": secret } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      }),
+      env,
+      {},
+    );
+  const revoke = (env, id, secret) =>
+    handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}/revoke`, {
+        method: "POST",
+        headers: secret ? { "x-metagraph-webhook-secret": secret } : {},
+      }),
+      env,
+      {},
+    );
+
+  test("rotate rejects a wrong/absent secret with 403 and leaves the record intact", async () => {
+    const { env, kv, id, secret } = await seedSubscription();
+    const denied = await rotate(env, id, "wrong-secret-value-x");
+    assert.equal(denied.status, 403);
+    assert.equal((await denied.json()).error.code, "forbidden");
+    // A missing secret header is rejected the same way.
+    const noHeader = await rotate(env, id);
+    assert.equal(noHeader.status, 403);
+    // The active secret is unchanged.
+    assert.equal(JSON.parse(kv.store.get(`webhooks:sub:${id}`)).secret, secret);
+  });
+
+  test("rotate rejects a malformed JSON body with 400", async () => {
+    const { env, id, secret } = await seedSubscription();
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}/rotate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-secret": secret,
+        },
+        body: "{not json",
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_json");
+  });
+
+  test("rotate installs a new secret and opens a grace window for the old one", async () => {
+    const { env, kv, id, secret } = await seedSubscription();
+    const res = await rotate(env, id, secret, { grace_seconds: 3600 });
+    assert.equal(res.status, 200);
+    const data = (await res.json()).data;
+    assert.match(data.secret, /^[0-9a-f]{64}$/);
+    assert.notEqual(data.secret, secret);
+    assert.ok(data.rotated_at);
+    assert.ok(data.previous_secret_expires_at);
+    assert.equal(data.delivery.signature_header, "x-metagraph-signature");
+    // KV: new secret active, old secret demoted to the in-grace previous secret.
+    const stored = JSON.parse(kv.store.get(`webhooks:sub:${id}`));
+    assert.equal(stored.secret, data.secret);
+    assert.equal(stored.previous_secret, secret);
+    assert.equal(
+      stored.previous_secret_expires_at,
+      data.previous_secret_expires_at,
+    );
+  });
+
+  test("rotate accepts a caller-provided new secret", async () => {
+    const { env, id, secret } = await seedSubscription();
+    const res = await rotate(env, id, secret, {
+      secret: "my-rotated-in-secret-value",
+    });
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).data.secret, "my-rotated-in-secret-value");
+  });
+
+  test("rotate rejects an invalid new secret (16-256 chars) with 400", async () => {
+    const { env, id, secret } = await seedSubscription();
+    const res = await rotate(env, id, secret, { secret: "short" });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_subscription");
+  });
+
+  test("rotate rejects an out-of-range grace_seconds with 400", async () => {
+    const { env, id, secret } = await seedSubscription();
+    for (const grace_seconds of [-1, 1.5, 30 * 24 * 60 * 60 + 1]) {
+      const res = await rotate(env, id, secret, { grace_seconds });
+      assert.equal(res.status, 400, `grace_seconds=${grace_seconds}`);
+      assert.equal((await res.json()).error.code, "invalid_subscription");
+    }
+  });
+
+  test("GET surfaces rotation metadata but never any secret value", async () => {
+    const { env, id, secret } = await seedSubscription();
+    const rotated = (await (await rotate(env, id, secret)).json()).data;
+    const view = (
+      await (
+        await handleRequest(
+          req(`/api/v1/webhooks/subscriptions/${id}`),
+          env,
+          {},
+        )
+      ).json()
+    ).data;
+    assert.equal(view.secret, undefined);
+    assert.equal(view.previous_secret, undefined);
+    assert.ok(view.rotated_at);
+    assert.equal(
+      view.previous_secret_expires_at,
+      rotated.previous_secret_expires_at,
+    );
+  });
+
+  test("revoke ends the grace window; the old secret can no longer authenticate", async () => {
+    const { env, kv, id, secret: firstSecret } = await seedSubscription();
+    const secondSecret = (await (await rotate(env, id, firstSecret)).json())
+      .data.secret;
+
+    // Revoke must be authenticated by the active (new) secret.
+    const denied = await revoke(env, id, firstSecret);
+    assert.equal(denied.status, 403, "the demoted secret cannot revoke");
+
+    const res = await revoke(env, id, secondSecret);
+    assert.equal(res.status, 200);
+    const data = (await res.json()).data;
+    assert.equal(data.revoked, true);
+    assert.equal(data.previous_secret_expires_at, null);
+    const stored = JSON.parse(kv.store.get(`webhooks:sub:${id}`));
+    assert.equal(stored.previous_secret, undefined);
+    assert.equal(stored.previous_secret_expires_at, undefined);
+
+    // The revoked (old) secret no longer authenticates a delete; the active one does.
+    const oldDelete = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`, {
+        method: "DELETE",
+        headers: { "x-metagraph-webhook-secret": firstSecret },
+      }),
+      env,
+      {},
+    );
+    assert.equal(oldDelete.status, 403);
+  });
+
+  test("revoke is idempotent (200) when no previous secret is pending", async () => {
+    const { env, id, secret } = await seedSubscription();
+    const res = await revoke(env, id, secret);
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).data.revoked, true);
+  });
+
+  test("503 when KV put fails during rotate", async () => {
+    const { env, kv, id, secret } = await seedSubscription();
+    kv.put = async () => {
+      throw new Error("kv put down");
+    };
+    const res = await rotate(env, id, secret);
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+  });
+
+  test("503 when KV put fails during revoke", async () => {
+    const { env, kv, id, secret } = await seedSubscription();
+    // Open a grace window first so revoke actually writes (next !== record).
+    const rotated = (await (await rotate(env, id, secret)).json()).data;
+    kv.put = async () => {
+      throw new Error("kv put down");
+    };
+    const res = await revoke(env, id, rotated.secret);
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+  });
+
+  test("rotate persists through a fresh request: the new secret authenticates, the old does not", async () => {
+    const { env, id, secret: firstSecret } = await seedSubscription();
+    const secondSecret = (
+      await (await rotate(env, id, firstSecret, { grace_seconds: 0 })).json()
+    ).data.secret;
+    // grace_seconds: 0 retires the old secret immediately (no window).
+    const reRotateOld = await rotate(env, id, firstSecret);
+    assert.equal(reRotateOld.status, 403, "the retired secret cannot rotate");
+    const reRotateNew = await rotate(env, id, secondSecret);
+    assert.equal(reRotateNew.status, 200, "the active secret can rotate again");
+  });
+
+  test("400 invalid_subscription_id for rotate/revoke on a malformed id", async () => {
+    const env = envWith(makeKv());
+    for (const action of ["rotate", "revoke"]) {
+      const res = await handleRequest(
+        req(`/api/v1/webhooks/subscriptions/not-a-uuid/${action}`, {
+          method: "POST",
+          headers: { "x-metagraph-webhook-secret": "whatever-secret-x" },
+        }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400, action);
+      assert.equal((await res.json()).error.code, "invalid_subscription_id");
+    }
+  });
+
+  test("404 for rotate/revoke on an unknown subscription id", async () => {
+    const env = envWith(makeKv());
+    for (const action of ["rotate", "revoke"]) {
+      const res = await handleRequest(
+        req(
+          `/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000/${action}`,
+          {
+            method: "POST",
+            headers: { "x-metagraph-webhook-secret": "whatever-secret-x" },
+          },
+        ),
+        env,
+        {},
+      );
+      assert.equal(res.status, 404, action);
+      assert.equal((await res.json()).error.code, "subscription_not_found");
+    }
+  });
+
+  test("405 for a non-POST method on a rotate/revoke action", async () => {
+    const { env, id } = await seedSubscription();
+    for (const action of ["rotate", "revoke"]) {
+      const res = await handleRequest(
+        req(`/api/v1/webhooks/subscriptions/${id}/${action}`, {
+          method: "GET",
+        }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 405, action);
+      assert.equal((await res.json()).error.code, "method_not_allowed");
+    }
+  });
+});
+
 describe("SSE change feed", () => {
   test("GET /api/v1/events emits a snapshot event", async () => {
     const res = await handleRequest(

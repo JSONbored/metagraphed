@@ -35,6 +35,12 @@ export const WEBHOOK_REDELIVERY_LIST_LIMIT = 256;
 export const WEBHOOK_REDELIVERY_MAX_PER_RUN = 64;
 export const WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION = 8;
 
+// A rotated-out secret keeps signing during a grace window so consumers roll over.
+export const WEBHOOK_SECRET_GRACE_MS = 24 * 60 * 60 * 1000; // 24 h default
+export const WEBHOOK_SECRET_GRACE_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30 d cap
+export const WEBHOOK_SECRET_MIN_LENGTH = 16;
+export const WEBHOOK_SECRET_MAX_LENGTH = 256;
+
 const MAX_FILTER_NETUIDS = 64;
 const MAX_FILTER_KINDS = 8;
 const VALID_CHANGE_KINDS = new Set(["subnets", "artifacts"]);
@@ -206,6 +212,15 @@ export function normalizeFilters(filters) {
   return out;
 }
 
+// A signing secret is an opaque 16–256 char string; shared by create and rotate.
+export function isValidWebhookSecret(secret) {
+  return (
+    typeof secret === "string" &&
+    secret.length >= WEBHOOK_SECRET_MIN_LENGTH &&
+    secret.length <= WEBHOOK_SECRET_MAX_LENGTH
+  );
+}
+
 export function validateSubscriptionInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { ok: false, error: "Request body must be a JSON object." };
@@ -227,11 +242,7 @@ export function validateSubscriptionInput(input) {
   }
   let secret = null;
   if (input.secret !== undefined) {
-    if (
-      typeof input.secret !== "string" ||
-      input.secret.length < 16 ||
-      input.secret.length > 256
-    ) {
+    if (!isValidWebhookSecret(input.secret)) {
       return {
         ok: false,
         error: "`secret`, when provided, must be a 16-256 character string.",
@@ -383,6 +394,19 @@ export async function signPayload(secret, bodyText) {
   return bytesToHex(signature);
 }
 
+// Signature header value for one body: a comma-separated list of hex HMACs, one
+// per secret. A single secret yields a bare hex string (unchanged wire format);
+// a grace window carries both so the consumer can verify against either.
+export async function signPayloadMulti(secrets, bodyText) {
+  const list = (Array.isArray(secrets) ? secrets : [secrets]).filter(
+    (secret) => typeof secret === "string" && secret.length > 0,
+  );
+  const signatures = await Promise.all(
+    list.map((secret) => signPayload(secret, bodyText)),
+  );
+  return signatures.join(",");
+}
+
 // Stable id for an event's content: same bytes ⇒ same id, for every subscriber
 // and every (re)delivery of that event. Subscribers use it to correlate retries.
 export async function webhookEventId(bodyText) {
@@ -429,7 +453,8 @@ export function isValidSubscriptionId(id) {
   );
 }
 
-// Strip the secret before returning a subscription to a client.
+// Strip secrets before returning a subscription to a client; expose rotation
+// timestamps (never the secret values).
 export function publicSubscriptionView(record) {
   if (!record || typeof record !== "object") return null;
   return {
@@ -438,7 +463,82 @@ export function publicSubscriptionView(record) {
     filters: record.filters || {},
     created_at: record.created_at ?? null,
     active: record.active !== false,
+    rotated_at: record.rotated_at ?? null,
+    previous_secret_expires_at: record.previous_secret_expires_at ?? null,
   };
+}
+
+// --- secret rotation ----------------------------------------------------------
+// A subscription signs with its active `secret`; a rotation demotes the old one
+// to `previous_secret`, valid until `previous_secret_expires_at`. At most two
+// secrets are ever live.
+
+// Valid signing secrets, active first, plus an in-grace `previous_secret`.
+// Tolerates the legacy flat-secret shape. A previous secret with a missing/
+// invalid/elapsed expiry is dropped (fail closed).
+export function subscriptionSigningSecrets(subscription, nowMs = 0) {
+  const secrets = [];
+  const active = subscription?.secret;
+  if (typeof active === "string" && active) secrets.push(active);
+  const previous = subscription?.previous_secret;
+  if (typeof previous === "string" && previous && previous !== active) {
+    const expiresAt = Date.parse(subscription?.previous_secret_expires_at);
+    if (Number.isFinite(expiresAt) && expiresAt > nowMs) secrets.push(previous);
+  }
+  return secrets;
+}
+
+// Caller-supplied grace window (seconds) → ms: default when unset, bounded to
+// the cap. Returns null on an invalid value so the caller can reject it.
+export function resolveSecretGraceMs(graceSeconds) {
+  if (graceSeconds === undefined || graceSeconds === null) {
+    return WEBHOOK_SECRET_GRACE_MS;
+  }
+  if (!Number.isInteger(graceSeconds) || graceSeconds < 0) return null;
+  const ms = graceSeconds * 1000;
+  return ms > WEBHOOK_SECRET_GRACE_MAX_MS ? null : ms;
+}
+
+// Record after rotating in a new active secret: the old one becomes
+// `previous_secret` for `graceMs`, `rotated_at` is stamped, and any earlier
+// previous secret is replaced. A zero grace retires the old secret immediately.
+export function rotateSubscriptionSecret(
+  record,
+  { newSecret, nowIso, graceMs = WEBHOOK_SECRET_GRACE_MS } = {},
+) {
+  const next = { ...record, secret: newSecret, rotated_at: nowIso };
+  const outgoing = record?.secret;
+  const nowMs = Date.parse(nowIso) || 0;
+  if (
+    typeof outgoing === "string" &&
+    outgoing &&
+    outgoing !== newSecret &&
+    graceMs > 0
+  ) {
+    next.previous_secret = outgoing;
+    next.previous_secret_expires_at = new Date(nowMs + graceMs).toISOString();
+  } else {
+    delete next.previous_secret;
+    delete next.previous_secret_expires_at;
+  }
+  return next;
+}
+
+// Record after revoking the previous secret (grace window ends now). Returns the
+// input unchanged (same reference) when none is pending, so the caller can skip
+// a redundant write.
+export function revokeSubscriptionPreviousSecret(record) {
+  if (
+    !record ||
+    (record.previous_secret === undefined &&
+      record.previous_secret_expires_at === undefined)
+  ) {
+    return record;
+  }
+  const next = { ...record };
+  delete next.previous_secret;
+  delete next.previous_secret_expires_at;
+  return next;
 }
 
 // --- delivery (publish-time dispatch) -----------------------------------------
@@ -487,8 +587,14 @@ export async function deliverChangeEvent({
       : JSON.stringify(event);
   const timestamp =
     typeof now === "function" ? now() : new Date(0).toISOString();
+  // Sign with every valid secret (active, plus an in-grace previous one). The
+  // no-secret guard above guarantees the active secret is present.
+  const signingSecrets = subscriptionSigningSecrets(
+    subscription,
+    Date.parse(timestamp) || 0,
+  );
   const [signature, eventId, idempotencyKey] = await Promise.all([
-    signPayload(subscription.secret, bodyText),
+    signPayloadMulti(signingSecrets, bodyText),
     webhookEventId(bodyText),
     webhookIdempotencyKey(subscription.id, bodyText),
   ]);
