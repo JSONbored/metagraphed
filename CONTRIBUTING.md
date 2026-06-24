@@ -100,5 +100,6 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 - [`docs/submission-gate.md`](docs/submission-gate.md) — full community submission contract.
 - [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
 - [`docs/api-stability.md`](docs/api-stability.md) — API/contract stability guarantees.
+- [`docs/adr/`](docs/adr/) — architecture decision records (why the system is built this way); [`RELEASING.md`](RELEASING.md) — the release runbook.
 
 By contributing you agree your work is released under the repository's [AGPL-3.0 License](LICENSE) — or Apache-2.0 for contributions to the client SDKs under `packages/client/` and `python/`.

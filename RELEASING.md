@@ -1,8 +1,9 @@
 # Releasing
 
 How metagraphed ships. Most of it is automatic — the only steps that need a
-manual trigger are the MCP registry listings. This is a reference, not a process
-to follow on every change.
+manual trigger are the MCP registry listings. This is the operational runbook (a
+reference, not a per-change checklist); the channel policy and rationale live in
+[ADR 0005](docs/adr/0005-release-process.md).
 
 ## Automatic — no action needed
 

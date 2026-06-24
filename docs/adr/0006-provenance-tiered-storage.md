@@ -1,6 +1,6 @@
 # ADR 0006 — Provenance-tiered storage: git for human inputs, R2/D1 for machine data
 
-Status: proposed (2026-06-14)
+Status: Accepted (partial), 2026-06-14 — step 1 (#571) shipped; steps 2–4 pending.
 
 Refines [ADR 0001](0001-r2-only-data-artifacts.md). Builds on
 [ADR 0002](0002-live-operational-health.md).
