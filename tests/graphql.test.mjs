@@ -455,7 +455,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 
   test("subnets limit:0 falls back to the default page (not clamped up to 1)", async () => {
-    const env = fakeArtifactEnv({
+    const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
           { netuid: 1, name: "A", slug: "a" },
