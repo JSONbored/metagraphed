@@ -2186,9 +2186,13 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
+    .replace("{uid}", String(params.uid ?? ""))
+    .replace("{ss58}", String(params.ss58 ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace("{surface_id}", String(params.surface_id ?? ""))
+    .replace("{ref}", String(params.ref ?? ""))
+    .replace("{hash}", String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {

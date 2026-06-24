@@ -242,17 +242,43 @@ describe("contracts — compileRoutePattern per token type", () => {
   });
 
   test("artifactPathFromTemplate substitutes every supported token", () => {
+    // All eight tokens compileRoutePattern captures must also be substituted here:
+    // netuid, uid, ss58, slug, date, surface_id, ref, hash.
     assert.equal(
       artifactPathFromTemplate(
-        "/metagraph/subnets/{netuid}/{slug}/{date}/{surface_id}.json",
-        { netuid: 7, slug: "x", date: "2026-06-06", surface_id: "sid" },
+        "/m/{netuid}/{uid}/{ss58}/{slug}/{date}/{surface_id}/{ref}/{hash}.json",
+        {
+          netuid: 7,
+          uid: 3,
+          ss58: "5Hk",
+          slug: "x",
+          date: "2026-06-06",
+          surface_id: "sid",
+          ref: "1234",
+          hash: "0xabc",
+        },
       ),
-      "/metagraph/subnets/7/x/2026-06-06/sid.json",
+      "/m/7/3/5Hk/x/2026-06-06/sid/1234/0xabc.json",
     );
-    // A missing param substitutes the empty string (never "undefined").
+    // Real routes that carry the previously-unsubstituted tokens.
     assert.equal(
-      artifactPathFromTemplate("/metagraph/subnets/{netuid}.json", {}),
-      "/metagraph/subnets/.json",
+      artifactPathFromTemplate(
+        "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+        { netuid: 7, uid: 3 },
+      ),
+      "/metagraph/subnets/7/neurons/3.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/extrinsics/{hash}.json", {
+        hash: "0xdeadbeef",
+      }),
+      "/metagraph/extrinsics/0xdeadbeef.json",
+    );
+    // A missing param substitutes the empty string (never "undefined") — also
+    // exercises the `?? ""` fallback for the newly-added tokens.
+    assert.equal(
+      artifactPathFromTemplate("/m/{uid}/{ss58}/{ref}/{hash}.json", {}),
+      "/m////.json",
     );
   });
 });
