@@ -256,6 +256,37 @@ test("buildAccountSummary is schema-stable with no data", () => {
   assert.equal(out.first_seen_at, null);
 });
 
+test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
+  // A registration row with NONE of the optional fields must still produce a
+  // fully-shaped object (nulls + coerced false), never undefined — the
+  // cold/partial-neurons-row contract the account routes depend on.
+  const out = formatRegistration({});
+  assert.equal(out.netuid, null);
+  assert.equal(out.uid, null);
+  assert.equal(out.stake_tao, null);
+  assert.equal(out.validator_permit, false);
+  assert.equal(out.active, false);
+});
+
+test("buildAccountSummary defaults a missing event-kind count to 0", () => {
+  // A kinds row with a kind but no count must surface count:0, not undefined,
+  // so an agent always gets a numeric tally.
+  const out = buildAccountSummary("5Hk", {
+    kinds: [{ kind: "StakeAdded" }],
+  });
+  assert.deepEqual(out.event_kinds, [{ kind: "StakeAdded", count: 0 }]);
+});
+
+test("buildAccountEvents defaults rows/limit/offset when called bare", () => {
+  // No rows array + no options object → an empty, schema-stable feed with
+  // null pagination markers (exercises the rows||[] and ?? null defaults).
+  const out = buildAccountEvents(undefined, "5Hk");
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.limit, null);
+  assert.equal(out.offset, null);
+});
+
 test("buildAccountEvents + buildAccountSubnets shape their artifacts", () => {
   const ev = buildAccountEvents(
     [{ block_number: 2, event_kind: "WeightsSet", observed_at: 1750000000000 }],

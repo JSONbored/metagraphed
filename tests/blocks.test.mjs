@@ -109,6 +109,38 @@ test("formatBlock is null-safe on junk + sparse rows", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatBlock defaults a missing block_number to null (every field nullable)", () => {
+  // A row object with NO block_number must still yield a schema-stable object
+  // (block_number: null), not undefined — the cold-store / partial-row contract.
+  const out = formatBlock({ block_hash: "0xabc" });
+  assert.equal(out.block_number, null);
+  assert.equal(out.block_hash, "0xabc");
+});
+
+test("buildBlock defaults a null/absent ref to null (regression)", () => {
+  // A caller that passes no ref must get ref:null, never undefined — keeps the
+  // detail artifact JSON-stable when the lookup key itself is missing.
+  const out = buildBlock(undefined, undefined);
+  assert.equal(out.ref, null);
+  assert.equal(out.block, null);
+  assert.equal(out.schema_version, 1);
+});
+
+test("pruneBlocks reports changes:null when D1 omits the meta block", async () => {
+  // A delete that returns no `.meta.changes` (some D1 shapes) must surface
+  // changes:null, never crash on the `?? null` fallback.
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return { bind: () => ({ run: async () => ({}) }) };
+      },
+    },
+  };
+  const r = await pruneBlocks(env, { now: () => 1_800_000_000_000 });
+  assert.equal(r.pruned, true);
+  assert.equal(r.changes, null);
+});
+
 test("buildBlock wraps a row + is schema-stable when absent (#1345)", () => {
   const out = buildBlock(
     { block_number: 5, block_hash: "0x5", observed_at: 1750000000000 },
