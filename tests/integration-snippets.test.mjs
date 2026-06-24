@@ -168,6 +168,35 @@ describe("generateServiceSnippets structured auth (#746)", () => {
     assert.match(out.curl, /\?api_key=Bearer%20YOUR_API_KEY/);
   });
 
+  test("malformed UTF-16 in query auth is dropped without throwing", () => {
+    let out;
+    assert.doesNotThrow(() => {
+      out = generateServiceSnippets({
+        ...base,
+        auth: {
+          scheme: "api-key",
+          location: "query",
+          name: "\uD800",
+          value_format: "<api-key>",
+        },
+      });
+    });
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+
+    out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api_key",
+        value_format: "\uD800",
+      },
+    });
+    assert.ok(out);
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+    assert.doesNotMatch(out.python, /api_key/);
+  });
+
   test("structured auth wins over the scheme-type guess", () => {
     const out = generateServiceSnippets({
       ...base,
