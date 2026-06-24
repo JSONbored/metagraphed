@@ -2156,7 +2156,10 @@ function normalizeSchema(raw: unknown): SchemaInfo {
     netuid: (s.netuid as number) ?? (snap.netuid as number),
     surface_id: (s.surface_id as string) ?? (snap.surface_id as string),
     drift_status: drift,
-    drift: drift != null && drift !== "unchanged",
+    // A "new" schema has no previous published version to diff against, so it is
+    // a baseline, not drift — counting it as drift made every fresh snapshot read
+    // as "drifting". It surfaces as its own state (drift_status === "new").
+    drift: drift != null && drift.toLowerCase() !== "unchanged" && drift.toLowerCase() !== "new",
     artifact_path: s.path as string | undefined,
     hash: typeof s.hash === "string" ? s.hash : undefined,
     previous_hash: typeof s.previous_hash === "string" ? s.previous_hash : undefined,

@@ -16,7 +16,7 @@ import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import type { SchemaInfo, EvidenceItem } from "@/lib/metagraphed/types";
 
-type DriftKind = "breaking" | "additive" | "unchanged" | "unknown";
+type DriftKind = "breaking" | "additive" | "new" | "unchanged" | "unknown";
 
 const KIND_TONE: Record<DriftKind, { dot: string; fill: string; ring: string; label: string }> = {
   breaking: {
@@ -30,6 +30,12 @@ const KIND_TONE: Record<DriftKind, { dot: string; fill: string; ring: string; la
     fill: "bg-health-warn/15 hover:bg-health-warn/25 border-health-warn/40",
     ring: "ring-health-warn/60",
     label: "Additive",
+  },
+  new: {
+    dot: "bg-accent",
+    fill: "bg-accent/15 hover:bg-accent/25 border-accent/40",
+    ring: "ring-accent/60",
+    label: "New",
   },
   unchanged: {
     dot: "bg-health-ok",
@@ -48,6 +54,8 @@ const KIND_TONE: Record<DriftKind, { dot: string; fill: string; ring: string; la
 function classifyDrift(s: SchemaInfo): DriftKind {
   const raw = (s.drift_status ?? "").toLowerCase();
   if (!raw && !s.drift) return "unchanged";
+  // A brand-new schema has no previous version to diff — its own state, not drift.
+  if (raw === "new" || raw.includes("new")) return "new";
   if (raw.includes("break") || raw.includes("incompat") || raw.includes("major")) return "breaking";
   if (
     raw.includes("add") ||
@@ -90,6 +98,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
       all: classified.length,
       breaking: 0,
       additive: 0,
+      new: 0,
       unchanged: 0,
       unknown: 0,
     };
@@ -146,15 +155,17 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {(["all", "breaking", "additive", "unchanged", "unknown"] as const).map((k) => {
+          {(["all", "breaking", "additive", "new", "unchanged", "unknown"] as const).map((k) => {
             const tone =
               k === "breaking"
                 ? "border-health-down/50 text-health-down"
                 : k === "additive"
                   ? "border-health-warn/50 text-health-warn"
-                  : k === "unchanged"
-                    ? "border-health-ok/50 text-health-ok"
-                    : "border-border text-ink-muted";
+                  : k === "new"
+                    ? "border-accent/50 text-accent"
+                    : k === "unchanged"
+                      ? "border-health-ok/50 text-health-ok"
+                      : "border-border text-ink-muted";
             const active = filter === k;
             return (
               <button

@@ -180,7 +180,8 @@ function SchemasHero() {
   const { data: cRes } = useSuspenseQuery(contractsQuery());
   const schemas = (sRes.data ?? []) as SchemaInfo[];
   const drift = schemas.filter((s) => s.drift).length;
-  const stable = schemas.length - drift;
+  const fresh = schemas.filter((s) => (s.drift_status ?? "").toLowerCase() === "new").length;
+  const stable = schemas.length - drift - fresh;
   const subnets = new Set(schemas.map((s) => s.netuid).filter((n) => n != null)).size;
   const contractsCount = (cRes.data ?? []).length;
 
@@ -201,6 +202,7 @@ function SchemasHero() {
           value: <AnimatedNumber value={stable} />,
           hint: schemas.length ? `${Math.round((stable / schemas.length) * 100)}%` : undefined,
         },
+        { label: "New", value: <AnimatedNumber value={fresh} /> },
         { label: "Drift", value: <AnimatedNumber value={drift} /> },
         { label: "Contracts", value: <AnimatedNumber value={contractsCount} /> },
         { label: "Subnets covered", value: <AnimatedNumber value={subnets} /> },
