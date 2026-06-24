@@ -147,6 +147,24 @@ interface ChainInputs {
   size: number;
 }
 
+function isDirectIconUrlCandidate(
+  candidate: string | null | undefined,
+  iconUrl: IconSource | null | undefined,
+  theme: ResolvedTheme,
+): boolean {
+  if (!candidate) return false;
+  const directIcon = safeImageUrl(pickIconSource(iconUrl, theme));
+  return Boolean(directIcon && candidate === directIcon && !isProxiedIcon(candidate));
+}
+
+function shouldUseAnonymousCors(
+  candidate: string | null | undefined,
+  iconUrl: IconSource | null | undefined,
+  theme: ResolvedTheme,
+): boolean {
+  return isProxiedIcon(candidate) || isDirectIconUrlCandidate(candidate, iconUrl, theme);
+}
+
 function buildCandidateChain({
   url,
   iconUrl,
@@ -206,6 +224,9 @@ export function prefetchBrandIcon(
     const img = new Image();
     img.decoding = "async";
     img.referrerPolicy = "no-referrer";
+    if (shouldUseAnonymousCors(first, extra?.iconUrl, extra?.theme ?? "light")) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => loadedUrls.add(first);
     img.onerror = () => failedUrls.add(first);
     img.src = first;
@@ -440,11 +461,10 @@ export function BrandIcon({
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
-        // Only request CORS for our own proxy (which sets ACAO:* and enables the
-        // luminance/contrast-tile canvas check). For third-party sources (GitHub
-        // avatars, favicon CDNs) crossOrigin="anonymous" makes the browser DROP the
-        // image when CORS headers are absent — the cause of site-wide missing icons.
-        crossOrigin={isProxiedIcon(candidate) ? "anonymous" : undefined}
+        // Request credentialless CORS for our proxy and direct registry/API icon_url
+        // values. Curated frontend overrides and GitHub fallbacks can still load as
+        // ordinary images so missing CORS headers do not hide trusted icons.
+        crossOrigin={shouldUseAnonymousCors(candidate, iconUrl, theme) ? "anonymous" : undefined}
         className={classNames(
           "relative block transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0",
