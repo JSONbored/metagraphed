@@ -69,6 +69,11 @@ import sys
 RAO = 1e9
 BLOCK_MS = 12000  # finney ~12s block time; observed_at derived from height
 DEFAULT_RPC = "wss://entrypoint-finney.opentensor.ai:443"
+# Aura PreRuntime digest engine id == b"aura". Subtensor authors blocks with
+# Aura (CONSENSUS_PALLETS = Aura, Grandpa), so the author is the slot's authority
+# (Aura.Authorities[slot % n]). Verified against finney: consecutive blocks
+# round-robin the 20-validator set.
+AURA_ENGINE_ID = "0x61757261"
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 OUT = os.environ.get("ACCOUNT_EVENTS_JSON", "dist/account-events.json")
 CURSOR_OUT = os.environ.get("EVENTS_CURSOR_OUT", "dist/events-cursor.json")
@@ -173,25 +178,41 @@ EXTRACTORS = {
 }
 
 
-def _block_author(header):
-    """Best-effort block author (ss58) from the header digest, else None.
+def _block_author(s, block_hash, header):
+    """Block author (ss58) decoded from the Aura PreRuntime digest, else None.
 
-    Author attribution requires session-key → ss58 resolution that public RPC
-    doesn't hand us cleanly; we surface a string only if the header already
-    carries one (some runtimes expose an `author`/`block_author` field). Anything
-    else is left null — nullable author is acceptable for the v1 block explorer
-    (#1345); never block the poll on a perfect decode. NEVER raises.
+    Subtensor authors blocks with Aura: the header's PreRuntime digest log
+    (engine b"aura") carries the slot as a u64 LE; the author is
+    Aura.Authorities[slot % n] at that block, ss58-encoded. Best-effort — returns
+    None on any shape drift / missing data; NEVER raises (a perfect decode must
+    never block the poll). Verified against finney (#1345).
     """
     try:
         if not isinstance(header, dict):
             return None
-        for key in ("author", "block_author"):
-            v = header.get(key)
-            if isinstance(v, str) and v.startswith("5"):
-                return v
+        logs = (header.get("digest") or {}).get("logs") or []
+        slot = None
+        for log in logs:
+            v = log.value if hasattr(log, "value") else log
+            pre = v.get("PreRuntime") if isinstance(v, dict) else None
+            if not pre:
+                continue
+            engine, data = pre[0], pre[1]
+            if engine == AURA_ENGINE_ID:
+                hex_data = data[2:] if str(data).startswith("0x") else str(data)
+                slot = int.from_bytes(bytes.fromhex(hex_data)[:8], "little")
+                break
+        if slot is None:
+            return None
+        authorities = s.query("Aura", "Authorities", block_hash=block_hash).value or []
+        if not authorities:
+            return None
+        pubkey = authorities[slot % len(authorities)]
+        pk = pubkey[2:] if isinstance(pubkey, str) and pubkey.startswith("0x") else pubkey
+        author = s.ss58_encode(pk)
+        return author if isinstance(author, str) and author.startswith("5") else None
     except Exception:
         return None
-    return None
 
 
 def block_extras(s, bn, bh, event_count):
@@ -216,7 +237,7 @@ def block_extras(s, bn, bh, event_count):
         "block_number": bn,
         "block_hash": str(bh),
         "parent_hash": str(parent_hash) if parent_hash is not None else None,
-        "author": _block_author(header),
+        "author": _block_author(s, bh, header),
         "extrinsic_count": extrinsic_count,
         "event_count": event_count,
     }
