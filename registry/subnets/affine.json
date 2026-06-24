@@ -1,0 +1,49 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Affine",
+  "netuid": 120,
+  "schema_version": 1,
+  "slug": "sn-120",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-website",
+      "kind": "website",
+      "name": "Affine website",
+      "notes": "Official Affine (SN120) project website; self-identifies as 'Affine — Subnet 120' and is referenced from the affine-cortex source repo.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://github.com/AffineFoundation/affine-cortex"
+      ],
+      "url": "https://www.affine.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-source-repo",
+      "kind": "source-repo",
+      "name": "Affine subnet source repository",
+      "notes": "Official Affine (SN120) protocol source repo (codename Anima Machina) under the AffineFoundation org; its README links the official affine.io site.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": ["https://www.affine.io/"],
+      "url": "https://github.com/AffineFoundation/affine-cortex"
+    }
+  ]
+}
