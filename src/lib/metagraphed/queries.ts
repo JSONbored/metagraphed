@@ -5,6 +5,7 @@ import type {
   AdapterSnapshot,
   AgentResource,
   AgentResources,
+  Block,
   Candidate,
   Coverage,
   CurationLevel,
@@ -757,6 +758,53 @@ export const subnetQuery = (netuid: number) =>
       return { ...res, data: normalizeSubnet(res.data) } as ApiResult<Subnet>;
     },
     staleTime: STALE_MED,
+  });
+
+// Block explorer (chain-direct event poller). The list is offset-paginated and
+// returns newest-first; the detail accepts a numeric block_number OR a 0x hash.
+function normalizeBlock(raw: unknown): Block | null {
+  if (!isRecord(raw)) return null;
+  const blockNumber = firstFiniteNumber(raw.block_number);
+  const blockHash = firstString(raw.block_hash);
+  // A row is only meaningful with at least a number or a hash to key/link on.
+  if (blockNumber == null && !blockHash) return null;
+  return {
+    ...(raw as object),
+    block_number: blockNumber ?? (raw.block_number as number),
+    block_hash: blockHash ?? "",
+    parent_hash: firstString(raw.parent_hash),
+    author: typeof raw.author === "string" ? raw.author : null,
+    extrinsic_count: firstFiniteNumber(raw.extrinsic_count),
+    event_count: firstFiniteNumber(raw.event_count),
+    observed_at: firstString(raw.observed_at),
+  } as Block;
+}
+
+/** Recent blocks feed — newest first, offset-paginated (limit ≤ 100). */
+export const blocksQuery = (params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("blocks", params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/blocks", "blocks", params, signal);
+      const data = res.data.flatMap((row) => {
+        const b = normalizeBlock(row);
+        return b ? [b] : [];
+      });
+      return { ...res, data } as ApiResult<Block[]>;
+    },
+    // Blocks turn over fast once the poller is live — keep this short.
+    staleTime: STALE_SHORT,
+  });
+
+/** Single block by numeric block_number or 0x block_hash. `null` when unknown/cold. */
+export const blockQuery = (ref: string) =>
+  queryOptions({
+    queryKey: k("block", ref),
+    queryFn: async ({ signal }) => {
+      const res = await fetchDetail<unknown>(`/api/v1/blocks/${ref}`, "block", signal);
+      return { ...res, data: normalizeBlock(res.data) } as ApiResult<Block | null>;
+    },
+    staleTime: STALE_SHORT,
   });
 
 const READINESS_COMPONENT_KEYS = [

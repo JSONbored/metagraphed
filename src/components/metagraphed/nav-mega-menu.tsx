@@ -95,6 +95,19 @@ export const MEGA_PANELS: MegaPanel[] = [
     ],
   },
   {
+    key: "blocks",
+    to: "/blocks",
+    label: "Blocks",
+    icon: Boxes,
+    blurb: "Recent blocks indexed directly from the chain.",
+    apiPath: "/api/v1/blocks",
+    browse: [
+      { to: "/blocks", label: "Recent blocks", hint: "Newest first" },
+      { to: "/blocks", search: { limit: "100" }, label: "100 per page" },
+    ],
+    filters: [],
+  },
+  {
     key: "surfaces",
     to: "/surfaces",
     label: "Surfaces",

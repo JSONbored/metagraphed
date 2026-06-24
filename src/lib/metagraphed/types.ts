@@ -669,6 +669,22 @@ export interface Uptime {
   surfaces: SurfaceUptime[];
 }
 
+/**
+ * One indexed block from the chain-direct event poller.
+ * Source: /api/v1/blocks (list) and /api/v1/blocks/{ref} (detail). Newest first.
+ * `author` is nullable (some blocks carry no resolved author).
+ */
+export interface Block {
+  block_number: number;
+  block_hash: string;
+  parent_hash?: string;
+  author?: string | null;
+  extrinsic_count?: number;
+  event_count?: number;
+  observed_at?: string; // iso
+  [key: string]: unknown;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;
