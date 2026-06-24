@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ARTIFACT_STORAGE_TIERS,
   R2_STAGING_RELATIVE_ROOT,
@@ -11,7 +12,12 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
 
-export const repoRoot = new URL("..", import.meta.url).pathname;
+// Resolve to a native filesystem path via fileURLToPath rather than URL.pathname:
+// on Windows `.pathname` is `/C:/…` (a leading slash + percent-encoding), which
+// path.join turns into a broken `C:\C:\…` and decodes nothing, breaking every
+// script that derives a path from repoRoot. fileURLToPath yields the correct
+// platform-native, percent-decoded path on POSIX and Windows alike.
+export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
