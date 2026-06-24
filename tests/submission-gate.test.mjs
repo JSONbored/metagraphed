@@ -527,6 +527,19 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.errors.length, 0);
   });
 
+  test("treats a legacy registry/providers/community/ path as a normal PR (post-flatten exclusion)", () => {
+    // Providers were flattened to registry/providers/*.json (#1678); the old
+    // community/ subdir is gone. A path still under that retired subdir is neither
+    // a flat direct-provider file nor a touchedCommunityProvider, so it falls
+    // through to a normal PR (full validation), not the direct-provider lane.
+    const scope = classifyPrScope([
+      "registry/providers/community/legacy-operator.json",
+    ]);
+
+    assert.equal(scope.scope, "normal-pr");
+    assert.equal(scope.providerFiles.length, 0);
+  });
+
   test("still blocks a direct submission bundled with unrelated files", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",

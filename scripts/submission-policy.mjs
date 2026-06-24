@@ -719,7 +719,6 @@ export function classifyPrScope(changedFiles) {
   const touchedCommunityProvider = files.filter(
     (file) =>
       file.startsWith("registry/providers/") &&
-      file !== "registry/providers/" &&
       !file.startsWith("registry/providers/community/"),
   );
   const errors = [];
