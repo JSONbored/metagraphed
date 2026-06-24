@@ -48,7 +48,7 @@ atomic provider+candidate **pair** (one of each):
 
 ```text
 registry/candidates/community/<slug>.json
-registry/providers/community/<slug>.json
+registry/providers/<slug>.json
 ```
 
 The atomic pair is the **debut lane**: a first-time team registers its provider

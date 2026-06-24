@@ -163,7 +163,7 @@ export const PUBLIC_PREFLIGHT_STATES = new Set([
 export const DIRECT_CANDIDATE_PATTERN =
   /^registry\/candidates\/community\/[a-z0-9][a-z0-9-]*\.json$/;
 export const DIRECT_PROVIDER_PATTERN =
-  /^registry\/providers\/community\/[a-z0-9][a-z0-9-]*\.json$/;
+  /^registry\/providers\/[a-z0-9][a-z0-9-]*\.json$/;
 
 export const SUPPORTED_INTERFACE_KINDS = new Set([
   "archive",
@@ -626,7 +626,7 @@ export function buildPrSubmissionReport({
     // for the candidate's provider checks, so a first-time team can land its
     // debut provider + first surface in one PR. Both files are community-authored
     // and loaded as first-class once merged (loadProviders reads
-    // registry/providers/community/), so the candidate's provider resolves at
+    // registry/providers/), so the candidate's provider resolves at
     // build/serve time without a prior, separately-reviewed provider PR.
     const isPair = provider && scope.scope === "direct-pair";
     const providersForCandidate = isPair ? [...providers, provider] : providers;
@@ -716,8 +716,11 @@ export function classifyPrScope(changedFiles) {
   const touchedCommunityCandidate = files.filter((file) =>
     file.startsWith("registry/candidates/community/"),
   );
-  const touchedCommunityProvider = files.filter((file) =>
-    file.startsWith("registry/providers/community/"),
+  const touchedCommunityProvider = files.filter(
+    (file) =>
+      file.startsWith("registry/providers/") &&
+      file !== "registry/providers/" &&
+      !file.startsWith("registry/providers/community/"),
   );
   const errors = [];
 
@@ -745,7 +748,7 @@ export function classifyPrScope(changedFiles) {
     errors.push({
       category: "unsupported-shape",
       message:
-        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file, or an atomic provider+candidate pair (one of each)",
+        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/*.json file, or an atomic provider+candidate pair (one of each)",
     });
   }
 
@@ -1371,7 +1374,7 @@ export function validateCandidateForSubmission({
     // gate accepts and counts as registered. A contributor fix, never a maintainer.
     errors.push({
       category: "provider-not-registered",
-      message: `candidate provider ${candidate.provider || "<missing>"} is not registered — include its registry/providers/community/<id>.json in the same PR`,
+      message: `candidate provider ${candidate.provider || "<missing>"} is not registered — include its registry/providers/<id>.json in the same PR`,
     });
   }
   // Placeholder/example identity URLs (example.com, github.com/username/repo, "deprecated") are never

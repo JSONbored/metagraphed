@@ -43,7 +43,8 @@ const changedFiles = normalizeChangedFiles(
 // strict DIRECT_*_PATTERN, so ANY removed candidate/provider file is recognized as a deletion.
 const isRemovedDirectFile = (file) =>
   (file.startsWith("registry/candidates/community/") ||
-    file.startsWith("registry/providers/community/")) &&
+    (file.startsWith("registry/providers/") &&
+      !file.startsWith("registry/providers/community/"))) &&
   file.endsWith(".json") &&
   !existsSync(path.join(inputRoot, file));
 const removedDirectFiles = changedFiles.filter(isRemovedDirectFile);
