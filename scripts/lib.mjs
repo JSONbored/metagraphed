@@ -87,6 +87,7 @@ unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
 unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
 unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
 unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
+unsafeIpBlocks.addSubnet("fec0::", 10, "ipv6"); // deprecated site-local (RFC 3879)
 unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export function buildEvidenceSubjectNetuidIndex({

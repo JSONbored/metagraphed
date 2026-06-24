@@ -1519,6 +1519,7 @@ describe("script utility contracts", () => {
     assert.equal(isUnsafeUrl("http://250.1.2.3"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
     assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
+    assert.equal(isUnsafeUrl("http://[fec0::1]"), true); // site-local (issue #1538)
     assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);

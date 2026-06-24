@@ -62,6 +62,15 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 extract = _fe.extract
 
+# TODO(#1345 block explorer, Option B): this realtime streamer only POSTs
+# account_events to the events ingest endpoint (/api/v1/internal/events). The
+# block-explorer `blocks` tier is currently filled by the CI poller
+# (fetch-events.py emits the blocks sidecar → R2 → loadStagedBlocks) only. To
+# stream blocks in realtime too we'd need (1) a blocks ingest endpoint mirroring
+# handleEventIngest + (2) a per-head emit here using _fe.block_extras(s, bn, bh,
+# len(events)). Deliberately deferred for the first slice — the CI poller is the
+# backstop and INSERT OR IGNORE on block_number makes any future overlap free.
+
 _stop = False
 
 

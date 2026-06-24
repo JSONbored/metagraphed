@@ -27,6 +27,30 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
                             on a cold start → fall back to the window floor
       ACCOUNT_EVENTS_JSON   events output path (default dist/account-events.json)
       EVENTS_CURSOR_OUT     next-cursor sidecar path (default dist/events-cursor.json)
+      BLOCKS_JSON           per-block sidecar path (default dist/blocks.json) — the
+                            block-explorer hot window (#1345), staged + loaded into
+                            D1 `blocks` the same way the events JSON is
+      EXTRINSICS_JSON       per-extrinsic sidecar path (default dist/extrinsics.json)
+                            — the block-explorer extrinsic slice (#1345), staged +
+                            loaded into D1 `extrinsics` the same way
+
+Block-explorer sidecar (#1345 first vertical slice): the same per-block loop also
+emits a `blocks` record (header hash, parent hash, best-effort author, extrinsic
+count, decoded event count, observed_at) to BLOCKS_JSON. The refresh-events
+workflow stages that sidecar to R2; the Worker's loadStagedBlocks bulk-loads it
+into D1 `blocks` with INSERT OR IGNORE keyed on block_number — idempotent like the
+events load. The extras are best-effort: a per-block extras failure skips that
+block's block-row (never a corrupt row, never crashes the poll); the event rows
+for that block are unaffected.
+
+Block-explorer extrinsic sidecar (#1345 second vertical slice): the same per-block
+loop also decodes each block's extrinsics (extrinsics_for_block) into `extrinsics`
+rows (index, best-effort hash/signer, decoded call module+function, success from
+the System.ExtrinsicSuccess/ExtrinsicFailed events for this index) and writes them
+to EXTRINSICS_JSON. Staged + loaded into D1 `extrinsics` via loadStagedExtrinsics
+with INSERT OR IGNORE keyed on (block_number, extrinsic_index) — idempotent. Each
+extrinsic is best-effort: a per-extrinsic decode failure skips THAT row only
+(never a corrupt row, never crashes the poll); the block/event rows are unaffected.
 
 Positional attribute order verified against live finney (2026-06-21); see
 src/account-events.mjs INDEXED_EVENT_KINDS for the loaded set. Extractors are
@@ -48,6 +72,8 @@ DEFAULT_RPC = "wss://entrypoint-finney.opentensor.ai:443"
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 OUT = os.environ.get("ACCOUNT_EVENTS_JSON", "dist/account-events.json")
 CURSOR_OUT = os.environ.get("EVENTS_CURSOR_OUT", "dist/events-cursor.json")
+BLOCKS_OUT = os.environ.get("BLOCKS_JSON", "dist/blocks.json")
+EXTRINSICS_OUT = os.environ.get("EXTRINSICS_JSON", "dist/extrinsics.json")
 # Public finney nodes prune ~300 blocks; if the cursor falls this far behind the
 # head, the poller is losing the race against pruning and blocks between the prune
 # horizon and the cursor can no longer be re-fetched. Surfaced as a workflow alert.
@@ -147,6 +173,166 @@ EXTRACTORS = {
 }
 
 
+def _block_author(header):
+    """Best-effort block author (ss58) from the header digest, else None.
+
+    Author attribution requires session-key → ss58 resolution that public RPC
+    doesn't hand us cleanly; we surface a string only if the header already
+    carries one (some runtimes expose an `author`/`block_author` field). Anything
+    else is left null — nullable author is acceptable for the v1 block explorer
+    (#1345); never block the poll on a perfect decode. NEVER raises.
+    """
+    try:
+        if not isinstance(header, dict):
+            return None
+        for key in ("author", "block_author"):
+            v = header.get(key)
+            if isinstance(v, str) and v.startswith("5"):
+                return v
+    except Exception:
+        return None
+    return None
+
+
+def block_extras(s, bn, bh, event_count):
+    """Best-effort per-block explorer record for the `blocks` D1 tier (#1345).
+
+    One extra header read + one block read per block — fine for the bounded
+    recent window. Wrapped so ANY failure (pruned/transient/shape drift) yields
+    None: the caller skips that block's block-row, never corrupts it, and the
+    event rows for the block are unaffected. observed_at is supplied by the
+    caller (same height-derived timestamp the events use).
+    """
+    try:
+        header = s.get_block_header(block_hash=bh)["header"]
+    except Exception:
+        return None
+    parent_hash = header.get("parentHash") if isinstance(header, dict) else None
+    try:
+        extrinsic_count = len(s.get_block(block_hash=bh)["extrinsics"])
+    except Exception:
+        extrinsic_count = None
+    return {
+        "block_number": bn,
+        "block_hash": str(bh),
+        "parent_hash": str(parent_hash) if parent_hash is not None else None,
+        "author": _block_author(header),
+        "extrinsic_count": extrinsic_count,
+        "event_count": event_count,
+    }
+
+
+def _extrinsic_signer(value):
+    """Best-effort ss58 signer from a decoded extrinsic's `address`, else None.
+
+    Signed extrinsics carry an `address`; inherents/unsigned do not. Across
+    runtimes the serialized address is usually a bare ss58 string but can be a
+    MultiAddress dict (e.g. {"Id": "5…"}). Anything that doesn't resolve to a `5…`
+    ss58 is left null — nullable signer is acceptable for v1 (#1345). NEVER raises.
+    """
+    try:
+        addr = value.get("address") if isinstance(value, dict) else None
+        if addr is None:
+            return None
+        if isinstance(addr, dict):
+            addr = addr.get("Id") or addr.get("id")
+        return addr if isinstance(addr, str) and addr.startswith("5") else None
+    except Exception:
+        return None
+
+
+def _extrinsic_call(value):
+    """Best-effort (call_module, call_function) from a decoded extrinsic, else
+    (None, None). The serialized `call` carries string names; null on shape drift.
+    NEVER raises."""
+    try:
+        call = value.get("call") if isinstance(value, dict) else None
+        if not isinstance(call, dict):
+            return (None, None)
+        cm = call.get("call_module")
+        cf = call.get("call_function")
+        return (
+            cm if isinstance(cm, str) else None,
+            cf if isinstance(cf, str) else None,
+        )
+    except Exception:
+        return (None, None)
+
+
+def _extrinsic_success_map(events):
+    """Map extrinsic_index -> success(1/0) from the block's already-decoded events.
+
+    Substrate emits a System.ExtrinsicSuccess or System.ExtrinsicFailed event for
+    each applied extrinsic, with phase `ApplyExtrinsic` and a top-level
+    `extrinsic_idx` pointing at the extrinsic's position. We build the correlation
+    from the SAME `events` the caller already decoded — no extra RPC. Best-effort:
+    any malformed event is skipped; an index missing here yields null success.
+    NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "System":
+                continue
+            eid = e.get("event_id")
+            if eid not in ("ExtrinsicSuccess", "ExtrinsicFailed"):
+                continue
+            idx = v.get("extrinsic_idx")
+            if isinstance(idx, int) and idx >= 0:
+                out[idx] = 1 if eid == "ExtrinsicSuccess" else 0
+    except Exception:
+        return out
+    return out
+
+
+def extrinsics_for_block(s, bn, bh, events):
+    """Best-effort per-extrinsic records for the `extrinsics` D1 tier (#1345).
+
+    Decodes the block's extrinsics (one block read, reusing the same handler that
+    block_extras counts) and correlates each with the success/failure events the
+    caller already decoded. Returns a list of rows; ANY per-extrinsic failure
+    skips THAT row only (never a corrupt row, never crashes the poll). A total
+    block-read failure (pruned/transient/shape drift) returns [] so the caller
+    simply emits no extrinsic rows for this block — its block/event rows are
+    unaffected. observed_at is added by the caller (same height-derived clock).
+    NEVER raises.
+    """
+    rows = []
+    try:
+        block = s.get_block(block_hash=bh)
+        extrinsics = block.get("extrinsics") if isinstance(block, dict) else None
+        if not isinstance(extrinsics, list):
+            return rows
+    except Exception:
+        return rows
+    success_map = _extrinsic_success_map(events)
+    for extrinsic_index, ext in enumerate(extrinsics):
+        try:
+            value = ext.value if ext is not None else None
+            if not isinstance(value, dict):
+                continue  # an undecodable extrinsic — skip this row only
+            xhash = value.get("extrinsic_hash")
+            call_module, call_function = _extrinsic_call(value)
+            rows.append(
+                {
+                    "block_number": bn,
+                    "extrinsic_index": extrinsic_index,
+                    "extrinsic_hash": str(xhash) if xhash is not None else None,
+                    "signer": _extrinsic_signer(value),
+                    "call_module": call_module,
+                    "call_function": call_function,
+                    "success": success_map.get(extrinsic_index),
+                }
+            )
+        except Exception:
+            continue  # shape drift on one extrinsic → skip it, keep the rest
+    return rows
+
+
 def extract(event_id, attrs):
     fn = EXTRACTORS.get(event_id)
     if not fn:
@@ -220,6 +406,8 @@ def main():
     _emit_lag_alert(head_bn, cursor)
 
     rows = []
+    blocks = []
+    extrinsics = []
     scanned = 0
     skipped = 0
     for bn in range(start, head_bn + 1):
@@ -232,6 +420,21 @@ def main():
             sys.stderr.write(f"block {bn}: skip ({repr(e)[:80]})\n")
             continue
         scanned += 1
+        # Block-explorer hot-window record (#1345): best-effort header extras +
+        # the decoded event count, observed_at from the same height-derived clock
+        # as the events. A None means the extras read failed — skip this block's
+        # block-row only (its event rows below are unaffected).
+        extras = block_extras(s, bn, bh, len(events))
+        if extras is not None:
+            extras["observed_at"] = observed_at
+            blocks.append(extras)
+        # Block-explorer extrinsic records (#1345 second slice): decode each
+        # extrinsic with its decoded call + success/failure correlation. Each row
+        # carries the same height-derived observed_at; a per-extrinsic failure is
+        # skipped inside extrinsics_for_block (never corrupts/crashes).
+        for xrow in extrinsics_for_block(s, bn, bh, events):
+            xrow["observed_at"] = observed_at
+            extrinsics.append(xrow)
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
@@ -259,6 +462,21 @@ def main():
     with open(OUT, "w") as fh:
         json.dump(rows, fh)
 
+    # Block-explorer sidecar (#1345): the recent-window block rows. Staged to R2
+    # + loaded into D1 `blocks` by the Worker (loadStagedBlocks) just like the
+    # events JSON. A bare array — the same signer/loader envelope shape applies.
+    os.makedirs(os.path.dirname(BLOCKS_OUT) or ".", exist_ok=True)
+    with open(BLOCKS_OUT, "w") as fh:
+        json.dump(blocks, fh)
+
+    # Block-explorer extrinsic sidecar (#1345 second slice): the recent-window
+    # extrinsic rows. Staged to R2 + loaded into D1 `extrinsics` by the Worker
+    # (loadStagedExtrinsics) just like the events/blocks JSON. A bare array — the
+    # same signer/loader envelope shape applies.
+    os.makedirs(os.path.dirname(EXTRINSICS_OUT) or ".", exist_ok=True)
+    with open(EXTRINSICS_OUT, "w") as fh:
+        json.dump(extrinsics, fh)
+
     # Next-cursor sidecar: the highest block we covered this run (the finalized
     # head we scanned through). The workflow stages the events first, then — only
     # on a successful stage — promotes this to events/cursor.json in R2. Because
@@ -273,6 +491,8 @@ def main():
     sys.stderr.write(
         f"wrote {len(rows)} events from blocks {start}..{head_bn} "
         f"(cursor_in={cursor}, scanned {scanned}, skipped {skipped}) -> {OUT}; "
+        f"wrote {len(blocks)} block rows -> {BLOCKS_OUT}; "
+        f"wrote {len(extrinsics)} extrinsic rows -> {EXTRINSICS_OUT}; "
         f"next cursor {next_cursor} -> {CURSOR_OUT}\n"
     )
 
