@@ -141,7 +141,7 @@ npm run surface:add -- \
   --source-url https://github.com/example/project/blob/main/README.md \
   --provider <provider-slug> --submitted-by <github-login> --write
   # Debut provider (slug not registered)? Add the team identity and surface:add scaffolds
-  # registry/providers/community/<slug>.json in the SAME PR:
+  # registry/providers/<slug>.json (flat — trust is the authority field) in the SAME PR:
   #   --provider-name "Example Team" --provider-url https://example.com
 ```
 

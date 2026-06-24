@@ -14,7 +14,7 @@ This PR appends or updates surface(s) on exactly one subnet's file —
 ## Checklist
 
 - [ ] Changes exactly one `registry/subnets/<slug>.json` file (optionally plus one
-      `registry/providers/community/*.json` for a debut provider).
+      `registry/providers/*.json` for a debut provider).
 - [ ] Generated with `npm run surface:add` — lands `authority: community` and
       `review.state: community-submitted`.
 - [ ] The `url` is public and safe for read-only probes; the `source_url`

@@ -41,7 +41,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/community/<slug>.json` stub for you in the same PR (or run `npm run provider:new`); provider identity still gets reviewed before it's trusted.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR (or run `npm run provider:new`); provider identity still gets reviewed before it's trusted.
 
 Add a surface locally — three steps:
 
@@ -51,7 +51,7 @@ npm run providers:list
 
 # 2. Append the surface to the subnet's file with a REAL --provider slug.
 #    Debut provider? Add --provider-name + --provider-url and surface:add also
-#    scaffolds registry/providers/community/<slug>.json so the PR validates in one shot.
+#    scaffolds registry/providers/<slug>.json so the PR validates in one shot.
 npm run surface:add -- \
   --netuid 7 --kind docs \
   --url https://docs.example.com \
@@ -81,7 +81,7 @@ A good surface PR is small: one public `url`, one `source_url` proving the claim
 
 | ✅ Tends to get accepted                                                                                          | ❌ Gets closed / routed to manual                                                                    |
 | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/community/*.json` for a debut)       | Touches generated artifacts, scripts, or workflows                                                   |
+| Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/*.json` for a debut)                 | Touches generated artifacts, scripts, or workflows                                                   |
 | A surface with a public `url` **plus** a `source_url` that proves the claim                                       | `source_url` 404s or doesn't back the claim                                                          |
 | `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider | A surface the subnet already exposes — duplicate                                                     |
 | `auth_required: false`, `public_safe: true`                                                                       | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |

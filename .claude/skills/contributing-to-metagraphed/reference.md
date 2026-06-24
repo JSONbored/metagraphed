@@ -130,7 +130,9 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 > `surface:add`, `subnet:new`, and `validate:surface` are the single-file-model commands. They fully
 > replaced the retired `candidate:new` / `validate:candidate` intake lane — and `surface:add`
 > live-verifies the URLs at add-time (probes reachability, fills openapi schema fields) and
-> auto-scaffolds a debut provider stub.
+> auto-scaffolds a debut provider stub. Providers are flat objects in
+> `registry/providers/*.json` (trust is the `authority` field, not a directory —
+> there is no `providers/community/` subdir).
 
 ---
 

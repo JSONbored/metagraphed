@@ -80,14 +80,15 @@ if (!document) {
 }
 
 // Provider must be a registered slug to pass validate:surface + CI. For a debut
-// provider, auto-scaffold a registry/providers/community/<slug>.json stub in the
-// same PR so the contributor never hits the unregistered-provider failure. The
-// website_url is only stored (never fetched), so normalizePublicUrl's synchronous
-// safety check (it rejects localhost/private hosts) is sufficient.
+// provider, auto-scaffold a flat registry/providers/<slug>.json stub in the same
+// PR so the contributor never hits the unregistered-provider failure. Providers
+// are flat objects (trust is the `authority` field, not the directory — #1678).
+// The website_url is only stored (never fetched), so normalizePublicUrl's
+// synchronous safety check (it rejects localhost/private hosts) is sufficient.
 const providerIds = new Set((await loadProviders()).map((entry) => entry.id));
 const providerFilePath = path.join(
   repoRoot,
-  "registry/providers/community",
+  "registry/providers",
   `${provider}.json`,
 );
 let providerStub = null;
@@ -96,26 +97,19 @@ if (!providerIds.has(provider)) {
     fail(
       `Provider "${provider}" is not registered. Add --provider-name "<Team Name>" ` +
         "and --provider-url <https://public-site> so surface:add scaffolds " +
-        `registry/providers/community/${provider}.json in the same PR, ` +
+        `registry/providers/${provider}.json in the same PR, ` +
         "or pick an existing slug with `npm run providers:list`.",
     );
   }
   providerStub = {
     schema_version: 1,
-    submission: {
-      submitted_by: submittedBy,
-      submitted_by_url: `https://github.com/${submittedBy}`,
-    },
-    provider: {
-      schema_version: 1,
-      id: provider,
-      name: providerName,
-      kind: providerKind,
-      website_url: providerUrl,
-      ...(providerGithub ? { github_url: providerGithub } : {}),
-      authority: "community",
-      public_notes: "",
-    },
+    id: provider,
+    name: providerName,
+    kind: providerKind,
+    website_url: providerUrl,
+    ...(providerGithub ? { github_url: providerGithub } : {}),
+    authority: "community",
+    public_notes: "",
   };
 }
 
@@ -168,12 +162,12 @@ console.log(
       ? {
           provider_stub: {
             file: path.relative(repoRoot, providerFilePath),
-            provider: providerStub.provider,
+            provider: providerStub,
           },
         }
       : {}),
     next: providerStub
-      ? "Debut provider scaffolded — open a PR with BOTH this subnet file and the new registry/providers/community file. Link a tracked issue (Closes #N)."
+      ? "Debut provider scaffolded — open a PR with BOTH this subnet file and the new registry/providers file. Link a tracked issue (Closes #N)."
       : "Link a tracked issue (Closes #N) and open a PR that changes ONLY this file.",
   }),
 );

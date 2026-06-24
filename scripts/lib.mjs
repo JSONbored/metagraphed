@@ -429,22 +429,17 @@ export async function listJsonFilesRecursive(dirPath) {
 }
 
 export async function loadProviders() {
-  // Top-level registry/providers/*.json are curated providers (flat objects).
-  // Community-submitted providers live in registry/providers/community/ as a
-  // { provider, submission } wrapper; they are first-class once merged — unwrap
-  // them so they load / validate / serve exactly like curated providers (mirrors
-  // how loadCandidates loads registry/candidates/community/). A curated provider
-  // wins over a community one of the same id (defensive — ids do not collide today).
-  const [flatFiles, communityFiles] = await Promise.all([
-    listJsonFiles(path.join(repoRoot, "registry/providers")),
-    listJsonFiles(path.join(repoRoot, "registry/providers/community")),
-  ]);
-  const flat = await Promise.all(flatFiles.map(readJson));
-  const community = (await Promise.all(communityFiles.map(readJson))).map(
+  // All providers are flat objects in registry/providers/*.json. Trust is the
+  // per-file `authority` field (official / provider-claimed / community /
+  // registry-observed), NOT the directory — the old registry/providers/community/
+  // wrapper lane was flattened (#1678). The `.provider || document` unwrap is kept
+  // defensively for any legacy { provider } shape; dedup by id (ids don't collide).
+  const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
+  const providers = (await Promise.all(files.map(readJson))).map(
     (document) => document.provider || document,
   );
   const byId = new Map();
-  for (const provider of [...community, ...flat]) {
+  for (const provider of providers) {
     if (provider?.id) byId.set(provider.id, provider);
   }
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));

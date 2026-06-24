@@ -130,7 +130,7 @@ checkIncludes(pullRequestTemplate, "pull request template router", [
   "?template=backend-code.md",
   "?template=docs-only.md",
   "registry/subnets/<slug>.json",
-  "registry/providers/community/*.json",
+  "registry/providers/*.json",
   "generated `public/metagraph/**`",
 ]);
 
@@ -145,7 +145,7 @@ checkIncludes(surfacePrTemplate, "surface PR template", [
 ]);
 
 checkIncludes(providerProfileTemplate, "provider profile PR template", [
-  "registry/providers/community/*.json",
+  "registry/providers/*.json",
   "npm run provider:new",
   "docs/examples/submissions/direct-provider-profile.json",
   "manual/private review",

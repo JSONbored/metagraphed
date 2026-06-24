@@ -13,7 +13,7 @@ This PR adds or updates exactly one provider/operator profile review file.
 
 ## Checklist
 
-- [ ] This PR changes exactly one `registry/providers/community/*.json` file.
+- [ ] This PR changes exactly one `registry/providers/*.json` file.
 - [ ] I generated the file with `npm run provider:new` or matched
       `docs/examples/submissions/direct-provider-profile.json`.
 - [ ] The profile contains only public-safe metadata.

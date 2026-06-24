@@ -1,0 +1,13 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+  "id": "aurelius",
+  "kind": "subnet-team",
+  "name": "Aurelius",
+  "public_notes": "Subnet 37 (Aurelius) team profile — decentralized alignment of artificial intelligence. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+  "schema_version": 1,
+  "social": {
+    "x": "https://x.com/aureliusaligned"
+  },
+  "website_url": "https://aureliusaligned.ai/"
+}

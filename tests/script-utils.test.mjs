@@ -1444,16 +1444,14 @@ describe("script utility contracts", () => {
     );
   });
 
-  test("loadProviders loads community-submitted providers as first-class (regression: was non-recursive)", async () => {
-    // The debut provider+candidate lane depends on community providers being
-    // loaded/registered the same way community candidates are. loadProviders was
-    // non-recursive and skipped registry/providers/community/, so a merged
-    // community provider was invisible and any candidate referencing it failed
-    // validate ("unknown provider"). Assert they are loaded, unwrapped, and
-    // conform to the flat provider shape.
+  test("loadProviders loads community-authority providers as first-class flat objects", async () => {
+    // Providers are flat objects in registry/providers/*.json — trust is the
+    // `authority` field, not the directory (#1678 flattened the old
+    // registry/providers/community/ wrapper lane). Assert a community-authority
+    // provider loads as a flat object alongside curated ones.
     const providers = await loadProviders();
     const ids = new Set(providers.map((provider) => provider.id));
-    assert.equal(ids.has("404-gen"), true); // a registry/providers/community/*.json id
+    assert.equal(ids.has("404-gen"), true); // a community-authority provider (ex-community lane)
     assert.equal(ids.size, providers.length); // no duplicate ids (curated wins)
     const community = providers.find((provider) => provider.id === "404-gen");
     // Unwrapped to a flat provider object (no { provider, submission } wrapper).

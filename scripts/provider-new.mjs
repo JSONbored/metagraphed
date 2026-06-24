@@ -58,29 +58,25 @@ for (const [flag, value] of [
   }
 }
 
+// Providers are flat objects in registry/providers/ (#1678) — trust is the
+// `authority` field, not the directory. The contributor's identity is the PR
+// author (no in-file submission wrapper).
 const outPath =
-  outArg || path.join(repoRoot, "registry/providers/community", `${id}.json`);
+  outArg || path.join(repoRoot, "registry/providers", `${id}.json`);
 const outputPath = path.resolve(outPath);
-const submissionFile = path.join("registry/providers/community", `${id}.json`);
+const submissionFile = path.join("registry/providers", `${id}.json`);
 const document = {
   schema_version: 1,
-  submission: {
-    submitted_by: submittedBy,
-    submitted_by_url: `https://github.com/${submittedBy}`,
-  },
-  provider: {
-    schema_version: 1,
-    id,
-    name,
-    kind,
-    website_url: websiteUrl,
-    ...(docsUrl ? { docs_url: docsUrl } : {}),
-    ...(githubUrl ? { github_url: githubUrl } : {}),
-    ...(teamUrl ? { team_url: teamUrl } : {}),
-    ...(contactUrl ? { contact_url: contactUrl } : {}),
-    authority,
-    public_notes: publicNotes,
-  },
+  id,
+  name,
+  kind,
+  website_url: websiteUrl,
+  ...(docsUrl ? { docs_url: docsUrl } : {}),
+  ...(githubUrl ? { github_url: githubUrl } : {}),
+  ...(teamUrl ? { team_url: teamUrl } : {}),
+  ...(contactUrl ? { contact_url: contactUrl } : {}),
+  authority,
+  public_notes: publicNotes,
 };
 
 const report = buildPrSubmissionReport({
@@ -110,7 +106,7 @@ console.log(
     next_action: report.next_action,
     manual_reasons: report.manual_reasons,
     warnings: report.warnings,
-    provider: document.provider,
+    provider: document,
   }),
 );
 
