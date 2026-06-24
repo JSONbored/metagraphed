@@ -2608,3 +2608,31 @@ describe("adapter github metadata carry-forward", () => {
     assert.equal(summary.repositories.length, 0);
   });
 });
+
+test("validate:intake rejects nested retired community candidate files", async () => {
+  const retiredDir = path.join(
+    repoRoot,
+    "registry/candidates/community/__retired-intake-test__",
+  );
+  const retiredFile = path.join(retiredDir, "nested.json");
+  await mkdir(retiredDir, { recursive: true });
+  try {
+    await writeFile(retiredFile, "{}\n");
+    const result = spawnSync("node", ["scripts/validate-intake.mjs"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /registry\/candidates\/community\/ is retired/,
+    );
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /__retired-intake-test__\/nested\.json/,
+    );
+  } finally {
+    await rm(retiredDir, { recursive: true, force: true });
+  }
+});

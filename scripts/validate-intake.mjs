@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { readJson, repoRoot } from "./lib.mjs";
+import { listJsonFilesRecursive, readJson, repoRoot } from "./lib.mjs";
 
 const templateRoot = path.join(repoRoot, ".github/ISSUE_TEMPLATE");
 const interfaceTemplate = await fs.readFile(
@@ -84,8 +84,8 @@ const errors = [];
 // full CI lanes (validate:intake is on both), so a candidate file is always caught.
 try {
   const retiredDir = path.join(repoRoot, "registry/candidates/community");
-  const retiredFiles = (await fs.readdir(retiredDir)).filter((name) =>
-    name.endsWith(".json"),
+  const retiredFiles = (await listJsonFilesRecursive(retiredDir)).map((file) =>
+    path.relative(retiredDir, file),
   );
   if (retiredFiles.length > 0) {
     errors.push(
