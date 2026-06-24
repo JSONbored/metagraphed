@@ -1928,6 +1928,48 @@
           "unknown"
         ]
       },
+      "CompareArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "dimensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requested_netuids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ContractsArtifact": {
         "allOf": [
           {
