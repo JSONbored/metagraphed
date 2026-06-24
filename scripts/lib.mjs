@@ -682,11 +682,30 @@ export function classifyNativeName(value, netuid) {
   const normalized = raw.toLowerCase();
   const genericName =
     Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
-  if (
-    genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
-    !/[\p{L}\p{N}]/u.test(raw)
-  ) {
+  // Placeholder on-chain identities an owner may set before naming a subnet —
+  // e.g. "Team TBC", "TBD", "Coming Soon". Treated as not-a-real-name so the
+  // build falls back to "Subnet N" and the registry never adopts them as a
+  // display name (subnet:new + validate:surface enforce this on creation/CI).
+  const placeholderName =
+    [
+      "unknown",
+      "none",
+      "null",
+      "n/a",
+      "na",
+      "unnamed",
+      "untitled",
+      "tbc",
+      "tbd",
+      "tba",
+      "wip",
+      "placeholder",
+      "coming soon",
+      "to be confirmed",
+      "to be determined",
+      "to be announced",
+    ].includes(normalized) || /\b(?:tbc|tbd|tba)\b/.test(normalized);
+  if (genericName || placeholderName || !/[\p{L}\p{N}]/u.test(raw)) {
     return { raw_name: raw, quality: "placeholder" };
   }
 

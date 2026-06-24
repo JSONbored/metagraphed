@@ -418,6 +418,10 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:intake
 
+      - name: Validate registry subnet files
+        if: steps.route.outputs.mode == 'full'
+        run: npm run validate:surface
+
       - name: Validate workflows
         if: steps.route.outputs.mode == 'full'
         run: npm run validate:workflows
