@@ -2619,7 +2619,16 @@ async function d1All(env, sql, params) {
       d1TimeoutMs(env),
     );
     return result?.results || [];
-  } catch {
+  } catch (error) {
+    // Surface the failure instead of silently degrading to []. A swallowed
+    // "no such column" here (prod schema drift) dark-served the uptime tier for
+    // days before anyone noticed — log it so the next failure is diagnosable.
+    console.error(
+      "[d1All]",
+      String(error?.message ?? error),
+      "·",
+      String(sql).slice(0, 120),
+    );
     return markD1FallbackRows([]);
   }
 }

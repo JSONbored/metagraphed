@@ -737,8 +737,12 @@ export async function rollupDailyUptime(env, overrides = {}) {
       days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
     return { rolled: true, days: days.map((d) => d.date) };
-  } catch {
-    return { rolled: false };
+  } catch (error) {
+    // Don't swallow silently: a failing INSERT here (e.g. a missing column from
+    // un-applied schema migration) freezes the daily uptime rollup invisibly.
+    // Surface the reason so the hourly cron's result is diagnosable.
+    console.error("[rollupDailyUptime]", String(error?.message ?? error));
+    return { rolled: false, error: String(error?.message ?? error) };
   }
 }
 
