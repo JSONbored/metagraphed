@@ -20,6 +20,7 @@ import {
   readJson,
   registrySurfaceKey,
   repoRoot,
+  safeFetch,
   slugify,
   stableStringify,
   writeRepositoryJson,
@@ -181,27 +182,17 @@ async function verifyAndEnrich(target) {
 }
 
 async function probeUrl(target) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(target, {
-      method: "GET",
-      redirect: "follow",
-      signal: controller.signal,
-      headers: { "user-agent": "metagraphed-surface-add/0.0", accept: "*/*" },
-    });
-    await response.body?.cancel();
-    return response.ok
-      ? { ok: true }
-      : { ok: false, detail: `HTTP ${response.status}` };
-  } catch (error) {
-    return {
-      ok: false,
-      detail: error.name === "AbortError" ? "timeout" : error.message,
-    };
-  } finally {
-    clearTimeout(timer);
+  // safeFetch re-checks every redirect hop, so a public host can't redirect into
+  // a private address to defeat the public-safe guard.
+  const result = await safeFetch(target, { accept: "*/*" });
+  if (result.unsafe) {
+    return { ok: false, detail: "redirects to a private/unsafe address" };
   }
+  if (result.error) return { ok: false, detail: result.error };
+  await result.response?.body?.cancel();
+  return result.ok
+    ? { ok: true }
+    : { ok: false, detail: `HTTP ${result.status}` };
 }
 
 async function fetchOpenApi(target) {
@@ -220,37 +211,27 @@ async function fetchOpenApi(target) {
     // invalid URL — validation elsewhere reports it
   }
   for (const candidate of [...new Set(candidates)]) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    const result = await safeFetch(candidate, { accept: "application/json" });
+    if (
+      !result.ok ||
+      !result.response ||
+      !isJsonContentType(result.response.headers.get("content-type"))
+    ) {
+      await result.response?.body?.cancel();
+      continue;
+    }
     try {
-      const response = await fetch(candidate, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-        headers: {
-          "user-agent": "metagraphed-surface-add/0.0",
-          accept: "application/json",
-        },
-      });
-      if (
-        !response.ok ||
-        !isJsonContentType(response.headers.get("content-type"))
-      ) {
-        await response.body?.cancel();
-        continue;
-      }
-      const document = JSON.parse(await response.text());
+      const document = JSON.parse(await result.response.text());
       const looksOpenApi =
         document &&
         typeof document === "object" &&
         (typeof document.openapi === "string" ||
           typeof document.swagger === "string" ||
           Boolean(document.paths));
-      if (looksOpenApi) return { document, schemaUrl: candidate };
+      // result.url is the final URL after safe redirects — the real spec location.
+      if (looksOpenApi) return { document, schemaUrl: result.url };
     } catch {
-      // try the next candidate
-    } finally {
-      clearTimeout(timer);
+      // not JSON / not a spec — try the next candidate
     }
   }
   return null;
