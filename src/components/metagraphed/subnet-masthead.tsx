@@ -27,10 +27,16 @@ import {
 } from "@/components/metagraphed/charts/stat-with-spark";
 import {
   subnetEndpointsQuery,
+  subnetHealthPercentilesQuery,
   subnetTrajectoryQuery,
   subnetUptimeQuery,
 } from "@/lib/metagraphed/queries";
-import type { Endpoint, SubnetProfile, SurfaceUptime } from "@/lib/metagraphed/types";
+import type {
+  Endpoint,
+  SubnetProfile,
+  SurfaceLatencyPercentiles,
+  SurfaceUptime,
+} from "@/lib/metagraphed/types";
 
 interface Props {
   netuid: number;
@@ -126,6 +132,18 @@ function dailyHealthSeries(surfaces: SurfaceUptime[] | undefined): {
  * row replaces flat numeric tiles with mini visualizations (sparklines,
  * stacks, radials, dot rows) so every metric ships visual context.
  */
+// Subnet-level p50 from the per-surface percentiles artifact. The /uptime daily
+// series is frequently empty even while probes flow (reliability/surfaces null),
+// so the latency tile reads /health/percentiles like the KPI strips do — mean of
+// the per-surface p50s, no synthesis (null when nothing reported).
+function aggregateSurfaceP50(rows: SurfaceLatencyPercentiles[] | undefined): number | null {
+  if (!rows || rows.length === 0) return null;
+  const vals = rows
+    .map((r) => r.latency_ms?.p50)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
 export function SubnetMasthead({
   netuid,
   profile,
@@ -149,6 +167,7 @@ export function SubnetMasthead({
   const { data: trajRes } = useQuery(subnetTrajectoryQuery(netuid));
   const { data: uptimeRes } = useQuery(subnetUptimeQuery(netuid));
   const { data: endpointsRes } = useQuery(subnetEndpointsQuery(netuid));
+  const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
   const trendWindowKey = uptimeRes?.data?.window ?? "90d";
@@ -174,6 +193,15 @@ export function SubnetMasthead({
   const trendsAt = uptimeRes?.meta?.generated_at ?? generatedAt;
   const trajAt = trajRes?.meta?.generated_at ?? generatedAt;
   const endpointsAt = endpointsRes?.meta?.generated_at ?? generatedAt;
+
+  // Latency p50 tile: prefer the live per-surface percentiles (7d) — the daily
+  // uptime series is often empty even when probes are flowing, which silently
+  // dashed this tile. Fall back to the daily series' latest point.
+  const surfaceP50 = aggregateSurfaceP50(pctRes?.data);
+  const latP50 =
+    surfaceP50 ?? (latencySeries.length ? latencySeries[latencySeries.length - 1] : null);
+  const latAt = pctRes?.meta?.generated_at ?? trendsAt;
+  const latWindow = surfaceP50 != null ? "7d" : trendWindowKey;
 
   const endpoints = (endpointsRes?.data ?? []) as Endpoint[];
   const kindCounts = new Map<string, number>();
@@ -473,14 +501,12 @@ export function SubnetMasthead({
         />
         <StatWithSpark
           label="Latency p50"
-          value={
-            latencySeries.length ? `${Math.round(latencySeries[latencySeries.length - 1])}` : "—"
-          }
-          unit={latencySeries.length ? "ms" : undefined}
+          value={latP50 != null ? `${Math.round(latP50)}` : "—"}
+          unit={latP50 != null ? "ms" : undefined}
           hint="median probe latency"
-          full="Median request latency from probe trends"
-          updatedAt={trendsAt}
-          windowLabel={trendWindowKey}
+          full="Median request latency across probed surfaces (p50)"
+          updatedAt={latAt}
+          windowLabel={latWindow}
           viz={
             <div className="h-[18px]">
               {latencySeries.length > 1 ? (

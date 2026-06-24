@@ -139,7 +139,7 @@ function SubnetsStatStrip() {
   const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
   const health = useSuspenseQuery(healthQuery()).data.data ?? {};
   // Wired to the live /api/v1/coverage shape (same as CoverageFunnel): the older
-  // netuids_active/adapter_backed/manifested fields are null on the live payload.
+  // netuids_active/netuids_total/adapter_backed fields are null on the live payload.
   const active =
     (coverage.netuids_active as number | undefined) ??
     (coverage.chain_subnet_count as number | undefined);
@@ -149,10 +149,13 @@ function SubnetsStatStrip() {
   const adapter =
     (coverage.curation_level_counts as Record<string, number> | undefined)?.["adapter-backed"] ??
     (coverage.adapter_backed as number | undefined);
+  // "Manifested surfaces" = total surfaces declared in the registry. The legacy
+  // `manifested_count` is hard-0 on the live payload (deprecated) and `??` won't
+  // skip a real 0, so it silently zeroed the tile; `surface_count` is the live
+  // total. (`curated_overlay_count` is a subnet count — wrong unit for surfaces.)
   const manifested =
+    (coverage.surface_count as number | undefined) ??
     (coverage.manifested_count as number | undefined) ??
-    (coverage.curated_overlay_count as number | undefined) ??
-    (coverage.manifested as number | undefined) ??
     (coverage.surfaces_total as number | undefined);
   const ok = health.ok;
   const totalH = health.total;
