@@ -86,7 +86,6 @@ checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
 ]);
 
 for (const kind of [
-  "archive",
   "website",
   "source-repo",
   "subnet-api",
@@ -98,8 +97,6 @@ for (const kind of [
   "repo-registry",
   "docs",
   "data-artifact",
-  "subtensor-rpc",
-  "subtensor-wss",
 ]) {
   checkIncludes(surfaceTemplate, "surface template", [`- ${kind}`]);
 }

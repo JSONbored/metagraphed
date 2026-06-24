@@ -30,6 +30,7 @@ body:
     id: kind
     attributes:
       label: Surface kind
+      description: "Application/operational surfaces only. Base-layer chain endpoints (RPC/WSS/archive) are maintainer-curated network infrastructure served via the endpoint lane (/api/v1/rpc, the /rpc proxy) — they are not contributor surfaces."
       options:
         - docs
         - website
@@ -42,9 +43,6 @@ body:
         - example
         - sse
         - repo-registry
-        - archive
-        - subtensor-rpc
-        - subtensor-wss
     validations:
       required: true
   - type: input
