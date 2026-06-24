@@ -199,11 +199,16 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Claude Code session directory (local, per-developer) — but version-control the
-# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery) and
-# the committed contributor skill in .claude/skills/ (read by Claude Code + Codex).
+# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery),
+# the committed contributor skill in .claude/skills/ (read by Claude Code + Codex),
+# and the shared repo hooks/settings in .claude/settings.json + .claude/hooks/
+# (e.g. the contract/skill freshness reminder). Personal overrides go in the
+# gitignored .claude/settings.local.json.
 .claude/*
 !.claude/commands/
 !.claude/skills/
+!.claude/settings.json
+!.claude/hooks/
 
 # Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
 __pycache__/
