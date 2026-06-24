@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 73,
+  "surface_count": 74,
   "surfaces": [
     {
       "auth_required": false,
@@ -1127,6 +1127,24 @@
       "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io-4",
       "surface_key": "srf-02d52d57a8455bfb",
       "url": "https://api.gittensor.io/dash/repos"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 74,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "surface_id": "sn-74-gittensor-data-artifact-api-gittensor-io-5",
+      "surface_key": "srf-25876085ed9025aa",
+      "url": "https://api.gittensor.io/dash/prices"
     },
     {
       "auth_required": false,

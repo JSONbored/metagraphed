@@ -1072,7 +1072,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     callableAgentServices.length,
-    95,
+    96,
     "agent-catalog callable-service count must stay deterministic",
   );
   assert.equal(
