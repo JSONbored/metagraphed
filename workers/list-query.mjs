@@ -366,5 +366,6 @@ function numberParam(value) {
   if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
     return null;
   }
-  return Number(value);
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
