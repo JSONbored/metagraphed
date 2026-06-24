@@ -112,3 +112,82 @@ describe("list-query pagination order", () => {
     assert.equal(result.meta.pagination.order, "desc");
   });
 });
+
+describe("list-query numeric range filters", () => {
+  const data = {
+    subnets: [
+      { netuid: 1, surface_count: 2, tempo: 100 },
+      { netuid: 2, surface_count: 5, tempo: 250 },
+      { netuid: 3, surface_count: 9, tempo: 360 },
+      { netuid: 4, surface_count: 12, tempo: 500 },
+    ],
+  };
+
+  test("min_ keeps rows at or above the bound (inclusive)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=5"),
+      "subnets",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [2, 3, 4],
+    );
+    assert.equal(result.meta.pagination.total, 3);
+  });
+
+  test("min_ and max_ together select an inclusive band", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_tempo=100&max_tempo=360"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [1, 2, 3],
+    );
+  });
+
+  test("a row whose range field is absent/non-numeric is excluded once a bound is set", () => {
+    const result = applyQueryFilters(
+      {
+        subnets: [
+          { netuid: 1, surface_count: 5 },
+          { netuid: 2 },
+          { netuid: 3, surface_count: "n/a" },
+        ],
+      },
+      query("/api/v1/subnets?min_surface_count=1"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("a non-numeric bound is a query error, not a silently-dropped filter", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=abc"),
+      "subnets",
+    );
+    assert.equal(result.error.parameter, "min_surface_count");
+    assert.match(result.error.message, /must be a number/);
+  });
+
+  test("range filters compose with sort", () => {
+    const result = applyQueryFilters(
+      data,
+      query(
+        "/api/v1/subnets?min_surface_count=5&sort=surface_count&order=desc",
+      ),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.surface_count),
+      [12, 9, 5],
+    );
+  });
+});

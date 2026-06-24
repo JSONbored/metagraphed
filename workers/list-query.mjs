@@ -87,7 +87,8 @@ function applyListTransform(data, params, config) {
     config.csv_filters,
     config.array_filters,
   );
-  const sorted = sortRows(filtered, params);
+  const ranged = rangeFilterRows(filtered, params, config.range_fields);
+  const sorted = sortRows(ranged, params);
   const paginated = paginateRows(sorted, params);
   return {
     data: {
@@ -110,6 +111,39 @@ function applyListTransform(data, params, config) {
         : {}),
     },
   };
+}
+
+// Inclusive numeric range filter (issue #1610): for each range field F, the
+// query may set min_F and/or max_F, keeping rows where row[F] >= min and
+// row[F] <= max. A row whose field is absent or non-numeric is EXCLUDED once any
+// bound on that field is set, so a partial collection never leaks past a filter.
+function rangeFilterRows(rows, params, rangeFields = []) {
+  const bounds = [];
+  for (const field of rangeFields) {
+    const min = finiteNumberParam(params.get(`min_${field}`));
+    const max = finiteNumberParam(params.get(`max_${field}`));
+    if (min !== null || max !== null) {
+      bounds.push({ field, min, max });
+    }
+  }
+  if (bounds.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    bounds.every(({ field, min, max }) => {
+      const value = row[field];
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return false;
+      }
+      if (min !== null && value < min) {
+        return false;
+      }
+      if (max !== null && value > max) {
+        return false;
+      }
+      return true;
+    }),
+  );
 }
 
 function searchRows(rows, params, keys) {
@@ -239,6 +273,20 @@ function validateListQuery(params, config) {
     }
   }
 
+  // Numeric range bounds: a present min_F / max_F must parse as a finite number,
+  // so a malformed bound (e.g. ?min_tempo=abc) is a query error rather than a
+  // silently-dropped filter that returns the unfiltered collection.
+  for (const field of config.range_fields || []) {
+    for (const bound of [`min_${field}`, `max_${field}`]) {
+      if (params.has(bound) && finiteNumberParam(params.get(bound)) === null) {
+        return {
+          parameter: bound,
+          message: `${bound} must be a number.`,
+        };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -314,4 +362,14 @@ function integerParam(value) {
   }
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+// Range bounds accept any finite number (negative and fractional included — e.g.
+// a tempo band), unlike integerParam which is the non-negative cursor/limit form.
+function finiteNumberParam(value) {
+  if (value === null || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

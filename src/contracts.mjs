@@ -575,6 +575,18 @@ export const API_QUERY_COLLECTIONS = {
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
+    // Numeric fields that accept inclusive min_/max_ range params over REST.
+    // These are exactly the numeric facets the collection already sorts by, so a
+    // consumer can now filter the same dimensions it can order by (issue #1610).
+    rangeFields: [
+      "surface_count",
+      "probed_surface_count",
+      "candidate_count",
+      "participant_count",
+      "mechanism_count",
+      "tempo",
+      "block",
+    ],
     sort: [
       "block",
       "candidate_count",
@@ -2233,6 +2245,11 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: the row fields that accept inclusive `min_<field>` /
+    // `max_<field>` query params (row[field] >= n / row[field] <= n). The
+    // mechanism is collection-agnostic; a field listed here is range-filterable
+    // and auto-documented in OpenAPI from this config (like the other filters).
+    range_fields: options.rangeFields || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2255,11 +2272,23 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Inclusive numeric range params: each range field F is documented as
+  // min_F / max_F (number), generated from the collection config so the OpenAPI
+  // surface stays in lockstep with the filter engine.
+  const rangeParameters = (config.range_fields || [])
+    .filter(
+      (field) => !excluded.has(`min_${field}`) && !excluded.has(`max_${field}`),
+    )
+    .flatMap((field) => [
+      { name: `min_${field}`, schema: { type: "number" } },
+      { name: `max_${field}`, schema: { type: "number" } },
+    ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
+      ...rangeParameters,
       ...searchParameters,
       {
         name: "fields",
