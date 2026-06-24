@@ -26,6 +26,7 @@ import {
   providerIdentityTokens,
   sameResourceUrl,
   urlOwnerTokens,
+  validateCandidateForSubmission,
 } from "../scripts/submission-policy.mjs";
 import {
   buildNotificationKey,
@@ -538,6 +539,29 @@ describe("Metagraphed submission gate policy", () => {
 
     assert.equal(scope.scope, "normal-pr");
     assert.equal(scope.providerFiles.length, 0);
+  });
+
+  test("validateCandidateForSubmission labels a provider-less candidate <missing>", () => {
+    const result = validateCandidateForSubmission({
+      candidate: {
+        schema_version: 1,
+        netuid: 1,
+        kind: "docs",
+        url: "https://api.acme-labs.io/v1",
+        source_url: "https://api.acme-labs.io/v1",
+      },
+      native: { subnets: [{ netuid: 1 }] },
+      providers: [],
+    });
+
+    assert.equal(
+      result.errors.some((error) =>
+        error.message?.includes(
+          "candidate provider <missing> is not registered",
+        ),
+      ),
+      true,
+    );
   });
 
   test("still blocks a direct submission bundled with unrelated files", () => {
