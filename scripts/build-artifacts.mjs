@@ -628,6 +628,22 @@ const coverage = {
     mergedSubnets.flatMap((subnet) => subnet.derived_categories || []),
     (tag) => tag,
   ),
+  // Machine-readable surface coverage by kind (issue #1125): how many subnets
+  // expose at least one published surface of each machine-usable kind. These
+  // are the audit numbers the coverage-depth roadmap tracks (e.g. 22/129
+  // openapi, 17/129 subnet-api, 1/129 sse at the June 2026 baseline).
+  machine_readable_surface_kinds: Object.fromEntries(
+    ["openapi", "subnet-api", "sse", "data-artifact", "sdk", "example"].map(
+      (kind) => [
+        kind.replace(/-/g, "_") + "_subnet_count",
+        mergedSubnets.filter((subnet) =>
+          (surfacesByNetuidForCounts.get(subnet.netuid) || []).some(
+            (surface) => surface.kind === kind,
+          ),
+        ).length,
+      ],
+    ),
+  ),
 };
 
 // #1002: superseded_by is computed once above (curatedSurfaceIdByRegistryKey /
@@ -2332,6 +2348,23 @@ const coverageDepthArtifact = buildCoverageDepthArtifact({
   contractVersion,
 });
 await writeJson(artifactFile("coverage-depth.json"), coverageDepthArtifact);
+// Stamp coverage-depth tier summary back into the git-tier coverage.json
+// (issue #1125) so contributors can track the roadmap numbers (agent-ready,
+// machine-usable, tier distribution, top gap codes) without running a full
+// build. coverage.json is the authoritative git-committed summary artifact.
+coverage.coverage_depth = {
+  tier_counts: coverageDepthArtifact.summary.tier_counts,
+  agent_ready_count: coverageDepthArtifact.summary.agent_ready_count,
+  callable_subnet_count: coverageDepthArtifact.summary.callable_subnet_count,
+  average_score: coverageDepthArtifact.summary.average_score,
+  top_gap_codes: Object.entries(
+    coverageDepthArtifact.summary.gap_code_counts || {},
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([code, count]) => ({ code, count })),
+};
+await writeJson(artifactFile("coverage.json"), coverage);
 
 // --- llms.txt / llms-full.txt (LLM + agent discoverability) ------------------
 // The emerging standard for making a site/API legible to LLMs. Served from the

@@ -51,6 +51,9 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
       surfaces: coverage.surface_count,
       probed_surfaces: coverage.probed_surface_count,
       candidates: coverage.candidate_count,
+      machine_readable_surface_kinds:
+        coverage.machine_readable_surface_kinds || {},
+      coverage_depth: coverage.coverage_depth || null,
     },
     profile_summary: {
       average_completeness_score:
@@ -95,6 +98,39 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
   };
 }
 
+function renderMachineReadableKinds(kinds, totalNetuids) {
+  const LABEL = {
+    openapi_subnet_count: "OpenAPI/schema spec",
+    subnet_api_subnet_count: "Subnet API (callable)",
+    sse_subnet_count: "SSE stream",
+    data_artifact_subnet_count: "Data artifact",
+    sdk_subnet_count: "SDK",
+    example_subnet_count: "Example/quickstart",
+  };
+  const total = totalNetuids || "?";
+  return Object.entries(LABEL).map(([key, label]) => {
+    const count = kinds?.[key] ?? "?";
+    return `- ${label}: ${count}/${total} subnets`;
+  });
+}
+
+function renderCoverageDepthSummary(depth) {
+  if (!depth) return [];
+  const tierLines = Object.entries(depth.tier_counts || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([tier, count]) => `  - ${tier}: ${count}`);
+  const topGaps = (depth.top_gap_codes || [])
+    .map(({ code, count }) => `${code} (${count})`)
+    .join(", ");
+  return [
+    `- Coverage-depth tiers (avg score ${depth.average_score ?? "?"}):`,
+    ...tierLines,
+    `- Agent-ready subnets: ${depth.agent_ready_count ?? "?"}`,
+    `- Callable subnets: ${depth.callable_subnet_count ?? "?"}`,
+    ...(topGaps ? [`- Top gap codes: ${topGaps}`] : []),
+  ];
+}
+
 export function renderCurationBrief(snapshot) {
   const enrichmentSummary = snapshot.enrichment_summary || {};
   const enrichmentQueue = snapshot.enrichment_queue || [];
@@ -112,6 +148,14 @@ export function renderCurationBrief(snapshot) {
     `- Published surfaces/endpoints: ${snapshot.coverage.surfaces}`,
     `- Probed surfaces: ${snapshot.coverage.probed_surfaces}`,
     `- Candidate surfaces: ${snapshot.coverage.candidates}`,
+    "",
+    "### Machine-readable surface coverage",
+    ...renderMachineReadableKinds(
+      snapshot.coverage.machine_readable_surface_kinds,
+      snapshot.coverage.active_netuids,
+    ),
+    ...renderCoverageDepthSummary(snapshot.coverage.coverage_depth),
+    "",
     `- Average profile completeness: ${snapshot.profile_summary.average_completeness_score ?? "unknown"}`,
     `- Profile levels: ${formatCounts(snapshot.profile_summary.by_level)}`,
     `- Identity promotion candidates: ${snapshot.profile_summary.identity_promotion_candidate_count ?? "unknown"}`,
