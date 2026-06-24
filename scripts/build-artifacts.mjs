@@ -3962,7 +3962,7 @@ function enrichmentTargetId(entry, targetType, kind) {
 }
 
 function candidateCommandTemplate(netuid, kind) {
-  return `npm run candidate:new -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
+  return `npm run surface:add -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
 }
 
 function surfaceTargetAction(evidenceAction) {
@@ -4476,7 +4476,7 @@ function enrichmentReasonCodes({
 function enrichmentContributionHint(lane, directSubmissionKinds) {
   if (lane === "direct-submission") {
     const kinds = directSubmissionKinds.join(", ");
-    return `Submit one official public ${kinds || "interface"} candidate with npm run candidate:new.`;
+    return `Submit one official public ${kinds || "interface"} candidate with npm run surface:add.`;
   }
   if (lane === "maintainer-review") {
     return "Maintainer should review current machine-verified surfaces and promote only source-backed entries.";

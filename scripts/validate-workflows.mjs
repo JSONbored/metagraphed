@@ -60,75 +60,25 @@ for (const workflow of workflows) {
       `action ref must be pinned to a full commit SHA: ${actionRef}`,
     );
   }
-  if (workflow === "intake-validation.yml") {
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'interface-submission')",
-      ),
-      workflow,
-      "intake must be exact-label gated",
-    );
-  }
-  if (workflow === "intake-import-pr.yml") {
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'interface-submission')",
-      ),
-      workflow,
-      "intake import must require interface-submission label",
-    );
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')",
-      ),
-      workflow,
-      "intake import must require maintainer approval label",
-    );
-    check(
-      content.includes("peter-evans/create-pull-request@"),
-      workflow,
-      "intake import must open a PR instead of direct-publishing",
-    );
-    check(
-      content.includes("npm run intake:import"),
-      workflow,
-      "intake import must use the checked-in import script",
-    );
-    check(
-      !content.includes("--issue-json issue.json") &&
-        !content.includes("--out intake-report.json"),
-      workflow,
-      "intake import must keep transient issue and report files outside the repository workspace",
-    );
-    check(
-      content.includes("add-paths:") &&
-        content.includes("registry/**") &&
-        content.includes("public/**") &&
-        content.includes("dist/metagraph-r2/**") &&
-        content.includes("schemas/**") &&
-        content.includes("generated/**"),
-      workflow,
-      "intake import pull request must allowlist generated registry artifact paths",
-    );
-  }
   if (workflow === "validate.yml") {
-    // Route classification must stay in this trusted workflow. Running a
-    // checkout-local action/script would let pull requests forge `mode=ugc` and
-    // skip full validation. The deletion-filtered verification is consumed back
-    // in this workflow.
+    // There is NO reduced "ugc" lane to forge — every PR runs the full
+    // validation. The only PR-derived input is the deletion-filtered submitted-
+    // file list, computed inline in this trusted workflow (a checkout-local
+    // action could be PR-controlled) and consumed only to diff-scope the
+    // reproducible-artifact verifier.
     check(
       !content.includes("uses: ./.github/actions/classify-validation-route"),
       workflow,
       "validate workflow must not route CI through PR-controlled local actions",
     );
     check(
-      content.includes("git diff --name-only ") &&
-        content.includes("> changed-files.txt") &&
+      content.includes("git diff --name-only") &&
         content.includes("--diff-filter=d") &&
         content.includes("> submitted-artifact-files.txt") &&
-        content.includes("python3 - <<'PY_ROUTE'"),
+        !content.includes("PY_ROUTE") &&
+        !content.includes("mode=ugc"),
       workflow,
-      "validate workflow must compute routing diffs and classify the route inline from trusted workflow code",
+      "validate workflow must compute the submitted-artifact diff inline and run no reduced ugc lane",
     );
     check(
       content.includes("--changed-files submitted-artifact-files.txt"),

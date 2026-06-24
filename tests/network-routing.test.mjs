@@ -281,6 +281,12 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const trends = await get(env, "/api/v1/testnet/subnets/7/health/trends");
     assert.equal(trends.res.status, 404);
     assert.equal(trends.body.meta.network, "testnet");
+
+    // Cross-subnet compare composes the mainnet registry + economics + health,
+    // so it is mainnet-only too.
+    const compare = await get(env, "/api/v1/testnet/compare?netuids=1");
+    assert.equal(compare.res.status, 404);
+    assert.equal(compare.body.meta.network, "testnet");
   });
 
   test("raw artifact: mainnet alias and testnet both serve their partitioned data", async () => {

@@ -9,7 +9,7 @@ export async function submissionFormattingErrors(entries = []) {
     const formatted = await formatRepositoryJson(entry.document);
     if (entry.raw !== formatted) {
       errors.push(
-        `${entry.file} is not formatted with the repository JSON style; run Prettier or regenerate it with npm run candidate:new/provider:new`,
+        `${entry.file} is not formatted with the repository JSON style; run Prettier or regenerate it with npm run surface:add/provider:new`,
       );
     }
   }

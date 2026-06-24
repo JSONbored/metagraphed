@@ -1,19 +1,21 @@
-name: Add or update subnet interface
-description: Submit a public subnet API, docs, dashboard, OpenAPI, SSE, repository, or data artifact candidate.
-title: "interface: "
+name: Add or update a subnet surface
+description: Suggest a public subnet surface (API, OpenAPI, docs, dashboard, repo, SDK, data artifact, …) to add to its subnet file.
+title: "surface: "
 labels:
-  - interface-submission
+  - surface-submission
   - metagraphed-under-review
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Metagraphed. Use this issue path when you want a low-friction review/import request. Schema-valid issues are not auto-published; approved issue imports require the `metagraphed-import-approved` label and open a pull request. If you want the fastest path for a simple public-safe interface, open a direct PR with exactly one `registry/candidates/community/*.json` file instead.
+        Surfaces live in **one file per subnet** — `registry/subnets/<slug>.json`. The fastest path is a direct PR: run `npm run surface:add` and open a PR that changes **only that one file** (see `CONTRIBUTING.md` → Community submissions). It lands with `authority: community` and `review.state: community-submitted`, and the build's prober owns verification/health.
+
+        Use this issue only to **request** a surface if you can't open a PR. Issue submissions do not auto-publish — they are a request a maintainer or contributor turns into a PR.
   - type: input
     id: netuid
     attributes:
       label: Netuid
-      description: Bittensor subnet netuid for this interface.
+      description: Bittensor subnet netuid for this surface.
       placeholder: "7"
     validations:
       required: true
@@ -27,20 +29,20 @@ body:
   - type: dropdown
     id: kind
     attributes:
-      label: Interface kind
+      label: Surface kind
       options:
-        - archive
+        - docs
         - website
         - source-repo
-        - subnet-api
         - openapi
-        - sse
+        - subnet-api
+        - dashboard
+        - data-artifact
         - sdk
         - example
-        - dashboard
+        - sse
         - repo-registry
-        - docs
-        - data-artifact
+        - archive
         - subtensor-rpc
         - subtensor-wss
     validations:
@@ -49,7 +51,7 @@ body:
     id: url
     attributes:
       label: Public URL
-      description: The exact public interface URL to list or update.
+      description: The exact public surface URL to list or update.
       placeholder: https://example.com/api
     validations:
       required: true
@@ -57,21 +59,22 @@ body:
     id: source_url
     attributes:
       label: Source URL
-      description: Public docs, repository, or announcement supporting the interface claim.
+      description: A public URL that independently proves the subnet publishes this surface (docs, repo, or announcement).
       placeholder: https://docs.example.com/api
     validations:
       required: true
   - type: input
     id: provider
     attributes:
-      label: Provider or team
+      label: Provider slug
+      description: The registered provider for the team/operator behind this surface — see `npm run providers:list`. A debut provider is registered in the same PR.
       placeholder: example-team
     validations:
       required: true
   - type: dropdown
     id: auth_required
     attributes:
-      label: Does this interface require authentication?
+      label: Does this surface require authentication?
       options:
         - "no"
         - "yes"
@@ -82,7 +85,7 @@ body:
     id: rate_limits
     attributes:
       label: Rate limits or access notes
-      description: Include public rate-limit notes, API-key requirements, or known access constraints.
+      description: Public rate-limit notes, API-key requirements, or known access constraints.
   - type: checkboxes
     id: public_safety
     attributes:
@@ -92,5 +95,5 @@ body:
           required: true
         - label: The submitted URL can be checked with read-only probes.
           required: true
-        - label: I understand issue submissions create review/import work and do not directly publish registry data.
+        - label: I understand issue submissions are requests and do not directly publish registry data.
           required: true
