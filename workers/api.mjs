@@ -1363,8 +1363,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // Edge-cached on the cron snapshot's last_run_at so a polling/cross-colo burst
   // doesn't re-run the economics + D1 reads.
   if (url.pathname === "/api/v1/compare") {
-    return withEdgeCache(request, ctx, env, "compare", () =>
-      handleCompare(request, env, url),
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "compare",
+      () => handleCompare(request, env, url),
+      canonicalCompareCachePath(url),
     );
   }
 
@@ -2652,7 +2657,14 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 // empty payload can never seed a stale entry — identical to the overlay cache's
 // `if (lastRunAt)` guard. The cache is transparent: body/shape/headers are
 // whatever buildResponse() produced; only 200s are cached, never errors.
-async function withEdgeCache(request, ctx, env, keyParts, buildResponse) {
+async function withEdgeCache(
+  request,
+  ctx,
+  env,
+  keyParts,
+  buildResponse,
+  cachePathAndSearch = null,
+) {
   const cache = request.method === "GET" ? globalThis.caches?.default : null;
   // Cheap, per-isolate-memoized read of just the snapshot time. On a hit this +
   // the cache match is the whole request (no D1 aggregation at all).
@@ -2660,10 +2672,11 @@ async function withEdgeCache(request, ctx, env, keyParts, buildResponse) {
   let cacheKey = null;
   if (cache && lastRunAt) {
     const url = new URL(request.url);
+    const cacheRoute = cachePathAndSearch ?? `${url.pathname}${url.search}`;
     cacheKey = new Request(
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         contractVersion(env),
-      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${url.pathname}${url.search}`,
+      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${cacheRoute}`,
     );
     const hit = await cache.match(cacheKey);
     if (hit) {
@@ -3558,6 +3571,40 @@ const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 // ids, each ≤ 5 digits. Bounds the compare fan-out at the parameter layer.
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 
+function compareNetuids(netuidsRaw) {
+  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) return null;
+  const requestedNetuids = [];
+  const seenNetuids = new Set();
+  for (const part of netuidsRaw.split(",")) {
+    const netuid = Number(part);
+    if (seenNetuids.has(netuid)) continue;
+    seenNetuids.add(netuid);
+    requestedNetuids.push(netuid);
+  }
+  return requestedNetuids;
+}
+
+function compareDimensions(dimensionsRaw) {
+  if (dimensionsRaw === null) return COMPARE_DIMENSIONS;
+  const requested = dimensionsRaw.split(",");
+  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
+  if (unknown !== undefined) return null;
+  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
+}
+
+function canonicalCompareCachePath(url) {
+  if (validateQueryParams(url, ["netuids", "dimensions"])) return null;
+  const requestedNetuids = compareNetuids(url.searchParams.get("netuids"));
+  if (!requestedNetuids) return null;
+  const dimensions = compareDimensions(url.searchParams.get("dimensions"));
+  if (!dimensions) return null;
+  const params = [`netuids=${encodeURIComponent(requestedNetuids.join(","))}`];
+  if (dimensions.length !== COMPARE_DIMENSIONS.length) {
+    params.push(`dimensions=${encodeURIComponent(dimensions.join(","))}`);
+  }
+  return `${url.pathname}?${params.join("&")}`;
+}
+
 // Pure projection: fold the requested netuids + the resolved source rows into
 // the side-by-side compare shape, in REQUESTED order. A netuid absent from the
 // registry profiles is returned `found: false` with every requested dimension
@@ -3645,7 +3692,8 @@ async function handleCompare(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
 
   const netuidsRaw = url.searchParams.get("netuids");
-  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) {
+  const requestedNetuids = compareNetuids(netuidsRaw);
+  if (!requestedNetuids) {
     return errorResponse(
       "invalid_query",
       "netuids is required: a comma-separated list of 1-128 subnet ids.",
@@ -3653,31 +3701,19 @@ async function handleCompare(request, env, url) {
       { parameter: "netuids" },
     );
   }
-  // Preserve requested order; drop duplicate ids so each subnet appears once.
-  const requestedNetuids = [];
-  const seenNetuids = new Set();
-  for (const part of netuidsRaw.split(",")) {
-    const netuid = Number(part);
-    if (seenNetuids.has(netuid)) continue;
-    seenNetuids.add(netuid);
-    requestedNetuids.push(netuid);
-  }
 
-  let dimensions = COMPARE_DIMENSIONS;
   const dimensionsRaw = url.searchParams.get("dimensions");
-  if (dimensionsRaw !== null) {
-    const requested = dimensionsRaw.split(",");
-    const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-    if (unknown !== undefined) {
-      return errorResponse(
-        "invalid_query",
-        `Unknown dimension "${unknown}". Valid dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
-        400,
-        { parameter: "dimensions" },
-      );
-    }
-    // Canonical order, de-duplicated, so the echoed `dimensions` is stable.
-    dimensions = COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
+  const dimensions = compareDimensions(dimensionsRaw);
+  if (!dimensions) {
+    const unknown = dimensionsRaw
+      .split(",")
+      .find((d) => !COMPARE_DIMENSIONS.includes(d));
+    return errorResponse(
+      "invalid_query",
+      `Unknown dimension "${unknown}". Valid dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
+      400,
+      { parameter: "dimensions" },
+    );
   }
 
   // subnetMeta + structure always come from the cached profiles projection;
@@ -3693,8 +3729,9 @@ async function handleCompare(request, env, url) {
                 SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
                 ROUND(AVG(latency_ms)) AS avg_latency_ms
          FROM surface_status
+         WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
          GROUP BY netuid`,
-          [],
+          requestedNetuids,
         )
       : null,
   ]);
