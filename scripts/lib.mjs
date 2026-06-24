@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import { Agent } from "undici";
 import {
   ARTIFACT_STORAGE_TIERS,
   R2_STAGING_RELATIVE_ROOT,
@@ -897,11 +898,33 @@ export async function isUnsafeResolvedUrl(value, resolver = lookup) {
 
 const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
 
+function createPinnedAddressDispatcher(hostname, address, family) {
+  return new Agent({
+    connect: {
+      lookup(requestedHostname, options, callback) {
+        if (normalizeHostname(requestedHostname) !== hostname) {
+          callback(
+            new Error("safeFetch attempted to resolve an unpinned host"),
+          );
+          return;
+        }
+        if (options?.all) {
+          callback(null, [{ address, family }]);
+          return;
+        }
+        callback(null, address, family);
+      },
+    },
+  });
+}
+
 // SSRF-safe outbound GET: re-validates EVERY hop — the initial URL AND each
 // redirect Location — against isUnsafeResolvedUrl before connecting, so a public
 // host can't 30x-redirect into a private/internal address (169.254.169.254,
-// localhost, …). `redirect: "follow"` would bypass the guard; this follows
-// manually, bounded by maxRedirects. Returns exactly one of:
+// localhost, …). Each validated DNS answer is also pinned into undici's
+// connection lookup for that hop, closing the DNS-rebinding gap between the
+// safety check and the actual fetch. `redirect: "follow"` would bypass the
+// guard; this follows manually, bounded by maxRedirects. Returns exactly one of:
 //   { ok: true,  response, status, url }  final non-redirect 2xx response
 //   { ok: false, response, status, url }  final non-redirect non-2xx response
 //   { ok: false, unsafe: true, url }      a hop resolved to a private/unsafe addr
@@ -918,9 +941,17 @@ export async function safeFetch(
 ) {
   let target = url;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
-    if (await isUnsafeResolvedUrl(target, resolver)) {
+    const addresses = await resolvePublicUrlAddresses(target, resolver);
+    if (addresses.length === 0) {
       return { ok: false, unsafe: true, url: target };
     }
+    const targetUrl = new URL(target);
+    const host = normalizeHostname(targetUrl.hostname);
+    const dispatcher = createPinnedAddressDispatcher(
+      host,
+      addresses[0].address,
+      addresses[0].family,
+    );
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let response;
@@ -929,6 +960,7 @@ export async function safeFetch(
         method: "GET",
         redirect: "manual",
         signal: controller.signal,
+        dispatcher,
         headers: { "user-agent": "metagraphed/0.0", accept },
       });
     } catch (error) {

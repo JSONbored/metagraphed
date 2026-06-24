@@ -84,4 +84,29 @@ describe("safeFetch SSRF guard", () => {
     assert.equal(result.ok, false);
     assert.equal(result.status, 404);
   });
+
+  test("pins the checked DNS answer into the actual fetch connection", async () => {
+    const resolverCalls = [];
+    const fetchCalls = [];
+    const resolver = async (host, options) => {
+      resolverCalls.push([host, options]);
+      return [{ address: "93.184.216.34", family: 4 }];
+    };
+    vi.stubGlobal("fetch", async (url, options) => {
+      fetchCalls.push([String(url), options]);
+      return mockResponse({ status: 200 });
+    });
+
+    const result = await safeFetch("http://rebind.example.test/surface", {
+      resolver,
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(resolverCalls, [
+      ["rebind.example.test", { all: true, verbatim: true }],
+    ]);
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0][0], "http://rebind.example.test/surface");
+    assert.ok(fetchCalls[0][1].dispatcher);
+  });
 });
